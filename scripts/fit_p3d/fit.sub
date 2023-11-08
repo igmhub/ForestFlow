@@ -1,0 +1,27 @@
+executable = /nfs/pic.es/user/j/jchavesm/postprocess/extract.sh
+
+raw_dir = /data/desi/scratch/HydroData/Emulator/untar_hydro_sims/Australia20/$(sim_number)/$(sim_type)/ 
+post_dir = /data/desi/scratch/HydroData/Emulator/test_jonas/$(sim_number)/$(sim_type)/
+n_skewers = 768
+width_Mpc = 0.05
+
+arguments = --raw_dir $(raw_dir) --post_dir $(post_dir) --snap_num $(snap_num) --axis $(axis) --n_skewers $(n_skewers) --width_Mpc $(width_Mpc)
+
+#request_cpus = 32
+#request_cpus = 16
+request_cpus = 8
+request_memory = 24GB
+
+output = out_skew_$(sim_number)_$(sim_type)_$(snap_num)_$(axis)_$(ClusterId).$(ProcId).out
+error  = out_skew_$(sim_number)_$(sim_type)_$(snap_num)_$(axis)_$(ClusterId).$(ProcId).err
+log    = out_skew_$(sim_number)_$(sim_type)_$(snap_num)_$(axis)_$(ClusterId).$(ProcId).log
+
+environment=PATH=$ENV(PATH);LD_LIBRARY_PATH=$ENV(LD_LIBRARY_PATH);PYTHONPATH=$ENV(PYTHONPATH);LACE_REPO=$ENV(LACE_REPO);LACE_MANAGER_REPO=$ENV(LACE_MANAGER_REPO)
+
++flavour="medium"
++WN_property="tdmem"
++experiment="desi"
+#Requirements = (Machine != "tdm001.pic.es")
+Requirements = (Machine != "tdm001.pic.es") && (Machine != "tdm002.pic.es")
+
+queue sim_number, sim_type, snap_num, axis from input_hnu.txt
