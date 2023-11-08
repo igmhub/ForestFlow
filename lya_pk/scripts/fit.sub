@@ -1,0 +1,19 @@
+executable = /data/desi/scratch/jchavesm/lya_pk/lya_pk/scripts/fit.sh
+
+arguments = $(arg)
+
+request_cpus = 1
+request_memory = 2GB
+
+output = out_$(arg).out
+error = out_$(arg).err
+log = out_$(arg).log
+
+environment=PATH=$ENV(PATH);LD_LIBRARY_PATH=$ENV(LD_LIBRARY_PATH);PYTHONPATH=$ENV(PYTHONPATH);LACE_REPO=$ENV(LACE_REPO);LACE_MANAGER_REPO=$ENV(LACE_MANAGER_REPO)
+
++flavour="medium"
++WN_property="tdmem"
++experiment="desi"
+Requirements = (Machine != "tdm001.pic.es") && (Machine != "tdm002.pic.es")
+
+queue arg from seq 0 1 384 |
