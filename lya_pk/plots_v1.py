@@ -1,10 +1,10 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from lya_pk.likelihood import Likelihood
+from ForestFlow.likelihood import Likelihood
 import matplotlib.patches as mpatches
 import matplotlib.lines as mlines
-from lya_pk.plot_routines import plot_template
+from ForestFlow.plot_routines import plot_template
 
 
 def plot_test_parz(Archive3D, p3d_emu, sim_label):
