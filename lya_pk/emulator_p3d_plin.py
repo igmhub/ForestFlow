@@ -11,8 +11,8 @@ from lace.emulator import gp_emulator
 from lace.emulator import poly_p1d
 from lace.emulator import utils
 
-from lya_pk.emulator_p3d_architecture import P3D_emuv0
-from lya_pk.input_emu import data_for_emu_v1, params_numpy2dict
+from ForestFlow.emulator_p3d_architecture import P3D_emuv0
+from ForestFlow.input_emu import data_for_emu_v1, params_numpy2dict
 
 
 import torch
@@ -106,8 +106,8 @@ class P3DEmulator:
             "cuda" if torch.cuda.is_available() else "cpu"
         )
         self.save_path = save_path
-        self.lace_path = utils.ls_level(os.getcwd(), 1)
-        self.models_dir = os.path.join(self.lace_path, "lya_pk/")
+        #self.lace_path = utils.ls_level(os.getcwd(), 1)
+        #self.models_dir = os.path.join(self.lace_path, "lya_pk/")
 
         self.target_space = target_space
         self.epsilon = 1e-3
@@ -119,7 +119,7 @@ class P3DEmulator:
             if self.model_path == None:
                 raise Exception("If train==False, model path is required.")
 
-            else:
+            """else:
                 pretrained_weights = torch.load(
                     os.path.join(self.models_dir, self.model_path),
                     map_location="cpu",
@@ -133,7 +133,7 @@ class P3DEmulator:
 
                 self.log_KMpc = torch.log10(kMpc_train).to(self.device)
 
-                return
+                return"""
 
         if self.save_path != None:
             # saves the model in the predefined path after training
