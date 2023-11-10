@@ -1,6 +1,6 @@
 import numpy as np
 
-from lya_pk.archive import GadgetArchive3D
+from ForestFlow.archive import GadgetArchive3D
 
 
 def save_data(
