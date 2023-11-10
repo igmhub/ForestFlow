@@ -4,8 +4,8 @@ from scipy.optimize import minimize
 import emcee
 import copy
 
-from lya_pk.utils import purge_chains, init_chains, params_numpy2dict
-from lya_pk.plot_routines import plot_template
+from ForestFlow.utils import purge_chains, init_chains, params_numpy2dict
+from ForestFlow.plot_routines import plot_template
 
 
 class FitPk(object):
