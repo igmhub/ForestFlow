@@ -9,13 +9,13 @@ from lace.utils.exceptions import ExceptionList
 
 # from lace.utils.misc import split_string
 
-from lya_pk.utils import params_numpy2dict
-from lya_pk.model_p3d_arinyo import ArinyoModel
+from ForestFlow.utils import params_numpy2dict
+from ForestFlow.model_p3d_arinyo import ArinyoModel
 
 
 def get_camb_interp(file, data):
     from lace.cosmo import camb_cosmo
-    from lya_pk.camb_routines import get_matter_power_interpolator
+    from ForestFlow.camb_routines import get_matter_power_interpolator
 
     # check if Plin interporlator has been pre-computed for this simulation
     # if not, do it (to be fixed)
