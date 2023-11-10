@@ -6,7 +6,7 @@ import numpy as np
 from lace.archive.gadget_archive import GadgetArchive
 from lace.utils.exceptions import ExceptionList
 
-from lya_pk.fit_p3d import FitPk
+from ForestFlow.fit_p3d import FitPk
 
 
 class Likelihood(object):
