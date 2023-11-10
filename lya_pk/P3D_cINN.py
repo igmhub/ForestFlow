@@ -8,9 +8,9 @@ import FrEIA.framework as Ff
 import FrEIA.modules as Fm
 
 #lace modeles
-from lya_pk.model_p3d_arinyo import ArinyoModel
+from ForestFlow.model_p3d_arinyo import ArinyoModel
 from lace.cosmo.camb_cosmo import get_cosmology
-from lya_pk.archive import GadgetArchive3D
+from ForestFlow.archive import GadgetArchive3D
 
 import numpy as np
 import os
