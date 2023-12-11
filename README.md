@@ -58,7 +58,17 @@ python -m ipykernel install --user --name forestflow --display-name forestflow
 ```
 
 - REQUIREMENTS:
-TBD
+
+```numpy==1.24.4
+pandas
+scipy
+h5py
+scikit_learn
+matplotlib
+configobj
+camb>=1.1.3
+FreIA`
+torch```
 
 
 
