@@ -59,7 +59,7 @@ def plot_template(
             color=ycolor,
         )
 
-    for tick in ax.xaxis.get_major_ticks():
+    """for tick in ax.xaxis.get_major_ticks():
         tick.label.set_fontsize(ftsize)
         tick.label.set_color(xcolor)
     for tick in ax.yaxis.get_major_ticks():
@@ -73,7 +73,7 @@ def plot_template(
     if extra_yaxis:
         for tick in ay2.yaxis.get_major_ticks():
             tick.label2.set_fontsize(ftsize)
-            tick.label2.set_color(ycolor2)
+            tick.label2.set_color(ycolor2)"""
 
 
 def plot_vec(cen, vv, length, ax, label, col, direction=None):
