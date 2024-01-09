@@ -362,25 +362,6 @@ class P3DEmulator:
         return chains
         
 
-    
-    """def _define_cINN_Arinyo(self, dim_inputSpace=8):
-        def subnet_fc(dims_in, dims_out):
-            return nn.Sequential(nn.Linear(dims_in, 10), nn.ReLU(),
-                                 nn.Dropout(0),
-                                 nn.Linear(10, 15), nn.ReLU(),
-                                 nn.Dropout(0),
-                                 nn.Linear(15,  dims_out))
-        emulator  = Ff.SequenceINN(dim_inputSpace)
-        for l in range(self.nLayers_inn):
-            emulator.append(Fm.AllInOneBlock, 
-                        cond = [i for i in range(self.batch_size)], 
-                        cond_shape=[6], 
-                        subnet_constructor=subnet_fc
-                       )
-            
-        return emulator"""
-    
-    
     def _define_cINN_Arinyo(self, dim_inputSpace=8):
         def subnet_fc(dims_in, dims_out):
             return nn.Sequential(nn.Linear(dims_in, 64), nn.ReLU(),
@@ -398,44 +379,7 @@ class P3DEmulator:
             
         return emulator
     
-    """def _define_cINN_Arinyo(self, dim_inputSpace=8):
-        def subnet_fc(dims_in, dims_out):
-            return nn.Sequential(nn.Linear(dims_in, 50), nn.ReLU(),
-                                 nn.Dropout(0.1),
-                                 nn.Linear(50, 100), nn.ReLU(),
-                                 nn.Dropout(0.1),
-                                 nn.Linear(100, 50), nn.ReLU(),
-                                 nn.Dropout(0.1),
-                                 nn.Linear(50,  dims_out))
-        emulator  = Ff.SequenceINN(dim_inputSpace)
-        for l in range(self.nLayers_inn):
-            emulator.append(Fm.AllInOneBlock, 
-                        cond = [i for i in range(self.batch_size)], 
-                        cond_shape=[6], 
-                        subnet_constructor=subnet_fc
-                       )
-            
-        return emulator"""
-    
-    
-    """def _define_cINN_Arinyo(self):
-        def subnet_fc(dims_in, dims_out):
-            return nn.Sequential(nn.Linear(dims_in, 50), nn.ReLU(),
-                                 nn.Linear(50, 100), nn.ReLU(),
-                                 nn.Linear(100, 50), nn.ReLU(),
-                                 nn.Linear(50,  dims_out))
-        emulator  = Ff.SequenceINN(8)
-        for l in range(self.nLayers_inn):
-            emulator.append(Fm.AllInOneBlock, 
-                        cond = [i for i in range(self.batch_size)], 
-                        cond_shape=[6], 
-                        subnet_constructor=subnet_fc
-                       )
-            
-        return emulator"""
-        
 
-    
     
     
     def _define_cINN_P3D(self, dim_inputSpace=8):
