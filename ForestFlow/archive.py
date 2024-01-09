@@ -147,11 +147,6 @@ class GadgetArchive3D(GadgetArchive):
             sim_label,
             compute_plin=force_recompute_plin,
         )
-        # self.add_plin(
-        #     testing_data,
-        #     sim_label,
-        #     compute_plin=force_recompute_plin,
-        # )
 
         return testing_data
 
@@ -283,6 +278,14 @@ class GadgetArchive3D(GadgetArchive):
         n_k_perp=99,
     ):
         nelem = len(archive)
+
+        try:  # check file_plin is not None
+            file = np.load(
+                self.base_folder + "/data/" + sim_label + "_" + self.file_plin
+            )
+        except OSError:
+            print("No file with Plin in " + self.base_folder + "/data/")
+            compute_plin = True
 
         if compute_plin:
             k3d = archive[0]["k3d_Mpc"]
