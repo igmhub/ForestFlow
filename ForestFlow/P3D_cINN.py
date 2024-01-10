@@ -68,6 +68,7 @@ class P3DEmulator:
         drop_z=None,
         pick_z=None,
         save_path=None,
+        model_path=None,
         drop_rescalings=False,
         use_chains=False,
         folder_chains='/data/desi/scratch/jchavesm/p3d_fits_new/',
@@ -101,6 +102,9 @@ class P3DEmulator:
         self.Arinyo_params=['bias', 'beta', 'q1', 'kvav', 'av',  'bv', 'kp','q2']
         self.input_space=input_space
         self.grad_clip_threshold = grad_clip_threshold
+        self.folder_interp="/data/plin_interp/"
+        self.model_path=model_path
+        self.save_path=save_path
         
         if self.use_chains==True:
             if self.archive==None:
@@ -124,13 +128,25 @@ class P3DEmulator:
         self.k_Mpc_masked=k_Mpc[self.k_mask]
         self.mu_masked= mu[self.k_mask]
         
+            
         
         if self.input_space=='Arinyo':
-            self._train_Ariyo()
+            self._train_Arinyo()
         
         if self.input_space=='P3D':
             self._train_P3D()        
         
+
+    def params_numpy2dict(self, array, key_strings=["bias", "beta", "q1", "kvav", "av", "bv", "kp", "q2"]):
+
+        # Create a dictionary with key strings and array elements
+        array_dict = {}
+        for key, value in zip(key_strings, array):
+            array_dict[key] = value
+
+        return array_dict
+
+
     def _sort_dict(self, dct, keys):
         """
         Sort a list of dictionaries based on specified keys.
@@ -246,7 +262,24 @@ class P3DEmulator:
         self.std_training=p3d.std(0)
 
     
-        return p3d, p3d_normed    
+        return p3d, p3d_normed 
+    
+    """def get_P3D_Mpc(self, sim_label, model):
+        
+        flag = f'Plin_interp_sim{s}.npy'
+
+        file_plin_inter = folder_interp + flag
+        pk_interp = np.load(file_plin_inter, allow_pickle=True).all()
+
+        model_Arinyo = model_p3d_arinyo.ArinyoModel(camb_pk_interp=pk_interp)
+        
+
+        
+        coeffs_all, coeffs_mean = self.get_coeff(model,
+                                        Nrealizations=1000,
+                                        return_all_realizations=True
+                                                )"""
+                
     
     def Arinyo_to_P3d(self, linP, params, epsilon=0.001, log_params=True):
         
@@ -474,11 +507,18 @@ class P3DEmulator:
         
         
     
-    def _train_Ariyo(self):
+    def _train_Arinyo(self):
         
 
         training_data = self._get_training_data()
         self.emulator = self._define_cINN_Arinyo()
+        
+        if self.model_path!=None:
+            print('WARNING: loading a pre-trained emulator')
+            self.emulator.load_state_dict(torch.load(self.model_path))
+            return
+            
+        
         self.emulator.apply(init_xavier)
         if self.use_chains==False:
             Arinyo_coeffs = self._get_Arinyo_params()
@@ -546,6 +586,8 @@ class P3DEmulator:
                 self._latent_space=_latent_space
                 
         print(f"Emualtor optimized in {time.time() - t0} seconds")
+        if self.save_path!=None:
+            torch.save(self.emulator.state_dict(), self.save_path)
         
         
     def get_coeff(self, input_emu, Nrealizations=1000, plot=False, true_coeffs=None, return_all_realizations=False):
