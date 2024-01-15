@@ -70,11 +70,9 @@ camb>=1.1.3
 FreIA`
 torch
 corner
-emcee```
+emcee
+Ìnstalling ForestFlow also requires installing LaCE (https://github.com/igmhub/LaCE)```
 
-```
-Ìnstalling ForestFlow also requires installing LaCE (https://github.com/igmhub/LaCE)
-```
 
 
 
