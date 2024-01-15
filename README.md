@@ -68,7 +68,13 @@ matplotlib
 configobj
 camb>=1.1.3
 FreIA`
-torch```
+torch
+corner
+emcee```
+
+```
+Ìnstalling ForestFlow also requires installing LaCE (https://github.com/igmhub/LaCE)
+```
 
 
 
