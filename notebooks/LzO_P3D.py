@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.15.2
 #   kernelspec:
 #     display_name: ForestFlow
 #     language: python
@@ -266,7 +266,7 @@ for iz, zdrop in enumerate(z_test):
         chain_samp=100_000,
         input_space='Arinyo',
         folder_chains='/data/desi/scratch/jchavesm/p3d_fits_new/',
-        save_path=f'../data/emulator_models/mpg_dropz{zdrop}.pt'
+        model_path=f'../data/emulator_models/mpg_dropz{zdrop}.pt'
     )
     
     for s in range(Nsim):
