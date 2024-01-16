@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.15.2
 #   kernelspec:
 #     display_name: ForestFlow
 #     language: python
@@ -63,7 +63,7 @@ def sigma68(data): return 0.5*(np.nanquantile(data,q = 0.84,axis = 0) - np.nanqu
 # %%
 # %%time
 folder_lya_data = path_program +  "/data/best_arinyo/"
-#folder_interp = path_program+"/data/plin_interp/"
+folder_interp = path_program+"/data/plin_interp/"
 
 Archive3D = GadgetArchive3D(
     base_folder=path_program[:-1], 
@@ -100,6 +100,17 @@ p3d_emu = P3DEmulator(
 
 # %% [markdown]
 # ## TEST EMULATOR TEST SIMULATIONS
+
+# %%
+# Extract data from Archive3D
+k_Mpc = Archive3D.training_data[0]["k3d_Mpc"]
+mu = Archive3D.training_data[0]["mu3d"]
+
+# Apply a mask to select relevant k values
+k_mask = (k_Mpc < 4) & (k_Mpc > 0)
+k_Mpc = k_Mpc[k_mask]
+mu = mu[k_mask]
+
 
 # %%
 sim_labels = ['mpg_central', 'mpg_seed', 'mpg_growth', 'mpg_neutrinos', 'mpg_curved','mpg_running', 'mpg_reio']
@@ -164,11 +175,52 @@ for ii, sim_label in enumerate(sim_labels):
 
 
 # %% [markdown]
+# #### Loop over test sims, P1D and P3D from MCMC Arinyo
+
+# %%
+P3D_testsims_Arinyo = np.zeros((len(sim_labels),11,148))
+P1D_testsims_Arinyo = np.zeros((len(sim_labels),11,53))
+
+for ii, sim_label in enumerate(sim_labels):
+    # Find the index of the underscore
+    underscore_index = sim_label.find('_')
+    lab = sim_label[underscore_index + 1:]
+    
+    test_sim = Archive3D.get_testing_data(
+            sim_label, 
+            force_recompute_plin=True
+            )
+    z_grid = [d['z'] for d in test_sim]
+    
+    for iz,z in enumerate(z_grid):
+        test_sim_z = [d for d in test_sim if d['z']==z]
+        
+        #load arinyo module
+        flag = f'Plin_interp_sim{lab}.npy'
+        file_plin_inter = folder_interp + flag
+        pk_interp = np.load(file_plin_inter, allow_pickle=True).all()
+        model_Arinyo = model_p3d_arinyo.ArinyoModel(camb_pk_interp=pk_interp)
+        
+        BF_arinyo = test_sim_z[0]['Arinyo']  
+        p3d_arinyo = model_Arinyo.P3D_Mpc(z,k_Mpc, mu,BF_arinyo )
+        
+        like = Likelihood(test_sim_z[0], Archive3D.rel_err_p3d, Archive3D.rel_err_p1d )
+        k1d_mask = like.like.ind_fit1d.copy() 
+        p1d_arinyo = like.like.get_model_1d(parameters=BF_arinyo)
+
+        
+        P3D_testsims_Arinyo[ii,iz] = p3d_arinyo
+        P1D_testsims_Arinyo[ii,iz] = p1d_arinyo[k1d_mask]
+
+# %% [markdown]
 # ### Define fractional errors
 
 # %%
-fractional_error_P3D = (P3D_testsims / P3D_testsims_true -1)*100
-fractional_error_P1D = (P1D_testsims / P1D_testsims_true -1)*100
+# here we can change P3D_testsims_true by P3D_testsims_Arinyo (and same for P1D)
+
+# %%
+fractional_error_P3D = (P3D_testsims / P3D_testsims_Arinyo -1)*100
+fractional_error_P1D = (P1D_testsims / P1D_testsims_Arinyo -1)*100
 
 # %% [markdown]
 # ## PLOT P1D
@@ -208,21 +260,6 @@ plt.xlabel(r"$z$")
 # ## PLOT P3D
 
 # %%
-np.nanmedian(fractional_error_P3D[c, :, :], 0).shape
-
-# %%
-mu_mask.shape
-
-# %%
-# Extract data from Archive3D
-k_Mpc = Archive3D.training_data[0]["k3d_Mpc"]
-mu = Archive3D.training_data[0]["mu3d"]
-
-# Apply a mask to select relevant k values
-k_mask = (k_Mpc < 4) & (k_Mpc > 0)
-k_Mpc = k_Mpc[k_mask]
-mu = mu[k_mask]
-
 # Define mu bins
 mu_lims = [[0, 0.06], [0.31, 0.38], [0.62, 0.69], [0.94, 1]]
 
