@@ -38,7 +38,7 @@ def plot_test_parz(Archive3D, p3d_emu, sim_label):
         _cosmo_params = np.zeros(len(Archive3D.emu_params))
         for ii, par in enumerate(Archive3D.emu_params):
             _cosmo_params[ii] = testing_data[jj][par]
-        predict_params[jj] = p3d_emu.get_coeff(_cosmo_params)
+        predict_params[jj] = p3d_emu.predict_Arinyos(_cosmo_params)
         input_params[jj] = list(testing_data[jj]["Arinyo"].values())
 
     # make sure bias negative (dependence on bias square)
@@ -85,7 +85,7 @@ def plot_test_p3d(ind_book, Archive3D, p3d_emu, sim_label, plot_emu=True):
         for ii, par in enumerate(Archive3D.emu_params):
             _cosmo_params[ii] = testing_data[jj][par]
         if plot_emu:
-            predict_params[jj] = p3d_emu.get_coeff(_cosmo_params)
+            predict_params[jj] = p3d_emu.predict_Arinyos(_cosmo_params)
         input_params[jj] = list(testing_data[jj]["Arinyo"].values())
 
     # make sure bias negative (dependence on bias square)
