@@ -437,9 +437,9 @@ class P3DEmulator:
 
 
 
-    def _load_Arinyo_chains(self):
+    def _load_Arinyo_chains_training(self):
         """
-        Load Arinyo model chains from stored files.
+        Load Arinyo model chains from stored files for all the training LH simulations.
 
         This function loads Arinyo model chains corresponding to different simulations from saved files. 
         It extracts relevant information such as simulation label, scaling factor, redshift, and other parameters 
@@ -497,6 +497,61 @@ class P3DEmulator:
         print('Chains loaded')
         return chains
 
+    def _load_Arinyo_chains_sim(self, sim_label, z):
+        """
+        Load Arinyo model chains from stored files for a single simulation.
+
+        This function loads Arinyo model chains corresponding to different simulations from saved files. 
+        It extracts relevant information such as simulation label, scaling factor, redshift, and other parameters 
+        to construct the file tag for each simulation. The loaded chains are then processed and returned.
+
+        Returns:
+            np.array: Array containing Arinyo model chains for all simulations.
+        """
+        print('Loading Arinyo chains')
+
+    
+        scale_tau = 1
+        ind_z = z
+
+        # Construct file tag based on simulation parameters
+        tag = (
+            "fit_sim"
+            + sim_label[4:]
+            + "_tau"
+            + str(np.round(scale_tau, 2))
+            + "_z"
+            + str(ind_z)
+            + "_kmax3d"
+            + str(self.archive.kmax_3d)
+            + "_noise3d"
+            + str(self.archive.noise_3d)
+            + "_kmax1d"
+            + str(self.archive.kmax_1d)
+            + "_noise1d"
+            + str(self.archive.noise_1d)
+        )
+
+        # Load Arinyo model chain from file
+        file_arinyo = np.load(self.folder_chains + tag + ".npz")
+        chain = file_arinyo["chain"].copy()
+
+        # Ensure non-positive values for the first parameter
+        chain[:, 0] = -np.abs(chain[:, 0])
+
+        # Randomly sample from the loaded chain
+        idx = np.random.randint(len(chain), size=(self.chain_samp))
+        chain_sampled = chain[idx]
+
+        # Apply logarithmic transformations to specified parameters
+        chain_sampled[:, 2] = np.log(chain_sampled[ :, 2])
+        chain_sampled[:, 6] = np.log(chain_sampled[:, 6])
+        chain_sampled[:, 7] = np.log(chain_sampled[:, 7])
+
+        print('Chains loaded')
+        return chain_sampled
+    
+
     def _get_Arinyo_chains(self):
         """
         Load and convert Arinyo model chains into torch.Tensor.
@@ -507,7 +562,7 @@ class P3DEmulator:
         Returns:
             torch.Tensor: Tensor containing Arinyo model chains.
         """
-        chains = self._load_Arinyo_chains()
+        chains = self._load_Arinyo_chains_training()
         chains = torch.Tensor(chains)
         return chains
 
@@ -635,7 +690,7 @@ class P3DEmulator:
         Predict Arinyo coefficients using the trained emulator.
 
         Args:
-            input_emu (list): List of Arinyo input parameters.
+            input_emu (list): List of cosmo+astro input parameters.
             plot (bool): Whether to generate a corner plot. Default is False.
             true_coeffs (list): True Arinyo coefficients for plotting comparison. Default is None.
             return_all_realizations (bool): Whether to return all realizations or just the mean. Default is False.
