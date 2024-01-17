@@ -1,11 +1,11 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from ForestFlow.likelihood import Likelihood
+from forestflow.likelihood import Likelihood
 import matplotlib.patches as mpatches
 import matplotlib.lines as mlines
-from ForestFlow.plot_routines import plot_template
-from ForestFlow.utils import params_numpy2dict
+from forestflow.plot_routines import plot_template
+from forestflow.utils import params_numpy2dict
 
 
 # def norm_params(xx, direction="L"):

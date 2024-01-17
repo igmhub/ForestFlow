@@ -1,4 +1,4 @@
-#torch modules
+# torch modules
 import torch
 from torch.utils.data import DataLoader, dataset, TensorDataset
 from torch import nn, optim
@@ -7,11 +7,11 @@ from torch import nn, optim
 import FrEIA.framework as Ff
 import FrEIA.modules as Fm
 
-#lace modeles
-from ForestFlow.model_p3d_arinyo import ArinyoModel
+# lace modeles
+from forestflow.model_p3d_arinyo import ArinyoModel
 from lace.cosmo.camb_cosmo import get_cosmology
-from ForestFlow.archive import GadgetArchive3D
-from ForestFlow.likelihood import Likelihood
+from forestflow.archive import GadgetArchive3D
+from forestflow.likelihood import Likelihood
 
 
 import numpy as np
@@ -25,6 +25,7 @@ import corner
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
+
 def init_xavier(m):
     """Initialization of the NN.
     This is quite important for a faster training
@@ -32,6 +33,7 @@ def init_xavier(m):
     if type(m) == torch.nn.Linear:
         torch.nn.init.xavier_uniform_(m.weight)
         m.bias.data.fill_(0.01)
+
 
 class P3DEmulator:
     """A class for training an emulator.
@@ -87,13 +89,12 @@ class P3DEmulator:
         model_path=None,
         drop_rescalings=False,
         use_chains=False,
-        folder_chains='/data/desi/scratch/jchavesm/p3d_fits_new/',
+        folder_chains="/data/desi/scratch/jchavesm/p3d_fits_new/",
         Archive=None,
         chain_samp=100_000,
-        Nrealizations=100
+        Nrealizations=100,
     ):
-        
-        # Initialize class attributes with provided arguments        
+        # Initialize class attributes with provided arguments
         self.training_data = training_data
         self.emuparams = paramList
         self.kmax_Mpc = kmax_Mpc
@@ -104,51 +105,67 @@ class P3DEmulator:
         self.pick_z = pick_z
         self.adamw = adamw
         self.drop_rescalings = drop_rescalings
-        self.nLayers_inn= nLayers_inn
-        self.train=train
-        self.Nrealizations=Nrealizations
-        
+        self.nLayers_inn = nLayers_inn
+        self.train = train
+        self.Nrealizations = Nrealizations
+
         self.batch_size = batch_size
         self.lr = lr
         self.weight_decay = weight_decay
-        self.use_chains=use_chains
-        self.folder_chains=folder_chains
-        self.archive=Archive
-        self.chain_samp=chain_samp
-        self.Arinyo_params=['bias', 'beta', 'q1', 'kvav', 'av',  'bv', 'kp','q2']
-        self.folder_interp="../data/plin_interp/"
-        self.model_path=model_path
-        self.save_path=save_path
-        
-        if self.use_chains==True:
-            if self.archive==None:
-                raise ValueError('Use_chains==True requires loadinig an archive')
-                
-            print('Warning: using the chains takes longer '
-                  'Loading the chains is around 3 minutes. '
-                  'Be pacient!')
-            
+        self.use_chains = use_chains
+        self.folder_chains = folder_chains
+        self.archive = Archive
+        self.chain_samp = chain_samp
+        self.Arinyo_params = [
+            "bias",
+            "beta",
+            "q1",
+            "kvav",
+            "av",
+            "bv",
+            "kp",
+            "q2",
+        ]
+        self.folder_interp = "../data/plin_interp/"
+        self.model_path = model_path
+        self.save_path = save_path
+
+        if self.use_chains == True:
+            if self.archive == None:
+                raise ValueError(
+                    "Use_chains==True requires loadinig an archive"
+                )
+
+            print(
+                "Warning: using the chains takes longer "
+                "Loading the chains is around 3 minutes. "
+                "Be pacient!"
+            )
+
         # Set random seeds for reproducibility
         torch.manual_seed(32)
         np.random.seed(32)
         random.seed(32)
-        
+
         # Extract k_Mpc and mu from the training data
         k_Mpc = self.archive.training_data[0]["k3d_Mpc"]
         mu = self.archive.training_data[0]["mu3d"]
 
         # Create a mask for k values within the specified kmax_Mpc range
         k_mask = (k_Mpc < self.kmax_Mpc) & (k_Mpc > 0)
-        
-        self.k_mask=k_mask
-        
-        self.k_Mpc_masked=k_Mpc[self.k_mask]
-        self.mu_masked= mu[self.k_mask]
-        
-        self._train_Arinyo()
-             
 
-    def _params_numpy2dict(self, array, key_strings=["bias", "beta", "q1", "kvav", "av", "bv", "kp", "q2"]):
+        self.k_mask = k_mask
+
+        self.k_Mpc_masked = k_Mpc[self.k_mask]
+        self.mu_masked = mu[self.k_mask]
+
+        self._train_Arinyo()
+
+    def _params_numpy2dict(
+        self,
+        array,
+        key_strings=["bias", "beta", "q1", "kvav", "av", "bv", "kp", "q2"],
+    ):
         """
         Convert a numpy array of parameters to a dictionary.
 
@@ -165,7 +182,6 @@ class P3DEmulator:
             array_dict[key] = value
 
         return array_dict
-
 
     def _sort_dict(self, dct, keys):
         """
@@ -188,7 +204,6 @@ class P3DEmulator:
             )  # update the original dictionary with the sorted dictionary
         return dct
 
-    
     def _get_training_data(self):
         """
         Retrieve and preprocess training data for the emulator.
@@ -202,7 +217,11 @@ class P3DEmulator:
         """
         # Extract relevant parameters from the training data
         training_data = [
-            {key: value for key, value in self.training_data[i].items() if key in self.emuparams}
+            {
+                key: value
+                for key, value in self.training_data[i].items()
+                if key in self.emuparams
+            }
             for i in range(len(self.training_data))
         ]
 
@@ -210,7 +229,10 @@ class P3DEmulator:
         training_data = self._sort_dict(training_data, self.emuparams)
 
         # Convert the sorted training data to a list of lists
-        training_data = [list(training_data[i].values()) for i in range(len(self.training_data))]
+        training_data = [
+            list(training_data[i].values())
+            for i in range(len(self.training_data))
+        ]
 
         # Convert the training data to a numpy array
         training_data = np.array(training_data)
@@ -220,7 +242,9 @@ class P3DEmulator:
         self.param_lims_min = training_data.min(0)
 
         # Scale the training data based on the parameter limits
-        training_data = (training_data - self.param_lims_max) / (self.param_lims_max - self.param_lims_min)
+        training_data = (training_data - self.param_lims_max) / (
+            self.param_lims_max - self.param_lims_min
+        )
 
         # Convert the scaled training data to a torch.Tensor object
         training_data = torch.Tensor(training_data)
@@ -243,7 +267,11 @@ class P3DEmulator:
         """
         # Extract emulator parameters from the test data
         condition = [
-            {key: value for key, value in test_data[i].items() if key in self.archive.emu_params}
+            {
+                key: value
+                for key, value in test_data[i].items()
+                if key in self.archive.emu_params
+            }
             for i in range(len(test_data))
         ]
 
@@ -258,7 +286,6 @@ class P3DEmulator:
 
         return condition
 
-    
     def _get_Arinyo_params(self):
         """
         Extract and preprocess Arinyo parameters from the training data.
@@ -271,7 +298,11 @@ class P3DEmulator:
         """
         # Extract relevant Arinyo parameters from the training data
         training_label = [
-            {key: value for key, value in self.training_data[i]["Arinyo"].items() if key in self.Arinyo_params}
+            {
+                key: value
+                for key, value in self.training_data[i]["Arinyo"].items()
+                if key in self.Arinyo_params
+            }
             for i in range(len(self.training_data))
         ]
 
@@ -279,7 +310,10 @@ class P3DEmulator:
         training_label = self._sort_dict(training_label, self.Arinyo_params)
 
         # Convert the sorted Arinyo parameters to a list of lists
-        training_label = [list(training_label[i].values()) for i in range(len(self.training_data))]
+        training_label = [
+            list(training_label[i].values())
+            for i in range(len(self.training_data))
+        ]
 
         # Convert the Arinyo parameters to a numpy array
         training_label = np.array(training_label)
@@ -295,7 +329,6 @@ class P3DEmulator:
 
         return training_label
 
-    
     def _get_Plin(self):
         """
         Retrieve linear power spectrum (Plin) from the training data.
@@ -306,13 +339,12 @@ class P3DEmulator:
             np.array: Linear power spectrum (Plin) from the training data.
         """
         # Extract Plin from the training data
-        Plin = [d['Plin'] for d in self.training_data]
+        Plin = [d["Plin"] for d in self.training_data]
 
         # Convert the list of Plin to a numpy array
         Plin = np.array(Plin)
 
         return Plin
-
 
     def predict_P3D_Mpc(self, sim_label, z, test_sim, return_cov=True):
         """
@@ -332,9 +364,9 @@ class P3DEmulator:
             np.array or None: Covariance matrix if return_cov is True, otherwise None.
         """
         # Extract simulation index from the given simulation label
-        underscore_index = sim_label.find('_')
-        s = sim_label[underscore_index + 1:]
-        flag = f'Plin_interp_sim{s}.npy'
+        underscore_index = sim_label.find("_")
+        s = sim_label[underscore_index + 1 :]
+        flag = f"Plin_interp_sim{s}.npy"
 
         # Load pre-interpolated matter power spectrum for the specified simulation
         file_plin_inter = self.folder_interp + flag
@@ -354,10 +386,14 @@ class P3DEmulator:
         # Predict power spectrum using Arinyo model with predicted coefficients
         if return_cov:
             # If return_cov is True, predict multiple realizations and calculate the covariance matrix
-            p3ds_pred = np.zeros(shape=(self.Nrealizations, len(self.k_Mpc_masked)))
+            p3ds_pred = np.zeros(
+                shape=(self.Nrealizations, len(self.k_Mpc_masked))
+            )
             for r in range(self.Nrealizations):
                 arinyo_params = self._params_numpy2dict(coeffs_all[r])
-                p3d_pred = model_Arinyo.P3D_Mpc(z, self.k_Mpc_masked, self.mu_masked, arinyo_params)
+                p3d_pred = model_Arinyo.P3D_Mpc(
+                    z, self.k_Mpc_masked, self.mu_masked, arinyo_params
+                )
                 p3ds_pred[r] = p3d_pred
 
             # Return the median power spectrum and its covariance matrix
@@ -368,10 +404,11 @@ class P3DEmulator:
         else:
             # If return_cov is False, predict the power spectrum using the mean coefficients
             NF_arinyo = self._params_numpy2dict(coeffs_mean)
-            p3d_arinyo = model_Arinyo.P3D_Mpc(z, self.k_Mpc_masked, self.mu_masked, NF_arinyo)
+            p3d_arinyo = model_Arinyo.P3D_Mpc(
+                z, self.k_Mpc_masked, self.mu_masked, NF_arinyo
+            )
             return p3d_arinyo
- 
-                
+
     def predict_P1D_Mpc(self, sim_label, z, test_sim, return_cov=True):
         """
         Predict the one-dimensional matter power spectrum using the emulator for a given simulation label and redshift.
@@ -391,16 +428,18 @@ class P3DEmulator:
             np.array or None: Covariance matrix if return_cov is True, otherwise None.
         """
         # Extract simulation index from the given simulation label
-        underscore_index = sim_label.find('_')
-        s = sim_label[underscore_index + 1:]
-        flag = f'Plin_interp_sim{s}.npy'
+        underscore_index = sim_label.find("_")
+        s = sim_label[underscore_index + 1 :]
+        flag = f"Plin_interp_sim{s}.npy"
 
         # Load pre-interpolated matter power spectrum for the specified simulation
         file_plin_inter = self.folder_interp + flag
         pk_interp = np.load(file_plin_inter, allow_pickle=True).all()
 
         # Initialize likelihood with test data and relative errors
-        like = Likelihood(test_sim[0], self.archive.rel_err_p3d, self.archive.rel_err_p1d)
+        like = Likelihood(
+            test_sim[0], self.archive.rel_err_p3d, self.archive.rel_err_p1d
+        )
 
         # Create a mask for the 1D power spectrum fit
         k1d_mask = like.like.ind_fit1d.copy()
@@ -435,20 +474,18 @@ class P3DEmulator:
             p1d_pred = p1d_pred[k1d_mask]
             return p1d_pred
 
-
-
     def _load_Arinyo_chains_training(self):
         """
         Load Arinyo model chains from stored files for all the training LH simulations.
 
-        This function loads Arinyo model chains corresponding to different simulations from saved files. 
-        It extracts relevant information such as simulation label, scaling factor, redshift, and other parameters 
+        This function loads Arinyo model chains corresponding to different simulations from saved files.
+        It extracts relevant information such as simulation label, scaling factor, redshift, and other parameters
         to construct the file tag for each simulation. The loaded chains are then processed and returned.
 
         Returns:
             np.array: Array containing Arinyo model chains for all simulations.
         """
-        print('Loading Arinyo chains')
+        print("Loading Arinyo chains")
 
         # Initialize array to store Arinyo model chains
         chains = np.zeros(shape=(len(self.training_data), self.chain_samp, 8))
@@ -494,23 +531,22 @@ class P3DEmulator:
         chains[:, :, 6] = np.log(chains[:, :, 6])
         chains[:, :, 7] = np.log(chains[:, :, 7])
 
-        print('Chains loaded')
+        print("Chains loaded")
         return chains
 
     def _load_Arinyo_chains_sim(self, sim_label, z):
         """
         Load Arinyo model chains from stored files for a single simulation.
 
-        This function loads Arinyo model chains corresponding to different simulations from saved files. 
-        It extracts relevant information such as simulation label, scaling factor, redshift, and other parameters 
+        This function loads Arinyo model chains corresponding to different simulations from saved files.
+        It extracts relevant information such as simulation label, scaling factor, redshift, and other parameters
         to construct the file tag for each simulation. The loaded chains are then processed and returned.
 
         Returns:
             np.array: Array containing Arinyo model chains for all simulations.
         """
-        print('Loading Arinyo chains')
+        print("Loading Arinyo chains")
 
-    
         scale_tau = 1
         ind_z = z
 
@@ -544,19 +580,18 @@ class P3DEmulator:
         chain_sampled = chain[idx]
 
         # Apply logarithmic transformations to specified parameters
-        chain_sampled[:, 2] = np.log(chain_sampled[ :, 2])
+        chain_sampled[:, 2] = np.log(chain_sampled[:, 2])
         chain_sampled[:, 6] = np.log(chain_sampled[:, 6])
         chain_sampled[:, 7] = np.log(chain_sampled[:, 7])
 
-        print('Chains loaded')
+        print("Chains loaded")
         return chain_sampled
-    
 
     def _get_Arinyo_chains(self):
         """
         Load and convert Arinyo model chains into torch.Tensor.
 
-        This function utilizes the _load_Arinyo_chains function to load Arinyo model chains, 
+        This function utilizes the _load_Arinyo_chains function to load Arinyo model chains,
         and then converts them into torch.Tensor format before returning.
 
         Returns:
@@ -566,12 +601,11 @@ class P3DEmulator:
         chains = torch.Tensor(chains)
         return chains
 
-
     def _define_cINN_Arinyo(self, dim_inputSpace=8):
         """
         Define a conditional invertible neural network (cINN) for Arinyo model.
 
-        This function defines the architecture of a conditional invertible neural network (cINN) for the Arinyo model. 
+        This function defines the architecture of a conditional invertible neural network (cINN) for the Arinyo model.
         It specifies the structure of the neural network, including the number of layers, dropout, and activation functions.
 
         Args:
@@ -580,32 +614,37 @@ class P3DEmulator:
         Returns:
             Ff.SequenceINN: Conditional invertible neural network for Arinyo model.
         """
+
         def subnet_fc(dims_in, dims_out):
-            return nn.Sequential(nn.Linear(dims_in, 64), nn.ReLU(),
-                                 nn.Dropout(0),
-                                 nn.Linear(64, 128), nn.ReLU(),
-                                 nn.Dropout(0),
-                                 nn.Linear(128,  dims_out))
+            return nn.Sequential(
+                nn.Linear(dims_in, 64),
+                nn.ReLU(),
+                nn.Dropout(0),
+                nn.Linear(64, 128),
+                nn.ReLU(),
+                nn.Dropout(0),
+                nn.Linear(128, dims_out),
+            )
 
         # Initialize the cINN model
-        emulator  = Ff.SequenceINN(dim_inputSpace)
+        emulator = Ff.SequenceINN(dim_inputSpace)
 
         # Append AllInOneBlocks to the cINN model based on the specified number of layers
         for l in range(self.nLayers_inn):
-            emulator.append(Fm.AllInOneBlock, 
-                        cond=[i for i in range(self.batch_size)], 
-                        cond_shape=[6], 
-                        subnet_constructor=subnet_fc
-                       )
+            emulator.append(
+                Fm.AllInOneBlock,
+                cond=[i for i in range(self.batch_size)],
+                cond_shape=[6],
+                subnet_constructor=subnet_fc,
+            )
 
         return emulator
-
 
     def _train_Arinyo(self):
         """
         Train the Arinyo model emulator using conditional invertible neural network (cINN).
 
-        This function trains the Arinyo model emulator by optimizing the cINN parameters. 
+        This function trains the Arinyo model emulator by optimizing the cINN parameters.
         It supports loading a pre-trained model if a model_path is provided.
 
         Returns:
@@ -617,7 +656,7 @@ class P3DEmulator:
 
         # Load a pre-trained model if model_path is provided
         if self.model_path != None:
-            print('WARNING: loading a pre-trained emulator')
+            print("WARNING: loading a pre-trained emulator")
             self.emulator.load_state_dict(torch.load(self.model_path))
             return
 
@@ -632,16 +671,31 @@ class P3DEmulator:
 
         # Create a PyTorch dataset and loader for training
         trainig_dataset = TensorDataset(training_data, Arinyo_coeffs)
-        loader = DataLoader(trainig_dataset, batch_size=self.batch_size, shuffle=True, drop_last=True)
+        loader = DataLoader(
+            trainig_dataset,
+            batch_size=self.batch_size,
+            shuffle=True,
+            drop_last=True,
+        )
 
         # Choose the optimizer (Adam or AdamW)
         if self.adamw:
-            optimizer = torch.optim.AdamW(self.emulator.parameters(), lr=self.lr, weight_decay=self.weight_decay)
+            optimizer = torch.optim.AdamW(
+                self.emulator.parameters(),
+                lr=self.lr,
+                weight_decay=self.weight_decay,
+            )
         else:
-            optimizer = optim.Adam(self.emulator.parameters(), lr=self.lr, weight_decay=self.weight_decay)
+            optimizer = optim.Adam(
+                self.emulator.parameters(),
+                lr=self.lr,
+                weight_decay=self.weight_decay,
+            )
 
         # Learning rate scheduler
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=self.step_size)
+        scheduler = torch.optim.lr_scheduler.StepLR(
+            optimizer, step_size=self.step_size
+        )
 
         # Training loop
         self.loss_arr = []
@@ -655,7 +709,9 @@ class P3DEmulator:
 
                 # Sample from the chains if use_chains is True
                 if self.use_chains == True:
-                    idx = np.random.choice(self.chain_samp, size=2_000, replace=False)
+                    idx = np.random.choice(
+                        self.chain_samp, size=2_000, replace=False
+                    )
                     coeffs = coeffs[:, idx, :].mean(axis=1)
 
                 # Forward pass through the cINN
@@ -685,7 +741,13 @@ class P3DEmulator:
         if self.save_path != None:
             torch.save(self.emulator.state_dict(), self.save_path)
 
-    def predict_Arinyos(self, input_emu, plot=False, true_coeffs=None, return_all_realizations=False):
+    def predict_Arinyos(
+        self,
+        input_emu,
+        plot=False,
+        true_coeffs=None,
+        return_all_realizations=False,
+    ):
         """
         Predict Arinyo coefficients using the trained emulator.
 
@@ -702,7 +764,9 @@ class P3DEmulator:
 
         # Normalize the input data
         test_data = np.array(input_emu)
-        test_data = (test_data - self.param_lims_max) / (self.param_lims_max - self.param_lims_min)
+        test_data = (test_data - self.param_lims_max) / (
+            self.param_lims_max - self.param_lims_min
+        )
         test_data = torch.Tensor(test_data)
 
         # Number of iterations for batch processing
@@ -732,15 +796,33 @@ class P3DEmulator:
             if true_coeffs is None:
                 corner_plot = corner.corner(
                     Arinyo_preds,
-                    labels=[r'$b$', r'$\beta$', '$q_1$', '$k_{vav}$', '$a_v$', '$b_v$', '$k_p$', '$q_2$'],
-                    truth_color='crimson'
+                    labels=[
+                        r"$b$",
+                        r"$\beta$",
+                        "$q_1$",
+                        "$k_{vav}$",
+                        "$a_v$",
+                        "$b_v$",
+                        "$k_p$",
+                        "$q_2$",
+                    ],
+                    truth_color="crimson",
                 )
             else:
                 corner_plot = corner.corner(
                     Arinyo_preds,
-                    labels=[r'$b$', r'$\beta$', '$q_1$', '$k_{vav}$', '$a_v$', '$b_v$', '$k_p$', '$q_2$'],
+                    labels=[
+                        r"$b$",
+                        r"$\beta$",
+                        "$q_1$",
+                        "$k_{vav}$",
+                        "$a_v$",
+                        "$b_v$",
+                        "$k_p$",
+                        "$q_2$",
+                    ],
                     truths=true_coeffs,
-                    truth_color='crimson'
+                    truth_color="crimson",
                 )
 
             # Increase the label font size for this plot
@@ -758,7 +840,3 @@ class P3DEmulator:
             return Arinyo_preds, Arinyo_mean
         else:
             return Arinyo_mean
-
-            
-
-        

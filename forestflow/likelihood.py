@@ -6,7 +6,7 @@ import numpy as np
 from lace.archive.gadget_archive import GadgetArchive
 from lace.utils.exceptions import ExceptionList
 
-from ForestFlow.fit_p3d import FitPk
+from forestflow.fit_p3d import FitPk
 
 
 class Likelihood(object):
@@ -53,8 +53,6 @@ class Likelihood(object):
         data_dict["p1d"] = data["p1d_Mpc"] * data["k_Mpc"] / np.pi
         data_dict["std_p1d"] = rel_err_p1d * data_dict["p1d"]
         data_dict["Plin"] = data["Plin"]
-        
-
 
         self.like = FitPk(
             data_dict,

@@ -2,8 +2,8 @@ import types
 import numpy as np
 from lace.cosmo import camb_cosmo
 from scipy.integrate import simpson
-from ForestFlow.camb_routines import P_camb
-from ForestFlow.utils import memoize_numpy_arrays
+from forestflow.camb_routines import P_camb
+from forestflow.utils import memoize_numpy_arrays
 
 
 @memoize_numpy_arrays

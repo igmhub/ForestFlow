@@ -11,8 +11,8 @@ from lace.emulator import gp_emulator
 from lace.emulator import poly_p1d
 from lace.emulator import utils
 
-from ForestFlow.emulator_p3d_architecture import P3D_emuv0
-from ForestFlow.input_emu import data_for_emu_v1, params_numpy2dict
+from forestflow.emulator_p3d_architecture import P3D_emuv0
+from forestflow.input_emu import data_for_emu_v1, params_numpy2dict
 
 
 import torch
@@ -106,8 +106,8 @@ class P3DEmulator:
             "cuda" if torch.cuda.is_available() else "cpu"
         )
         self.save_path = save_path
-        #self.lace_path = utils.ls_level(os.getcwd(), 1)
-        #self.models_dir = os.path.join(self.lace_path, "lya_pk/")
+        # self.lace_path = utils.ls_level(os.getcwd(), 1)
+        # self.models_dir = os.path.join(self.lace_path, "lya_pk/")
 
         self.target_space = target_space
         self.epsilon = 1e-3
@@ -353,14 +353,14 @@ class P3DEmulator:
             params[:, 7].unsqueeze(1),
         )
 
-        #bias = torch.clamp(bias, -2, 2)
-        #beta = torch.clamp(beta, 0.01, 3)
-        #q1 = torch.clamp(q1, 1e-15, 5)
-        #q2 = torch.clamp(q2, 1e-15, 5)
-        #kvav = torch.clamp(kvav, 0.1, 5)
-        #av = torch.clamp(av, 1e-5, 3)
-        #bv = torch.clamp(bv, 0.5, 3)
-        #kp = torch.clamp(kp, 5, 40)
+        # bias = torch.clamp(bias, -2, 2)
+        # beta = torch.clamp(beta, 0.01, 3)
+        # q1 = torch.clamp(q1, 1e-15, 5)
+        # q2 = torch.clamp(q2, 1e-15, 5)
+        # kvav = torch.clamp(kvav, 0.1, 5)
+        # av = torch.clamp(av, 1e-5, 3)
+        # bv = torch.clamp(bv, 0.5, 3)
+        # kp = torch.clamp(kp, 5, 40)
 
         ## CALCULATE P3D
 
@@ -376,7 +376,7 @@ class P3DEmulator:
 
         D_NL = torch.exp(nonlin * (1 - nonvel) - nonpress)
 
-        p3d_plin =  lowk_bias**2 * D_NL #*linP *
+        p3d_plin = lowk_bias**2 * D_NL  # *linP *
 
         ## CALCULATE P3D UNCERTAINTY
 
@@ -685,7 +685,10 @@ class P3DEmulator:
                 coeffserr_Arinyo,
                 epoch=None,
             )
-            return p3d.detach().cpu().numpy() * testing_Plin.numpy(), p3dstd.detach().cpu().numpy()* testing_Plin.numpy()
+            return (
+                p3d.detach().cpu().numpy() * testing_Plin.numpy(),
+                p3dstd.detach().cpu().numpy() * testing_Plin.numpy(),
+            )
 
     def get_coeff(self, input_emu):
         test_data = np.array(input_emu)

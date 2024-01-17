@@ -6,11 +6,13 @@ description = "Lya power spectrum routines"
 version = "1.0"
 
 setup(
-    name="ForestFlow",
+    name="forestflow",
     version=version,
     description=description,
     url="https://github.com/igmhub/ForestFlow",
-    author="Jonas Chaves-Montero, Andreu Font-Ribera et al.",
+    author="Jonas Chaves-Montero, Laura Cabayol-Garcia",
     author_email="jchaves@ifae.es",
-    packages=find_packages(),
+    packages=["forestflow"],
+    install_requires=["numpy", "pydoe2", "emcee", "FrEIA", "corner", "jupyter"],
+    zip_safe=False,
 )

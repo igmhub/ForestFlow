@@ -7,9 +7,9 @@ import sys
 # LaCE modules
 from lace.emulator import utils
 
-from ForestFlow.emulator_p3d_architecture import P3D_emuv0, P3D_emuv1
-from ForestFlow.input_emu import params_numpy2dict
-from ForestFlow.utils import memorize, _sort_dict
+from forestflow.emulator_p3d_architecture import P3D_emuv0, P3D_emuv1
+from forestflow.input_emu import params_numpy2dict
+from forestflow.utils import memorize, _sort_dict
 
 import torch
 from torch.utils.data import DataLoader, dataset, TensorDataset
@@ -102,8 +102,8 @@ class P3DEmulator:
             "cuda" if torch.cuda.is_available() else "cpu"
         )
         self.save_path = save_path
-        #self.lace_path = utils.ls_level(os.getcwd(), 1)
-        #self.models_dir = os.path.join(self.lace_path, "lya_pk/")
+        # self.lace_path = utils.ls_level(os.getcwd(), 1)
+        # self.models_dir = os.path.join(self.lace_path, "lya_pk/")
 
         self.target_space = target_space
         self.epsilon = epsilon

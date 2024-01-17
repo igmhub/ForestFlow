@@ -6,9 +6,9 @@ from lace.cosmo import camb_cosmo
 from lace.setup_simulations import read_genic
 from lace.emulator import pnd_archive
 
-from ForestFlow import model_p3d_arinyo
-from ForestFlow.fit_p3d import FitPk
-from ForestFlow.camb_routines import get_matter_power_interpolator
+from forestflow import model_p3d_arinyo
+from forestflow.fit_p3d import FitPk
+from forestflow.camb_routines import get_matter_power_interpolator
 
 
 def read_extra_sims():
