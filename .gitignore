@@ -7,3 +7,4 @@ ForestFlow/.ipynb_checkpoints/
 build/
 dist/
 notebooks/*.ipynb
+data/*.npz
