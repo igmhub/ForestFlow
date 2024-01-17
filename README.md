@@ -45,7 +45,7 @@ conda activate forestflow
 - First clone the repo into your machine and perform an *editable* installation:
 
 ```
-git clone git@github.com:igmhub/ForestFlow.git
+git clone https://github.com/igmhub/ForestFlow.git
 cd ForestFlow
 python setup.py install
 ``` 
@@ -71,6 +71,7 @@ FreIA`
 torch
 corner
 emcee
+pydoe2
 Ìnstalling ForestFlow also requires installing LaCE (https://github.com/igmhub/LaCE)```
 
 
