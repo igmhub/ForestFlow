@@ -6,9 +6,9 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.14.5
 #   kernelspec:
-#     display_name: ForestFlow
+#     display_name: forestflow
 #     language: python
 #     name: forestflow
 # ---
@@ -48,7 +48,7 @@ folder_lya_data = path_program +  "/data/best_arinyo/"
 Archive3D = GadgetArchive3D(
     base_folder=path_program[:-1], 
     folder_data=folder_lya_data, 
-    force_recompute_plin=True,
+    force_recompute_plin=False,
     average='both'
 )
 print(len(Archive3D.training_data))
@@ -72,7 +72,6 @@ p3d_emu = P3DEmulator(
     Archive=Archive3D,
     use_chains=False,
     chain_samp=100_000,
-    input_space='Arinyo',
     folder_chains='/data/desi/scratch/jchavesm/p3d_fits_new/'
 )
 
@@ -148,3 +147,5 @@ p1d_pred, p1d_cov = p3d_emu.predict_P1D_Mpc(
                         z=z_test,
                         test_sim=dict_sim,    
                         return_cov=True)
+
+# %%

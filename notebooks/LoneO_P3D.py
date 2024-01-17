@@ -6,9 +6,9 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.15.2
+#       jupytext_version: 1.14.5
 #   kernelspec:
-#     display_name: ForestFlow
+#     display_name: forestflow
 #     language: python
 #     name: forestflow
 # ---
@@ -243,7 +243,6 @@ for s in range(Nsim):
         Archive=Archive3D,
         use_chains=False,
         chain_samp=100_000,
-        input_space='Arinyo',
         folder_chains='/data/desi/scratch/jchavesm/p3d_fits_new/',
         model_path=f'../data/emulator_models/mpg_drop{s}.pt'
     )
