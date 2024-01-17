@@ -43,9 +43,6 @@ jupyter = [
     "jupytext"
 ]
 
-# [tool.setuptools.packages]
-# find = {}
-
 [tool.setuptools.packages.find]
 include = ["forestflow"]
 
