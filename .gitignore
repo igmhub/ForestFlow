@@ -6,3 +6,4 @@ ForestFlow.egg-info/
 ForestFlow/.ipynb_checkpoints/
 build/
 dist/
+notebooks/*.ipynb
