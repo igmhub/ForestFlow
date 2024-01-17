@@ -1,0 +1,12 @@
+[build-system]
+requires = [
+    "setuptools>=61.0",
+    "numpy",
+    "pydoe2",
+    "emcee",
+    "FrEIA",
+    "corner",
+    "jupyter",
+    "jupytext",
+]
+build-backend = "setuptools.build_meta"

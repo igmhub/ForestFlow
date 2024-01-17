@@ -14,7 +14,7 @@
 # ---
 
 # %% [markdown]
-# # TUTORIAL FOR THE P3D EMULATOR (FORESTFLOW)
+# # TUTORIAL FOR THE P3D EMULATOR (forestflow)
 
 # %%
 import sys
@@ -22,9 +22,9 @@ import os
 import matplotlib.pyplot as plt
 
 # %%
-from ForestFlow.archive import GadgetArchive3D
-from ForestFlow.plots_v0 import plot_test_p3d
-from ForestFlow.P3D_cINN import P3DEmulator
+from forestflow.archive import GadgetArchive3D
+from forestflow.plots_v0 import plot_test_p3d
+from forestflow.P3D_cINN import P3DEmulator
 
 
 # %%
@@ -33,6 +33,7 @@ def ls_level(folder, nlevels):
         folder = os.path.dirname(folder)
     folder += "/"
     return folder
+
 
 path_program = ls_level(os.getcwd(), 1)
 print(path_program)
@@ -43,13 +44,13 @@ sys.path.append(path_program)
 
 # %%
 # %%time
-folder_lya_data = path_program +  "/data/best_arinyo/"
+folder_lya_data = path_program + "/data/best_arinyo/"
 
 Archive3D = GadgetArchive3D(
-    base_folder=path_program[:-1], 
-    folder_data=folder_lya_data, 
+    base_folder=path_program[:-1],
+    folder_data=folder_lya_data,
     force_recompute_plin=False,
-    average='both'
+    average="both",
 )
 print(len(Archive3D.training_data))
 
@@ -62,17 +63,17 @@ p3d_emu = P3DEmulator(
     Archive3D.training_data,
     Archive3D.emu_params,
     nepochs=300,
-    lr=0.001,#0.005
+    lr=0.001,  # 0.005
     batch_size=20,
     step_size=200,
     gamma=0.1,
     weight_decay=0,
     adamw=True,
-    nLayers_inn=12,#15
+    nLayers_inn=12,  # 15
     Archive=Archive3D,
     use_chains=False,
     chain_samp=100_000,
-    folder_chains='/data/desi/scratch/jchavesm/p3d_fits_new/'
+    folder_chains="/data/desi/scratch/jchavesm/p3d_fits_new/",
 )
 
 # %% [markdown]
@@ -90,25 +91,25 @@ plot_test_p3d(ind_book, Archive3D, p3d_emu, sim_label)
 # To load a trained model, one needs to specify the path to the model in the argument 'model_path'.
 
 # %% [markdown]
-# The folder '/data/emulator_models/' contains the models trained with all the Latinhypercube simulations: 'mpg_hypercube.pt' 
+# The folder '/data/emulator_models/' contains the models trained with all the Latinhypercube simulations: 'mpg_hypercube.pt'
 
 # %%
 p3d_emu = P3DEmulator(
     Archive3D.training_data,
     Archive3D.emu_params,
     nepochs=300,
-    lr=0.001,#0.005
+    lr=0.001,  # 0.005
     batch_size=20,
     step_size=200,
     gamma=0.1,
     weight_decay=0,
     adamw=True,
-    nLayers_inn=12,#15
+    nLayers_inn=12,  # 15
     Archive=Archive3D,
     use_chains=False,
     chain_samp=100_000,
-    folder_chains='/data/desi/scratch/jchavesm/p3d_fits_new/',
-    model_path='../data/emulator_models/mpg_hypercube.pt'
+    folder_chains="/data/desi/scratch/jchavesm/p3d_fits_new/",
+    model_path="../data/emulator_models/mpg_hypercube.pt",
 )
 
 # %%
@@ -125,27 +126,22 @@ plot_test_p3d(ind_book, Archive3D, p3d_emu, sim_label)
 
 # %%
 sim_label = "mpg_central"
-z_test=3
+z_test = 3
 
 # %%
 test_sim = central = Archive3D.get_testing_data(
-        "mpg_central", 
-        force_recompute_plin=True
-        )
-dict_sim = [d for d in test_sim if d['z']==z_test and d['val_scaling'] ==1]
+    "mpg_central", force_recompute_plin=True
+)
+dict_sim = [d for d in test_sim if d["z"] == z_test and d["val_scaling"] == 1]
 
 # %%
 p3d_pred, p3d_cov = p3d_emu.predict_P3D_Mpc(
-                        sim_label='mpg_central',
-                        z=z_test,
-                        test_sim=dict_sim,    
-                        return_cov=True)
+    sim_label="mpg_central", z=z_test, test_sim=dict_sim, return_cov=True
+)
 
 # %%
 p1d_pred, p1d_cov = p3d_emu.predict_P1D_Mpc(
-                        sim_label='mpg_central',
-                        z=z_test,
-                        test_sim=dict_sim,    
-                        return_cov=True)
+    sim_label="mpg_central", z=z_test, test_sim=dict_sim, return_cov=True
+)
 
 # %%
