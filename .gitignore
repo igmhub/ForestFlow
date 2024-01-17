@@ -1,4 +1,5 @@
 notebooks/*.pynb
-data/mpg_hypercube_plin.npz
+data/*.npz
 notebooks/.ipynb_checkpoints/
 forestflow.egg-info/
+forestflow/__pycache__/*
