@@ -47,7 +47,6 @@ folder_lya_data = path_program + "/data/best_arinyo/"
 Archive3D = GadgetArchive3D(
     base_folder=path_program[:-1],
     folder_data=folder_lya_data,
-    force_recompute_plin=True,
     average="both",
 )
 print(len(Archive3D.training_data))
