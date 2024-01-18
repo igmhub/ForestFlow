@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name="forestflow"
+version="2024.0.0"
+authors = [
+    { name="Jonas Chaves-Montero", email="jchaves@ifae.es" },
+    { name="Laura Cabayol-Garcia", email="lcabayol@pic.es" },
+]
+maintainers = [
+    { name="Jonas Chaves-Montero", email="jchaves@ifae.es" },   
+    { name="Laura Cabayol-Garcia", email="lcabayol@pic.es" },
+]
+description = "Emulator for Lyman-alpha 3D power spectrum"
+readme = "README.md"
+keywords = [
+    "Lyman-alpha", "Cosmology", "Power Spectrum", "Emulator",
+]
+requires-python = ">= 3.10"
+dependencies = [
+    "numpy",
+    "pydoe2",
+    "emcee",
+    "FrEIA",
+    "corner",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific :: Cosmology/Astrophysics",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+
+[project.optional-dependencies]
+jupyter = [
+    "jupyter",
+    "jupytext"
+]
+
+[tool.setuptools.packages.find]
+include = ["forestflow"]
+
+[project.urls]
+Homepage="https://github.com/igmhub/ForestFlow"
+Repository="https://github.com/igmhub/ForestFlow.git"
+Issues="https://github.com/igmhub/ForestFlow/issues"
