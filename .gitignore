@@ -8,3 +8,5 @@ build/
 dist/
 notebooks/*.ipynb
 data/*.npz
+forestflow.egg-info/
+forestflow/__pycache__/
