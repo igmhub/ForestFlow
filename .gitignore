@@ -1,5 +1,5 @@
-notebooks/*.pynb
+notebooks/*.ipynb
 data/*.npz
 notebooks/.ipynb_checkpoints/
+forestflow/__pycache__/
 forestflow.egg-info/
-forestflow/__pycache__/*
