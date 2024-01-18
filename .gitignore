@@ -1,12 +1,5 @@
-notebooks/.ipynb_checkpoints/
-data/mpg_hypercube_plin.npz
-ForestFlow/.ipynb_checkpoints/
-.ipynb_checkpoints/
-ForestFlow.egg-info/
-ForestFlow/.ipynb_checkpoints/
-build/
-dist/
-notebooks/*.ipynb
+notebooks/*.pynb
 data/*.npz
+notebooks/.ipynb_checkpoints/
 forestflow.egg-info/
-forestflow/__pycache__/
+forestflow/__pycache__/*
