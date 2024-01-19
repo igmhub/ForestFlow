@@ -1,4 +1,4 @@
-notebooks/*.pynb
+notebooks/*.ipynb
 data/*.npz
 notebooks/.ipynb_checkpoints/
 forestflow.egg-info/
