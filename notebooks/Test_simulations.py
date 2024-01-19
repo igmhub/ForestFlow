@@ -212,6 +212,10 @@ fractional_error_P3D = (P3D_testsims / P3D_testsims_Arinyo - 1) * 100
 fractional_error_P1D = (P1D_testsims / P1D_testsims_Arinyo - 1) * 100
 
 # %%
+p1d, k1d = p3d_emu.get_p1d_sim(test_sim)
+
+# %%
+fractional_error_P1D.shape
 
 # %% [markdown]
 # ## PLOT P1D
@@ -228,18 +232,18 @@ fig, ax = plt.subplots(
 
 for c in range(len(sim_labels)):
     ax[c].plot(
-        z_grid,
-        np.nanmedian(fractional_error_P1D[c], 1),
+        k1d,
+        np.nanmedian(fractional_error_P1D[c], 0),
         ls="--",
         marker="o",
         markersize=2,
         color=colors[0],
     )
     ax[c].fill_between(
-        z_grid,
-        np.nanmedian(fractional_error_P1D[c], 1)
+        k1d,
+        np.nanmedian(fractional_error_P1D[c], 0)
         - sigma68(fractional_error_P1D[c].flatten()),
-        np.nanmedian(fractional_error_P1D[c], 1)
+        np.nanmedian(fractional_error_P1D[c], 0)
         + sigma68(fractional_error_P1D[c].flatten()),
         color=colors[0],
         alpha=0.4,
@@ -261,7 +265,7 @@ fig.text(0.8, 0.52, r"Neutrinos", fontsize=15)
 fig.text(0.8, 0.41, r"Curved", fontsize=15)
 fig.text(0.8, 0.3, r"Running", fontsize=15)
 fig.text(0.78, 0.19, r"Reionization", fontsize=15)
-plt.xlabel(r"$z$")
+plt.xlabel(r"$k$ [1/Mpc]")
 
 
 # plt.savefig('other_cosmologies.pdf', bbox_inches = 'tight')
@@ -422,7 +426,7 @@ for iz, z in enumerate(z_grid):
     arinyo_emu_central[iz] = p3d_emu.predict_Arinyos(test_sim=test_sim_z)                
     arinyo_mcmc_central[iz] = np.fromiter(test_sim_z[0]["Arinyo"].values(), dtype=float) 
 ratio_central = arinyo_emu_central / arinyo_mcmc_central
-    
+
 
 # %%
 sim_label ='mpg_running'
@@ -435,7 +439,7 @@ for iz, z in enumerate(z_grid):
     arinyo_emu_running[iz] = p3d_emu.predict_Arinyos(test_sim=test_sim_z)                
     arinyo_mcmc_running[iz] = np.fromiter(test_sim_z[0]["Arinyo"].values(), dtype=float) 
 ratio_running = arinyo_emu_running / arinyo_mcmc_running
-    
+
 
 # %%
 params =  [r"$b$", r"$\beta$", "$q_1$", "$k_{vav}$", "$a_v$", "$b_v$", "$k_p$", "$q_2$"]
