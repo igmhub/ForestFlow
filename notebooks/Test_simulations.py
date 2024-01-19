@@ -6,9 +6,9 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.15.2
 #   kernelspec:
-#     display_name: forestflow
+#     display_name: ForestFlow
 #     language: python
 #     name: forestflow
 # ---
@@ -34,11 +34,9 @@ import numpy as np
 
 # %%
 from forestflow.archive import GadgetArchive3D
-from forestflow.plots_v0 import plot_test_p3d
 from forestflow.P3D_cINN import P3DEmulator
 from forestflow.model_p3d_arinyo import ArinyoModel
-from forestflow import model_p3d_arinyo
-from forestflow.likelihood import Likelihood
+from forestflow.utils import sigma68
 
 
 # %%
@@ -52,15 +50,6 @@ def ls_level(folder, nlevels):
 path_program = ls_level(os.getcwd(), 1)
 print(path_program)
 sys.path.append(path_program)
-
-
-# %%
-def sigma68(data):
-    return 0.5 * (
-        np.nanquantile(data, q=0.84, axis=0)
-        - np.nanquantile(data, q=0.16, axis=0)
-    )
-
 
 # %% [markdown]
 # ## LOAD P3D ARCHIVE
@@ -95,10 +84,7 @@ p3d_emu = P3DEmulator(
     adamw=True,
     nLayers_inn=12,  # 15
     Archive=Archive3D,
-    use_chains=False,
-    chain_samp=100_000,
     Nrealizations=1000,
-    folder_chains="/data/desi/scratch/jchavesm/p3d_fits_new/",
     model_path="../data/emulator_models/mpg_hypercube.pt",
 )
 
@@ -141,6 +127,7 @@ for ii, sim_label in enumerate(sim_labels):
     z_grid = [d["z"] for d in test_sim]
 
     for iz, z in enumerate(z_grid):
+        
         test_sim_z = [d for d in test_sim if d["z"] == z]
         p3d_arinyo_mean = p3d_emu.predict_P3D_Mpc(
             sim_label=sim_label, z=z, test_sim=test_sim_z, return_cov=False
@@ -160,19 +147,16 @@ P3D_testsims_true = np.zeros((len(sim_labels), 11, 148))
 P1D_testsims_true = np.zeros((len(sim_labels), 11, 53))
 
 for ii, sim_label in enumerate(sim_labels):
-    test_sim = central = Archive3D.get_testing_data(
+    test_sim =  Archive3D.get_testing_data(
         sim_label, force_recompute_plin=True
     )
     z_grid = [d["z"] for d in test_sim]
 
     for iz, z in enumerate(z_grid):
         test_sim_z = [d for d in test_sim if d["z"] == z]
-
-        like = Likelihood(
-            test_sim_z[0], Archive3D.rel_err_p3d, Archive3D.rel_err_p1d
-        )
-        k1d_mask = like.like.ind_fit1d.copy()
-        p1d_sim = like.like.data["p1d"][k1d_mask]
+        
+        p1d_sim, p1d_k = p3d_emu.get_p1d_sim(test_sim_z)
+        p3d_sim = [d for d in test_sim if d['z'] == z][0]['p3d_Mpc'][p3d_emu.k_mask]
 
         p3d_sim = test_sim_z[0]["p3d_Mpc"][p3d_emu.k_mask]
         p3d_sim = np.array(p3d_sim)
@@ -184,7 +168,7 @@ for ii, sim_label in enumerate(sim_labels):
 # %% [markdown]
 # #### Loop over test sims, P1D and P3D from MCMC Arinyo
 
-# %%
+# %% jupyter={"outputs_hidden": true}
 P3D_testsims_Arinyo = np.zeros((len(sim_labels), 11, 148))
 P1D_testsims_Arinyo = np.zeros((len(sim_labels), 11, 53))
 
@@ -203,19 +187,19 @@ for ii, sim_label in enumerate(sim_labels):
         flag = f"Plin_interp_sim{lab}.npy"
         file_plin_inter = folder_interp + flag
         pk_interp = np.load(file_plin_inter, allow_pickle=True).all()
-        model_Arinyo = model_p3d_arinyo.ArinyoModel(camb_pk_interp=pk_interp)
+        model_Arinyo = ArinyoModel(camb_pk_interp=pk_interp)
 
         BF_arinyo = test_sim_z[0]["Arinyo"]
         p3d_arinyo = model_Arinyo.P3D_Mpc(z, k_Mpc, mu, BF_arinyo)
-
-        like = Likelihood(
-            test_sim_z[0], Archive3D.rel_err_p3d, Archive3D.rel_err_p1d
-        )
-        k1d_mask = like.like.ind_fit1d.copy()
-        p1d_arinyo = like.like.get_model_1d(parameters=BF_arinyo)
+        
+        p1d_arinyo =  p3d_emu.predict_P1D_Mpc(sim_label=sim_label, 
+                                              z=z, 
+                                              test_sim=test_sim_z, 
+                                              test_arinyo=np.fromiter(BF_arinyo.values(), dtype='float').reshape(1,8),
+                                              return_cov=False)
 
         P3D_testsims_Arinyo[ii, iz] = p3d_arinyo
-        P1D_testsims_Arinyo[ii, iz] = p1d_arinyo[k1d_mask]
+        P1D_testsims_Arinyo[ii, iz] = p1d_arinyo#[k1d_mask]
 
 # %% [markdown]
 # ### Define fractional errors
@@ -226,6 +210,8 @@ for ii, sim_label in enumerate(sim_labels):
 # %%
 fractional_error_P3D = (P3D_testsims / P3D_testsims_Arinyo - 1) * 100
 fractional_error_P1D = (P1D_testsims / P1D_testsims_Arinyo - 1) * 100
+
+# %%
 
 # %% [markdown]
 # ## PLOT P1D
@@ -349,5 +335,123 @@ plt.xlabel(r"$k$ [1/Mpc]")
 
 
 # plt.savefig('other_cosmologies.pdf', bbox_inches = 'tight')
+
+# %% [markdown]
+# ## CHECK RUNNING SIMULATION
+
+# %%
+index = sim_labels.index('mpg_running')
+
+# %%
+for iz,z in enumerate(z_grid):
+    plt.plot(p1d_k, fractional_error_P1D[index, iz], label = f'z={z_grid[iz]}')
+    
+plt.legend(fontsize=10)
+
+plt.axhspan(-1, 1, color="gray", alpha=0.3)
+plt.ylim(-2, 7)
+
+plt.ylabel(r"Error $P_{\rm 1D}$ [%]",  fontsize=16)
+    
+plt.xlabel('$k$ [1/Mpc]', fontsize=14 )   
+
+# %%
+mu_mask = (mu >= 0.31) & (mu <= 0.38)
+k_masked = k_Mpc[mu_mask]
+for iz,z in enumerate(z_grid):
+    plt.plot(k_masked, fractional_error_P3D[index, iz][mu_mask], label = f'z={z_grid[iz]}')
+    
+plt.legend(fontsize=10)
+
+plt.axhspan(-10, 10, color="gray", alpha=0.3)
+plt.ylim(-15, 15)
+
+plt.ylabel(r"Error $P_{\rm 3D}$ [%]",  fontsize=16)
+    
+plt.xlabel('$k$ [1/Mpc]', fontsize=14 )   
+
+# %% [markdown]
+# ### Look at Arinyo parameters
+
+# %%
+sim_label ='mpg_running'
+arinyo_emu = np.zeros(shape=(len(z_grid),8))
+arinyo_mcmc = np.zeros(shape=(len(z_grid),8))
+test_sim = Archive3D.get_testing_data(sim_label, force_recompute_plin=True)
+                       
+for iz, z in enumerate(z_grid):
+
+    test_sim_z = [d for d in test_sim if d["z"] == z]
+    
+    arinyo_emu[iz] = p3d_emu.predict_Arinyos(test_sim=test_sim_z)
+                         
+    arinyo_mcmc[iz] = np.fromiter(test_sim_z[0]["Arinyo"].values(), dtype=float) 
+    
+
+
+
+# %% [markdown]
+# #### plot values
+
+# %%
+params =  [r"$b$", r"$\beta$", "$q_1$", "$k_{vav}$", "$a_v$", "$b_v$", "$k_p$", "$q_2$"]
+colors = plt.cm.tab10(np.linspace(0, 1, len(params)))
+
+
+for ip, param in enumerate(params):
+    plt.scatter(np.arange(8), arinyo_emu[ip, :], marker='_', label='ForestFlow' if ip == 0 else "", color = colors[ip])
+    plt.scatter(np.arange(0.3, 8.3, 1), arinyo_mcmc[ip, :], marker='x',  label='MCMC' if ip == 0 else "", color = colors[ip])
+
+plt.xticks(np.arange(8), params)
+plt.legend(fontsize=14)
+plt.ylabel('Parameter value', fontsize=16)
+plt.show()
+
+
+# %% [markdown]
+# #### plot ratios
+
+# %%
+sim_label ='mpg_central'
+arinyo_emu_central = np.zeros(shape=(len(z_grid),8))
+arinyo_mcmc_central = np.zeros(shape=(len(z_grid),8))
+test_sim = Archive3D.get_testing_data(sim_label, force_recompute_plin=True)
+                       
+for iz, z in enumerate(z_grid):
+    test_sim_z = [d for d in test_sim if d["z"] == z]
+    arinyo_emu_central[iz] = p3d_emu.predict_Arinyos(test_sim=test_sim_z)                
+    arinyo_mcmc_central[iz] = np.fromiter(test_sim_z[0]["Arinyo"].values(), dtype=float) 
+ratio_central = arinyo_emu_central / arinyo_mcmc_central
+    
+
+# %%
+sim_label ='mpg_running'
+arinyo_emu_running = np.zeros(shape=(len(z_grid),8))
+arinyo_mcmc_running = np.zeros(shape=(len(z_grid),8))
+test_sim = Archive3D.get_testing_data(sim_label, force_recompute_plin=True)
+                       
+for iz, z in enumerate(z_grid):
+    test_sim_z = [d for d in test_sim if d["z"] == z]
+    arinyo_emu_running[iz] = p3d_emu.predict_Arinyos(test_sim=test_sim_z)                
+    arinyo_mcmc_running[iz] = np.fromiter(test_sim_z[0]["Arinyo"].values(), dtype=float) 
+ratio_running = arinyo_emu_running / arinyo_mcmc_running
+    
+
+# %%
+params =  [r"$b$", r"$\beta$", "$q_1$", "$k_{vav}$", "$a_v$", "$b_v$", "$k_p$", "$q_2$"]
+colors = plt.cm.tab10(np.linspace(0, 1, len(params)))
+
+
+for ip, param in enumerate(params):
+    plt.scatter(np.arange(8), ratio_central[ip, :], marker='_', label='Central' if ip == 0 else "", color = colors[ip])
+    plt.scatter(np.arange(0.3, 8.3, 1), ratio_running[ip, :], marker='x',  label='Running' if ip == 0 else "", color = colors[ip])
+
+plt.xticks(np.arange(8), params)
+plt.legend(fontsize=14)
+plt.ylabel('Emulated / MCMC  parameters', fontsize=16)
+
+plt.ylim(0,2)
+plt.show()
+
 
 # %%
