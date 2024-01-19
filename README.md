@@ -27,8 +27,8 @@ These are the parameters that describe each individual P3D(k, mu) power spectrum
 In the `Notebooks` folder, there are several tutorials one can run to learn how to use
 the emulators and archives.
 
-Archive tutorial: notebooks/Tutorial_archive.ipynb
-Emulator tutorial: notebooks/Tutorial_emulator.ipynb
+- Archive tutorial: notebooks/Tutorial_archive.ipynb
+- Emulator tutorial: notebooks/Tutorial_emulator.ipynb
 
 
 ## Installation
