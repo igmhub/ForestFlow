@@ -6,11 +6,11 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.14.5
 #   kernelspec:
-#     display_name: ForestFlow
+#     display_name: emulators
 #     language: python
-#     name: forestflow
+#     name: emulators
 # ---
 
 # %%
@@ -77,15 +77,26 @@ p3d_emu = P3DEmulator(
     model_path="../data/emulator_models/mpg_hypercube.pt",
 )
 
-# %%
-p1d, k1d = p3d_emu.get_p1d_sim(dict_sim)
-
 # %% [markdown]
 # ## CONTRIBUTION TO P3D ON CENTRAL AT z=3
 
 # %%
 sim_label = "mpg_central"
 z_test = 3
+
+
+
+# %%
+test_sim = Archive3D.get_testing_data(
+    sim_label, force_recompute_plin=False
+)
+
+# %%
+# define test sim
+dict_sim = [d for d in test_sim if d["z"] == z_test and d["val_scaling"] == 1]
+
+# %%
+p1d, k1d = p3d_emu.get_p1d_sim(dict_sim)
 
 # %% jupyter={"outputs_hidden": true}
 Npoints = 200
