@@ -6,11 +6,11 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.15.2
+#       jupytext_version: 1.14.5
 #   kernelspec:
-#     display_name: ForestFlow
+#     display_name: emulators
 #     language: python
-#     name: forestflow
+#     name: emulators
 # ---
 
 # %% [markdown]
@@ -20,8 +20,6 @@
 import numpy as np
 import os
 import sys
-import pandas as pd
-import scipy.stats as stats
 
 # %%
 from forestflow.model_p3d_arinyo import ArinyoModel
