@@ -6,11 +6,11 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.15.2
+#       jupytext_version: 1.14.5
 #   kernelspec:
-#     display_name: ForestFlow
+#     display_name: emulators
 #     language: python
-#     name: forestflow
+#     name: emulators
 # ---
 
 # %% [markdown]
@@ -62,7 +62,7 @@ folder_interp = path_program + "/data/plin_interp/"
 Archive3D = GadgetArchive3D(
     base_folder=path_program[:-1],
     folder_data=folder_lya_data,
-    force_recompute_plin=True,
+    force_recompute_plin=False,
     average="both",
 )
 print(len(Archive3D.training_data))
@@ -121,7 +121,7 @@ P3D_testsims = np.zeros((len(sim_labels), 11, 148))
 P1D_testsims = np.zeros((len(sim_labels), 11, 53))
 
 for ii, sim_label in enumerate(sim_labels):
-    test_sim = central = Archive3D.get_testing_data(
+    test_sim = Archive3D.get_testing_data(
         sim_label, force_recompute_plin=True
     )
     z_grid = [d["z"] for d in test_sim]
