@@ -6,11 +6,11 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.15.2
+#       jupytext_version: 1.14.5
 #   kernelspec:
-#     display_name: ForestFlow
+#     display_name: emulators
 #     language: python
-#     name: forestflow
+#     name: emulators
 # ---
 
 # %% [markdown]
