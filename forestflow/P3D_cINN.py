@@ -3,6 +3,7 @@ import torch
 from torch.utils.data import DataLoader, dataset, TensorDataset
 from torch import nn, optim
 
+
 # FrEIA imports
 import FrEIA.framework as Ff
 import FrEIA.modules as Fm
@@ -352,7 +353,7 @@ class P3DEmulator:
 
             # Return the median power spectrum and its covariance matrix
             p3d_arinyo = np.nanmedian(p3ds_pred, 0)
-            p3d_cov = get_covariance_p3d(p3ds_pred,p3d_arinyo)
+            p3d_cov = get_covariance(p3ds_pred,p3d_arinyo)
             return p3d_arinyo, p3d_cov
 
         else:
