@@ -823,3 +823,52 @@ def plot_p1d_LzO(archive, fractional_errors, z_test, savename=None):
     # Save the plot
     if savename:
         plt.savefig(savename, bbox_inches='tight')
+        
+        
+def plot_paramspace(params_emulator, errors, colourbar_lab=r'$P_{\rm 3D}$ uncertainty', vmin=0, vmax=1 ):
+    """
+    Plot parameter space with uncertainties in a 2x2 grid.
+
+    Parameters:
+    - params_emulator (numpy array): Emulator parameters. (Nsim*Nz,6)
+    - errors (numpy array): Uncertainties corresponding to each point. (Nsim*Nz,Nk)
+
+    Returns:
+    - None
+    """
+    # Create a 2x2 grid of subplots
+    fig, axs = plt.subplots(2, 2, figsize=(8, 6), sharey='row')
+
+    # Scatter plot in the first panel
+    sc1 = axs[0, 0].scatter(params_emulator[:, 0], params_emulator[:, 2], c=np.median(errors, 1), s=10, rasterized=True, vmin=vmin, vmax=vmax)
+    axs[0, 0].set_ylabel(r'$\bar{F}$', fontsize=16)
+    axs[0, 0].set_xlabel(r'$\Delta_p$', fontsize=16)
+    axs[0, 0].tick_params(axis='both', which='major', labelsize=12)
+
+    # Scatter plot in the second panel
+    sc2 = axs[0, 1].scatter(params_emulator[:, 3], params_emulator[:, 2], c=np.median(errors, 1), s=10, rasterized=True, vmin=vmin, vmax=vmax)
+    axs[0, 1].set_xlabel(r'$\sigma_T$', fontsize=16)
+    axs[0, 1].tick_params(axis='both', which='major', labelsize=12)
+
+    # Scatter plot in the third panel
+    sc3 = axs[1, 0].scatter(params_emulator[:, 4], params_emulator[:, 2], c=np.median(errors, 1), s=10, rasterized=True, vmin=vmin, vmax=vmax)
+    axs[1, 0].set_ylabel(r'$\bar{F}$', fontsize=16)
+    axs[1, 0].set_xlabel(r'$\gamma$', fontsize=16)
+    axs[1, 0].tick_params(axis='both', which='major', labelsize=12)
+
+    # Scatter plot in the fourth panel
+    sc4 = axs[1, 1].scatter(params_emulator[:, 5], params_emulator[:, 2], c=np.median(errors, 1), s=10, rasterized=True, vmin=vmin, vmax=vmax)
+    axs[1, 1].set_xlabel(r'$k_F$', fontsize=16)
+    axs[1, 1].tick_params(axis='both', which='major', labelsize=12)
+
+    # Adjust layout
+    plt.tight_layout()
+
+    # Move the legend to the right
+    fig.subplots_adjust(right=0.85)
+    cbar_ax = fig.add_axes([0.88, 0.11, 0.03, 0.87])
+    fig.colorbar(sc4, cax=cbar_ax, label=colourbar_lab)
+    cbar_ax.yaxis.label.set_fontsize(16)
+
+    # Show the plot
+    plt.show()
