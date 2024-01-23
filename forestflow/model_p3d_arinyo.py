@@ -3,10 +3,11 @@ import numpy as np
 from lace.cosmo import camb_cosmo
 from scipy.integrate import simpson
 from forestflow.camb_routines import P_camb
-from forestflow.utils import memoize_numpy_arrays
+
+# from forestflow.utils import memoize_numpy_arrays
 
 
-@memoize_numpy_arrays
+# @memoize_numpy_arrays
 def get_nmod(k, dk, Lbox):
     """
     Calculate the number of modes in a given k bin.
@@ -26,7 +27,7 @@ def get_nmod(k, dk, Lbox):
     return Nk
 
 
-@memoize_numpy_arrays
+# @memoize_numpy_arrays
 def get_linP_interp(cosmo, zs, camb_results, camb_kmax_Mpc=30):
     """
     Obtain an interpolator of the linear power spectrum from CAMB.
@@ -176,7 +177,7 @@ class ArinyoModel(object):
         self.default_bv = default_bv
         self.default_kp = default_kp
 
-    @memoize_numpy_arrays
+    # @memoize_numpy_arrays
     def linP_Mpc(self, z, k_Mpc):
         """
         Get the linear power spectrum at the input redshift and wavenumber.
