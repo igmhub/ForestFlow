@@ -212,7 +212,7 @@ class P3DEmulator:
         condition = [
             {
                 key: value
-                for key, value in test_data[i].items()
+                for key, value in test_data.items()
                 if key in self.archive.emu_params
             }
             for i in range(len(test_data))
@@ -291,7 +291,7 @@ class P3DEmulator:
     
 
 
-    def predict_P3D_Mpc(self, sim_label, z, test_sim, test_arinyo = None, return_cov=True):
+    def predict_P3D_Mpc(self, sim_label, z, test_sim, k_Mpc=None, mu=None,  test_arinyo = None, return_cov=True):
         """
         Predict the power spectrum using the emulator for a given simulation label and redshift.
 
@@ -314,6 +314,16 @@ class P3DEmulator:
         else: 
             input_tag='cosmo'
             
+        if k_Mpc is None:
+            k_Mpc = self.k_Mpc_masked
+        else:
+            k_Mpc = k_Mpc
+            
+        if mu is None:
+            mu = self.mu_masked
+        else:
+            mu = mu
+            
         
         # Extract simulation index from the given simulation label
         underscore_index = sim_label.find("_")
@@ -328,7 +338,6 @@ class P3DEmulator:
         model_Arinyo = ArinyoModel(camb_pk_interp=pk_interp)
 
         if input_tag=='cosmo':
-
             # Predict Arinyo coefficients for the given test conditions
             coeffs_all, coeffs_mean = self.predict_Arinyos(
                 test_sim, return_all_realizations=True
@@ -347,7 +356,7 @@ class P3DEmulator:
             for r in range(Nrealizations):
                 arinyo_params = params_numpy2dict(coeffs_all[r])
                 p3d_pred = model_Arinyo.P3D_Mpc(
-                    z, self.k_Mpc_masked, self.mu_masked, arinyo_params
+                    z, k_Mpc, mu, arinyo_params
                 )
                 p3ds_pred[r] = p3d_pred
 
@@ -360,7 +369,7 @@ class P3DEmulator:
             # If return_cov is False, predict the power spectrum using the mean coefficients
             NF_arinyo = params_numpy2dict(coeffs_mean)
             p3d_arinyo = model_Arinyo.P3D_Mpc(
-                z, self.k_Mpc_masked, self.mu_masked, NF_arinyo
+                z, k_Mpc, mu, NF_arinyo
             )
             return p3d_arinyo
 
@@ -371,8 +380,8 @@ class P3DEmulator:
             input_tag='arinyo'
         else: 
             input_tag='cosmo'
+        
             
-
         # Extract simulation index from the given simulation label
         underscore_index = sim_label.find("_")
         s = sim_label[underscore_index + 1 :]
@@ -384,13 +393,13 @@ class P3DEmulator:
 
         # Initialize likelihood with test data and relative errors
         like = Likelihood(
-            test_sim[0], self.archive.rel_err_p3d, self.archive.rel_err_p1d
+            test_sim, self.archive.rel_err_p3d, self.archive.rel_err_p1d
         )
 
         # Create a mask for the 1D power spectrum fit
         k1d_mask = like.like.ind_fit1d.copy()
         self.k1d_mask=k1d_mask
-
+        
         if input_tag=='cosmo':
 
             # Predict Arinyo coefficients for the given test conditions
