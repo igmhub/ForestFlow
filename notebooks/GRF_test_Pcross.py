@@ -14,7 +14,9 @@
 
 # # Generate GRF for testing
 
+# +
 import sys
+
 sys.path.append("../scripts")
 sys.path.append("../forestflow")
 import Px_functions
@@ -24,28 +26,49 @@ import matplotlib.pyplot as plt
 # get predictions from P-cross integral
 from lace.cosmo import camb_cosmo
 from ForestFlow.model_p3d_arinyo import ArinyoModel
+import matplotlib as mpl
 
+cmap = mpl.colormaps['Set1']
+
+
+# -
+
+# We want to generate a power spectrum that rises and falls like the matter power spectrum
+# It should span the same k range as the sims, ideally
+# The sims have length ~67 Mpc so lowest k ~ 0.1
+# The sims have pixel spacing 0.05 Mpc, so highest k = pi / 0.05 ~ 60 Mpc-1
 
 # +
+# smooth = 2 # default
+# smooth = 5
 # make a power spectrum
-def P(k):
+def P(k, smooth=False, smoothing=2):
     # small at low k
-    taper = np.exp(-.1 * (k - 10))
-
-    taper[k<10] = 1
-    return k * np.exp(-2*k) + np.exp(-2/k)*k**-3 * taper
-    # return 100*(1 / (k+.1)**2)
-    # return (k+2)**.5
-    
+    taper = np.exp(-.1 * ((k-10)**2))
+    if len(k)>1:
+        taper[k<10] = 1
+    elif len(k)<=1:
+        if k<10:
+            taper = 1
+    if smooth:
+        # return k * np.exp(-2*k) + np.exp(-2/k)*k**-3 * np.exp(-k**2*2)
+        return (k * np.exp(-2*k) + np.exp(-2/k)*k**-3) * np.exp(-k**2*smoothing)
+    else:
+        return (k * np.exp(-2*k) + np.exp(-2/k)*k**-3) * taper
+    # return np.full(k.shape,5) # white noise
 
 k3ds = np.logspace(-2,2,100)
-plt.plot(k3ds, P(k3ds))
+plt.plot(k3ds, P(k3ds), label='original')
+smoothing=.5
+plt.plot(k3ds, P(k3ds,smooth=True, smoothing=smoothing),label='smoothed')
+plt.plot(k3ds, np.exp(-k3ds**2*smoothing), label='smoothing kernel')
 plt.ylabel("P(k) [Mpc]")
-plt.xlabel("k [1/Mpc]")
+plt.xlabel(r"$k$ [Mpc$^{-1}$]")
 # plt.plot(k3ds, k3ds)
 # plt.plot(k3ds, k3ds**-3)
 plt.yscale('log')
 plt.xscale('log')
+plt.legend()
 plt.ylim([10**-6,10])
 # add a cutoff at high k (gas pressure)
 # make power more realistic (propto k at low k)
@@ -54,42 +77,41 @@ plt.ylim([10**-6,10])
 # For testing, we want our pixel size to be the same as the actual skewers but to smooth the field slightly larger than that
 #
 
-max_k = 20 # actually 60 Mpc^-1
-pix_size = 2*np.pi/max_k # Mpc
-# pix_size = 0.05 # Mpc, same as in sims
-print(pix_size)
-
 # +
+# pix_size = 0.1
 L = 67.5 # Mpc
-npix = int(L / pix_size)
-print(npix)
+npix_perside = 2**8
+# npix_perside = L/pix_size
+pix_size = L/npix_perside
+print(npix_perside, pix_size)
 # real_field = Px_functions.generate_grf(L, P, npix_per_side=npix)
+max_k = np.pi/pix_size # actually 60 Mpc^-1
+# pix_size = np.pi/max_k # Mpc
+# pix_size = 0.05 # Mpc, same as in sims
+print(max_k)
 
 import density_field_library as DFL
 
-grid              = npix    #grid size
-BoxSize           = L*0.7 #Mpc/h
+grid              = npix_perside    #grid size
+BoxSize           = L #Mpc
 seed              = 1      #value of the initial random seed
 Rayleigh_sampling = 0      #whether sampling the Rayleigh distribution for modes amplitudes
 threads           = 1      #number of openmp threads
 verbose           = True   #whether to print some information
 
 # read power spectrum; k and Pk have to be floats, not doubles
-k, Pk = k3ds, P(k3ds)
+k, Pk = k3ds, P(k3ds, smooth=True, smoothing=smoothing)
 k, Pk = k.astype(np.float32), Pk.astype(np.float32)
-
 
 # generate a 3D Gaussian density field
 df_3D = DFL.gaussian_field_3D(grid, k, Pk, Rayleigh_sampling, seed,
                               BoxSize, threads, verbose)
-# -
 
-plt.imshow(df_3D[0,:,:])
+plt.imshow(df_3D[1,:,:])
 plt.colorbar()
 
-# +
 # # vs my way
-# real_field = Px_functions.generate_grf(L, P, npix_per_side=npix)
+# real_field = Px_functions.generate_grf(L, P, npix_per_side=npix_perside)
 # plt.imshow(real_field[0,:,:])
 # plt.colorbar()
 # # mine is normalized weirdly I guess 
@@ -112,13 +134,14 @@ Pk4     = Pk.Pk[:,2] #hexadecapole
 Pkphase = Pk.Pkphase #power spectrum of the phases
 Nmodes  = Pk.Nmodes3D
 
-plt.loglog(k3ds, P(k3ds), label='input')
+plt.loglog(k3ds, P(k3ds, smooth=True, smoothing=smoothing), label='input')
 plt.loglog(k, Pk0, label='measured')
 plt.ylim([10**-6,10])
 plt.legend()
 plt.ylabel("P(k) [Mpc]")
 plt.xlabel("k [1/Mpc]")
-
+plt.axvline(2*np.pi/L, color='k')
+plt.axvline(np.pi/pix_size/2, color='k')
 
 # +
 # def calculate_power_spectrum(gaussian_field, pixel_size):
@@ -146,44 +169,101 @@ plt.xlabel("k [1/Mpc]")
 # plt.plot(bin_edges[1:], avg_power/L**3)
 
 # +
-# smooth the GRF
-from scipy.ndimage import gaussian_filter
-# smoothing should be similar to pixel size in real skewers, .09 Mpc
+# # smooth the GRF
+# from scipy.ndimage import gaussian_filter
+# # smoothing should be similar to pixel size in real skewers, .09 Mpc
 
-# smoothing_sigma = 0.09 / pix_size
-smoothing_sigma=1
-print(smoothing_sigma)
-smoothed_field = gaussian_filter(df_3D, sigma=smoothing_sigma)
+# # smoothing_sigma = 0.09 / pix_size
+# smoothing_sigma=10
+# print(smoothing_sigma) # in pixels
+# smoothed_field = gaussian_filter(df_3D, sigma=smoothing_sigma)
+
+# def gaussian_real(x, mean, sigma):
+#     return np.exp(-0.5 * ((x - mean) / sigma)**2)
+# def gaussian_fourier(k, mean, sigma):
+#     return (np.pi*np.sqrt(2)*sigma)**(3/2)*np.exp(-k**2*np.sqrt(2)*sigma/4)
+
+# xarr = np.linspace(0,2,100)
+# plt.plot(xarr, gaussian_real(xarr, 0, smoothing_sigma*pix_size), label="Gaussian filter in real")
+# plt.xlabel("x or k")
+# plt.plot(xarr, gaussian_fourier(xarr, 0, smoothing_sigma*pix_size), label="Gaussian filter in Fourier")
+# plt.title("Gaussian filter in real v fourier")
+# plt.legend()
+
 
 
 # +
-# def gaussian(k, mean, std_dev):
-#     return np.exp(-0.5 * ((k - mean) / std_dev)**2)
-# ks = np.linspace(0,13,100)
-# plt.plot(ks, gaussian(ks, 10, smoothing_sigma))
-# plt.xlim([0,17.5])
+# import smoothing_library as SL
+
+# R       = 10*pix_size #Mpc
+# grid    = df_3D.shape[0]
+# Filter  = 'Gaussian'
+# threads = 1
+
+# # compute FFT of the filter
+# W_k = SL.FT_filter(BoxSize, R, grid, Filter, threads)
+
+# # smooth the field
+# smoothed_field = SL.field_smoothing(df_3D, W_k, threads)
+# plt.show()
+# plt.imshow(smoothed_field[0,:,:])
+
+# +
+# xarr = np.linspace(0,5,10)
+# plt.plot(xarr, gaussian_real(xarr, 0, R), label="Gaussian filter in real")
+# plt.xlabel("x or k")
+# plt.plot(np.insert(Pk.k1D, 0, 0), W_k.real[0,0,:], label="Gaussian filter in Fourier")
+# plt.title("Gaussian filter in real v fourier")
+# plt.legend()
 # -
 
-plt.show()
-plt.imshow(smoothed_field[0,:,:])
-
-Pksmooth = PKL.Pk(smoothed_field, BoxSize, 0, MAS, threads, verbose)
-# 3D P(k)
-ksmooth       = Pksmooth.k3D
-Pk0smooth     = Pksmooth.Pk[:,0] #monopole
+# Pksmooth = PKL.Pk(smoothed_field, BoxSize, 0, MAS, threads, verbose)
+# # 3D P(k)
+# ksmooth       = Pksmooth.k3D
+# Pk0smooth     = Pksmooth.Pk[:,0] #monopole
 
 
-plt.plot(k3ds, P(k3ds), label='P(k) input')
-plt.plot(k, Pk0, label='P(k) measured (no smooth)')
-plt.plot(ksmooth, Pk0smooth, label='P(k) measured (smooth)')
-plt.yscale('log')
-plt.xscale('log')
-plt.ylim([10**-6,10])
-plt.ylabel("P(k) [Mpc]")
-plt.xlabel("k [1/Mpc]")
-plt.legend()
-plt.axvline(.1, color='k')
-plt.axvline(2, color='k')
+# +
+# grid_size = W_k.shape[0]
+# kx, ky, kz = np.meshgrid(np.fft.fftfreq(grid_size), np.fft.fftfreq(grid_size), np.fft.rfftfreq(grid_size))
+# k_magnitude = np.sqrt(kx**2 + ky**2 + kz**2)
+# unique_magnitudes = np.unique(k_magnitude)
+# W_1D = np.zeros(len(unique_magnitudes), dtype=np.complex128)
+
+# for i, mag in enumerate(unique_magnitudes[:100]):
+#     indices = np.where(k_magnitude == mag)
+#     W_1D[i] = np.mean(W_k[indices])
+#     if i%100==0:
+#         print(i)
+
+# +
+# plt.plot(unique_magnitudes[:100], W_1D[:100])
+# plt.plot(unique_magnitudes[:100], np.exp(-unique_magnitudes[:100]**2*R), label="Gaussian filter in Fourier")
+
+
+# plt.legend()
+
+
+# +
+# # Right now I am smoothing out a lot of the detail that ideally I want to capture, up to k=60.
+# # I will smooth it less next time
+# # There is also a window function kicking in ~k=5
+
+# power_mod = np.exp(-k3ds**2*R)**2
+
+
+# plt.plot(k3ds, P(k3ds), label='P(k) input')
+# plt.plot(k, Pk0, label='P(k) measured (no smooth)')
+# plt.plot(ksmooth, Pk0smooth, label='P(k) measured (smooth)')
+# plt.plot(k3ds, P(k3ds)*power_mod, label='P(k) input after modification')
+# plt.yscale('log')
+# plt.xscale('log')
+# plt.ylim([10**-6,10])
+# plt.ylabel("P(k) [Mpc]")
+# plt.xlabel("k [1/Mpc]")
+# plt.legend()
+# plt.axvline(.1/.7, color='k')
+# plt.axvline(12/.7/2, color='k')
 
 # +
 # # make a 3D plot
@@ -209,21 +289,32 @@ plt.axvline(2, color='k')
 # # ax.set_title('3D Gaussian Field')
 
 # # plt.show()
-
-# +
-nskew_per_side = 40
-ix = np.arange(int(npix//nskew_per_side), smoothed_field.shape[0], int(npix//nskew_per_side))
-iy = np.arange(int(npix//nskew_per_side), smoothed_field.shape[0], int(npix//nskew_per_side))
-
-points    = np.array([(x, y) for x in ix for y in iy])
-positions = points * L / smoothed_field.shape[0]
 # -
 
-plt.imshow(smoothed_field[:,:,1])
-plt.scatter(points[:,0], points[:,1], color='k', s=2)
+L/npix_perside*2
 
-skewers_ax1 = smoothed_field[points[:,0], points[:,1], :]
+# +
+nskew_per_side = npix_perside/2
+print(nskew_per_side)
+ix = np.arange(int(npix_perside//nskew_per_side), df_3D.shape[0], int(npix_perside//nskew_per_side))
+iy = np.arange(int(npix_perside//nskew_per_side), df_3D.shape[0], int(npix_perside//nskew_per_side))
 
+points    = np.array([(x, y) for x in ix for y in iy])
+positions = points * L / df_3D.shape[0]
+# -
+
+plt.imshow(df_3D[:,:,1])
+plt.scatter(points[:,0][::10], points[:,1][::10], color='k', s=2)
+
+# skewers_ax1 = df_3D[points[:,0], points[:,1], :] # do with unsmoothed field
+# skewers_ax2 = df_3D[:, points[:,0], points[:,1]].T # do with unsmoothed field
+# skewers_ax3 = df_3D[points[:,0], :, points[:,1]] # do with unsmoothed field
+skewers_ax1 = df_3D[points[:,0], points[:,1], :] # do with smooth field
+skewers_ax2 = df_3D[:, points[:,0], points[:,1]].T # do with smooth field
+skewers_ax3 = df_3D[points[:,0], :, points[:,1]] # do with smooth field
+
+
+print(skewers_ax1.shape, skewers_ax2.shape, skewers_ax3.shape)
 for skewer in skewers_ax1[:5]:
     plt.plot(skewer)
 
@@ -234,44 +325,59 @@ print(Ns, Np)
 size = int(np.sqrt(Ns))
 position_grid  = positions.reshape((size,size,2))
 skewers_ax1 = skewers_ax1.reshape((size,size,Np))
-delta_flux_k = np.fft.rfft(skewers_ax1) # Fourier transform all the skewers
+skewers_ax2 = skewers_ax2.reshape((size,size,Np))
+skewers_ax3 = skewers_ax3.reshape((size,size,Np))
+delta_flux_k1 = np.fft.rfft(skewers_ax1) # Fourier transform all the skewers
+delta_flux_k2 = np.fft.rfft(skewers_ax2) # Fourier transform all the skewers
+delta_flux_k3 = np.fft.rfft(skewers_ax3) # Fourier transform all the skewers
+# -
 
-# +
+print(skewers_ax1.shape, skewers_ax2.shape, skewers_ax3.shape)
+for skewer in skewers_ax3[0, 0:5, :]:
+    plt.plot(skewer)
+
 dz = np.linalg.norm(position_grid[0,1]-position_grid[0,0])
 print(dz) # actual Mpc separation between positions
-
-spacing_dL = np.array([1,2,4,6]) # the integer number of dz that corresponds to that spacing
-print(spacing_dL)
-spacing = spacing_dL*dz
-print(spacing) # the actual spacings between skewers
+spacing = [0,0.5, 1, 1.5]
+# spacing_dL = np.array([0,1,2,4,6]) # the integer number of dz that corresponds to that spacing
+# spacing = spacing_dL*dz
+spacing_dL = np.round(spacing / dz,0).astype(int)
+print("desired spacing") # the actual spacings between skewers
+print("integral number of transverse skewer spacings in each dL", spacing_dL)
+actual_spacing = dz*spacing_dL
+print("actual spacing", actual_spacing)
 
 # +
 Px = []
 Px_errs = []
 
-for dL in spacing_dL:
+for s,dL in enumerate(spacing_dL):
     Px_dL = []
     Px_dL_errs = []
-    print(dL)
-    # i, j = np.meshgrid(np.arange(size-dL), np.arange(size-dL), indexing='ij') # faster but takes too much memory
-    for i in range(size-dL):
-        for j in range(size-dL):
-            # vectorized version
-            # Px_phase1=np.real(delta_flux_k[phase][i,j]*np.conjugate(delta_flux_k[phase][i,j+dL])) # 'loop' through 0 axis
-            # Px_phase2=np.real(delta_flux_k[phase][i,j]*np.conjugate(delta_flux_k[phase][i+dL,j])) # loop through 1 axis
-            # Px_phase = np.concatenate((Px_phase1,Px_phase2))
-            # del Px_phase1
-            # del Px_phase2
-            Px_dL.append(np.real(delta_flux_k[i,j]*np.conjugate(delta_flux_k[i,j+dL]))) # loop through 0 axis
-            if dL!=0:
-                Px_dL.append(np.real(delta_flux_k[i,j]*np.conjugate(delta_flux_k[i+dL,j]))) # loop through 1 axis
+    print("spacing = ", spacing_dL[s])
+    for i in range(0, size-dL, dL+1):
+        
+        for j in range(0, size-dL, dL+1):
+        
+            # Px_dL.append(np.real(delta_flux_k1[i,j]*np.conjugate(delta_flux_k1[i,j+dL]))) # loop through 0 axis
+            # if dL!=0:
+            #     Px_dL.extend(np.real(delta_flux_k1[i,j]*np.conjugate(delta_flux_k1[i+dL,j]))) # loop through 1 axis
+            # Px_dL.append(np.real(delta_flux_k2[i,j]*np.conjugate(delta_flux_k2[i,j+dL]))) # loop through 0 axis
+            # if dL!=0:
+            #     Px_dL.extend(np.real(delta_flux_k2[i,j]*np.conjugate(delta_flux_k2[i+dL,j]))) # loop through 1 axis
+            Px_dL.append(np.real(delta_flux_k3[i,j]*np.conjugate(delta_flux_k3[i,j+dL]))) # loop through 0 axis
+            # if dL!=0:
+            #     Px_dL.extend(np.real(delta_flux_k3[i,j]*np.conjugate(delta_flux_k3[i+dL,j]))) # loop through 1 axis
             # need to account here for periodic boundaries
             if i==20 and j==20:
                 print('position diff', np.linalg.norm(position_grid[i,j] - position_grid[i,j+dL]))
                 print(np.linalg.norm(position_grid[i,j] - position_grid[i+dL,j]))
+        
+        
+    print(len(Px_dL))
+    print(Px_dL[0].shape)
 
-
-    # after looping through both phases, average all the results
+    # after looping through, average all the results
     Px_dL = np.asarray(Px_dL)
     avg_over_phases = np.average(Px_dL, axis=0)*(L/(Np**2))
     print(avg_over_phases.shape)
@@ -281,8 +387,66 @@ for dL in spacing_dL:
     Px_errs.append(errs)
 # -
 
-pix_spacing = L/Np
-kpar = np.fft.rfftfreq(Np, pix_spacing)*2*np.pi # frequency in Mpc^-1
+kpar = np.fft.rfftfreq(Np, pix_size)*2*np.pi # frequency in Mpc^-1
+
+# ## Make the predictions using brute-force integral
+
+# +
+from scipy import special
+Nsteps = 2**10
+
+# for every rperp of separation between sightlines
+# make an empty list for each rperp
+Px_rperp = []
+
+for rperp in spacing:
+    print("r perp:", rperp)
+    # make an empty list for each k parallel
+    Px_rperp_kpar = []
+    for c, kp in enumerate(kpar[1:]):
+        # initialize integral
+        Px_int = 0
+        kmax_int = 10000 # maximum k where I'll cut off the integrals
+        kvar = np.logspace(np.log10(kp+.001), np.log10(kmax_int), int(Nsteps-c))
+        for m,k in enumerate(kvar[:-1]):
+            # get kperp given k and kpar
+            if (k**2-kp**2)<0:
+                print("problem")
+                print(k, kp)
+                break
+            kperp = np.sqrt(k**2-kp**2)
+            if rperp!=0 and (kperp>2*np.pi/rperp):
+                continue # Px cannot sample perp modes smaller in wavelength than the spacing
+            # get mu
+            mu = kpar/k
+            # get the bessel function j0 = sqrt(pi/(2x))* J_(1/2) evaluated at k_perp * r_perp
+            j0 = special.spherical_jn(0, kperp * rperp)
+            # get P3D from model at z, k, mu
+            P3D = P(np.asarray([k]), smooth=True, smoothing=smoothing)
+            # add to integral
+            dlogk = kvar[m+1]-kvar[m] # (kmax_int-kpar)/int(Nsteps-kpar)
+            Px_int += j0*P3D*dlogk*k
+        Px_int /= (2*np.pi)
+        Px_rperp_kpar.append(Px_int)
+    Px_rperp.append(Px_rperp_kpar)
+            
+
+
+# +
+
+for r in range(len(spacing)):
+    plt.semilogx(kpar[1:],np.asarray(Px_rperp[r]),  label=r'$r_{{\perp}}={:.2f}$'.format(spacing[r]), color=cmap(r/len(spacing)))
+plt.legend()
+
+plt.xlim([.4, 14])
+plt.ylim([10**-7,10**-1])
+plt.ylabel(r"$P_{\times} [h^{-1}$ Mpc]")
+plt.xlabel(r"$k_{\parallel} [h$ Mpc$^{-1}$]")
+# p1d = arinyo.P1D_Mpc(zs[0], kpars, parameters=params)
+# plt.loglog(kpar, p1d, label='arinyo model 1D')
+# -
+
+# ## Make the predictions using Hankel transform
 
 # +
 # now get the corresponding Pcross predictions
@@ -298,7 +462,7 @@ def get_Px(
     max_rperp=30,
     min_kperp=10.0**-20,
     max_kperp=10.0**3,
-    Nsteps_kperp=5000,
+    Nsteps_kperp=2**13,
     trans_to_p1d=True,
     fast_transition=False
 ):
@@ -327,10 +491,10 @@ def get_Px(
 
     if fast:
         Nsteps_kperp = 1000
-    if min_rperp > 0.08:
+    if min_rperp is not None and min_rperp > 0.08:
         trans_to_p1d = False  # not necessary to transition to the P1D result if minimum requested rperp is larger than 0.08
 
-    if min_rperp > 0.2 and fast:
+    if min_rperp is not None and min_rperp > 0.2 and fast:
         Nsteps_kperp = 500  # speed it up because we will cut out the range of low-rperp oscillations
 
     Px_per_kpar = []
@@ -342,14 +506,15 @@ def get_Px(
             len(kperps), kpar
         )  # each kperp gets the same kpar for this iteration -- make a full array of the kpar value
         k = np.sqrt(kpars_prime**2 + kperps**2)  # get the corresponding k array
-        func = P3D(k) * 0.5 * np.sqrt(kperps / (2 * np.pi))
+        func = P3D(k, smooth=True, smoothing=smoothing) * 0.5 * np.sqrt(kperps / (2 * np.pi))
         rperp, LHS = hankl.FFTLog(
             kperps, func, q=0, mu=0.5
         )  # returns an array of log-spaced rperps, and the Hankel Transform
-        Px = LHS / (rperp ** (3 / 2))  # Divide out by remaining factor to get Px
-        if min_rperp > min(rperp):
+        Px = LHS / (rperp ** (3 / 2.))  # Divide out by remaining factor to get Px
+        if min_rperp is not None and min_rperp > min(rperp):
             rperp_minidx = np.argmin(abs(rperp - min_rperp))
-        if max_rperp < max(rperp):
+        
+        if max_rperp is not None and max_rperp < max(rperp):
             rperp_maxidx = np.argmin(abs(rperp - max_rperp))
         else:
             rperp_minidx, rperp_maxidx = None, None
@@ -363,30 +528,134 @@ def get_Px(
 
 # -
 
-rperp,Px_per_kpar = get_Px(kpar, P)
-
-
+rperp,Px_per_kpar = get_Px(kpar, P, min_rperp=None, max_rperp=None)
+Px_per_rperp = Px_per_kpar.T
 # find the closest predicted rperps to the measured skewer spacings
 idxs = []
-for i in range(len(spacing)):
-    idxs.append(np.argmin(abs(rperp-spacing[i])))
-    print(rperp[idxs[i]])
+for i in range(len(actual_spacing)):
+    idxs.append(np.argmin(abs(rperp-actual_spacing[i])))
+    print(rperp[idxs[i]],actual_spacing[i])
+    
 
 #min frequency, max frequency
-Np = df_3D.shape[0]
 print(f"We can't expect to measure anything smaller than k={2*np.pi/L} or larger than k={np.pi/(L/Np)}")
 
-cmap[0]
+# First, make sure P1D works
+pk_avgs = []
+for delta_k in [delta_flux_k1, delta_flux_k2, delta_flux_k3]:
+    print(delta_k.shape)
+    pk_all=abs(delta_k.reshape((Ns,len(kpar))))**2*(L/(Np**2)) # division by Np for avg power in all modes, convert power per unit k to power per unit spacing
+    pk_avg_ax = np.average(pk_all, axis=0) # average over all skewers in this axis
+    print(pk_avg_ax.shape)
+    pk_avgs.append(pk_avg_ax)
+pk_avg = np.average(np.asarray(pk_avgs), axis=0) # now average over all axes
+print(pk_avg.shape)
+
+plt.plot(kpar,pk_avg, 'o', markersize=3, label='skewers 1D', linestyle='solid')
+plt.errorbar(kpar,Px[0],Px_errs[0], label=f'spacing = {round(spacing[0],1)}, skewers smallest Px', color=cmap(i/len(spacing)), linestyle='dashed')
+# plt.yscale("log")
+plt.xscale("log")
+plt.ylim([0.0,0.05])
+plt.legend()
+plt.xlabel(r"kpar [Mpc$^{-1}$]")
+plt.ylabel("P1D [Mpc]")
+
+plt.semilogx(kpar,pk_avg, 'o', markersize=3, label='skewers', linestyle='solid')
+plt.semilogx(kpar,Px_per_kpar.T[0], label=f'spacing = {round(spacing[0],1)}, integral', color=cmap(i/len(spacing)), linestyle='dashed')
+plt.legend()
+plt.ylim([0.0,0.05])
+
+plt.plot(rperp, Px_per_kpar[0])
+plt.xscale("log")
+
+plt.semilogx(rperp,Px_per_kpar[0], 'o', markersize=3, linestyle='solid', label='Px integral')
+plt.semilogx(np.logspace(np.log10(min(rperp)), np.log10(max(rperp)), len(rperp)), np.full(len(rperp), pk_avg[0]), label='P1D measured kpar~0') # plot P1d for the lowest k
+plt.xlabel("rperp")
+plt.ylabel("Px")
+# plt.errorbar(kpar,Px[0],Px_errs[0], label=f'spacing = {round(spacing[0],1)}, skewers smallest Px', color=cmap(i/len(spacing)), linestyle='dashed')
+# # plt.yscale("log")
+# plt.xscale("log")
+# # plt.ylim([0.14,0.16])
+plt.legend()
+
+# +
+# colors=['red', 'cornflowerblue', 'purple', 'brown', 'green', 'black', 'orange', 'yellow', ]
+# -
+
+# # Do the predictions from Hankel and brute force match?
+
+# +
 
 
-import matplotlib as mpl
-cmap = mpl.colormaps['Set1']
 for i in range(len(spacing)):
-    plt.plot(kpar, Px[i], label=f'spacing = {round(spacing[i],1)}, skewers', color=cmap(i/len(spacing)), linestyle='dashed')
-    plt.plot(kpar, Px_per_kpar.T[idxs[i]], label=f'spacing = {round(spacing[i],1)}, integral', color=cmap(i/len(spacing)))
+    # plt.plot(kpar, Px[i], label=f'spacing = {round(spacing[i],1)}, skewers', color=cmap(i/len(spacing)), linestyle='dashed')
+    # plt.errorbar(kpar, Px[i], yerr=Px_errs[i], label=f'rperp = {round(spacing[i],1)}, skewers', color=cmap(i/len(spacing)), linestyle='dashed')
+    # plt.errorbar(kpar, Px[i], yerr=Px_errs[i], label=f'rperp = {round(actual_spacing[i],1)}, skewers', color=cmap(i/len(spacing)), linestyle='dashed')
+
+    # plt.plot(kpar, Px_per_kpar.T[idxs[i]], label=f'rperp = {round(spacing[i],1)}, integral', color=cmap(i/len(spacing)))
+    plt.plot(kpar, Px_per_kpar.T[idxs[i]], label=f'Hankel rperp = {round(actual_spacing[i],1)}, integral', color=cmap(i/len(spacing)))
+    plt.semilogx(kpar[1:],np.asarray(Px_rperp[i]),  label=r'Brute force $r_{{\perp}}={:.2f}$'.format(spacing[i]), color=cmap(i/len(spacing)), linestyle='dotted')
+    
+plt.legend()
+plt.xlim([.4, 14])
+plt.ylim([10**-7,0.045])
+plt.ylabel(r"$P_{\times}$ [Mpc]")
+plt.xlabel(r"$k_{\parallel} [$ Mpc$^{-1}$]")
+# p1d = arinyo.P1D_Mpc(zs[0], kpars, parameters=params)
+# plt.loglog(kpar, p1d, label='arinyo model 1D')
+
+# +
+
+for i in range(len(spacing[:5])):
+    # plt.plot(kpar, Px[i], label=f'spacing = {round(spacing[i],1)}, skewers', color=cmap(i/len(spacing)), linestyle='dashed')
+    # plt.errorbar(kpar, Px[i], yerr=Px_errs[i], label=f'rperp = {round(spacing[i],1)}, skewers', color=cmap(i/len(spacing)), linestyle='dashed')
+    plt.errorbar(kpar, Px[i], yerr=Px_errs[i], label=f'rperp = {round(actual_spacing[i],1)}, skewers', color=cmap(i/len(spacing)), linestyle='dashed')
+
+    # plt.plot(kpar, Px_per_kpar.T[idxs[i]], label=f'rperp = {round(spacing[i],1)}, integral', color=cmap(i/len(spacing)))
+    plt.plot(kpar, Px_per_kpar.T[idxs[i]], label=f'rperp = {round(actual_spacing[i],1)}, integral', color=cmap(i/len(spacing)))
 # plt.yscale('log')
 plt.xscale('log')
 plt.legend()
 plt.xlim([0.1,2])
+plt.ylim([-0.003,0.047])
+plt.title(f"$L={L}, \Delta_{{p}}={np.round(pix_size,2)}$ Mpc")
+plt.xlabel("kpar [Mpc-1]")
+plt.ylabel("Px [Mpc]")
+
+
+# -
+
+# find the closest predicted rperps to the measured skewer spacings that actually work
+idxs2 = []
+for i in range(len(actual_spacing)):
+    idxs2.append(np.argmin(abs(rperp-(np.exp(actual_spacing[i])-1))))
+    print(actual_spacing[i], rperp[idxs2[i]])
+print(idxs, idxs2)
+
+# +
+# plt.plot(actual_spacing,  np.array([0, rperp[1021], rperp[1137], rperp[1310], rperp[1380]]), label='values that work')
+# plt.plot(actual_spacing, actual_spacing, label='1-to-1')
+# plt.plot(actual_spacing,  np.array([0, rperp[1021], rperp[1137], rperp[1310], rperp[1380]])/1.25, 'o', label='values that work / 1.25', color='k')
+# plt.legend()
+
+# +
+
+for i in range(len(spacing)):
+    # plt.plot(kpar, Px[i], label=f'spacing = {round(spacing[i],1)}, skewers', color=cmap(i/len(spacing)), linestyle='dashed')
+    # plt.errorbar(kpar, Px[i], yerr=Px_errs[i], label=f'rperp = {round(spacing[i],1)}, skewers', color=cmap(i/len(spacing)), linestyle='dashed')
+    plt.errorbar(kpar, Px[i], yerr=Px_errs[i], label=f'rperp = {round(actual_spacing[i],1)}, skewers',  color=cmap(i/len(spacing)), linestyle='dashed')
+
+    plt.plot(kpar, Px_per_kpar.T[idxs2[i]], label=f'rperp = {round(spacing[i],1)}, integral', color=cmap(i/len(spacing)))
+                
+        
+# plt.yscale('log')
+plt.xscale('log')
+plt.legend()
+plt.xlim([0.1,2])
+plt.ylim([-0.003,0.047])
+plt.title(f"$L={L}, \Delta_{{p}}={np.round(pix_size,2)}$ Mpc")
+plt.xlabel("kpar [Mpc-1]")
+plt.ylabel("Px [Mpc]")
+# -
 
 
