@@ -37,6 +37,19 @@ path_program = ls_level(os.getcwd(), 1)
 print(path_program)
 sys.path.append(path_program)
 
+# %%
+import numpy as np
+from forestflow.model_p3d_arinyo import get_linP_interp, ArinyoModel
+from lace.cosmo import camb_cosmo
+
+# %%
+zs = np.array([2, 2.5])
+cosmo = camb_cosmo.get_cosmology()
+camb_results = camb_cosmo.get_camb_results(cosmo, zs=zs, camb_kmax_Mpc=100)
+
+# %%
+arinyo = ArinyoModel(cosmo=cosmo, camb_results=camb_results, zs=zs, camb_kmax_Mpc=100)
+
 # %% [markdown]
 # ## LOAD P3D ARCHIVE
 
