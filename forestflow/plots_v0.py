@@ -35,10 +35,10 @@ def plot_test_parz(Archive3D, p3d_emu, sim_label):
 
     for jj in range(len(testing_data)):
         zs[jj] = testing_data[jj]["z"]
-        #_cosmo_params = np.zeros(len(Archive3D.emu_params))
-        #for ii, par in enumerate(Archive3D.emu_params):
+        # _cosmo_params = np.zeros(len(Archive3D.emu_params))
+        # for ii, par in enumerate(Archive3D.emu_params):
         #    _cosmo_params[ii] = testing_data[jj][par]
-        predict_params[jj] = p3d_emu.predict_Arinyos([testing_data[jj]])
+        predict_params[jj] = p3d_emu.predict_Arinyos(testing_data[jj])
         input_params[jj] = list(testing_data[jj]["Arinyo"].values())
 
     # make sure bias negative (dependence on bias square)
@@ -81,11 +81,11 @@ def plot_test_p3d(ind_book, Archive3D, p3d_emu, sim_label, plot_emu=True):
 
     for jj in range(len(testing_data)):
         zs[jj] = testing_data[jj]["z"]
-        #_cosmo_params = np.zeros(len(Archive3D.emu_params))
-        #for ii, par in enumerate(Archive3D.emu_params):
+        # _cosmo_params = np.zeros(len(Archive3D.emu_params))
+        # for ii, par in enumerate(Archive3D.emu_params):
         #    _cosmo_params[ii] = testing_data[jj][par]
         if plot_emu:
-            predict_params[jj] = p3d_emu.predict_Arinyos([testing_data[jj]])
+            predict_params[jj] = p3d_emu.predict_Arinyos(testing_data[jj])
         input_params[jj] = list(testing_data[jj]["Arinyo"].values())
 
     # make sure bias negative (dependence on bias square)
@@ -404,8 +404,16 @@ def plot_compare_p3d_smooth(
     if save_fig is not None:
         plt.savefig(save_fig)
 
-        
-def plot_err_uncertainty(emulator, archive, sim_labels, mu_lims_p3d, z, val_scaling=1.0, colors=['deepskyblue', 'goldenrod']):
+
+def plot_err_uncertainty(
+    emulator,
+    archive,
+    sim_labels,
+    mu_lims_p3d,
+    z,
+    val_scaling=1.0,
+    colors=["deepskyblue", "goldenrod"],
+):
     """
     Plot the percent error and uncertainty in P1D and P3D for different simulation labels.
 
@@ -437,29 +445,30 @@ def plot_err_uncertainty(emulator, archive, sim_labels, mu_lims_p3d, z, val_scal
     fig, axes = plt.subplots(1, 2, figsize=(10, 4), sharex=False, sharey=True)
 
     for ii, sim_label in enumerate(sim_labels):
-        
         # Retrieve simulation
-        test_sim = archive.get_testing_data(sim_label, force_recompute_plin=False)
-        dict_sim = [d for d in test_sim if d['z'] == z and d['val_scaling'] == val_scaling]
+        test_sim = archive.get_testing_data(
+            sim_label, force_recompute_plin=False
+        )
+        dict_sim = [
+            d
+            for d in test_sim
+            if d["z"] == z and d["val_scaling"] == val_scaling
+        ]
 
         # Predict p1d and p3d
         p1d_arinyo, p1d_cov = emulator.predict_P1D_Mpc(
-            sim_label=sim_label,
-            z=z,
-            test_sim=dict_sim,
-            return_cov=True
+            sim_label=sim_label, z=z, test_sim=dict_sim, return_cov=True
         )
 
         p3d_arinyo, p3d_cov = emulator.predict_P3D_Mpc(
-            sim_label=sim_label,
-            z=z,
-            test_sim=dict_sim,
-            return_cov=True
+            sim_label=sim_label, z=z, test_sim=dict_sim, return_cov=True
         )
 
         # True p1d and p3d from sim
         p1d_sim, p1d_k = emulator.get_p1d_sim(dict_sim)
-        p3d_sim = [d for d in test_sim if d['z'] == z][0]['p3d_Mpc'][emulator.k_mask]
+        p3d_sim = [d for d in test_sim if d["z"] == z][0]["p3d_Mpc"][
+            emulator.k_mask
+        ]
 
         # Fractional error in p1d
         p1derr_pred = np.sqrt(np.diag(p1d_cov))
@@ -479,34 +488,39 @@ def plot_err_uncertainty(emulator, archive, sim_labels, mu_lims_p3d, z, val_scal
         # Plot
         # Panel 1: P1D Plot
         axes[0].plot(p1d_k, frac_err_p1d, color=colors[ii])
-        axes[0].fill_between(p1d_k,
-                             frac_err_p1d - frac_err_p1d_err,
-                             frac_err_p1d + frac_err_p1d_err,
-                             alpha=0.2,
-                             color=colors[ii],
-                             label=f'{sim_label}')
+        axes[0].fill_between(
+            p1d_k,
+            frac_err_p1d - frac_err_p1d_err,
+            frac_err_p1d + frac_err_p1d_err,
+            alpha=0.2,
+            color=colors[ii],
+            label=f"{sim_label}",
+        )
 
         # Panel 2: P3D Plot
         axes[1].plot(k_masked, frac_err_p3d_masked, color=colors[ii])
-        axes[1].fill_between(k_masked,
-                             frac_err_p3d_masked - frac_err_p3d_err_masked,
-                             frac_err_p3d_masked + frac_err_p3d_err_masked,
-                             alpha=0.2,
-                             color=colors[ii],
-                             label=f'{sim_label}')
+        axes[1].fill_between(
+            k_masked,
+            frac_err_p3d_masked - frac_err_p3d_err_masked,
+            frac_err_p3d_masked + frac_err_p3d_err_masked,
+            alpha=0.2,
+            color=colors[ii],
+            label=f"{sim_label}",
+        )
 
-    axes[0].set_title('P1D', fontsize=16)
-    axes[0].set_ylabel('Percent error [%]', fontsize=16)
-    axes[0].set_xlabel('$k$ [1/Mpc]', fontsize=16)
+    axes[0].set_title("P1D", fontsize=16)
+    axes[0].set_ylabel("Percent error [%]", fontsize=16)
+    axes[0].set_xlabel("$k$ [1/Mpc]", fontsize=16)
     axes[0].legend(fontsize=12)
-    axes[0].fill_between(p1d_k, -1, 1, alpha=0.1, color='grey')
-    axes[1].fill_between(k_masked, -10, 10, alpha=0.1, color='grey')
+    axes[0].fill_between(p1d_k, -1, 1, alpha=0.1, color="grey")
+    axes[1].fill_between(k_masked, -10, 10, alpha=0.1, color="grey")
 
-    axes[1].set_title('P3D', fontsize=16)
+    axes[1].set_title("P3D", fontsize=16)
     axes[1].set_ylim(-15, 15)
-    axes[1].set_xlabel('$k$ [1/Mpc]', fontsize=16)
+    axes[1].set_xlabel("$k$ [1/Mpc]", fontsize=16)
 
     # Adjust layout and show the
+
 
 def plot_p3d_L1O(archive, fractional_errors, savename=None):
     """
@@ -542,8 +556,8 @@ def plot_p3d_L1O(archive, fractional_errors, savename=None):
 
     # Define colors for different mu bins
     colors = ["navy", "crimson", "forestgreen", "goldenrod"]
-    test_sim =  archive.get_testing_data(
-        'mpg_central', force_recompute_plin=True
+    test_sim = archive.get_testing_data(
+        "mpg_central", force_recompute_plin=True
     )
     z_grid = [d["z"] for d in test_sim]
 
@@ -607,6 +621,7 @@ def plot_p3d_L1O(archive, fractional_errors, savename=None):
     # Save the plot
     if savename:
         plt.savefig(savename, bbox_inches="tight")
+
 
 def plot_p3d_LzO(archive, fractional_errors, z_test, savename=None):
     # Extract data from Archive3D
@@ -688,8 +703,9 @@ def plot_p3d_LzO(archive, fractional_errors, z_test, savename=None):
 
     # Save the plot
     if savename:
-        plt.savefig(savename, bbox_inches='tight')
-        
+        plt.savefig(savename, bbox_inches="tight")
+
+
 def plot_p1d_L1O(archive, fractional_errors, savename=None):
     """
     Plot the fractional errors in the P1D statistic for different redshifts.
@@ -708,12 +724,12 @@ def plot_p1d_L1O(archive, fractional_errors, savename=None):
 
     # Create subplots with shared y-axis
     fig, axs = plt.subplots(11, 1, figsize=(10, 20), sharey=True)
-    
-    test_sim =  archive.get_testing_data(
-        'mpg_central', force_recompute_plin=True
+
+    test_sim = archive.get_testing_data(
+        "mpg_central", force_recompute_plin=True
     )
     z_grid = [d["z"] for d in test_sim]
-    
+
     like = Likelihood(test_sim[0], archive.rel_err_p3d, archive.rel_err_p1d)
     k1d_mask = like.like.ind_fit1d.copy()
     k1d_sim = like.like.data["k1d"][k1d_mask]
@@ -727,7 +743,6 @@ def plot_p1d_L1O(archive, fractional_errors, savename=None):
         # Calculate fractional error statistics
         frac_err = np.nanmedian(fractional_errors[:, ii, :], 0)
         frac_err_err = sigma68(fractional_errors[:, ii, :])
-
 
         # Add a line plot with shaded error region to the current subplot
         axs[ii].plot(k1d_sim, frac_err, color="crimson")
@@ -770,13 +785,13 @@ def plot_p1d_LzO(archive, fractional_errors, z_test, savename=None):
     # Create subplots with shared y-axis
     fig, axs = plt.subplots(len(z_test), 1, figsize=(6, 8), sharey=True)
 
-    test_sim =  archive.get_testing_data(
-        'mpg_central', force_recompute_plin=True
-    )    
+    test_sim = archive.get_testing_data(
+        "mpg_central", force_recompute_plin=True
+    )
     like = Likelihood(test_sim[0], archive.rel_err_p3d, archive.rel_err_p1d)
     k1d_mask = like.like.ind_fit1d.copy()
     k1d_sim = like.like.data["k1d"][k1d_mask]
-    
+
     # Loop through redshifts
     for ii, z in enumerate(z_test):
         axs[ii].set_title(f"$z={z}$", fontsize=16)
@@ -786,7 +801,6 @@ def plot_p1d_LzO(archive, fractional_errors, z_test, savename=None):
         # Calculate fractional error statistics
         frac_err = np.nanmedian(fractional_errors[:, ii, :], 0)
         frac_err_err = sigma68(fractional_errors[:, ii, :])
-
 
         # Add a line plot with shaded error region to the current subplot
         axs[ii].plot(k1d_sim, frac_err, color="crimson")
@@ -822,10 +836,16 @@ def plot_p1d_LzO(archive, fractional_errors, z_test, savename=None):
 
     # Save the plot
     if savename:
-        plt.savefig(savename, bbox_inches='tight')
-        
-        
-def plot_paramspace(params_emulator, errors, colourbar_lab=r'$P_{\rm 3D}$ uncertainty', vmin=0, vmax=1 ):
+        plt.savefig(savename, bbox_inches="tight")
+
+
+def plot_paramspace(
+    params_emulator,
+    errors,
+    colourbar_lab=r"$P_{\rm 3D}$ uncertainty",
+    vmin=0,
+    vmax=1,
+):
     """
     Plot parameter space with uncertainties in a 2x2 grid.
 
@@ -837,29 +857,61 @@ def plot_paramspace(params_emulator, errors, colourbar_lab=r'$P_{\rm 3D}$ uncert
     - None
     """
     # Create a 2x2 grid of subplots
-    fig, axs = plt.subplots(2, 2, figsize=(8, 6), sharey='row')
+    fig, axs = plt.subplots(2, 2, figsize=(8, 6), sharey="row")
 
     # Scatter plot in the first panel
-    sc1 = axs[0, 0].scatter(params_emulator[:, 0], params_emulator[:, 2], c=np.median(errors, 1), s=10, rasterized=True, vmin=vmin, vmax=vmax)
-    axs[0, 0].set_ylabel(r'$\bar{F}$', fontsize=16)
-    axs[0, 0].set_xlabel(r'$\Delta_p$', fontsize=16)
-    axs[0, 0].tick_params(axis='both', which='major', labelsize=12)
+    sc1 = axs[0, 0].scatter(
+        params_emulator[:, 0],
+        params_emulator[:, 2],
+        c=np.median(errors, 1),
+        s=10,
+        rasterized=True,
+        vmin=vmin,
+        vmax=vmax,
+    )
+    axs[0, 0].set_ylabel(r"$\bar{F}$", fontsize=16)
+    axs[0, 0].set_xlabel(r"$\Delta_p$", fontsize=16)
+    axs[0, 0].tick_params(axis="both", which="major", labelsize=12)
 
     # Scatter plot in the second panel
-    sc2 = axs[0, 1].scatter(params_emulator[:, 3], params_emulator[:, 2], c=np.median(errors, 1), s=10, rasterized=True, vmin=vmin, vmax=vmax)
-    axs[0, 1].set_xlabel(r'$\sigma_T$', fontsize=16)
-    axs[0, 1].tick_params(axis='both', which='major', labelsize=12)
+    sc2 = axs[0, 1].scatter(
+        params_emulator[:, 3],
+        params_emulator[:, 2],
+        c=np.median(errors, 1),
+        s=10,
+        rasterized=True,
+        vmin=vmin,
+        vmax=vmax,
+    )
+    axs[0, 1].set_xlabel(r"$\sigma_T$", fontsize=16)
+    axs[0, 1].tick_params(axis="both", which="major", labelsize=12)
 
     # Scatter plot in the third panel
-    sc3 = axs[1, 0].scatter(params_emulator[:, 4], params_emulator[:, 2], c=np.median(errors, 1), s=10, rasterized=True, vmin=vmin, vmax=vmax)
-    axs[1, 0].set_ylabel(r'$\bar{F}$', fontsize=16)
-    axs[1, 0].set_xlabel(r'$\gamma$', fontsize=16)
-    axs[1, 0].tick_params(axis='both', which='major', labelsize=12)
+    sc3 = axs[1, 0].scatter(
+        params_emulator[:, 4],
+        params_emulator[:, 2],
+        c=np.median(errors, 1),
+        s=10,
+        rasterized=True,
+        vmin=vmin,
+        vmax=vmax,
+    )
+    axs[1, 0].set_ylabel(r"$\bar{F}$", fontsize=16)
+    axs[1, 0].set_xlabel(r"$\gamma$", fontsize=16)
+    axs[1, 0].tick_params(axis="both", which="major", labelsize=12)
 
     # Scatter plot in the fourth panel
-    sc4 = axs[1, 1].scatter(params_emulator[:, 5], params_emulator[:, 2], c=np.median(errors, 1), s=10, rasterized=True, vmin=vmin, vmax=vmax)
-    axs[1, 1].set_xlabel(r'$k_F$', fontsize=16)
-    axs[1, 1].tick_params(axis='both', which='major', labelsize=12)
+    sc4 = axs[1, 1].scatter(
+        params_emulator[:, 5],
+        params_emulator[:, 2],
+        c=np.median(errors, 1),
+        s=10,
+        rasterized=True,
+        vmin=vmin,
+        vmax=vmax,
+    )
+    axs[1, 1].set_xlabel(r"$k_F$", fontsize=16)
+    axs[1, 1].tick_params(axis="both", which="major", labelsize=12)
 
     # Adjust layout
     plt.tight_layout()
