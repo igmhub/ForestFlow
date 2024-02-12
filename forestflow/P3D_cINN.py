@@ -11,6 +11,7 @@ import FrEIA.modules as Fm
 from lace.cosmo import camb_cosmo, fit_linP
 
 # forestflow models
+import forestflow
 from forestflow.model_p3d_arinyo import ArinyoModel
 from forestflow.archive import GadgetArchive3D, get_camb_interp
 from forestflow.likelihood import Likelihood
@@ -136,7 +137,9 @@ class P3DEmulator:
             "nrun",
             "w",
         ]
-        self.folder_interp = "../data/plin_interp/"
+        self.folder_interp = (
+            os.path.dirname(forestflow.__path__[0]) + "/data/plin_interp/"
+        )
         self.model_path = model_path
         self.save_path = save_path
 
