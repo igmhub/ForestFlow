@@ -131,6 +131,9 @@ class GadgetArchive3D(GadgetArchive):
             compute_plin=force_recompute_plin,
         )
 
+        self.pk_fid = self.training_data[0]["Plin"]
+        self.pk_fid_p1d = self.training_data[0]["Plin_for_p1d"]
+
     def get_testing_data(
         self,
         sim_label,

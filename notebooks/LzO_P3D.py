@@ -8,9 +8,9 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.14.5
 #   kernelspec:
-#     display_name: forestflow
+#     display_name: emulators
 #     language: python
-#     name: forestflow
+#     name: emulators
 # ---
 
 # %% [markdown]
@@ -20,8 +20,6 @@
 import numpy as np
 import os
 import sys
-import pandas as pd
-import scipy.stats as stats
 
 # %%
 from forestflow.model_p3d_arinyo import ArinyoModel
@@ -29,6 +27,8 @@ from forestflow import model_p3d_arinyo
 from forestflow.archive import GadgetArchive3D
 from forestflow.P3D_cINN import P3DEmulator
 from forestflow.likelihood import Likelihood
+from forestflow.utils import sigma68
+from forestflow.plots_v0 import plot_p1d_LzO, plot_p3d_LzO
 
 
 # %%
@@ -60,155 +60,6 @@ def ls_level(folder, nlevels):
 path_program = ls_level(os.getcwd(), 1)
 print(path_program)
 sys.path.append(path_program)
-
-
-# %%
-def sigma68(data):
-    return (
-        0.5
-        * (
-            pd.DataFrame(data).quantile(q=0.84, axis=0)
-            - pd.DataFrame(data).quantile(q=0.16, axis=0)
-        ).values
-    )
-
-
-# %%
-def plot_p3d_LzO(fractional_errors):
-    # Extract data from Archive3D
-    k_Mpc = Archive3D.training_data[0]["k3d_Mpc"]
-    mu = Archive3D.training_data[0]["mu3d"]
-
-    # Apply a mask to select relevant k values
-    k_mask = (k_Mpc < 4) & (k_Mpc > 0)
-    k_Mpc = k_Mpc[k_mask]
-    mu = mu[k_mask]
-
-    # Create subplots with shared y-axis and x-axis
-    fig, axs = plt.subplots(
-        len(z_test), 1, figsize=(6, 8), sharey=True, sharex=True
-    )
-
-    # Define mu bins
-    mu_lims = [[0, 0.06], [0.31, 0.38], [0.62, 0.69], [0.94, 1]]
-
-    # Define colors for different mu bins
-    colors = ["navy", "crimson", "forestgreen", "goldenrod"]
-
-    # Loop through redshifts
-    for ii, z in enumerate(z_test):
-        axs[ii].set_title(f"$z={z}$", fontsize=14)
-        axs[ii].axhline(y=-10, ls="--", color="black")
-        axs[ii].axhline(y=10, ls="--", color="black")
-
-        # Loop through mu bins
-        for mi in range(int(len(mu_lims))):
-            mu_mask = (mu >= mu_lims[mi][0]) & (mu <= mu_lims[mi][1])
-            k_masked = k_Mpc[mu_mask]
-
-            # Calculate fractional error statistics
-            frac_err = np.nanmedian(fractional_errors[:, ii, :], 0)
-            frac_err_err = sigma68(fractional_errors[:, ii, :])
-
-            frac_err_masked = frac_err[mu_mask]
-            frac_err_err_masked = frac_err_err[mu_mask]
-
-            color = colors[mi]
-
-            # Add a line plot with shaded error region to the current subplot
-            axs[ii].plot(
-                k_masked,
-                frac_err_masked,
-                label=f"${mu_lims[mi][0]}\leq \mu \leq {mu_lims[mi][1]}$",
-                color=color,
-            )
-            axs[ii].fill_between(
-                k_masked,
-                frac_err_masked - frac_err_err_masked,
-                frac_err_masked + frac_err_err_masked,
-                color=color,
-                alpha=0.2,
-            )
-            axs[ii].tick_params(axis="both", which="major", labelsize=16)
-
-    # Customize subplot appearance
-    for xx, ax in enumerate(axs):
-        if xx == len(axs) // 2:  # Centered y-label
-            ax.yaxis.set_label_coords(-0.1, 0.5)
-        ax.set_ylim(-10, 10)
-
-    axs[len(axs) - 1].set_xlabel(r"$k$ [1/Mpc]", fontsize=16)
-
-    axs[0].legend(fontsize=12)
-
-    # Adjust spacing between subplots
-    plt.tight_layout()
-    fig.text(
-        0,
-        0.5,
-        r"Error $P_{\rm 3D}$ [%]",
-        va="center",
-        rotation="vertical",
-        fontsize=16,
-    )
-
-    # Save the plot
-    # plt.savefig(savename, bbox_inches='tight')
-
-
-# %%
-def plot_p1d_LzO(fractional_errors):
-    # Create subplots with shared y-axis
-    fig, axs = plt.subplots(len(z_test), 1, figsize=(6, 8), sharey=True)
-
-    # Loop through redshifts
-    for ii, z in enumerate(z_test):
-        axs[ii].set_title(f"$z={z}$", fontsize=16)
-        axs[ii].axhline(y=-1, ls="--", color="black")
-        axs[ii].axhline(y=1, ls="--", color="black")
-
-        # Calculate fractional error statistics
-        frac_err = np.nanmedian(fractional_errors[:, ii, :], 0)
-        frac_err_err = sigma68(fractional_errors[:, ii, :])
-
-        # Mask for k values greater than 0
-        k_plot = k_Mpc[(k_Mpc > 0)]
-
-        # Add a line plot with shaded error region to the current subplot
-        axs[ii].plot(k1d_sim, frac_err, color="crimson")
-        axs[ii].fill_between(
-            k1d_sim,
-            frac_err - frac_err_err,
-            frac_err + frac_err_err,
-            color="crimson",
-            alpha=0.2,
-        )
-
-        axs[ii].tick_params(axis="both", which="major", labelsize=18)
-
-    # Customize subplot appearance
-    for xx, ax in enumerate(axs):
-        if xx == len(axs) // 2:  # Centered y-label
-            ax.yaxis.set_label_coords(-0.1, 0.5)
-        ax.set_ylim(-5, 5)
-
-    axs[len(axs) - 1].set_xlabel(r"$k$ [1/Mpc]", fontsize=16)
-    axs[0].legend(fontsize=12)
-
-    # Adjust spacing between subplots
-    plt.tight_layout()
-    fig.text(
-        0,
-        0.5,
-        r"Error $P_{\rm 1D}$ [%]",
-        va="center",
-        rotation="vertical",
-        fontsize=16,
-    )
-
-    # Save the plot
-    # plt.savefig(savename, bbox_inches='tight')
-
 
 # %% [markdown]
 # # LOAD DATA
@@ -287,7 +138,6 @@ for iz, zdrop in enumerate(z_test):
         use_chains=False,
         chain_samp=100_000,
         folder_chains="/data/desi/scratch/jchavesm/p3d_fits_new/",
-        model_path=f"../data/emulator_models/mpg_dropz{zdrop}.pt",
     )
 
     for s in range(Nsim):
@@ -406,7 +256,7 @@ fractional_errors_sims = (p3ds_pred / p3ds_sims - 1) * 100
 fractional_errors_bench = (p3ds_arinyo / p3ds_sims - 1) * 100
 
 # %%
-plot_p3d_LzO(fractional_errors_arinyo)
+plot_p3d_LzO(Archive3D, fractional_errors_arinyo, z_test)
 
 # %%
 fractional_errors_arinyo_p1d = (p1ds_pred / p1ds_arinyo - 1) * 100
@@ -414,17 +264,5 @@ fractional_errors_sims_p1d = (p1ds_pred / p1ds_sims - 1) * 100
 fractional_errors_bench_p1d = (p1ds_arinyo / p1ds_sims - 1) * 100
 
 # %%
-# any simulation to get k1d_sim
-dict_sim = [
-    d
-    for d in Archive3D.training_data
-    if d["z"] == 3 and d["sim_label"] == f"mpg_4" and d["val_scaling"] == 1
-]
-like = Likelihood(dict_sim[0], Archive3D.rel_err_p3d, Archive3D.rel_err_p1d)
-k1d_mask = like.like.ind_fit1d.copy()
-k1d_sim = like.like.data["k1d"][k1d_mask]
-
-# %%
-plot_p1d_LzO(fractional_errors_sims_p1d)
-
+plot_p1d_LzO(Archive3D, fractional_errors_sims_p1d, z_test)
 # %%
