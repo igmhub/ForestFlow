@@ -106,9 +106,8 @@ p3d_emu = P3DEmulator(
     adamw=True,
     nLayers_inn=12,  # 15
     Archive=Archive3D,
-    use_chains=False,
     chain_samp=100_000,
-    folder_chains="/data/desi/scratch/jchavesm/p3d_fits_new/",
+    model_path="../data/emulator_models/mpg_hypercube.pt",
 )
 
 # %%

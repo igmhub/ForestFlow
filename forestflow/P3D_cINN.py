@@ -90,6 +90,7 @@ class P3DEmulator:
         model_path=None,
         drop_rescalings=False,
         Archive=None,
+        use_chains=False,
         chain_samp=100_000,
         Nrealizations=100,
     ):
@@ -107,6 +108,7 @@ class P3DEmulator:
         self.nLayers_inn = nLayers_inn
         self.train = train
         self.Nrealizations = Nrealizations
+        self.use_chains = use_chains
 
         self.batch_size = batch_size
         self.lr = lr
@@ -431,9 +433,6 @@ class P3DEmulator:
 
         # Set the median power spectrum and its covariance matrix
         p3d_arinyo = np.nanmedian(p3ds_pred, 0)
-        if nd2 != 0:
-            p3d_arinyo = p3d_arinyo.reshape(nd1, nd2)
-        out_dict["p3d"] = p3d_arinyo
 
         if return_cov:
             p3d_cov = get_covariance(p3ds_pred, p3d_arinyo)
@@ -441,6 +440,10 @@ class P3DEmulator:
             print(
                 "WARNING: Covariance matrix returned for p3d_arinyo.reshape(-1)"
             )
+
+        if nd2 != 0:
+            p3d_arinyo = p3d_arinyo.reshape(nd1, nd2)
+        out_dict["p3d"] = p3d_arinyo
 
         if kpar_Mpc is not None:
             p1ds_pred = np.zeros(shape=(Nrealizations, len(kpar_Mpc)))
@@ -517,7 +520,6 @@ class P3DEmulator:
     #         p1d_pred = like.like.get_model_1d(parameters=NF_arinyo)
     #         p1d_pred = p1d_pred[k1d_mask]
     #         return p1d_pred
-
 
     def _define_cINN_Arinyo(self, dim_inputSpace=8):
         """
