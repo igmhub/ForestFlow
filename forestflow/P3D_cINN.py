@@ -3,7 +3,6 @@ import torch
 from torch.utils.data import DataLoader, dataset, TensorDataset
 from torch import nn, optim
 
-
 # FrEIA imports
 import FrEIA.framework as Ff
 import FrEIA.modules as Fm
@@ -519,6 +518,7 @@ class P3DEmulator:
     #         p1d_pred = p1d_pred[k1d_mask]
     #         return p1d_pred
 
+
     def _define_cINN_Arinyo(self, dim_inputSpace=8):
         """
         Define a conditional invertible neural network (cINN) for Arinyo model.
@@ -621,6 +621,13 @@ class P3DEmulator:
 
             for cond, coeffs in loader:
                 optimizer.zero_grad()
+
+                # Sample from the chains if use_chains is True
+                if self.use_chains == True:
+                    idx = np.random.choice(
+                        self.chain_samp, size=2_000, replace=False
+                    )
+                    coeffs = coeffs[:, idx, :].mean(axis=1)
 
                 # Forward pass through the cINN
                 z, log_jac_det = self.emulator(coeffs, cond)

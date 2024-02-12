@@ -127,7 +127,6 @@ for ii, sim_label in enumerate(sim_labels):
     z_grid = [d["z"] for d in test_sim]
 
     for iz, z in enumerate(z_grid):
-        
         test_sim_z = [d for d in test_sim if d["z"] == z]
         p3d_arinyo_mean = p3d_emu.predict_P3D_Mpc(
             sim_label=sim_label, z=z, test_sim=test_sim_z, return_cov=False
@@ -168,7 +167,6 @@ for ii, sim_label in enumerate(sim_labels):
 # %% [markdown]
 # #### Loop over test sims, P1D and P3D from MCMC Arinyo
 
-# %% jupyter={"outputs_hidden": true}
 P3D_testsims_Arinyo = np.zeros((len(sim_labels), 11, 148))
 P1D_testsims_Arinyo = np.zeros((len(sim_labels), 11, 53))
 
@@ -216,7 +214,6 @@ p1d, k1d = p3d_emu.get_p1d_sim(test_sim)
 
 # %%
 fractional_error_P1D.shape
-
 # %% [markdown]
 # ## PLOT P1D
 
@@ -456,6 +453,5 @@ plt.ylabel('Emulated / MCMC  parameters', fontsize=16)
 
 plt.ylim(0,2)
 plt.show()
-
 
 # %%

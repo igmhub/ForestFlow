@@ -139,7 +139,6 @@ for s in range(Nsim):
         # p1d from sim
         p1d_sim, p1d_k = p3d_emu.get_p1d_sim(dict_sim)
 
-
         # p3d from sim
         p3d_sim = dict_sim[0]["p3d_Mpc"][p3d_emu.k_mask]
         p3d_sim = np.array(p3d_sim)
@@ -172,7 +171,6 @@ for s in range(Nsim):
         p3ds_pred[s, iz] = p3d_pred_median
         p1ds_pred[s, iz] = p1d_pred_median
     
-    #statistics
     print(
         "Mean fractional error P3D pred to Arinyo",
         ((p3ds_pred[s] / p3ds_arinyo[s] - 1) * 100).mean(),
@@ -246,5 +244,4 @@ fractional_errors_bench_p1d = (p1ds_arinyo / p1ds_sims - 1) * 100
 
 # %%
 plot_p1d_L1O(Archive3D, fractional_errors_sims_p1d, 'test.pdf')
-
 # %%

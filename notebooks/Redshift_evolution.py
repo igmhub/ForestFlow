@@ -11,7 +11,6 @@
 #     display_name: emulators
 #     language: python
 #     name: emulators
-# ---
 
 # %% [markdown]
 # # NOTEBOOK PRODUCING FIGURE X, Y P3D PAPER

@@ -106,7 +106,9 @@ p3d_emu = P3DEmulator(
     adamw=True,
     nLayers_inn=12,  # 15
     Archive=Archive3D,
-    model_path="../data/emulator_models/mpg_hypercube.pt",
+    use_chains=False,
+    chain_samp=100_000,
+    folder_chains="/data/desi/scratch/jchavesm/p3d_fits_new/",
 )
 
 # %%
@@ -270,5 +272,3 @@ out.keys()
 plt.loglog(kpar_Mpc, out['p1d'])
 plt.xlabel(r'$k_{\rm par}$')
 plt.ylabel(r'$P(k_{\rm par})$')
-
-# %%

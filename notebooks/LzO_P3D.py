@@ -135,7 +135,9 @@ for iz, zdrop in enumerate(z_test):
         adamw=True,
         nLayers_inn=12,  # 15
         Archive=Archive3D,
-        model_path=f"../data/emulator_models/mpg_dropz{zdrop}.pt",
+        use_chains=False,
+        chain_samp=100_000,
+        folder_chains="/data/desi/scratch/jchavesm/p3d_fits_new/",
     )
 
     for s in range(Nsim):
@@ -263,5 +265,4 @@ fractional_errors_bench_p1d = (p1ds_arinyo / p1ds_sims - 1) * 100
 
 # %%
 plot_p1d_LzO(Archive3D, fractional_errors_sims_p1d, z_test)
-
 # %%
