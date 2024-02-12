@@ -25,30 +25,38 @@ These are the parameters that describe each individual P3D(k, mu) power spectrum
 #### Tutorials:
 
 In the `Notebooks` folder, there are several tutorials one can run to learn how to use
-the emulators and archives. 
-Archive tutorial:TBD
-Emulator tutorial:Tutorial_ForestFlow.ipynb
+the emulators and archives.
+
+- Archive tutorial: notebooks/Tutorial_archive.ipynb
+- Emulator tutorial: notebooks/Tutorial_emulator.ipynb
 
 
 ## Installation
-(Last update Dec 9 2023)
+(Last update Jan 19 2024)
 
-- To install on NERSC, you first need to load python module with `module load python`. This is not necessary for personal computers. 
-
-- Create a new conda environment. It is usually better to follow python version one or two behind. In October 2023, latest is 3.11, so we recommend 3.10.
+- Create a new conda environment. It is usually better to follow python version one or two behind. In January 2024, the latest is 3.12, so we recommend 3.11.
 
 ```
-conda create -n forestflow python=3.10
+conda create -n forestflow python=3.11 camb
 conda activate forestflow
 ```
+- Install LaCE:
 
-- First clone the repo into your machine and perform an *editable* installation:
+```Follow the instructions from https://github.com/igmhub/LaCE```
+
+- Clone the ForestFlow repo and perform an *editable* installation:
 
 ```
-git clone git@github.com:igmhub/ForestFlow.git
+git clone https://github.com/igmhub/ForestFlow.git
 cd ForestFlow
-python setup.py install
+pip install -e .[jupyter]
 ``` 
+
+- Generate notebooks:
+
+```
+jupytext --to ipynb notebooks/*.py
+```
 
 - If you want to use notebooks via JupyterHub, you'll also need to download `ipykernel`:
 
@@ -56,25 +64,3 @@ python setup.py install
 pip install ipykernel
 python -m ipykernel install --user --name forestflow --display-name forestflow
 ```
-
-- REQUIREMENTS:
-
-```numpy==1.24.4
-pandas
-scipy
-h5py
-scikit_learn
-matplotlib
-configobj
-camb>=1.1.3
-FreIA`
-torch
-corner
-emcee
-Ìnstalling ForestFlow also requires installing LaCE (https://github.com/igmhub/LaCE)```
-
-
-
-
-
-
