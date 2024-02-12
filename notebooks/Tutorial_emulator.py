@@ -271,5 +271,3 @@ out.keys()
 plt.loglog(kpar_Mpc, out['p1d'])
 plt.xlabel(r'$k_{\rm par}$')
 plt.ylabel(r'$P(k_{\rm par})$')
-
-# %%
