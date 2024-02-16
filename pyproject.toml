@@ -44,6 +44,7 @@ jupyter = [
 
 [tool.setuptools.packages.find]
 include = ["forestflow"]
+namespaces = false
 
 [project.urls]
 Homepage="https://github.com/igmhub/ForestFlow"
