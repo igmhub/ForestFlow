@@ -8,10 +8,9 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.14.5
 #   kernelspec:
-#     display_name: forestflow
+#     display_name: emulators
 #     language: python
-#     name: forestflow
-# ---
+#     name: emulators
 
 # %% [markdown]
 # # NOTEBOOK PRODUCING FIGURE X, Y P3D PAPER
@@ -77,10 +76,7 @@ p3d_emu = P3DEmulator(
     adamw=True,
     nLayers_inn=12,  # 15
     Archive=Archive3D,
-    use_chains=False,
-    chain_samp=100_000,
     Nrealizations=1000,
-    folder_chains="/data/desi/scratch/jchavesm/p3d_fits_new/",
     model_path="../data/emulator_models/mpg_hypercube.pt",
 )
 
@@ -113,9 +109,9 @@ Arinyo_coeffs_central_emulator = np.zeros_like(Arinyo_coeffs_central)
 for iz, z in enumerate(z_central):
     test_sim_z = [d for d in test_sim if d["z"] == z]
 
-    testing_condition = p3d_emu._get_test_condition(test_sim_z)
+    #testing_condition = p3d_emu._get_test_condition(test_sim_z)
     Arinyo_mean = p3d_emu.predict_Arinyos(
-        testing_condition,
+        test_sim_z,
         true_coeffs=None,
         plot=False,
         return_all_realizations=False,
@@ -126,9 +122,6 @@ for iz, z in enumerate(z_central):
 
 # %% [markdown]
 # ## PLOT
-
-# %% jupyter={"outputs_hidden": true}
-test_sim[0]
 
 # %%
 colors = [

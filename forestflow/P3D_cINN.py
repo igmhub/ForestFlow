@@ -7,11 +7,14 @@ from torch import nn, optim
 import FrEIA.framework as Ff
 import FrEIA.modules as Fm
 
-# lace modeles
+# lace models
+from lace.cosmo import camb_cosmo, fit_linP
+
+# forestflow models
 from forestflow.model_p3d_arinyo import ArinyoModel
-from lace.cosmo.camb_cosmo import get_cosmology
-from forestflow.archive import GadgetArchive3D
+from forestflow.archive import GadgetArchive3D, get_camb_interp
 from forestflow.likelihood import Likelihood
+from forestflow.utils import get_covariance, sort_dict, params_numpy2dict
 
 
 import numpy as np
@@ -59,8 +62,6 @@ class P3DEmulator:
         save_path (str): Path to save the trained model. Default is None.
         model_path (str): Path to a pretrained model. Default is None.
         drop_rescalings (bool): Whether to drop the optical-depth rescalings. Default is False.
-        use_chains (bool): Whether to use the MCMC chains instead of the bestfitting Arinyo parameters. Default is False.
-        folder_chains (str): Path to the folder containing chains. Default is '/data/desi/scratch/jchavesm/p3d_fits_new/'.
         Archive: Archive3D object
         chain_samp (int): Chain sampling size. Default is 100000.
         Nrealizations (int): Number of realizations. Default is 100.
@@ -88,9 +89,8 @@ class P3DEmulator:
         save_path=None,
         model_path=None,
         drop_rescalings=False,
-        use_chains=False,
-        folder_chains="/data/desi/scratch/jchavesm/p3d_fits_new/",
         Archive=None,
+        use_chains=False,
         chain_samp=100_000,
         Nrealizations=100,
     ):
@@ -108,12 +108,11 @@ class P3DEmulator:
         self.nLayers_inn = nLayers_inn
         self.train = train
         self.Nrealizations = Nrealizations
+        self.use_chains = use_chains
 
         self.batch_size = batch_size
         self.lr = lr
         self.weight_decay = weight_decay
-        self.use_chains = use_chains
-        self.folder_chains = folder_chains
         self.archive = Archive
         self.chain_samp = chain_samp
         self.Arinyo_params = [
@@ -126,21 +125,20 @@ class P3DEmulator:
             "kp",
             "q2",
         ]
+        self.cosmo_fields = [
+            "H0",
+            "omch2",
+            "ombh2",
+            "mnu",
+            "omk",
+            "As",
+            "ns",
+            "nrun",
+            "w",
+        ]
         self.folder_interp = "../data/plin_interp/"
         self.model_path = model_path
         self.save_path = save_path
-
-        if self.use_chains == True:
-            if self.archive == None:
-                raise ValueError(
-                    "Use_chains==True requires loadinig an archive"
-                )
-
-            print(
-                "Warning: using the chains takes longer "
-                "Loading the chains is around 3 minutes. "
-                "Be pacient!"
-            )
 
         # Set random seeds for reproducibility
         torch.manual_seed(32)
@@ -159,50 +157,10 @@ class P3DEmulator:
         self.k_Mpc_masked = k_Mpc[self.k_mask]
         self.mu_masked = mu[self.k_mask]
 
+        self.pk_fid = self.archive.pk_fid
+        self.pk_fid_p1d = self.archive.pk_fid_p1d
+
         self._train_Arinyo()
-
-    def _params_numpy2dict(
-        self,
-        array,
-        key_strings=["bias", "beta", "q1", "kvav", "av", "bv", "kp", "q2"],
-    ):
-        """
-        Convert a numpy array of parameters to a dictionary.
-
-        Args:
-            array (numpy.ndarray): Array of parameters.
-            key_strings (list): List of strings for dictionary keys. Default is ["bias", "beta", "q1", "kvav", "av", "bv", "kp", "q2"].
-
-        Returns:
-            dict: Dictionary with key-value pairs corresponding to parameters.
-        """
-        # Create a dictionary with key strings and array elements
-        array_dict = {}
-        for key, value in zip(key_strings, array):
-            array_dict[key] = value
-
-        return array_dict
-
-    def _sort_dict(self, dct, keys):
-        """
-        Sort a list of dictionaries based on specified keys.
-
-        Args:
-            dct (list): List of dictionaries to be sorted.
-            keys (list): List of keys to sort the dictionaries by.
-
-        Returns:
-            list: The sorted list of dictionaries.
-        """
-        for d in dct:
-            sorted_d = {
-                k: d[k] for k in keys
-            }  # create a new dictionary with only the specified keys
-            d.clear()  # remove all items from the original dictionary
-            d.update(
-                sorted_d
-            )  # update the original dictionary with the sorted dictionary
-        return dct
 
     def _get_training_data(self):
         """
@@ -226,7 +184,7 @@ class P3DEmulator:
         ]
 
         # Sort the training data based on self.emuparams
-        training_data = self._sort_dict(training_data, self.emuparams)
+        training_data = sort_dict(training_data, self.emuparams)
 
         # Convert the sorted training data to a list of lists
         training_data = [
@@ -251,11 +209,11 @@ class P3DEmulator:
 
         return training_data
 
-    def _get_test_condition(self, test_data):
+    def _get_test_condition(self, emu_params):
         """
-        Extract and sort test condition from given test data.
+        Extract and sort test condition from given emu_params.
 
-        This function takes a list of dictionaries (test_data) containing emulator parameters
+        This function takes a list of dictionaries or dictionary (emu_params) containing emulator parameters
         and extracts the relevant parameters specified by self.archive.emu_params. It then sorts
         the extracted parameters based on the emulator parameters and returns them as a numpy array.
 
@@ -269,14 +227,14 @@ class P3DEmulator:
         condition = [
             {
                 key: value
-                for key, value in test_data[i].items()
+                for key, value in emu_params.items()
                 if key in self.archive.emu_params
             }
-            for i in range(len(test_data))
+            for i in range(len(emu_params))
         ]
 
         # Sort the conditions based on emulator parameters
-        condition = self._sort_dict(condition, self.archive.emu_params)
+        condition = sort_dict(condition, self.archive.emu_params)
 
         # Convert the sorted conditions to a list of values
         condition = [list(condition[i].values()) for i in range(len(condition))]
@@ -307,7 +265,7 @@ class P3DEmulator:
         ]
 
         # Sort the Arinyo parameters based on self.Arinyo_params
-        training_label = self._sort_dict(training_label, self.Arinyo_params)
+        training_label = sort_dict(training_label, self.Arinyo_params)
 
         # Convert the sorted Arinyo parameters to a list of lists
         training_label = [
@@ -346,7 +304,19 @@ class P3DEmulator:
 
         return Plin
 
-    def predict_P3D_Mpc(self, sim_label, z, test_sim, return_cov=True):
+    def predict_P3D_Mpc(
+        self,
+        z,
+        emu_params,
+        sim_label=None,
+        cosmo=None,
+        k_Mpc=None,
+        mu=None,
+        kpar_Mpc=None,
+        return_cov=True,
+        test_arinyo=None,
+        kp_Mpc=0.7,
+    ):
         """
         Predict the power spectrum using the emulator for a given simulation label and redshift.
 
@@ -356,250 +326,200 @@ class P3DEmulator:
         Args:
             sim_label (str): The simulation label.
             z (float): The redshift.
-            test_sim (list): List of dictionaries containing emulator parameters for test data.
+            emu_params (list): List of dictionaries containing emulator parameters for test data.
             return_cov (bool, optional): Whether to return the covariance matrix. Default is True.
 
         Returns:
             np.array: Predicted power spectrum.
             np.array or None: Covariance matrix if return_cov is True, otherwise None.
         """
-        # Extract simulation index from the given simulation label
-        underscore_index = sim_label.find("_")
-        s = sim_label[underscore_index + 1 :]
-        flag = f"Plin_interp_sim{s}.npy"
 
-        # Load pre-interpolated matter power spectrum for the specified simulation
-        file_plin_inter = self.folder_interp + flag
-        pk_interp = np.load(file_plin_inter, allow_pickle=True).all()
+        if (cosmo is None) and (sim_label is None):
+            raise ValueError("Either cosmo or sim_label must be provided.")
+        elif (cosmo is not None) and (sim_label is not None):
+            raise ValueError("Only one of cosmo or sim_label must be provided.")
+
+        if test_arinyo is not None:
+            print(
+                "Warning: Arinyo parameters provided. P3D will be computed using the provided parameters instead of the emulator prediction."
+            )
+            input_tag = "arinyo"
+        else:
+            input_tag = "cosmo"
+
+        if (k_Mpc is None) and (mu is None):
+            k_Mpc = self.k_Mpc_masked
+            mu = self.mu_masked
+            nd1 = k_Mpc.shape[0]
+            nd2 = 0
+        else:
+            if (len(k_Mpc.shape) == 2) & (len(mu.shape) == 2):
+                if (k_Mpc.shape[0] != mu.shape[0]) or (
+                    k_Mpc.shape[1] != mu.shape[1]
+                ):
+                    raise ValueError("k and mu must have the same shape.")
+                else:
+                    nd1 = k_Mpc.shape[0]
+                    nd2 = k_Mpc.shape[1]
+                    k_Mpc = k_Mpc.reshape(-1)
+                    mu = mu.reshape(-1)
+            elif (len(k_Mpc.shape) == 1) & (len(mu.shape) == 1):
+                if k_Mpc.shape[0] != mu.shape[0]:
+                    raise ValueError("k and mu must have the same shape.")
+                else:
+                    nd1 = k_Mpc.shape[0]
+                    nd2 = 0
+            else:
+                raise ValueError("k and mu must be 1D or 2D arrays.")
+
+        if sim_label is not None:
+            # Load the pre-interpolated matter power spectrum
+            # Extract simulation index from the given simulation label
+            underscore_index = sim_label.find("_")
+            s = sim_label[underscore_index + 1 :]
+            flag = f"Plin_interp_sim{s}.npy"
+
+            # Load pre-interpolated matter power spectrum for the specified simulation
+            file_plin_inter = self.folder_interp + flag
+            pk_interp = np.load(file_plin_inter, allow_pickle=True).all()
+        else:
+            # Compute the matter power spectrum using CAMB
+            for key in self.cosmo_fields:
+                if key not in cosmo.keys():
+                    raise ValueError("cosmo must contain:", self.cosmo_fields)
+            pk_interp = get_camb_interp("a", {"cosmo_params": cosmo})
+            # Adjusting linP values to this cosmo
+            sim_cosmo = camb_cosmo.get_cosmology(**cosmo)
+            linP_zs = fit_linP.get_linP_Mpc_zs(sim_cosmo, [z], kp_Mpc)[0]
+            if (emu_params["Delta2_p"] != linP_zs["Delta2_p"]) or (
+                emu_params["n_p"] != linP_zs["n_p"]
+            ):
+                print(
+                    "WARNING: adjusting Delta2_p and n_p so these are consistent with the target cosmology"
+                )
+                print(
+                    "Delta2_p: ",
+                    emu_params["Delta2_p"],
+                    "->",
+                    linP_zs["Delta2_p"],
+                )
+                emu_params["Delta2_p"] = linP_zs["Delta2_p"]
+                print("n_p: ", emu_params["n_p"], "->", linP_zs["n_p"])
+                emu_params["n_p"] = linP_zs["n_p"]
 
         # Initialize Arinyo model with the loaded matter power spectrum
         model_Arinyo = ArinyoModel(camb_pk_interp=pk_interp)
 
-        # Extract and sort emulator parameters from the test data
-        testing_condition = self._get_test_condition(test_sim)
+        if input_tag == "cosmo":
+            # Predict Arinyo coefficients for the given test conditions
+            coeffs_all, coeffs_mean = self.predict_Arinyos(
+                emu_params, return_all_realizations=True
+            )
+            Nrealizations = self.Nrealizations
+        elif input_tag == "arinyo":
+            coeffs_all, coeffs_mean = test_arinyo, test_arinyo.mean(0)
+            Nrealizations = len(test_arinyo)
 
-        # Predict Arinyo coefficients for the given test conditions
-        coeffs_all, coeffs_mean = self.predict_Arinyos(
-            testing_condition, return_all_realizations=True
-        )
+        out_dict = {}
+        out_dict["coeffs_Arinyo"] = coeffs_mean
+        out_dict["Plin"] = model_Arinyo.linP_Mpc(z, k_Mpc)
 
         # Predict power spectrum using Arinyo model with predicted coefficients
+        # Predict multiple realizations and calculate the covariance matrix
+        p3ds_pred = np.zeros(shape=(Nrealizations, len(k_Mpc)))
+        for r in range(Nrealizations):
+            arinyo_params = params_numpy2dict(coeffs_all[r])
+            p3ds_pred[r] = model_Arinyo.P3D_Mpc(z, k_Mpc, mu, arinyo_params)
+
+        # Set the median power spectrum and its covariance matrix
+        p3d_arinyo = np.nanmedian(p3ds_pred, 0)
+
         if return_cov:
-            # If return_cov is True, predict multiple realizations and calculate the covariance matrix
-            p3ds_pred = np.zeros(
-                shape=(self.Nrealizations, len(self.k_Mpc_masked))
+            p3d_cov = get_covariance(p3ds_pred, p3d_arinyo)
+            out_dict["p3d_cov"] = p3d_cov
+            print(
+                "WARNING: Covariance matrix returned for p3d_arinyo.reshape(-1)"
             )
-            for r in range(self.Nrealizations):
-                arinyo_params = self._params_numpy2dict(coeffs_all[r])
-                p3d_pred = model_Arinyo.P3D_Mpc(
-                    z, self.k_Mpc_masked, self.mu_masked, arinyo_params
+
+        if nd2 != 0:
+            p3d_arinyo = p3d_arinyo.reshape(nd1, nd2)
+        out_dict["p3d"] = p3d_arinyo
+
+        if kpar_Mpc is not None:
+            p1ds_pred = np.zeros(shape=(Nrealizations, len(kpar_Mpc)))
+            for r in range(Nrealizations):
+                arinyo_params = params_numpy2dict(coeffs_all[r])
+                p1ds_pred[r] = model_Arinyo.P1D_Mpc(
+                    z, kpar_Mpc, parameters=arinyo_params
                 )
-                p3ds_pred[r] = p3d_pred
+            p1d_arinyo = np.nanmedian(p1ds_pred, 0)
+            out_dict["p1d"] = p1d_arinyo
+            if return_cov:
+                p1d_cov = get_covariance(p1ds_pred, p1d_arinyo)
+                out_dict["p1d_cov"] = p1d_cov
 
-            # Return the median power spectrum and its covariance matrix
-            p3d_arinyo = np.nanmedian(p3ds_pred, 0)
-            p3d_cov = np.cov(p3ds_pred.T)
-            return p3d_arinyo, p3d_cov
+        return out_dict
 
-        else:
-            # If return_cov is False, predict the power spectrum using the mean coefficients
-            NF_arinyo = self._params_numpy2dict(coeffs_mean)
-            p3d_arinyo = model_Arinyo.P3D_Mpc(
-                z, self.k_Mpc_masked, self.mu_masked, NF_arinyo
-            )
-            return p3d_arinyo
+    # def predict_P1D_Mpc(
+    #     self, sim_label, z, test_sim, test_arinyo=None, return_cov=True
+    # ):
+    #     if test_arinyo is not None:
+    #         print(
+    #             "Warning: Arinyo parameters provided. P1D will be computed using the provided parameters instead of the emulator prediction."
+    #         )
+    #         input_tag = "arinyo"
+    #     else:
+    #         input_tag = "cosmo"
 
-    def predict_P1D_Mpc(self, sim_label, z, test_sim, return_cov=True):
-        """
-        Predict the one-dimensional matter power spectrum using the emulator for a given simulation label and redshift.
+    #     # Extract simulation index from the given simulation label
+    #     underscore_index = sim_label.find("_")
+    #     s = sim_label[underscore_index + 1 :]
+    #     flag = f"Plin_interp_sim{s}.npy"
 
-        This function predicts the one-dimensional matter power spectrum using the emulator for a specified simulation
-        label and redshift. It utilizes the Arinyo model and likelihood calculations to generate predictions based on
-        the emulator coefficients.
+    #     # Load pre-interpolated matter power spectrum for the specified simulation
+    #     file_plin_inter = self.folder_interp + flag
+    #     pk_interp = np.load(file_plin_inter, allow_pickle=True).all()
 
-        Args:
-            sim_label (str): The simulation label.
-            z (float): The redshift.
-            test_sim (list): List of dictionaries containing emulator parameters for test data.
-            return_cov (bool, optional): Whether to return the covariance matrix. Default is True.
+    #     # Initialize likelihood with test data and relative errors
+    #     like = Likelihood(
+    #         test_sim, self.archive.rel_err_p3d, self.archive.rel_err_p1d
+    #     )
 
-        Returns:
-            np.array: Predicted one-dimensional power spectrum.
-            np.array or None: Covariance matrix if return_cov is True, otherwise None.
-        """
-        # Extract simulation index from the given simulation label
-        underscore_index = sim_label.find("_")
-        s = sim_label[underscore_index + 1 :]
-        flag = f"Plin_interp_sim{s}.npy"
+    #     # Create a mask for the 1D power spectrum fit
+    #     k1d_mask = like.like.ind_fit1d.copy()
+    #     self.k1d_mask = k1d_mask
 
-        # Load pre-interpolated matter power spectrum for the specified simulation
-        file_plin_inter = self.folder_interp + flag
-        pk_interp = np.load(file_plin_inter, allow_pickle=True).all()
+    #     if input_tag == "cosmo":
+    #         # Predict Arinyo coefficients for the given test conditions
+    #         coeffs_all, coeffs_mean = self.predict_Arinyos(
+    #             emu_params, return_all_realizations=True
+    #         )
+    #         Nrealizations = self.Nrealizations
+    #     elif input_tag == "arinyo":
+    #         coeffs_all, coeffs_mean = test_arinyo, test_arinyo.mean(0)
+    #         Nrealizations = len(test_arinyo)
 
-        # Initialize likelihood with test data and relative errors
-        like = Likelihood(
-            test_sim[0], self.archive.rel_err_p3d, self.archive.rel_err_p1d
-        )
+    #     # Predict one-dimensional power spectrum using Arinyo model with predicted coefficients
+    #     if return_cov:
+    #         # If return_cov is True, predict multiple realizations and calculate the covariance matrix
+    #         p1ds_pred = np.zeros(shape=(Nrealizations, 53))
+    #         for r in range(Nrealizations):
+    #             arinyo_params = params_numpy2dict(coeffs_all[r])
+    #             p1d_pred = like.like.get_model_1d(parameters=arinyo_params)
+    #             p1d_pred = p1d_pred[k1d_mask]
+    #             p1ds_pred[r] = p1d_pred
 
-        # Create a mask for the 1D power spectrum fit
-        k1d_mask = like.like.ind_fit1d.copy()
+    #         # Return the median one-dimensional power spectrum and its covariance matrix
+    #         p1d_pred = np.nanmedian(p1ds_pred, 0)
+    #         p1d_cov = get_covariance(p1ds_pred, p1d_pred)
+    #         return p1d_pred, p1d_cov
 
-        # Extract and sort emulator parameters from the test data
-        testing_condition = self._get_test_condition(test_sim)
-
-        # Predict Arinyo coefficients for the given test conditions
-        coeffs_all, coeffs_mean = self.predict_Arinyos(
-            testing_condition, return_all_realizations=True
-        )
-
-        # Predict one-dimensional power spectrum using Arinyo model with predicted coefficients
-        if return_cov:
-            # If return_cov is True, predict multiple realizations and calculate the covariance matrix
-            p1ds_pred = np.zeros(shape=(self.Nrealizations, 53))
-            for r in range(self.Nrealizations):
-                arinyo_params = self._params_numpy2dict(coeffs_all[r])
-                p1d_pred = like.like.get_model_1d(parameters=arinyo_params)
-                p1d_pred = p1d_pred[k1d_mask]
-                p1ds_pred[r] = p1d_pred
-
-            # Return the median one-dimensional power spectrum and its covariance matrix
-            p1d_pred = np.nanmedian(p1ds_pred, 0)
-            p1d_cov = np.cov(p1ds_pred.T)
-            return p1d_pred, p1d_cov
-
-        else:
-            # If return_cov is False, predict the one-dimensional power spectrum using the mean coefficients
-            NF_arinyo = self._params_numpy2dict(coeffs_mean)
-            p1d_pred = like.like.get_model_1d(parameters=NF_arinyo)
-            p1d_pred = p1d_pred[k1d_mask]
-            return p1d_pred
-
-    def _load_Arinyo_chains_training(self):
-        """
-        Load Arinyo model chains from stored files for all the training LH simulations.
-
-        This function loads Arinyo model chains corresponding to different simulations from saved files.
-        It extracts relevant information such as simulation label, scaling factor, redshift, and other parameters
-        to construct the file tag for each simulation. The loaded chains are then processed and returned.
-
-        Returns:
-            np.array: Array containing Arinyo model chains for all simulations.
-        """
-        print("Loading Arinyo chains")
-
-        # Initialize array to store Arinyo model chains
-        chains = np.zeros(shape=(len(self.training_data), self.chain_samp, 8))
-
-        # Loop over simulations in the training data
-        for ind_book in range(0, len(self.training_data)):
-            sim_label = self.training_data[ind_book]["sim_label"]
-            scale_tau = self.training_data[ind_book]["val_scaling"]
-            ind_z = self.training_data[ind_book]["z"]
-
-            # Construct file tag based on simulation parameters
-            tag = (
-                "fit_sim"
-                + sim_label[4:]
-                + "_tau"
-                + str(np.round(scale_tau, 2))
-                + "_z"
-                + str(ind_z)
-                + "_kmax3d"
-                + str(self.archive.kmax_3d)
-                + "_noise3d"
-                + str(self.archive.noise_3d)
-                + "_kmax1d"
-                + str(self.archive.kmax_1d)
-                + "_noise1d"
-                + str(self.archive.noise_1d)
-            )
-
-            # Load Arinyo model chain from file
-            file_arinyo = np.load(self.folder_chains + tag + ".npz")
-            chain = file_arinyo["chain"].copy()
-
-            # Ensure non-positive values for the first parameter
-            chain[:, 0] = -np.abs(chain[:, 0])
-
-            # Randomly sample from the loaded chain
-            idx = np.random.randint(len(chain), size=(self.chain_samp))
-            chain_sampled = chain[idx]
-            chains[ind_book] = chain_sampled
-
-        # Apply logarithmic transformations to specified parameters
-        chains[:, :, 2] = np.log(chains[:, :, 2])
-        chains[:, :, 6] = np.log(chains[:, :, 6])
-        chains[:, :, 7] = np.log(chains[:, :, 7])
-
-        print("Chains loaded")
-        return chains
-
-    def _load_Arinyo_chains_sim(self, sim_label, z):
-        """
-        Load Arinyo model chains from stored files for a single simulation.
-
-        This function loads Arinyo model chains corresponding to different simulations from saved files.
-        It extracts relevant information such as simulation label, scaling factor, redshift, and other parameters
-        to construct the file tag for each simulation. The loaded chains are then processed and returned.
-
-        Returns:
-            np.array: Array containing Arinyo model chains for all simulations.
-        """
-        print("Loading Arinyo chains")
-
-        scale_tau = 1
-        ind_z = z
-
-        # Construct file tag based on simulation parameters
-        tag = (
-            "fit_sim"
-            + sim_label[4:]
-            + "_tau"
-            + str(np.round(scale_tau, 2))
-            + "_z"
-            + str(ind_z)
-            + "_kmax3d"
-            + str(self.archive.kmax_3d)
-            + "_noise3d"
-            + str(self.archive.noise_3d)
-            + "_kmax1d"
-            + str(self.archive.kmax_1d)
-            + "_noise1d"
-            + str(self.archive.noise_1d)
-        )
-
-        # Load Arinyo model chain from file
-        file_arinyo = np.load(self.folder_chains + tag + ".npz")
-        chain = file_arinyo["chain"].copy()
-
-        # Ensure non-positive values for the first parameter
-        chain[:, 0] = -np.abs(chain[:, 0])
-
-        # Randomly sample from the loaded chain
-        idx = np.random.randint(len(chain), size=(self.chain_samp))
-        chain_sampled = chain[idx]
-
-        # Apply logarithmic transformations to specified parameters
-        chain_sampled[:, 2] = np.log(chain_sampled[:, 2])
-        chain_sampled[:, 6] = np.log(chain_sampled[:, 6])
-        chain_sampled[:, 7] = np.log(chain_sampled[:, 7])
-
-        print("Chains loaded")
-        return chain_sampled
-
-    def _get_Arinyo_chains(self):
-        """
-        Load and convert Arinyo model chains into torch.Tensor.
-
-        This function utilizes the _load_Arinyo_chains function to load Arinyo model chains,
-        and then converts them into torch.Tensor format before returning.
-
-        Returns:
-            torch.Tensor: Tensor containing Arinyo model chains.
-        """
-        chains = self._load_Arinyo_chains_training()
-        chains = torch.Tensor(chains)
-        return chains
+    #     else:
+    #         # If return_cov is False, predict the one-dimensional power spectrum using the mean coefficients
+    #         NF_arinyo = params_numpy2dict(coeffs_mean)
+    #         p1d_pred = like.like.get_model_1d(parameters=NF_arinyo)
+    #         p1d_pred = p1d_pred[k1d_mask]
+    #         return p1d_pred
 
     def _define_cINN_Arinyo(self, dim_inputSpace=8):
         """
@@ -664,10 +584,7 @@ class P3DEmulator:
         self.emulator.apply(init_xavier)
 
         # Get Arinyo coefficients for training
-        if self.use_chains == False:
-            Arinyo_coeffs = self._get_Arinyo_params()
-        else:
-            Arinyo_coeffs = self._get_Arinyo_chains()
+        Arinyo_coeffs = self._get_Arinyo_params()
 
         # Create a PyTorch dataset and loader for training
         trainig_dataset = TensorDataset(training_data, Arinyo_coeffs)
@@ -743,7 +660,7 @@ class P3DEmulator:
 
     def predict_Arinyos(
         self,
-        input_emu,
+        emu_params,
         plot=False,
         true_coeffs=None,
         return_all_realizations=False,
@@ -761,6 +678,9 @@ class P3DEmulator:
             Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]: Arinyo coefficient predictions. If return_all_realizations is True, returns a tuple with all realizations and the mean.
         """
         self.emulator = self.emulator.eval()
+
+        # Extract and sort emulator parameters from the test data
+        input_emu = self._get_test_condition(emu_params)
 
         # Normalize the input data
         test_data = np.array(input_emu)
@@ -840,3 +760,13 @@ class P3DEmulator:
             return Arinyo_preds, Arinyo_mean
         else:
             return Arinyo_mean
+
+    def get_p1d_sim(self, dict_sim):
+        like = Likelihood(
+            dict_sim[0], self.archive.rel_err_p3d, self.archive.rel_err_p1d
+        )
+        k1d_mask = like.like.ind_fit1d.copy()
+        p1d_sim = like.like.data["p1d"][k1d_mask]
+        p1d_k = dict_sim[0]["k_Mpc"][k1d_mask]
+
+        return p1d_sim, p1d_k

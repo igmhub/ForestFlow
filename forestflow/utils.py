@@ -274,7 +274,7 @@ def memorize(func):
     return wrapper
 
 
-def _sort_dict(dct, keys):
+def sort_dict(dct, keys):
     """
     Sort a list of dictionaries based on specified keys.
 
@@ -294,3 +294,38 @@ def _sort_dict(dct, keys):
             sorted_d
         )  # update the original dictionary with the sorted dictionary
     return dct
+
+def get_covariance(x,y, return_corr = False):
+    cov =  1/ (len(x)-1) * np.einsum('ij,jk ->ik',(x - y[None,:]).T,(x - y[None,:]))
+    corr =np.corrcoef(cov)
+    if return_corr:
+        return cov, corr
+    else:
+        return cov
+    
+def params_numpy2dict(
+    array,
+    key_strings=["bias", "beta", "q1", "kvav", "av", "bv", "kp", "q2"],
+):
+    """
+    Convert a numpy array of parameters to a dictionary.
+
+    Args:
+        array (numpy.ndarray): Array of parameters.
+        key_strings (list): List of strings for dictionary keys. Default is ["bias", "beta", "q1", "kvav", "av", "bv", "kp", "q2"].
+
+    Returns:
+        dict: Dictionary with key-value pairs corresponding to parameters.
+    """
+    # Create a dictionary with key strings and array elements
+    array_dict = {}
+    for key, value in zip(key_strings, array):
+        array_dict[key] = value
+
+    return array_dict
+
+def sigma68(data):
+    return 0.5 * (
+        np.nanquantile(data, q=0.84, axis=0)
+        - np.nanquantile(data, q=0.16, axis=0)
+    )
