@@ -5,12 +5,11 @@ def get_Px(
     kpars,
     arinyo,
     z,
-    fast=False,
     min_rperp=0.01,
     max_rperp=30,
     min_kperp=10.0**-20,
     max_kperp=10.0**3,
-    Nsteps_kperp=5000,
+    Nsteps_kperp=2e16,
     trans_to_p1d=True,
     fast_transition=False,
     params=None,
@@ -24,7 +23,6 @@ def get_Px(
         params (dictionary): parameters for the Arinyo parameters. If not given, they will be set to default values
         z (float): single redshift to evaluate
     Optional Parameters:
-        fast (bool): if true, accuracy is <0.1% and the runtime is ~0.8s for 100 kpar values and all other default settings. If false, accuracy is <1% and the runtime is ~0.25s
         min_rperp, max_rperp (float): desired range of rperp values to return
         min_kperp, max_kperp (float): range of kperp values to use in the calculation. Decreasing this range can cause unwanted artifacts
         Nsteps_kperp (int): number of kperps for the hankl transform (and number of output rperp). Decreasing this speeds up calculation but decreases accuracy
@@ -41,14 +39,8 @@ def get_Px(
 
     if params is None:
         params = arinyo.default_params
-    if fast:
-        Nsteps_kperp = 1000
     if min_rperp > 0.08:
         trans_to_p1d = False  # not necessary to transition to the P1D result if minimum requested rperp is larger than 0.08
-
-    if min_rperp > 0.2 and fast:
-        Nsteps_kperp = 500  # speed it up because we will cut out the range of low-rperp oscillations
-
     Px_per_kpar = []
     for kpar in kpars:  # for each value of k parallel to evaluate Px at
         kperps = np.logspace(
@@ -60,11 +52,11 @@ def get_Px(
         k = np.sqrt(kpars_prime**2 + kperps**2)  # get the corresponding k array
         mu = kpars_prime / k  # array of corresponding mu
         P3D = arinyo.P3D_Mpc(z, k, mu, params)  # get the P3D
-        func = P3D * 0.5 * np.sqrt(kperps / (2 * np.pi))
+        func = P3D * kperps
         rperp, LHS = hankl.FFTLog(
-            kperps, func, q=0, mu=0.5
+            kperps, func, q=0, mu=0
         )  # returns an array of log-spaced rperps, and the Hankel Transform
-        Px = LHS / (rperp ** (3 / 2))  # Divide out by remaining factor to get Px
+        Px = LHS / rperp / (2*np.pi)  # Divide out by remaining factor to get Px
         # transition
         if trans_to_p1d:
             p1d = arinyo.P1D_Mpc(z, np.array([kpar]), parameters=params)
