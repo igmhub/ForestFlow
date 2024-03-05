@@ -6,11 +6,11 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.16.1
 #   kernelspec:
-#     display_name: emulators
+#     display_name: Python 3 (ipykernel)
 #     language: python
-#     name: emulators
+#     name: python3
 # ---
 
 # %% [markdown]
@@ -84,18 +84,23 @@ k_mask = (k_Mpc < 4) & (k_Mpc > 0)
 k_Mpc = k_Mpc[k_mask]
 mu = mu[k_mask]
 
+k_p1d_Mpc = Archive3D.training_data[0]["k_Mpc"]
+k1d_mask = (k_p1d_Mpc < 5) & (k_p1d_Mpc > 0)
+k_p1d_Mpc = k_p1d_Mpc[k1d_mask]
+norm = k_p1d_Mpc / np.pi
+
 # %% [markdown]
 # ## LEAVE ONE OUT TEST
 
-# %% jupyter={"outputs_hidden": true}
-p3ds_pred = np.zeros(shape=(Nsim, Nz, 148))
-p1ds_pred = np.zeros(shape=(Nsim, Nz, 53))
+# %%
+# p3ds_pred = np.zeros(shape=(Nsim, Nz, k_Mpc.shape[0]))
+# p1ds_pred = np.zeros(shape=(Nsim, Nz, k_p1d_Mpc.shape[0]))
 
-p3ds_arinyo = np.zeros(shape=(Nsim, Nz, 148))
-p1ds_arinyo = np.zeros(shape=(Nsim, Nz, 53))
+p3ds_arinyo = np.zeros(shape=(Nsim, Nz, k_Mpc.shape[0]))
+p1ds_arinyo = np.zeros(shape=(Nsim, Nz, k_p1d_Mpc.shape[0]))
 
-p1ds_sims = np.zeros(shape=(Nsim, Nz, 53))
-p3ds_sims = np.zeros(shape=(Nsim, Nz, 148))
+p3ds_sims = np.zeros(shape=(Nsim, Nz, k_Mpc.shape[0]))
+p1ds_sims = np.zeros(shape=(Nsim, Nz, k_p1d_Mpc.shape[0]))
 
 
 for s in range(Nsim):
@@ -122,10 +127,10 @@ for s in range(Nsim):
 
     for iz, z in enumerate(zs):
         # load arinyo module
-        flag = f"Plin_interp_sim{s}.npy"
-        file_plin_inter = folder_interp + flag
-        pk_interp = np.load(file_plin_inter, allow_pickle=True).all()
-        model_Arinyo = ArinyoModel(camb_pk_interp=pk_interp)
+        # flag = f"Plin_interp_sim{s}.npy"
+        # file_plin_inter = folder_interp + flag
+        # pk_interp = np.load(file_plin_inter, allow_pickle=True).all()
+        # model_Arinyo = ArinyoModel(camb_pk_interp=pk_interp)
 
         # define test sim
         dict_sim = [
@@ -147,38 +152,45 @@ for s in range(Nsim):
         p3ds_sims[s, iz] = p3d_sim
 
         # load BF Arinyo and estimated the p3d and p1d from BF arinyo parameters
-        BF_arinyo = dict_sim[0]["Arinyo_minin"]
+        out = p3d_emu.predict_P3D_Mpc(
+            sim_label=f"mpg_{s}", 
+            z=z, 
+            emu_params=dict_sim[0],
+            kpar_Mpc = k_p1d_Mpc
+        )
+        # t_keys(['coeffs_Arinyo', 'Plin', 'p3d_cov', 'p3d', 'p1d', 'p1d_cov'])
+        # BF_arinyo = dict_sim[0]["Arinyo_minin"]
 
-        p3d_arinyo = model_Arinyo.P3D_Mpc(z, k_Mpc, mu, BF_arinyo)
-        p3ds_arinyo[s, iz] = p3d_arinyo
+        # p3d_arinyo = model_Arinyo.P3D_Mpc(z, k_Mpc, mu, BF_arinyo)
+        p3ds_arinyo[s, iz] = out['p3d']
 
-        p1d_arinyo = p3d_emu.predict_P1D_Mpc(sim_label=f"mpg_{s}", 
-                                             z=z, 
-                                             test_sim=dict_sim, 
-                                             test_arinyo=np.fromiter(BF_arinyo.values(),dtype='float').reshape(1,8),
-                                             return_cov=False)
-        p1ds_arinyo[s, iz] = p1d_arinyo
+        # p1d_arinyo = p3d_emu.predict_P1D_Mpc(sim_label=f"mpg_{s}", 
+        #                                      z=z, 
+        #                                      test_sim=dict_sim, 
+        #                                      test_arinyo=np.fromiter(BF_arinyo.values(),dtype='float').reshape(1,8),
+        #                                      return_cov=False)
+        p1ds_arinyo[s, iz] = out['p1d'] * norm
 
         # predict p3d and p1d from predicted arinyo parameters
-        p3d_pred_median = p3d_emu.predict_P3D_Mpc(
-            sim_label=f"mpg_{s}", z=z, test_sim=dict_sim, return_cov=False
-        )
+        # p3d_pred_median = p3d_emu.predict_P3D_Mpc(
+        #     sim_label=f"mpg_{s}", z=z, test_sim=dict_sim, return_cov=False
+        # )
 
-        p1d_pred_median = p3d_emu.predict_P1D_Mpc(
-            sim_label=f"mpg_{s}", z=z, test_sim=dict_sim, return_cov=False
-        )
+        # p1d_pred_median = p3d_emu.predict_P1D_Mpc(
+        #     sim_label=f"mpg_{s}", z=z, test_sim=dict_sim, return_cov=False
+        # )
         
-        p3ds_pred[s, iz] = p3d_pred_median
-        p1ds_pred[s, iz] = p1d_pred_median
+        # p3ds_pred[s, iz] = p3d_pred_median
+        # p1ds_pred[s, iz] = p1d_pred_median
     
-    print(
-        "Mean fractional error P3D pred to Arinyo",
-        ((p3ds_pred[s] / p3ds_arinyo[s] - 1) * 100).mean(),
-    )
-    print(
-        "Std fractional error P3D pre to Arinyo",
-        ((p3ds_pred[s] / p3ds_arinyo[s] - 1) * 100).std(),
-    )
+    # print(
+    #     "Mean fractional error P3D pred to Arinyo",
+    #     ((p3ds_pred[s] / p3ds_arinyo[s] - 1) * 100).mean(),
+    # )
+    # print(
+    #     "Std fractional error P3D pre to Arinyo",
+    #     ((p3ds_pred[s] / p3ds_arinyo[s] - 1) * 100).std(),
+    # )
 
     print(
         "Mean fractional error P3D Arinyo model",
@@ -189,23 +201,23 @@ for s in range(Nsim):
         ((p3ds_arinyo[s] / p3ds_sims[s] - 1) * 100).std(),
     )
 
-    print(
-        "Mean fractional error P3D pred to sim",
-        ((p3ds_pred[s] / p3ds_sims[s] - 1) * 100).mean(),
-    )
-    print(
-        "Std fractional error P3D pred to sim",
-        ((p3ds_pred[s] / p3ds_sims[s] - 1) * 100).std(),
-    )
+    # print(
+    #     "Mean fractional error P3D pred to sim",
+    #     ((p3ds_pred[s] / p3ds_sims[s] - 1) * 100).mean(),
+    # )
+    # print(
+    #     "Std fractional error P3D pred to sim",
+    #     ((p3ds_pred[s] / p3ds_sims[s] - 1) * 100).std(),
+    # )
 
-    print(
-        "Mean fractional error P1D pred to Arinyo",
-        ((p1ds_pred[s] / p1ds_arinyo[s] - 1) * 100).mean(),
-    )
-    print(
-        "Std fractional error P1D pred to Arinyo",
-        ((p1ds_pred[s] / p1ds_arinyo[s] - 1) * 100).std(),
-    )
+    # print(
+    #     "Mean fractional error P1D pred to Arinyo",
+    #     ((p1ds_pred[s] / p1ds_arinyo[s] - 1) * 100).mean(),
+    # )
+    # print(
+    #     "Std fractional error P1D pred to Arinyo",
+    #     ((p1ds_pred[s] / p1ds_arinyo[s] - 1) * 100).std(),
+    # )
 
     print(
         "Mean fractional error P1D Arinyo model",
@@ -216,32 +228,39 @@ for s in range(Nsim):
         ((p1ds_arinyo[s] / p1ds_sims[s] - 1) * 100).std(),
     )
 
-    print(
-        "Mean fractional error P1D pred to sim",
-        ((p1ds_pred[s] / p1ds_sims[s] - 1) * 100).mean(),
-    )
-    print(
-        "Std fractional error P1D pred to sim",
-        ((p1ds_pred[s] / p1ds_sims[s] - 1) * 100).std(),
-    )
+    # print(
+    #     "Mean fractional error P1D pred to sim",
+    #     ((p1ds_pred[s] / p1ds_sims[s] - 1) * 100).mean(),
+    # )
+    # print(
+    #     "Std fractional error P1D pred to sim",
+    #     ((p1ds_pred[s] / p1ds_sims[s] - 1) * 100).std(),
+    # )
 
 
 # %% [markdown]
 # ## PLOTTING
 
 # %%
-fractional_errors_arinyo = (p3ds_pred / p3ds_arinyo -1)*100
-fractional_errors_sims = (p3ds_pred / p3ds_sims -1)*100
-fractional_errors_bench = (p3ds_arinyo / p3ds_sims -1)*100
+# fractional_errors_arinyo = (p3ds_pred / p3ds_arinyo -1)*100
+# fractional_errors_sims = (p3ds_pred / p3ds_sims -1)*100
+fractional_errors_arinyo = (p3ds_arinyo / p3ds_arinyo -1)*100
+fractional_errors_sims = (p3ds_arinyo / p3ds_sims -1)*100
+# fractional_errors_bench = (p3ds_arinyo / p3ds_sims -1)*100
 
 # %%
 plot_p3d_L1O(Archive3D, fractional_errors_sims)
 
 # %%
-fractional_errors_arinyo_p1d = (p1ds_pred / p1ds_arinyo - 1) * 100
-fractional_errors_sims_p1d = (p1ds_pred / p1ds_sims - 1) * 100
-fractional_errors_bench_p1d = (p1ds_arinyo / p1ds_sims - 1) * 100
+# fractional_errors_arinyo_p1d = (p1ds_pred / p1ds_arinyo - 1) * 100
+# fractional_errors_sims_p1d = (p1ds_pred / p1ds_sims - 1) * 100
+# fractional_errors_bench_p1d = (p1ds_arinyo / p1ds_sims - 1) * 100
+
+fractional_errors_arinyo_p1d = (p1ds_arinyo / p1ds_arinyo - 1) * 100
+fractional_errors_sims_p1d = (p1ds_arinyo / p1ds_sims - 1) * 100
+# fractional_errors_bench_p1d = (p1ds_arinyo / p1ds_sims - 1) * 100
 
 # %%
-plot_p1d_L1O(Archive3D, fractional_errors_sims_p1d, 'test.pdf')
+# plot_p1d_L1O(Archive3D, fractional_errors_sims_p1d, 'test.pdf')
+plot_p1d_L1O(Archive3D, fractional_errors_sims_p1d)
 # %%
