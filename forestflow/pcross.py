@@ -97,32 +97,32 @@ def get_Px(
         Px = LHS / rperp / (2*np.pi)  # Divide out by remaining factor to get Px
         # transition    
         # replace the values left of the minimum
-        # replace = rperp < 0.02
-        # # return the P1D result for that kpar
-        # Px[replace] = P1D[ik]
-        # # between rperp = 0.02 and 0.08, interpolate from P1D to Px values
-        # idxmin = (np.abs(rperp - 0.02)).argmin()
-        # idxmax = (np.abs(rperp - 0.08)).argmin()
-        # rperps_interp = rperp[idxmin:idxmax]
-        # Px_tointerp = np.delete(Px, np.arange(idxmin, idxmax))
-        # rperp_tointerp = np.delete(rperp, np.arange(idxmin, idxmax))
-        # interpmin = np.abs(rperp_tointerp - 0.005).argmin()
-        # interpmax = np.abs(rperp_tointerp - 0.2).argmin()
-        # cs = CubicSpline(
-        #     rperp_tointerp[interpmin:interpmax],
-        #     Px_tointerp[interpmin:interpmax],
-        # )
-        # Px_interpd = cs(rperps_interp)
-        # Px = np.insert(Px_tointerp, idxmin, Px_interpd)
-        # min_rperp, max_rperp = 10**-2, 100
-        # if min_rperp > min(rperp):
-        #     rperp_minidx = np.argmin(abs(rperp - min_rperp))
-        # if max_rperp < max(rperp):
-        #     rperp_maxidx = np.argmin(abs(rperp - max_rperp))
-        # else:
-        #     rperp_minidx, rperp_maxidx = None, None
-        # Px_per_kpar.append(Px[rperp_minidx:rperp_maxidx])
-        # rperp = rperp[rperp_minidx:rperp_maxidx
+        replace = rperp < 0.02
+        # return the P1D result for that kpar
+        Px[replace] = P1D[ik]
+        # between rperp = 0.02 and 0.08, interpolate from P1D to Px values
+        idxmin = (np.abs(rperp - 0.02)).argmin()
+        idxmax = (np.abs(rperp - 0.08)).argmin()
+        rperps_interp = rperp[idxmin:idxmax]
+        Px_tointerp = np.delete(Px, np.arange(idxmin, idxmax))
+        rperp_tointerp = np.delete(rperp, np.arange(idxmin, idxmax))
+        interpmin = np.abs(rperp_tointerp - 0.005).argmin()
+        interpmax = np.abs(rperp_tointerp - 0.2).argmin()
+        cs = CubicSpline(
+            rperp_tointerp[interpmin:interpmax],
+            Px_tointerp[interpmin:interpmax],
+        )
+        Px_interpd = cs(rperps_interp)
+        Px = np.insert(Px_tointerp, idxmin, Px_interpd)
+        min_rperp, max_rperp = 10**-2, 100
+        if min_rperp > min(rperp):
+            rperp_minidx = np.argmin(abs(rperp - min_rperp))
+        if max_rperp < max(rperp):
+            rperp_maxidx = np.argmin(abs(rperp - max_rperp))
+        else:
+            rperp_minidx, rperp_maxidx = None, None
+        Px_per_kpar.append(Px[rperp_minidx:rperp_maxidx])
+        rperp = rperp[rperp_minidx:rperp_maxidx
         Px_per_kpar.append(Px)
         
     Px_per_kpar = np.asarray(Px_per_kpar)
@@ -145,20 +145,23 @@ def get_Px_detailed(
     fast_transition=False,
     **P3D_kwargs
 ):
-    """ Calculates P_cross, the power for a given k_parallel mode from pairs of lines-of-sight separated by perpendicular distance rperp, given a 3D power spectrum
+    """  alculates P_cross, the power for a given k_parallel mode from pairs of lines-of-sight separated by perpendicular distance rperp, given a 3D power spectrum
     Calculation is done with the hankl transform.
-
+    This code is a more complex version with several changeable parameters. See get_Px for a simpler version.
     Required Parameters:
         kpars (array): array of k parallel (usually log-spaced)    
-        arinyo (ArinyoModel instance): Arinyo model with a pre-chosen cosmology
+        P3D (function): Function that takes arguments
         z (float): single redshift to evaluate
     Optional Parameters:
+        P3D_mode: 'pol' or 'cart' for polar or cartesian. 'pol' assumes that the function takes parameters z and an array of k and mu. 'cart' assumes that the parameters are z, kpar and kperp, both arrays.
+        **P3D_kwargs: optional named arguments to be passed to the P3D function.
         min_rperp, max_rperp (float): desired range of rperp values to return
         min_kperp, max_kperp (float): range of kperp values to use in the calculation. Decreasing this range can cause unwanted artifacts
-        Nsteps_kperp (int): number of kperps for the hankl transform (and number of output rperp). Decreasing this speeds up calculation but decreases accuracy
+        nkperp (int): number of kperps for the hankl transform (and number of output rperp). Decreasing this speeds up calculation but decreases accuracy
         trans_to_p1d (bool): determines whether to transition to the P1D result at low rperp
+        interpmin (float): value of r-perp to start the interpolation to P1D at
+        interpmax (float): value of r-perp to end the interpolation to P1D at        
         fast_transition (bool): if true, the transition to P1D is done faster, without interpolation, but there will be a discontinuity
-
     Returns:
         rperp, Px_per_rperp, Px_per_kpar
         rperp: array of log-space r-perpendicular (separation in Mpc)
