@@ -25,17 +25,20 @@ def P1D_Mpc(P3D_Mpc, z, ln_k_perp, kpars, P3D_mode='pol',  **P3D_kwargs):
     mu = kpars[np.newaxis, :] / k
     k = k.swapaxes(0, 1)
     mu = mu.swapaxes(0, 1)
-    
-    
     fact = (1 / (2 * np.pi)) * k_perp[:, np.newaxis] ** 2
     fact = fact.swapaxes(0, 1)
     if P3D_mode == 'pol':
         p3d_fix_k_par = P3D_Mpc(z, k, mu,  **P3D_kwargs) * fact
+        print(P3D_Mpc(z, k, mu, **P3D_kwargs).shape)
+        print(fact.shape)
     elif P3D_mode == 'cart':
         # tile
-        kperp2d  = np.tile(kperps[:, np.newaxis], len(kpars)) # mu grid for P3D
-        kpar2d   = np.tile(kpars[:, np.newaxis], len(k_perp)).T
+        kperp2d  = np.tile(k_perp[:, np.newaxis], len(kpars)).T # mu grid for P3D
+        kpar2d   = np.tile(kpars[:, np.newaxis], len(k_perp))
+        print(P3D_Mpc(z, kpar2d, kperp2d, **P3D_kwargs).shape)
+        print(fact.shape)
         p3d_fix_k_par = P3D_Mpc(z, kpar2d, kperp2d, **P3D_kwargs) * fact
+
     # perform numerical integration
     p1d = simpson(p3d_fix_k_par, ln_k_perp, dx=dlnk, axis=1)
 
@@ -56,7 +59,7 @@ def get_Px(
         P3D (function): Function that takes arguments
         z (float): single redshift to evaluate
     Optional Parameters:
-        P3D_mode: 'pol' or 'cart' for polar or cartesian. 'pol' assumes that the function takes parameters z and an array of k and mu. 'cart' assumes that the parameters are kpar and kperp, both arrays.
+        P3D_mode: 'pol' or 'cart' for polar or cartesian. 'pol' assumes that the function takes parameters z and an array of k and mu. 'cart' assumes that the parameters are z, kpar and kperp, both arrays.
         fast (bool): if true, the transition to P1D is done faster, without interpolation, but there will be a discontinuity
         **P3D_kwargs: optional named arguments to be passed to the P3D function.
     Returns:
@@ -84,9 +87,8 @@ def get_Px(
         P3D_eval = P3D(z=z, k=k2d, mu=mu2d, **P3D_kwargs)
     P1D = P1D_Mpc(P3D, z, np.linspace(np.log(0.001), np.log(100), 99), kpars, P3D_mode = P3D_mode, **P3D_kwargs) # get P1D
     Px_per_kpar = []
+    print(P3D_eval.shape)
     for ik, kpar in enumerate(kpars):  # for each value of k parallel to evaluate Px at
-        k = k2d[:,ik]
-        mu = mu2d[:,ik]
         P3D_kpar = P3D_eval[:,ik] # get the P3D
         func     = P3D_kpar * kperps
         rperp, LHS = hankl.FFTLog(
@@ -95,32 +97,34 @@ def get_Px(
         Px = LHS / rperp / (2*np.pi)  # Divide out by remaining factor to get Px
         # transition    
         # replace the values left of the minimum
-        replace = rperp < 0.02
-        # return the P1D result for that kpar
-        Px[replace] = P1D[ik]
-        # between rperp = 0.02 and 0.08, interpolate from P1D to Px values
-        idxmin = (np.abs(rperp - 0.02)).argmin()
-        idxmax = (np.abs(rperp - 0.08)).argmin()
-        rperps_interp = rperp[idxmin:idxmax]
-        Px_tointerp = np.delete(Px, np.arange(idxmin, idxmax))
-        rperp_tointerp = np.delete(rperp, np.arange(idxmin, idxmax))
-        interpmin = np.abs(rperp_tointerp - 0.005).argmin()
-        interpmax = np.abs(rperp_tointerp - 0.2).argmin()
-        cs = CubicSpline(
-            rperp_tointerp[interpmin:interpmax],
-            Px_tointerp[interpmin:interpmax],
-        )
-        Px_interpd = cs(rperps_interp)
-        Px = np.insert(Px_tointerp, idxmin, Px_interpd)
-        min_rperp, max_rperp = 10**-2, 100
-        if min_rperp > min(rperp):
-            rperp_minidx = np.argmin(abs(rperp - min_rperp))
-        if max_rperp < max(rperp):
-            rperp_maxidx = np.argmin(abs(rperp - max_rperp))
-        else:
-            rperp_minidx, rperp_maxidx = None, None
-        Px_per_kpar.append(Px[rperp_minidx:rperp_maxidx])
-        rperp = rperp[rperp_minidx:rperp_maxidx]
+        # replace = rperp < 0.02
+        # # return the P1D result for that kpar
+        # Px[replace] = P1D[ik]
+        # # between rperp = 0.02 and 0.08, interpolate from P1D to Px values
+        # idxmin = (np.abs(rperp - 0.02)).argmin()
+        # idxmax = (np.abs(rperp - 0.08)).argmin()
+        # rperps_interp = rperp[idxmin:idxmax]
+        # Px_tointerp = np.delete(Px, np.arange(idxmin, idxmax))
+        # rperp_tointerp = np.delete(rperp, np.arange(idxmin, idxmax))
+        # interpmin = np.abs(rperp_tointerp - 0.005).argmin()
+        # interpmax = np.abs(rperp_tointerp - 0.2).argmin()
+        # cs = CubicSpline(
+        #     rperp_tointerp[interpmin:interpmax],
+        #     Px_tointerp[interpmin:interpmax],
+        # )
+        # Px_interpd = cs(rperps_interp)
+        # Px = np.insert(Px_tointerp, idxmin, Px_interpd)
+        # min_rperp, max_rperp = 10**-2, 100
+        # if min_rperp > min(rperp):
+        #     rperp_minidx = np.argmin(abs(rperp - min_rperp))
+        # if max_rperp < max(rperp):
+        #     rperp_maxidx = np.argmin(abs(rperp - max_rperp))
+        # else:
+        #     rperp_minidx, rperp_maxidx = None, None
+        # Px_per_kpar.append(Px[rperp_minidx:rperp_maxidx])
+        # rperp = rperp[rperp_minidx:rperp_maxidx
+        Px_per_kpar.append(Px)
+        
     Px_per_kpar = np.asarray(Px_per_kpar)
     return rperp, Px_per_kpar
 

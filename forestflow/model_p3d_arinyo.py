@@ -3,7 +3,7 @@ import numpy as np
 from lace.cosmo import camb_cosmo
 from scipy.integrate import simpson
 from forestflow.camb_routines import P_camb
-
+from forestflow.pcross import get_Px
 # from forestflow.utils import memoize_numpy_arrays
 
 
@@ -246,6 +246,23 @@ class ArinyoModel(object):
         D_NL = np.exp(nonlin * (1 - vel) - press)
 
         return linP * lowk_bias**2 * D_NL
+    
+    
+    def Px_Mpc(self, z, k_par, pp):
+        """
+        Compute P-cross for the P3D model.
+        
+        Parameters:
+            z (float): Redshift. Cannot be array.
+            k_par (array-like): Array of k-parallel values at which to compute Px.
+        Returns:
+            rperp (array-like): values (float) of separation in Mpc
+            Px_per_kpar (array-like): values (float) of Px for each k parallel and rperp. Shape: (len(k_par), len(rperp)).
+        """
+        
+        rperp, Px_per_kpar = get_Px(k_par,self.P3D_Mpc,z,P3D_mode='pol',**{'pp':pp})
+        return rperp, Px_per_kpar
+        
 
     def rat_P3D(self, z, k, mu, parameters={}):
         """
