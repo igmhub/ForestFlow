@@ -6,10 +6,13 @@ def P1D_Mpc(P3D_Mpc, z, ln_k_perp, kpars, P3D_mode='pol',  **P3D_kwargs):
     Compute P1D by integrating P3D in terms of ln(k_perp) using a fast method.
 
     Parameters:
+        P3D (function): Function that takes arguments
         z (float): Redshift.
         ln_k_perp (array-like): Array of natural logarithms of the perpendicular wavenumber.
         kpars (array-like): Array of parallel wavenumbers.
         parameters (dict, optional): Additional parameters for the model. Defaults to {}.
+    Optional parameters:
+        P3D_mode: 'pol' or 'cart' for polar or cartesian. 'pol' assumes that the function takes parameters z and an array of k and mu. 'cart' assumes that the parameters are z, kpar and kperp, both arrays.
 
     Returns:
         array-like: Computed values of P1D.
@@ -29,14 +32,10 @@ def P1D_Mpc(P3D_Mpc, z, ln_k_perp, kpars, P3D_mode='pol',  **P3D_kwargs):
     fact = fact.swapaxes(0, 1)
     if P3D_mode == 'pol':
         p3d_fix_k_par = P3D_Mpc(z, k, mu,  **P3D_kwargs) * fact
-        print(P3D_Mpc(z, k, mu, **P3D_kwargs).shape)
-        print(fact.shape)
     elif P3D_mode == 'cart':
         # tile
         kperp2d  = np.tile(k_perp[:, np.newaxis], len(kpars)).T # mu grid for P3D
         kpar2d   = np.tile(kpars[:, np.newaxis], len(k_perp))
-        print(P3D_Mpc(z, kpar2d, kperp2d, **P3D_kwargs).shape)
-        print(fact.shape)
         p3d_fix_k_par = P3D_Mpc(z, kpar2d, kperp2d, **P3D_kwargs) * fact
 
     # perform numerical integration
@@ -46,8 +45,9 @@ def P1D_Mpc(P3D_Mpc, z, ln_k_perp, kpars, P3D_mode='pol',  **P3D_kwargs):
 
 def get_Px(
     kpars,
-    P3D,
+    P3D_Mpc,
     z,
+    rperp_choice=None,
     P3D_mode='pol',
     **P3D_kwargs
 ):
@@ -59,6 +59,7 @@ def get_Px(
         P3D (function): Function that takes arguments
         z (float): single redshift to evaluate
     Optional Parameters:
+        rperp_choice: a list of rperp values [Mpc] at which to evaluate Px. If not set, the function will return a finely-log-spaced grid of values from rperp=0.01 to 100.
         P3D_mode: 'pol' or 'cart' for polar or cartesian. 'pol' assumes that the function takes parameters z and an array of k and mu. 'cart' assumes that the parameters are z, kpar and kperp, both arrays.
         fast (bool): if true, the transition to P1D is done faster, without interpolation, but there will be a discontinuity
         **P3D_kwargs: optional named arguments to be passed to the P3D function.
@@ -70,24 +71,27 @@ def get_Px(
     import hankl
     from scipy.interpolate import CubicSpline
     nkperp = 2**16
+    if rperp_choice is None:
+        # if the user does not choose specific rperp to evaluate, return
+        # a finely log-spaced grid of rperp from .01 - 100 Mpc
+        min_rperp, max_rperp = 10**-2, 100
     nkpar  = len(kpars)
     kperps = np.logspace(
         np.log10(10.0**-20), np.log10(10.0**3), nkperp
     )  # set up an array of kperp
     # tile
-    kperp2d  = np.tile(kperps[:, np.newaxis], nkpar) # mu grid for P3D
-    kpar2d   = np.tile(kpars[:, np.newaxis], nkperp).T
-    k2d = np.sqrt(kperp2d**2 + kpar2d**2)
-    mu2d = kpar2d / k2d
+    kperp2d  = np.tile(kperps[:, np.newaxis], nkpar) # kperp grid for P3D
+    kpar2d   = np.tile(kpars[:, np.newaxis], nkperp).T #kpar grid for P3D
+    k2d = np.sqrt(kperp2d**2 + kpar2d**2) # k grid
+    mu2d = kpar2d / k2d # mu grid
     if P3D_mode == 'cart':
-        # assume P3D is a function of (z, kpar, kperp)
-        P3D_eval = P3D(z=z, kpar=kpar2d, kperp=kperp2d, **P3D_kwargs)
+        # assume P3D_Mpc is a function of (z, kpar, kperp)
+        P3D_eval = P3D_Mpc(z=z, kpar=kpar2d, kperp=kperp2d, **P3D_kwargs)
     elif P3D_mode == 'pol':
-        # assume P3D is a function of (z, k, mu)
-        P3D_eval = P3D(z=z, k=k2d, mu=mu2d, **P3D_kwargs)
-    P1D = P1D_Mpc(P3D, z, np.linspace(np.log(0.001), np.log(100), 99), kpars, P3D_mode = P3D_mode, **P3D_kwargs) # get P1D
+        # assume P3D_Mpc is a function of (z, k, mu)
+        P3D_eval = P3D_Mpc(z=z, k=k2d, mu=mu2d, **P3D_kwargs)
+    P1D = P1D_Mpc(P3D_Mpc, z, np.linspace(np.log(0.001), np.log(100), 99), kpars, P3D_mode = P3D_mode, **P3D_kwargs) # get P1D
     Px_per_kpar = []
-    print(P3D_eval.shape)
     for ik, kpar in enumerate(kpars):  # for each value of k parallel to evaluate Px at
         P3D_kpar = P3D_eval[:,ik] # get the P3D
         func     = P3D_kpar * kperps
@@ -114,25 +118,29 @@ def get_Px(
         )
         Px_interpd = cs(rperps_interp)
         Px = np.insert(Px_tointerp, idxmin, Px_interpd)
-        min_rperp, max_rperp = 10**-2, 100
-        if min_rperp > min(rperp):
-            rperp_minidx = np.argmin(abs(rperp - min_rperp))
-        if max_rperp < max(rperp):
-            rperp_maxidx = np.argmin(abs(rperp - max_rperp))
+        if rperp_choice is None:
+            if ik==0:
+                # enforce rperp limits, only need to do once (same for every kpar)
+                rperp_minidx = np.argmin(abs(rperp - min_rperp))
+                rperp_maxidx = np.argmin(abs(rperp - max_rperp))
+                rperp_save = rperp[rperp_minidx:rperp_maxidx]
+            # save Px for that range
+            Px_per_kpar.append(Px[rperp_minidx:rperp_maxidx])
         else:
-            rperp_minidx, rperp_maxidx = None, None
-        Px_per_kpar.append(Px[rperp_minidx:rperp_maxidx])
-        rperp = rperp[rperp_minidx:rperp_maxidx
-        Px_per_kpar.append(Px)
-        
+            # return the closest results to the user-requested values
+            if ik==0:
+                same_rperp = [np.argmin(abs(rperp-rp)) for rp in rperp_choice]
+                rperp_save=rperp[same_rperp]
+            Px_per_kpar.append(Px[same_rperp])
     Px_per_kpar = np.asarray(Px_per_kpar)
-    return rperp, Px_per_kpar
+    return rperp_save, Px_per_kpar
 
 
 def get_Px_detailed(
     kpars,
-    P3D,
+    P3D_Mpc,
     z,
+    rperp_choice=None,
     P3D_mode='pol',
     min_rperp=10**-2,
     max_rperp=100,
@@ -145,16 +153,16 @@ def get_Px_detailed(
     fast_transition=False,
     **P3D_kwargs
 ):
-    """  alculates P_cross, the power for a given k_parallel mode from pairs of lines-of-sight separated by perpendicular distance rperp, given a 3D power spectrum
+    """  Calculates P_cross, the power for a given k_parallel mode from pairs of lines-of-sight separated by perpendicular distance rperp, given a 3D power spectrum
     Calculation is done with the hankl transform.
     This code is a more complex version with several changeable parameters. See get_Px for a simpler version.
     Required Parameters:
         kpars (array): array of k parallel (usually log-spaced)    
-        P3D (function): Function that takes arguments
+        P3D_Mpc (function): Function that takes arguments
         z (float): single redshift to evaluate
     Optional Parameters:
         P3D_mode: 'pol' or 'cart' for polar or cartesian. 'pol' assumes that the function takes parameters z and an array of k and mu. 'cart' assumes that the parameters are z, kpar and kperp, both arrays.
-        **P3D_kwargs: optional named arguments to be passed to the P3D function.
+        **P3D_kwargs: optional named arguments to be passed to the P3D_Mpc function.
         min_rperp, max_rperp (float): desired range of rperp values to return
         min_kperp, max_kperp (float): range of kperp values to use in the calculation. Decreasing this range can cause unwanted artifacts
         nkperp (int): number of kperps for the hankl transform (and number of output rperp). Decreasing this speeds up calculation but decreases accuracy
@@ -181,12 +189,12 @@ def get_Px_detailed(
     k2d = np.sqrt(kperp2d**2 + kpar2d**2)
     mu2d = kpar2d / k2d
     if P3D_mode == 'cart':
-        # assume P3D is a function of (z, kpar, kperp)
-        P3D_eval = P3D(z=z, kpar=kpar2d, kperp=kperp2d, **P3D_kwargs)
+        # assume P3D_Mpc is a function of (z, kpar, kperp)
+        P3D_eval = P3D_Mpc(z=z, kpar=kpar2d, kperp=kperp2d, **P3D_kwargs)
     elif P3D_mode == 'pol':
-        # assume P3D is a function of (z, k, mu)
-        P3D_eval = P3D(z=z, k=k2d, mu=mu2d, **P3D_kwargs)
-    P1D = P1D_Mpc(P3D, z, np.linspace(np.log(0.001), np.log(100), 99), kpars, P3D_mode = P3D_mode, **P3D_kwargs) # get P1D
+        # assume P3D_Mpc is a function of (z, k, mu)
+        P3D_eval = P3D_Mpc(z=z, k=k2d, mu=mu2d, **P3D_kwargs)
+    P1D = P1D_Mpc(P3D_Mpc, z, np.linspace(np.log(0.001), np.log(100), 99), kpars, P3D_mode = P3D_mode, **P3D_kwargs) # get P1D
     Px_per_kpar = []
 
     for ik, kpar in enumerate(kpars):  # for each value of k parallel to evaluate Px at
@@ -221,13 +229,25 @@ def get_Px_detailed(
             )
             Px_interpd = cs(rperps_interp)
             Px = np.insert(Px_tointerp, idxmin, Px_interpd)
-        if min_rperp > min(rperp):
-            rperp_minidx = np.argmin(abs(rperp - min_rperp))
-        if max_rperp < max(rperp):
-            rperp_maxidx = np.argmin(abs(rperp - max_rperp))
+        if rperp_choice is None:
+            if ik==0:
+                # enforce rperp limits, only need to do once (same for every kpar)
+                if min_rperp > min(rperp):
+                    rperp_minidx = np.argmin(abs(rperp - min_rperp))
+                else:
+                    rperp_minidx = None
+                if max_rperp < max(rperp):
+                    rperp_maxidx = np.argmin(abs(rperp - max_rperp))
+                else:
+                    rperp_maxidx = None
+                rperp_save = rperp[rperp_minidx:rperp_maxidx]
+            # save Px for that range
+            Px_per_kpar.append(Px[rperp_minidx:rperp_maxidx])
         else:
-            rperp_minidx, rperp_maxidx = None, None
-        Px_per_kpar.append(Px[rperp_minidx:rperp_maxidx])
-        rperp = rperp[rperp_minidx:rperp_maxidx]
+            # return the closest results to the user-requested values
+            if ik==0:
+                same_rperp = [np.argmin(abs(rperp-rp)) for rp in rperp_choice]
+                rperp_save=rperp[same_rperp]
+            Px_per_kpar.append(Px[same_rperp])
     Px_per_kpar = np.asarray(Px_per_kpar)
-    return rperp, Px_per_kpar
+    return rperp_save, Px_per_kpar
