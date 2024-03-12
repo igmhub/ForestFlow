@@ -1,10 +1,12 @@
+import hankl
 import numpy as np
 from scipy.integrate import simpson
+from scipy.interpolate import CubicSpline
 
 def P1D_Mpc(P3D_Mpc, z, ln_k_perp, kpars, P3D_mode='pol',  **P3D_kwargs):
     """
     Compute P1D by integrating P3D in terms of ln(k_perp) using a fast method.
-
+    Replicates the function in model_p3d_arinyo.py, but with flexibility for the style of P3D input.
     Parameters:
         P3D (function): Function that takes arguments
         z (float): Redshift.
@@ -43,7 +45,7 @@ def P1D_Mpc(P3D_Mpc, z, ln_k_perp, kpars, P3D_mode='pol',  **P3D_kwargs):
 
     return p1d
 
-def get_Px(
+def Px_Mpc(
     kpars,
     P3D_Mpc,
     z,
@@ -51,92 +53,25 @@ def get_Px(
     P3D_mode='pol',
     **P3D_kwargs
 ):
-    """ Calculates P_cross, the power for a given k_parallel mode from pairs of lines-of-sight separated by perpendicular distance rperp, given a 3D power spectrum
-    Calculation is done with the hankl transform.
-    This code is a simpler version with fewer changeable parameters. See get_Px_detailed for a version with all possible tweaks.
+    """ Calls Px_Mpc_detailed to calculate P_cross, the cross-correlation of k_parallel modes from pairs of lines-of-sight separated by perpendicular distance rperp, given a 3D power spectrum
+    Calculation is done with the Hankel transform.
     Required Parameters:
-        kpars (array): array of k parallel (usually log-spaced)    
+        kpars (array-like): array of k parallel (usually log-spaced)    
         P3D (function): Function that takes arguments
         z (float): single redshift to evaluate
     Optional Parameters:
-        rperp_choice: a list of rperp values [Mpc] at which to evaluate Px. If not set, the function will return a finely-log-spaced grid of values from rperp=0.01 to 100.
+        rperp_choice: a list of rperp values [Mpc] at which to evaluate Px. The function will return rperp and Px values close, but not exactly equal to, the requested values. If not set, the function will return a finely-log-spaced grid of values from rperp=0.01 to 100.
         P3D_mode: 'pol' or 'cart' for polar or cartesian. 'pol' assumes that the function takes parameters z and an array of k and mu. 'cart' assumes that the parameters are z, kpar and kperp, both arrays.
-        fast (bool): if true, the transition to P1D is done faster, without interpolation, but there will be a discontinuity
         **P3D_kwargs: optional named arguments to be passed to the P3D function.
     Returns:
-        rperp, Px_per_rperp, Px_per_kpar
-        rperp: array of log-space r-perpendicular (separation in Mpc)
-        Px_per_kpar: P-cross as an array with shape (len(kpars), len(rperp)).
+        tuple of (rperp, Px_per_kpar)
+        rperp (array-like): array of r-perpendicular (float) (separation in Mpc) 
+        Px_per_kpar (array-like): P-cross in Mpc at each rperp (float), has shape (len(kpars), len(rperp)).
     """
-    import hankl
-    from scipy.interpolate import CubicSpline
-    nkperp = 2**16
-    if rperp_choice is None:
-        # if the user does not choose specific rperp to evaluate, return
-        # a finely log-spaced grid of rperp from .01 - 100 Mpc
-        min_rperp, max_rperp = 10**-2, 100
-    nkpar  = len(kpars)
-    kperps = np.logspace(
-        np.log10(10.0**-20), np.log10(10.0**3), nkperp
-    )  # set up an array of kperp
-    # tile
-    kperp2d  = np.tile(kperps[:, np.newaxis], nkpar) # kperp grid for P3D
-    kpar2d   = np.tile(kpars[:, np.newaxis], nkperp).T #kpar grid for P3D
-    k2d = np.sqrt(kperp2d**2 + kpar2d**2) # k grid
-    mu2d = kpar2d / k2d # mu grid
-    if P3D_mode == 'cart':
-        # assume P3D_Mpc is a function of (z, kpar, kperp)
-        P3D_eval = P3D_Mpc(z=z, kpar=kpar2d, kperp=kperp2d, **P3D_kwargs)
-    elif P3D_mode == 'pol':
-        # assume P3D_Mpc is a function of (z, k, mu)
-        P3D_eval = P3D_Mpc(z=z, k=k2d, mu=mu2d, **P3D_kwargs)
-    P1D = P1D_Mpc(P3D_Mpc, z, np.linspace(np.log(0.001), np.log(100), 99), kpars, P3D_mode = P3D_mode, **P3D_kwargs) # get P1D
-    Px_per_kpar = []
-    for ik, kpar in enumerate(kpars):  # for each value of k parallel to evaluate Px at
-        P3D_kpar = P3D_eval[:,ik] # get the P3D
-        func     = P3D_kpar * kperps
-        rperp, LHS = hankl.FFTLog(
-            kperps, func, q=0, mu=0
-        )  # returns an array of log-spaced rperps, and the Hankel Transform
-        Px = LHS / rperp / (2*np.pi)  # Divide out by remaining factor to get Px
-        # transition    
-        # replace the values left of the minimum
-        replace = rperp < 0.02
-        # return the P1D result for that kpar
-        Px[replace] = P1D[ik]
-        # between rperp = 0.02 and 0.08, interpolate from P1D to Px values
-        idxmin = (np.abs(rperp - 0.02)).argmin()
-        idxmax = (np.abs(rperp - 0.08)).argmin()
-        rperps_interp = rperp[idxmin:idxmax]
-        Px_tointerp = np.delete(Px, np.arange(idxmin, idxmax))
-        rperp_tointerp = np.delete(rperp, np.arange(idxmin, idxmax))
-        interpmin = np.abs(rperp_tointerp - 0.005).argmin()
-        interpmax = np.abs(rperp_tointerp - 0.2).argmin()
-        cs = CubicSpline(
-            rperp_tointerp[interpmin:interpmax],
-            Px_tointerp[interpmin:interpmax],
-        )
-        Px_interpd = cs(rperps_interp)
-        Px = np.insert(Px_tointerp, idxmin, Px_interpd)
-        if rperp_choice is None:
-            if ik==0:
-                # enforce rperp limits, only need to do once (same for every kpar)
-                rperp_minidx = np.argmin(abs(rperp - min_rperp))
-                rperp_maxidx = np.argmin(abs(rperp - max_rperp))
-                rperp_save = rperp[rperp_minidx:rperp_maxidx]
-            # save Px for that range
-            Px_per_kpar.append(Px[rperp_minidx:rperp_maxidx])
-        else:
-            # return the closest results to the user-requested values
-            if ik==0:
-                same_rperp = [np.argmin(abs(rperp-rp)) for rp in rperp_choice]
-                rperp_save=rperp[same_rperp]
-            Px_per_kpar.append(Px[same_rperp])
-    Px_per_kpar = np.asarray(Px_per_kpar)
-    return rperp_save, Px_per_kpar
+    return Px_Mpc_detailed(kpars, P3D_Mpc, z, rperp_choice, P3D_mode, **P3D_kwargs)
 
 
-def get_Px_detailed(
+def Px_Mpc_detailed(
     kpars,
     P3D_Mpc,
     z,
@@ -154,13 +89,14 @@ def get_Px_detailed(
     **P3D_kwargs
 ):
     """  Calculates P_cross, the power for a given k_parallel mode from pairs of lines-of-sight separated by perpendicular distance rperp, given a 3D power spectrum
-    Calculation is done with the hankl transform.
-    This code is a more complex version with several changeable parameters. See get_Px for a simpler version.
+    Calculation is done with the Hankel transform.
+    See Px_Mpc for a more user-friendly version.
     Required Parameters:
         kpars (array): array of k parallel (usually log-spaced)    
         P3D_Mpc (function): Function that takes arguments
         z (float): single redshift to evaluate
     Optional Parameters:
+        rperp_choice: a list of rperp values [Mpc] at which to evaluate Px. The function will return rperp and Px values close, but not exactly equal to, the requested values. If not set, the function will return a finely-log-spaced grid of values from rperp=0.01 to 100.
         P3D_mode: 'pol' or 'cart' for polar or cartesian. 'pol' assumes that the function takes parameters z and an array of k and mu. 'cart' assumes that the parameters are z, kpar and kperp, both arrays.
         **P3D_kwargs: optional named arguments to be passed to the P3D_Mpc function.
         min_rperp, max_rperp (float): desired range of rperp values to return
@@ -171,14 +107,9 @@ def get_Px_detailed(
         interpmax (float): value of r-perp to end the interpolation to P1D at        
         fast_transition (bool): if true, the transition to P1D is done faster, without interpolation, but there will be a discontinuity
     Returns:
-        rperp, Px_per_rperp, Px_per_kpar
         rperp: array of log-space r-perpendicular (separation in Mpc)
         Px_per_kpar: P-cross as an array with shape (len(kpars), len(rperp)).
     """
-    import hankl
-    from scipy.interpolate import CubicSpline
-
-
     nkpar  = len(kpars)
     kperps = np.logspace(
         np.log10(min_kperp), np.log10(max_kperp), nkperp
@@ -198,8 +129,6 @@ def get_Px_detailed(
     Px_per_kpar = []
 
     for ik, kpar in enumerate(kpars):  # for each value of k parallel to evaluate Px at
-        k = k2d[:,ik]
-        mu = mu2d[:,ik]
         P3D_kpar = P3D_eval[:,ik] # get the P3D
         func     = P3D_kpar * kperps
         rperp, LHS = hankl.FFTLog(

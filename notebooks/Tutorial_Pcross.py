@@ -34,7 +34,7 @@ from forestflow.model_p3d_arinyo import ArinyoModel
 import time
 # %load_ext autoreload
 # %autoreload 2
-from forestflow.pcross import get_Px
+from forestflow.pcross import Px_Mpc
 import hankl
 
 # First, choose a redshift and $k$ range. Initialize an instance of the Arinyo class for this redshift given cosmology calculations from Camb.
@@ -73,8 +73,8 @@ plt.legend()
 # we can compute Px from within the Arinyo class:
 rperp, Px_per_kpar = arinyo.Px_Mpc(zs[0], kpar, arinyo.default_params)
 
-# we could have also done it outside of the class with the function get_Px:
-rperp2, Px_per_kpar2 = get_Px(
+# we could have also done it outside of the class with the function Px_Mpc:
+rperp2, Px_per_kpar2 = Px_Mpc(
     kpar,
     arinyo.P3D_Mpc,
     zs[0],
@@ -101,7 +101,7 @@ np.sum(Px_per_kpar == Px_per_kpar2), Px_per_kpar.size # these will be equal if t
 # To solve, it can be rearranged to become:
 # $$ P_{\times}(z,k_{\parallel}, r_\perp) = \frac{1}{2\pi} \int_{k_{\parallel}}^{\infty} k dk J_0 (k_\perp r_\perp) P_\mathrm{3D}(z, k, \mu)$$
 #
-# The get_Px function performs the Hankel transform to integrate P3D.
+# The Px_Mpc function performs the Hankel transform to integrate P3D.
 #
 # Going the other way around, if one wanted to compute $P_\mathrm{3D}$ from a $P_\times$ measurement, we would do
 # $$ P_\mathrm{3D}(z,k_{\perp}, k_{\parallel}) = 2\pi \int_{0}^{\infty} d\theta J_0 (k_\perp \theta) \theta P_\times (z, \theta, k_{\parallel})$$
@@ -111,7 +111,7 @@ np.sum(Px_per_kpar == Px_per_kpar2), Px_per_kpar.size # these will be equal if t
 
 # choose some values of k parallel to compute
 kpars_Px  = np.logspace(-3, np.log10(20), 100)
-rperp,Px_per_kpar = get_Px(kpars_Px,
+rperp,Px_per_kpar = Px_Mpc(kpars_Px,
     arinyo.P3D_Mpc,
     zs[0],
     P3D_mode='pol',
@@ -156,7 +156,7 @@ plt.suptitle(r"$P_\times$ vs P1D, default settings")
 # series of rperp we're interested in
 rperps_toplot = np.array([0, 0.2,0.972,2.204,3.444,5.941])/cosmo.h # Example, from Abdul-Karim et al 2023
 print("Trying to plot r_perp =", rperps_toplot, "Mpc")
-rperp_sel,Px_per_kpar_sel = get_Px(kpars_Px,
+rperp_sel,Px_per_kpar_sel = Px_Mpc(kpars_Px,
     arinyo.P3D_Mpc,
     zs[0],
     rperp_choice=rperps_toplot,
@@ -211,10 +211,10 @@ plt.legend()
 
 # # If you want to use the pcross function with several variations, we can use Px_detailed
 
-from forestflow.pcross import get_Px_detailed
+from forestflow.pcross import Px_Mpc_detailed
 
 # +
-rperp_full,Px_per_kpar_full = get_Px_detailed(
+rperp_full,Px_per_kpar_full = Px_Mpc_detailed(
     kpars_Px,
     arinyo.P3D_Mpc,
     zs[0],
@@ -231,7 +231,7 @@ rperp_full,Px_per_kpar_full = get_Px_detailed(
     **{'pp':arinyo.default_params}
 )
 
-rperp_alt,Px_per_kpar_alt = get_Px_detailed(
+rperp_alt,Px_per_kpar_alt = Px_Mpc_detailed(
     kpars_Px,
     arinyo.P3D_Mpc,
     zs[0],
@@ -308,3 +308,5 @@ plt.xlim([5,10])
 plt.ylim([10**-13,.01])
 plt.legend()
 plt.yscale('log')
+
+

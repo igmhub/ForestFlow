@@ -3,7 +3,7 @@ import numpy as np
 from lace.cosmo import camb_cosmo
 from scipy.integrate import simpson
 from forestflow.camb_routines import P_camb
-from forestflow.pcross import get_Px
+from forestflow import pcross
 # from forestflow.utils import memoize_numpy_arrays
 
 
@@ -260,7 +260,7 @@ class ArinyoModel(object):
             Px_per_kpar (array-like): values (float) of Px for each k parallel and rperp. Shape: (len(k_par), len(rperp)).
         """
         
-        rperp, Px_per_kpar = get_Px(k_par,self.P3D_Mpc,z,P3D_mode='pol',**{'pp':pp})
+        rperp, Px_per_kpar = pcross.Px_Mpc(k_par,self.P3D_Mpc,z,P3D_mode='pol',**{'pp':pp})
         return rperp, Px_per_kpar
         
 
