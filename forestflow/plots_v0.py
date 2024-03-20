@@ -522,230 +522,49 @@ def plot_err_uncertainty(
     # Adjust layout and show the
 
 
-def plot_p3d_L1O(archive, fractional_errors, savename=None):
-    """
-    Plot the fractional errors in the P3D statistic for different redshifts and mu bins.
+def plot_p1d_LzO(
+    archive,
+    z_use,
+    fractional_errors,
+    savename=None,
+    fontsize=20,
+    fact_kmin=4,
+):
+    kmin = 2 * np.pi / 67.5 * fact_kmin
 
-    Parameters:
-    - archive: The dataset archive containing the training data.
-    - fractional_errors: Fractional errors in the P3D statistic for different redshifts and mu bins.
-    - savename: The name of the file to save the plot.
-
-    Returns:
-    None
-
-    Plots:
-    - Subplots showing fractional errors in P3D for different redshifts and mu bins.
-
-    """
-
-    # Extract data from Archive3D
-    k_Mpc = archive.training_data[0]["k3d_Mpc"]
-    mu = archive.training_data[0]["mu3d"]
-
-    # Apply a mask to select relevant k values
-    k_mask = (k_Mpc < 4) & (k_Mpc > 0)
-    k_Mpc = k_Mpc[k_mask]
-    mu = mu[k_mask]
-
-    # Create subplots with shared y-axis and x-axis
-    fig, axs = plt.subplots(11, 1, figsize=(10, 20), sharey=True, sharex=True)
-
-    # Define mu bins
-    mu_lims = [[0, 0.06], [0.31, 0.38], [0.62, 0.69], [0.94, 1]]
-
-    # Define colors for different mu bins
-    colors = ["navy", "crimson", "forestgreen", "goldenrod"]
-    test_sim = archive.get_testing_data(
-        "mpg_central", force_recompute_plin=True
-    )
-    z_grid = [d["z"] for d in test_sim]
-
-    # Loop through redshifts
-    for ii, z in enumerate(z_grid):
-        axs[ii].set_title(f"$z={z}$", fontsize=16)
-        axs[ii].axhline(y=-10, ls="--", color="black")
-        axs[ii].axhline(y=10, ls="--", color="black")
-
-        # Loop through mu bins
-        for mi in range(int(len(mu_lims))):
-            mu_mask = (mu >= mu_lims[mi][0]) & (mu <= mu_lims[mi][1])
-            k_masked = k_Mpc[mu_mask]
-
-            # Calculate fractional error statistics
-            frac_err = np.nanmedian(fractional_errors[:, ii, :], 0)
-            frac_err_err = sigma68(fractional_errors[:, ii, :])
-
-            frac_err_masked = frac_err[mu_mask]
-            frac_err_err_masked = frac_err_err[mu_mask]
-
-            color = colors[mi]
-
-            # Add a line plot with shaded error region to the current subplot
-            axs[ii].plot(
-                k_masked,
-                frac_err_masked,
-                label=f"${mu_lims[mi][0]}\leq \mu \leq {mu_lims[mi][1]}$",
-                color=color,
-            )
-            axs[ii].fill_between(
-                k_masked,
-                frac_err_masked - frac_err_err_masked,
-                frac_err_masked + frac_err_err_masked,
-                color=color,
-                alpha=0.2,
-            )
-            axs[ii].tick_params(axis="both", which="major", labelsize=16)
-
-    # Customize subplot appearance
-    for xx, ax in enumerate(axs):
-        if xx == len(axs) // 2:  # Centered y-label
-            ax.yaxis.set_label_coords(-0.1, 0.5)
-        ax.set_ylim(-10, 10)
-
-    axs[len(axs) - 1].set_xlabel(r"$k$ [1/Mpc]", fontsize=25)
-
-    axs[0].legend()
-
-    # Adjust spacing between subplots
-    plt.tight_layout()
-    fig.text(
-        0,
-        0.5,
-        r"Error $P_{\rm 3D}$ [%]",
-        va="center",
-        rotation="vertical",
-        fontsize=16,
-    )
-
-    # Save the plot
-    if savename:
-        plt.savefig(savename, bbox_inches="tight")
-
-
-def plot_p3d_LzO(archive, fractional_errors, z_test, savename=None):
-    # Extract data from Archive3D
-    k_Mpc = archive.training_data[0]["k3d_Mpc"]
-    mu = archive.training_data[0]["mu3d"]
-
-    # Apply a mask to select relevant k values
-    k_mask = (k_Mpc < 4) & (k_Mpc > 0)
-    k_Mpc = k_Mpc[k_mask]
-    mu = mu[k_mask]
-
-    # Create subplots with shared y-axis and x-axis
+    # Create subplots with shared y-axis
     fig, axs = plt.subplots(
-        len(z_test), 1, figsize=(6, 8), sharey=True, sharex=True
+        len(z_use),
+        1,
+        figsize=(8, 16),
+        sharey=True,
+        sharex=True,
+        gridspec_kw={"hspace": 0.05, "wspace": 0.00},
     )
 
-    # Define mu bins
-    mu_lims = [[0, 0.06], [0.31, 0.38], [0.62, 0.69], [0.94, 1]]
-
-    # Define colors for different mu bins
-    colors = ["navy", "crimson", "forestgreen", "goldenrod"]
+    # Extract data from Archive3D
+    k_Mpc = archive.training_data[0]["k_Mpc"]
+    # Apply a mask to select relevant k values
+    k1d_mask = (k_Mpc < 5) & (k_Mpc > 0)
+    k1d_sim = k_Mpc[k1d_mask]
 
     # Loop through redshifts
-    for ii, z in enumerate(z_test):
-        axs[ii].set_title(f"$z={z}$", fontsize=14)
-        axs[ii].axhline(y=-10, ls="--", color="black")
-        axs[ii].axhline(y=10, ls="--", color="black")
-
-        # Loop through mu bins
-        for mi in range(int(len(mu_lims))):
-            mu_mask = (mu >= mu_lims[mi][0]) & (mu <= mu_lims[mi][1])
-            k_masked = k_Mpc[mu_mask]
-
-            # Calculate fractional error statistics
-            frac_err = np.nanmedian(fractional_errors[:, ii, :], 0)
-            frac_err_err = sigma68(fractional_errors[:, ii, :])
-
-            frac_err_masked = frac_err[mu_mask]
-            frac_err_err_masked = frac_err_err[mu_mask]
-
-            color = colors[mi]
-
-            # Add a line plot with shaded error region to the current subplot
-            axs[ii].plot(
-                k_masked,
-                frac_err_masked,
-                label=f"${mu_lims[mi][0]}\leq \mu \leq {mu_lims[mi][1]}$",
-                color=color,
-            )
-            axs[ii].fill_between(
-                k_masked,
-                frac_err_masked - frac_err_err_masked,
-                frac_err_masked + frac_err_err_masked,
-                color=color,
-                alpha=0.2,
-            )
-            axs[ii].tick_params(axis="both", which="major", labelsize=16)
-
-    # Customize subplot appearance
-    for xx, ax in enumerate(axs):
-        if xx == len(axs) // 2:  # Centered y-label
-            ax.yaxis.set_label_coords(-0.1, 0.5)
-        ax.set_ylim(-10, 10)
-
-    axs[len(axs) - 1].set_xlabel(r"$k$ [1/Mpc]", fontsize=16)
-
-    axs[0].legend(fontsize=12)
-
-    # Adjust spacing between subplots
-    plt.tight_layout()
-    fig.text(
-        0,
-        0.5,
-        r"Error $P_{\rm 3D}$ [%]",
-        va="center",
-        rotation="vertical",
-        fontsize=16,
-    )
-
-    # Save the plot
-    if savename:
-        plt.savefig(savename, bbox_inches="tight")
-
-
-def plot_p1d_L1O(archive, fractional_errors, savename=None):
-    """
-    Plot the fractional errors in the P1D statistic for different redshifts.
-
-    Parameters:
-    - fractional_errors: Fractional errors in the P1D statistic for different redshifts.
-    - savename: The name of the file to save the plot.
-
-    Returns:
-    None
-
-    Plots:
-    - Subplots showing fractional errors in P1D for different redshifts.
-
-    """
-
-    # Create subplots with shared y-axis
-    fig, axs = plt.subplots(11, 1, figsize=(10, 20), sharey=True)
-
-    test_sim = archive.get_testing_data(
-        "mpg_central", force_recompute_plin=True
-    )
-    z_grid = [d["z"] for d in test_sim]
-
-    like = Likelihood(test_sim[0], archive.rel_err_p3d, archive.rel_err_p1d)
-    k1d_mask = like.like.ind_fit1d.copy()
-    k1d_sim = like.like.data["k1d"][k1d_mask]
-
-    # Loop through redshifts
-    for ii, z in enumerate(z_grid):
-        axs[ii].set_title(f"$z={z}$", fontsize=16)
-        axs[ii].axhline(y=-1, ls="--", color="black")
-        axs[ii].axhline(y=1, ls="--", color="black")
+    color = "purple"
+    for ii, z in enumerate(z_use):
+        axs[ii].text(3.2, 0.05, f"$z={z}$", fontsize=fontsize)
+        axs[ii].axhline(y=-0.01, ls="--", color="black")
+        axs[ii].axhline(y=0.01, ls="--", color="black")
+        axs[ii].axhline(y=0, ls=":", color="black")
+        axs[ii].set_xscale("log")
+        axs[ii].set_ylim(-0.075, 0.075)
+        axs[ii].axvline(x=kmin, ls="-", color=color, alpha=0.5)
 
         # Calculate fractional error statistics
         frac_err = np.nanmedian(fractional_errors[:, ii, :], 0)
         frac_err_err = sigma68(fractional_errors[:, ii, :])
 
         # Add a line plot with shaded error region to the current subplot
-        axs[ii].plot(k1d_sim, frac_err, color="crimson")
+        axs[ii].plot(k1d_sim, frac_err, color=color)
         axs[ii].fill_between(
             k1d_sim,
             frac_err - frac_err_err,
@@ -760,78 +579,17 @@ def plot_p1d_L1O(archive, fractional_errors, savename=None):
     for xx, ax in enumerate(axs):
         if xx == len(axs) // 2:  # Centered y-label
             ax.yaxis.set_label_coords(-0.1, 0.5)
-        ax.set_ylim(-5, 5)
 
-    axs[len(axs) - 1].set_xlabel(r"$k$ [1/Mpc]", fontsize=25)
-    axs[0].legend()
+    axs[len(axs) - 1].set_xlabel(r"$k$ [1/Mpc]", fontsize=fontsize)
 
     # Adjust spacing between subplots
-    plt.tight_layout()
     fig.text(
-        0,
+        0.0,
         0.5,
-        r"Error $P_{\rm 1D}$ [%]",
+        r"$P_{\rm 1D}^\mathrm{emu}/P_{\rm 1D}^\mathrm{sim}-1$",
         va="center",
         rotation="vertical",
-        fontsize=16,
-    )
-
-    # Save the plot
-    if savename:
-        plt.savefig(savename, bbox_inches="tight")
-
-
-def plot_p1d_LzO(archive, fractional_errors, z_test, savename=None):
-    # Create subplots with shared y-axis
-    fig, axs = plt.subplots(len(z_test), 1, figsize=(6, 8), sharey=True)
-
-    test_sim = archive.get_testing_data(
-        "mpg_central", force_recompute_plin=True
-    )
-    like = Likelihood(test_sim[0], archive.rel_err_p3d, archive.rel_err_p1d)
-    k1d_mask = like.like.ind_fit1d.copy()
-    k1d_sim = like.like.data["k1d"][k1d_mask]
-
-    # Loop through redshifts
-    for ii, z in enumerate(z_test):
-        axs[ii].set_title(f"$z={z}$", fontsize=16)
-        axs[ii].axhline(y=-1, ls="--", color="black")
-        axs[ii].axhline(y=1, ls="--", color="black")
-
-        # Calculate fractional error statistics
-        frac_err = np.nanmedian(fractional_errors[:, ii, :], 0)
-        frac_err_err = sigma68(fractional_errors[:, ii, :])
-
-        # Add a line plot with shaded error region to the current subplot
-        axs[ii].plot(k1d_sim, frac_err, color="crimson")
-        axs[ii].fill_between(
-            k1d_sim,
-            frac_err - frac_err_err,
-            frac_err + frac_err_err,
-            color="crimson",
-            alpha=0.2,
-        )
-
-        axs[ii].tick_params(axis="both", which="major", labelsize=18)
-
-    # Customize subplot appearance
-    for xx, ax in enumerate(axs):
-        if xx == len(axs) // 2:  # Centered y-label
-            ax.yaxis.set_label_coords(-0.1, 0.5)
-        ax.set_ylim(-5, 5)
-
-    axs[len(axs) - 1].set_xlabel(r"$k$ [1/Mpc]", fontsize=16)
-    axs[0].legend(fontsize=12)
-
-    # Adjust spacing between subplots
-    plt.tight_layout()
-    fig.text(
-        0,
-        0.5,
-        r"Error $P_{\rm 1D}$ [%]",
-        va="center",
-        rotation="vertical",
-        fontsize=16,
+        fontsize=fontsize,
     )
 
     # Save the plot

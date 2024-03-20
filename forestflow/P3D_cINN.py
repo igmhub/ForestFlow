@@ -17,7 +17,7 @@ from forestflow.archive import GadgetArchive3D, get_camb_interp
 from forestflow.likelihood import Likelihood
 from forestflow.utils import get_covariance, sort_dict, params_numpy2dict
 
-
+from warnings import warn
 import numpy as np
 import os
 import time
@@ -343,8 +343,8 @@ class P3DEmulator:
             raise ValueError("Only one of cosmo or sim_label must be provided.")
 
         if test_arinyo is not None:
-            print(
-                "Warning: Arinyo parameters provided. P3D will be computed using the provided parameters instead of the emulator prediction."
+            warn(
+                "Arinyo parameters provided. P3D will be computed using the provided parameters instead of the emulator prediction."
             )
             input_tag = "arinyo"
         else:
@@ -397,8 +397,8 @@ class P3DEmulator:
             if (emu_params["Delta2_p"] != linP_zs["Delta2_p"]) or (
                 emu_params["n_p"] != linP_zs["n_p"]
             ):
-                print(
-                    "WARNING: adjusting Delta2_p and n_p so these are consistent with the target cosmology"
+                warn(
+                    "Adjusting Delta2_p and n_p so these are consistent with the target cosmology"
                 )
                 print(
                     "Delta2_p: ",
@@ -440,9 +440,7 @@ class P3DEmulator:
         if return_cov:
             p3d_cov = get_covariance(p3ds_pred, p3d_arinyo)
             out_dict["p3d_cov"] = p3d_cov
-            print(
-                "WARNING: Covariance matrix returned for p3d_arinyo.reshape(-1)"
-            )
+            warn("Covariance matrix returned for p3d_arinyo.reshape(-1)")
 
         if nd2 != 0:
             p3d_arinyo = p3d_arinyo.reshape(nd1, nd2)
@@ -579,7 +577,7 @@ class P3DEmulator:
 
         # Load a pre-trained model if model_path is provided
         if self.model_path != None:
-            print("WARNING: loading a pre-trained emulator")
+            warn("Loading a pre-trained emulator")
             self.emulator.load_state_dict(torch.load(self.model_path))
             return
 
