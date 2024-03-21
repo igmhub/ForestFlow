@@ -15,16 +15,6 @@ def params_numpy2dict(params):
     Returns:
         dict: Dictionary containing the parameters with their corresponding names.
     """
-    # param_names = [
-    #     "bias",
-    #     "beta",
-    #     "d1_q1",
-    #     "d1_kvav",
-    #     "d1_av",
-    #     "d1_bv",
-    #     "d1_kp",
-    #     "d1_q2",
-    # ]
     param_names = [
         "bias",
         "beta",
@@ -39,6 +29,22 @@ def params_numpy2dict(params):
     for ii in range(params.shape[0]):
         dict_param[param_names[ii]] = params[ii]
     return dict_param
+
+
+def transform_arinyo_params(dict_arinyo_params, fcosmo):
+    dict_arinyo_params_out = {}
+    for key in dict_arinyo_params.keys():
+        if key == "beta":
+            dict_arinyo_params_out["bias_eta"] = (
+                dict_arinyo_params["bias"] * dict_arinyo_params["beta"] / fcosmo
+            )
+        elif key == "kvav":
+            dict_arinyo_params_out["kv"] = dict_arinyo_params["kvav"] ** (
+                1 / dict_arinyo_params["av"]
+            )
+        else:
+            dict_arinyo_params_out[key] = dict_arinyo_params[key]
+    return dict_arinyo_params_out
 
 
 def change_units(in_unit, out_unit, z, cosmo=None, camb_results=None):
@@ -295,34 +301,41 @@ def sort_dict(dct, keys):
         )  # update the original dictionary with the sorted dictionary
     return dct
 
-def get_covariance(x,y, return_corr = False):
-    cov =  1/ (len(x)-1) * np.einsum('ij,jk ->ik',(x - y[None,:]).T,(x - y[None,:]))
-    corr =np.corrcoef(cov)
+
+def get_covariance(x, y, return_corr=False):
+    cov = (
+        1
+        / (len(x) - 1)
+        * np.einsum("ij,jk ->ik", (x - y[None, :]).T, (x - y[None, :]))
+    )
+    corr = np.corrcoef(cov)
     if return_corr:
         return cov, corr
     else:
         return cov
-    
-def params_numpy2dict(
-    array,
-    key_strings=["bias", "beta", "q1", "kvav", "av", "bv", "kp", "q2"],
-):
-    """
-    Convert a numpy array of parameters to a dictionary.
 
-    Args:
-        array (numpy.ndarray): Array of parameters.
-        key_strings (list): List of strings for dictionary keys. Default is ["bias", "beta", "q1", "kvav", "av", "bv", "kp", "q2"].
 
-    Returns:
-        dict: Dictionary with key-value pairs corresponding to parameters.
-    """
-    # Create a dictionary with key strings and array elements
-    array_dict = {}
-    for key, value in zip(key_strings, array):
-        array_dict[key] = value
+# def params_numpy2dict(
+#     array,
+#     key_strings=["bias", "beta", "q1", "kvav", "av", "bv", "kp", "q2"],
+# ):
+#     """
+#     Convert a numpy array of parameters to a dictionary.
 
-    return array_dict
+#     Args:
+#         array (numpy.ndarray): Array of parameters.
+#         key_strings (list): List of strings for dictionary keys. Default is ["bias", "beta", "q1", "kvav", "av", "bv", "kp", "q2"].
+
+#     Returns:
+#         dict: Dictionary with key-value pairs corresponding to parameters.
+#     """
+#     # Create a dictionary with key strings and array elements
+#     array_dict = {}
+#     for key, value in zip(key_strings, array):
+#         array_dict[key] = value
+
+#     return array_dict
+
 
 def sigma68(data):
     return 0.5 * (

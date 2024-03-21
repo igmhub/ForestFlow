@@ -15,7 +15,12 @@ import forestflow
 from forestflow.model_p3d_arinyo import ArinyoModel
 from forestflow.archive import GadgetArchive3D, get_camb_interp
 from forestflow.likelihood import Likelihood
-from forestflow.utils import get_covariance, sort_dict, params_numpy2dict
+from forestflow.utils import (
+    get_covariance,
+    sort_dict,
+    params_numpy2dict,
+    transform_arinyo_params,
+)
 
 from warnings import warn
 import numpy as np
@@ -319,6 +324,7 @@ class P3DEmulator:
         return_cov=True,
         test_arinyo=None,
         kp_Mpc=0.7,
+        natural_params=False,
     ):
         """
         Predict the power spectrum using the emulator for a given simulation label and redshift.
@@ -424,8 +430,29 @@ class P3DEmulator:
             Nrealizations = len(test_arinyo)
 
         out_dict = {}
-        out_dict["coeffs_Arinyo"] = coeffs_mean
         out_dict["Plin"] = model_Arinyo.linP_Mpc(z, k_Mpc)
+        arinyo_pred = params_numpy2dict(coeffs_mean)
+        if natural_params:
+            arinyo_pred = transform_arinyo_params(
+                arinyo_pred, emu_params["f_p"]
+            )
+
+            coeffs_all_natural = np.zeros_like(coeffs_all)
+            for ii in range(coeffs_all.shape[0]):
+                _par = transform_arinyo_params(
+                    params_numpy2dict(coeffs_all[ii]), emu_params["f_p"]
+                )
+                coeffs_all_natural[ii] = np.array(list(_par.values()))
+            std_coeffs = np.std(coeffs_all_natural, axis=0)
+        else:
+            std_coeffs = np.std(coeffs_all, axis=0)
+
+        arinyo_pred_std = {}
+        for ii, key in enumerate(arinyo_pred.keys()):
+            arinyo_pred_std[key] = std_coeffs[ii]
+
+        out_dict["coeffs_Arinyo"] = arinyo_pred
+        out_dict["coeffs_Arinyo_std"] = arinyo_pred_std
 
         # Predict power spectrum using Arinyo model with predicted coefficients
         # Predict multiple realizations and calculate the covariance matrix
