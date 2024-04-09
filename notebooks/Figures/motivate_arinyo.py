@@ -194,15 +194,15 @@ jj = 0
 for ii in range(0, p3d_Mpc.shape[1], 3):
     col = 'C'+str(jj)
         
-    lab = r'$\mu=$'+str(np.round(mu[ii], 2))
+    lab = r'$\mu\simeq$'+str(np.round(mu[ii], 2))
     mask = k3d_Mpc[:, ii] <= 10
     ax.loglog(k3d_Mpc[mask, ii], p3d_Mpc[mask, ii]/Plin[mask, ii], col+'o:', label=lab)
     ax.plot(k, model_p3d[:, ii]/plin, col+'-', lw=2, alpha=0.8)
     kaiser = arinyo_params["bias"]**2*(1+arinyo_params["beta"]*mu[ii]**2)**2
     ax.plot(k, kaiser+k[:]*0, col+'--', lw=1.5, alpha=0.8)
     jj += 1
-ax.set_xlabel(r'$k$ [Mpc]', fontsize=ftsize)
-ax.set_ylabel(r'$P_F(k, \mu)/P_{\rm L}(k)$', fontsize=ftsize)
+ax.set_xlabel(r'$k\, [\mathrm{cMpc}^{-1}]$', fontsize=ftsize)
+ax.set_ylabel(r'$P_\mathrm{3D}(k, \mu)/P_{\rm L}(k)$', fontsize=ftsize)
 ax.legend(loc='lower left', ncol=3, fontsize=ftsize-2)
 ax.tick_params(axis="both", which="major", labelsize=ftsize)
 plt.tight_layout()

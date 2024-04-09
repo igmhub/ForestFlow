@@ -41,7 +41,7 @@ def plot_p3d_L1O(
     fig, axs = plt.subplots(
         len(z_use),
         1,
-        figsize=(8, 16),
+        figsize=(8, len(z_use) * 2),
         sharey=True,
         sharex=True,
         gridspec_kw={"hspace": 0.05, "wspace": 0.00},
@@ -61,18 +61,20 @@ def plot_p3d_L1O(
         if z not in z_use:
             continue
 
-        axs[ii].text(2.2, 0.15, f"$z={z}$", fontsize=fontsize)
+        axs[ii].text(2.2, -0.2, f"$z={z}$", fontsize=fontsize)
         axs[ii].axhline(y=-0.10, ls="--", color="black")
         axs[ii].axhline(y=0.10, ls="--", color="black")
         axs[ii].axhline(y=0, ls=":", color="black")
         axs[ii].set_xscale("log")
         axs[ii].set_ylim(-0.25, 0.25)
+        axs[ii].set_yticks(np.array([-0.2, 0, 0.2]))
 
         # Loop through mu bins
         for mi in range(int(len(mu_lims))):
             color = colors[mi]
 
             mu_mask = (mu >= mu_lims[mi][0]) & (mu <= mu_lims[mi][1])
+            mu_lab = np.round(np.nanmedian(mu[mu_mask]), decimals=2)
             k_masked = k_Mpc[mu_mask]
             n_modes_masked = n_modes[mu_mask]
 
@@ -92,7 +94,7 @@ def plot_p3d_L1O(
             axs[ii].plot(
                 k_masked,
                 frac_err_masked,
-                label=f"${mu_lims[mi][0]}\leq \mu \leq {mu_lims[mi][1]}$",
+                label=f"$\mu\simeq{mu_lab}$",
                 color=color,
                 lw=2.5,
             )
@@ -111,9 +113,11 @@ def plot_p3d_L1O(
         if xx == len(axs) // 2:  # Centered y-label
             ax.yaxis.set_label_coords(-0.1, 0.5)
 
-    axs[len(axs) - 1].set_xlabel(r"$k$ [1/Mpc]", fontsize=fontsize)
+    axs[len(axs) - 1].set_xlabel(
+        r"$k\, [\mathrm{cMpc}^{-1}]$", fontsize=fontsize
+    )
 
-    legend = axs[0].legend(loc="upper left", fontsize=fontsize - 2)
+    legend = axs[0].legend(loc="upper left", fontsize=fontsize - 6, ncols=4)
     legend.get_frame().set_alpha(0.9)
 
     # Adjust spacing between subplots
@@ -154,7 +158,7 @@ def plot_p3d_LzO(
     fig, axs = plt.subplots(
         len(z_use),
         1,
-        figsize=(8, 8),
+        figsize=(8, len(z_use) * 2),
         sharey=True,
         sharex=True,
         gridspec_kw={"hspace": 0.05, "wspace": 0.00},
@@ -168,7 +172,7 @@ def plot_p3d_LzO(
 
     # Loop through redshifts
     for ii, z in enumerate(z_use):
-        axs[ii].text(2.2, 0.15, f"$z={z}$", fontsize=fontsize)
+        axs[ii].text(2.2, -0.2, f"$z={z}$", fontsize=fontsize)
         axs[ii].axhline(y=-0.10, ls="--", color="black")
         axs[ii].axhline(y=0.10, ls="--", color="black")
         axs[ii].axhline(y=0, ls=":", color="black")
@@ -180,6 +184,7 @@ def plot_p3d_LzO(
             color = colors[mi]
 
             mu_mask = (mu >= mu_lims[mi][0]) & (mu <= mu_lims[mi][1])
+            mu_lab = np.round(np.nanmedian(mu[mu_mask]), decimals=2)
             k_masked = k_Mpc[mu_mask]
             n_modes_masked = n_modes[mu_mask]
 
@@ -199,7 +204,7 @@ def plot_p3d_LzO(
             axs[ii].plot(
                 k_masked,
                 frac_err_masked,
-                label=f"${mu_lims[mi][0]}\leq \mu \leq {mu_lims[mi][1]}$",
+                label=f"$\mu\simeq{mu_lab}$",
                 color=color,
                 lw=2.5,
             )
@@ -217,9 +222,11 @@ def plot_p3d_LzO(
         if xx == len(axs) // 2:  # Centered y-label
             ax.yaxis.set_label_coords(-0.1, 0.5)
 
-    axs[len(axs) - 1].set_xlabel(r"$k$ [1/Mpc]", fontsize=fontsize)
+    axs[len(axs) - 1].set_xlabel(
+        r"$k\, [\mathrm{cMpc}^{-1}]$", fontsize=fontsize
+    )
 
-    legend = axs[0].legend(fontsize=fontsize - 2, loc="upper left")
+    legend = axs[0].legend(fontsize=fontsize - 6, loc="upper left", ncols=4)
     legend.get_frame().set_alpha(0.9)
 
     # Adjust spacing between subplots

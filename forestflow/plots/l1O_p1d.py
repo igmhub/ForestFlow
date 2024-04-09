@@ -32,7 +32,7 @@ def plot_p1d_L1O(
     fig, axs = plt.subplots(
         len(z_use),
         1,
-        figsize=(8, 16),
+        figsize=(8, len(z_use) * 2),
         sharey=True,
         sharex=True,
         gridspec_kw={"hspace": 0.05, "wspace": 0.00},
@@ -54,7 +54,7 @@ def plot_p1d_L1O(
         if z not in z_use:
             continue
 
-        axs[ii].text(3.2, 0.025, f"$z={z}$", fontsize=fontsize)
+        axs[ii].text(3.2, -0.025, f"$z={z}$", fontsize=fontsize)
         axs[ii].axhline(y=-0.01, ls="--", color="black")
         axs[ii].axhline(y=0.01, ls="--", color="black")
         axs[ii].axhline(y=0, ls=":", color="black")
@@ -85,11 +85,13 @@ def plot_p1d_L1O(
         if xx == len(axs) // 2:  # Centered y-label
             ax.yaxis.set_label_coords(-0.1, 0.5)
 
-    axs[len(axs) - 1].set_xlabel(r"$k_\parallel$ [1/Mpc]", fontsize=fontsize)
+    axs[len(axs) - 1].set_xlabel(
+        r"$k_\parallel\, [\mathrm{cMpc}^{-1}]$", fontsize=fontsize
+    )
 
     # Adjust spacing between subplots
     fig.text(
-        0.0,
+        -0.025,
         0.5,
         r"$P_{\rm 1D}^\mathrm{emu}/P_{\rm 1D}^\mathrm{sim}-1$",
         va="center",
@@ -116,7 +118,7 @@ def plot_p1d_LzO(
     fig, axs = plt.subplots(
         len(z_use),
         1,
-        figsize=(8, 8),
+        figsize=(8, len(z_use) * 2),
         sharey=True,
         sharex=True,
         gridspec_kw={"hspace": 0.05, "wspace": 0.00},
@@ -131,7 +133,7 @@ def plot_p1d_LzO(
     # Loop through redshifts
     color = "purple"
     for ii, z in enumerate(z_use):
-        axs[ii].text(3.2, 0.025, f"$z={z}$", fontsize=fontsize)
+        axs[ii].text(3.2, -0.025, f"$z={z}$", fontsize=fontsize)
         axs[ii].axhline(y=-0.01, ls="--", color="black")
         axs[ii].axhline(y=0.01, ls="--", color="black")
         axs[ii].axhline(y=0, ls=":", color="black")
@@ -160,11 +162,13 @@ def plot_p1d_LzO(
         if xx == len(axs) // 2:  # Centered y-label
             ax.yaxis.set_label_coords(-0.1, 0.5)
 
-    axs[len(axs) - 1].set_xlabel(r"$k_\parallel$ [1/Mpc]", fontsize=fontsize)
+    axs[len(axs) - 1].set_xlabel(
+        r"$k_\parallel\, [\mathrm{cMpc}^{-1}]$", fontsize=fontsize
+    )
 
     # Adjust spacing between subplots
     fig.text(
-        0.0,
+        -0.025,
         0.5,
         r"$P_{\rm 1D}^\mathrm{emu}/P_{\rm 1D}^\mathrm{sim}-1$",
         va="center",

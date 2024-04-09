@@ -58,6 +58,10 @@ def plot_p3d_test_sims(
         sharex=True,
         gridspec_kw={"hspace": 0.05, "wspace": 0.00},
     )
+    try:
+        l = len(axs)
+    except:
+        axs = [axs]
 
     # Define mu bins
     mu_lims = [[0, 0.06], [0.31, 0.38], [0.62, 0.69], [0.94, 1]]
@@ -76,6 +80,7 @@ def plot_p3d_test_sims(
         axs[ii].axhline(y=0, ls=":", color="black")
         axs[ii].set_xscale("log")
         axs[ii].set_ylim(-0.25, 0.25)
+        axs[ii].set_yticks(np.array([-0.2, 0, 0.2]))
 
         # Loop through mu bins
         for mi in range(len(mu_lims)):
@@ -102,7 +107,7 @@ def plot_p3d_test_sims(
             axs[ii].plot(
                 k_masked,
                 frac_err_masked,
-                label=f"$\mu={mu_lab}$",
+                label=f"$\mu\simeq{mu_lab}$",
                 color=color,
                 lw=2.5,
             )
@@ -120,7 +125,9 @@ def plot_p3d_test_sims(
         if xx == len(axs) // 2:  # Centered y-label
             ax.yaxis.set_label_coords(-0.1, 0.5)
 
-    axs[len(axs) - 1].set_xlabel(r"$k$ [1/Mpc]", fontsize=fontsize)
+    axs[len(axs) - 1].set_xlabel(
+        r"$k\, [\mathrm{cMpc}^{-1}]$", fontsize=fontsize
+    )
 
     legend = axs[0].legend(loc="upper left", ncols=4, fontsize=fontsize - 6)
     legend.get_frame().set_alpha(0.9)
@@ -185,6 +192,10 @@ def plot_p1d_test_sims(
         sharex=True,
         gridspec_kw={"hspace": 0.05, "wspace": 0.00},
     )
+    try:
+        l = len(ax)
+    except:
+        ax = [ax]
 
     for c in range(len(sim_labels)):
         # ax[c].axhspan(-0.01, 0.01, color="gray", alpha=0.3)
@@ -221,7 +232,9 @@ def plot_p1d_test_sims(
     for xx, axi in enumerate(ax):
         if xx == len(ax) // 2:  # Centered y-label
             axi.yaxis.set_label_coords(-0.1, 0.5)
-    ax[-1].set_xlabel(r"$k_\parallel$ [1/Mpc]", fontsize=fontsize)
+    ax[-1].set_xlabel(
+        r"$k_\parallel\, [\mathrm{cMpc}^{-1}]$", fontsize=fontsize
+    )
 
     fig.text(
         0.0,

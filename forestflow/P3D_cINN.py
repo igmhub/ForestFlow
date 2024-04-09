@@ -381,6 +381,8 @@ class P3DEmulator:
             else:
                 raise ValueError("k and mu must be 1D or 2D arrays.")
 
+        out_dict = {}
+
         if sim_label is not None:
             # Load the pre-interpolated matter power spectrum
             # Extract simulation index from the given simulation label
@@ -400,6 +402,7 @@ class P3DEmulator:
             # Adjusting linP values to this cosmo
             sim_cosmo = camb_cosmo.get_cosmology(**cosmo)
             linP_zs = fit_linP.get_linP_Mpc_zs(sim_cosmo, [z], kp_Mpc)[0]
+            out_dict["linP_zs"] = linP_zs
             if (emu_params["Delta2_p"] != linP_zs["Delta2_p"]) or (
                 emu_params["n_p"] != linP_zs["n_p"]
             ):
@@ -429,7 +432,6 @@ class P3DEmulator:
             coeffs_all, coeffs_mean = test_arinyo, test_arinyo.mean(0)
             Nrealizations = len(test_arinyo)
 
-        out_dict = {}
         out_dict["Plin"] = model_Arinyo.linP_Mpc(z, k_Mpc)
         arinyo_pred = params_numpy2dict(coeffs_mean)
         if natural_params:

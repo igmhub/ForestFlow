@@ -138,6 +138,9 @@ for iz, z in enumerate(z_central):
     Arinyo_emu_std.append(out["coeffs_Arinyo_std"])
 
 
+# %%
+Arinyo_emu_std
+
 # %% [markdown]
 # ## PLOT
 
@@ -158,14 +161,14 @@ name_params = ['bias', 'bias_eta', 'q1', 'q2', 'kv', 'av', 'bv', 'kp']
 # name_params = list(Arinyo_emu[0].keys())
 
 name2label = {
-    'bias':r"$b_\mathrm{F}$", 
-    'bias_eta':r"$b_\eta$", 
+    'bias':r"$-b_\delta$", 
+    'bias_eta':r"$-b_\eta$", 
     'q1':r"$q_1$", 
+    'q2':r"$q_2$",
     'kv':r"$k_\mathrm{v}$", 
     'av':r"$a_\mathrm{v}$", 
     'bv':r"$b_\mathrm{v}$", 
     'kp':r"$k_\mathrm{p}$", 
-    'q2':r"$q_2$"
 }
 
 # Plot the original and emulator data in the upper panel
@@ -178,7 +181,10 @@ for i in range(len(name_params)):
     ari_emu = np.array([d[name_params[i]] for d in Arinyo_emu])
     ari_emu_std = np.array([d[name_params[i]] for d in Arinyo_emu_std])
     ari_cen = np.array([d[name_params[i]] for d in Arinyo_sim])
-    
+
+    print(name_params[i])
+    print(np.mean(np.abs(ari_emu)/np.abs(ari_cen)-1))
+    print(np.std(np.abs(ari_emu)/np.abs(ari_cen)-1))
     # if i != 6:
     ax1.plot(
         z_central,
@@ -218,16 +224,23 @@ ax[-1].set_xlabel("$z$", fontsize=ftsize)
 
 
 hand = []
-for i in range(len(name_params)):
+for i in range(4):
     col = "C"+str(i)
     hand.append(mpatches.Patch(color=col, label=name2label[name_params[i]]))
 legend1 = ax[0].legend(fontsize=ftsize-2, loc="lower left", handles=hand, ncols=4)
 
-line1 = Line2D([0], [0], label='Data', color='k', ls=":", marker="o")
+line1 = Line2D([0], [0], label='MLE fit', color='k', ls=":", marker="o")
 line2 = Line2D([0], [0], label='ForestFlow', color='k', ls="-")
 hand = [line1, line2]
 ax[0].legend(fontsize=ftsize-2, loc="upper left", handles=hand, ncols=2)
 ax[0].add_artist(legend1)
+
+hand = []
+for i in range(4, len(name_params)):
+    col = "C"+str(i)
+    hand.append(mpatches.Patch(color=col, label=name2label[name_params[i]]))
+legend1 = ax[1].legend(fontsize=ftsize-2, loc="lower left", handles=hand, ncols=4)
+
 # plt.gca().add_artist(legend1)
 # Adjust layout
 plt.tight_layout()
@@ -239,72 +252,11 @@ plt.savefig(folder_fig+"arinyo_z.pdf")
 # plt.show()
 
 # %%
-
-# %%
-colors = [
-    "navy",
-    "crimson",
-    "forestgreen",
-    "purple",
-    "darkorange",
-    "deepskyblue",
-    "grey",
-    "pink",
-]
-# labels = [
-#     r"$b$",
-#     r"$\beta$",
-#     r"$q_1$",
-#     r"$k_{\rm vav}$",
-#     r"$a_{v}$",
-#     r"$b_{v}$",
-#     r"$k_p$",
-#     r"$q_2$",
-# ]
-
-# Create a 2x1 grid for plotting
-fig, (ax1, ax2) = plt.subplots(
-    2, 1, figsize=(8, 6), gridspec_kw={"height_ratios": [3, 1]}
-)
-
-# Plot the original and emulator data in the upper panel
-for i in range(len(name_params)):
-    ari_emu = [d[name_params[i]] for d in Arinyo_coeffs_central_emulator]
-    ari_cen = [d[name_params[i]] for d in Arinyo_coeffs_central_natural]
-    
-    # if i != 6:
-    ax1.plot(
-        z_central,
-        np.abs(ari_cen),
-        color=colors[i],
-        ls="-",
-        label=name_params[i],
-    )
-    ax1.plot(
-        z_central,
-        np.abs(ari_emu),
-        color=colors[i],
-        ls="--",
-    )
-    ax2.plot(z_central, np.abs(ari_cen)
-    / np.abs(ari_emu)
-    - 1, color=colors[i], ls="-")
-
-ax1.set_ylabel("Parameter", fontsize=16)
-ax1.legend(fontsize=14)
-
-ax1.set_yscale("log")
-ax1.set_ylim(0.07, 20)
-    
-ax2.set_xlabel("$z$", fontsize=16)
-ax2.set_ylabel("Relative Difference", fontsize=16)
-# ax2.legend()
-
-# Adjust layout
-plt.tight_layout()
-
-# Show the plot
-plt.show()
-
+bias
+0.0025521241775302472
+0.010315501514549085
+bias_eta
+0.0007729678046709139
+0.03842253599787945
 
 # %%

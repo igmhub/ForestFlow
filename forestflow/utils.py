@@ -342,3 +342,109 @@ def sigma68(data):
         np.nanquantile(data, q=0.84, axis=0)
         - np.nanquantile(data, q=0.16, axis=0)
     )
+
+
+def load_Arinyo_chains(
+    archive,
+    folder_chains="/pscratch/sd/l/lcabayol/P3D/p3d_fits_new/",
+    sim_label=None,
+    z=None,
+    chain_samp=10_000,
+):
+    """
+    Load Arinyo model chains from stored files for all the training LH simulations.
+
+    This function loads Arinyo model chains corresponding to different simulations from saved files.
+    It extracts relevant information such as simulation label, scaling factor, redshift, and other parameters
+    to construct the file tag for each simulation. The loaded chains are then processed and returned.
+
+    Returns:
+        np.array: Array containing Arinyo model chains for all simulations.
+    """
+    print("Loading Arinyo chains")
+
+    if sim_label == None:
+        training_data = Archive3D.training_data
+
+        # Initialize array to store Arinyo model chains
+        chains = np.zeros(shape=(len(training_data), chain_samp, 8))
+
+        # Loop over simulations in the training data
+        for ind_book in range(0, len(training_data)):
+            sim_label = training_data[ind_book]["sim_label"]
+            scale_tau = training_data[ind_book]["val_scaling"]
+            ind_z = training_data[ind_book]["z"]
+
+            # Construct file tag based on simulation parameters
+            tag = (
+                "fit_sim"
+                + sim_label[4:]
+                + "_tau"
+                + str(np.round(scale_tau, 2))
+                + "_z"
+                + str(ind_z)
+                + "_kmax3d"
+                + str(archive.kmax_3d)
+                + "_noise3d"
+                + str(archive.noise_3d)
+                + "_kmax1d"
+                + str(archive.kmax_1d)
+                + "_noise1d"
+                + str(archive.noise_1d)
+            )
+
+            # Load Arinyo model chain from file
+            file_arinyo = np.load(folder_chains + tag + ".npz")
+            chain = file_arinyo["chain"].copy()
+
+            # Ensure non-positive values for the first parameter
+            chain[:, 0] = -np.abs(chain[:, 0])
+
+            # Randomly sample from the loaded chain
+            idx = np.random.randint(len(chain), size=(chain_samp))
+            chain_sampled = chain[idx]
+            chains[ind_book] = chain_sampled
+
+        print("Chains loaded")
+        return chains
+
+    else:
+        if z is None:
+            raise ValueError(
+                "If sim_label is not None, a redshift must be provided."
+            )
+
+        scale_tau = 1.0
+        ind_z = z
+
+        # Construct file tag based on simulation parameters
+        tag = (
+            "fit_sim"
+            + sim_label[4:]
+            + "_tau"
+            + str(np.round(scale_tau, 2))
+            + "_z"
+            + str(ind_z)
+            + "_kmax3d"
+            + str(archive.kmax_3d)
+            + "_noise3d"
+            + str(archive.noise_3d)
+            + "_kmax1d"
+            + str(archive.kmax_1d)
+            + "_noise1d"
+            + str(archive.noise_1d)
+        )
+
+        # Load Arinyo model chain from file
+        file_arinyo = np.load(folder_chains + tag + ".npz")
+        chain = file_arinyo["chain"].copy()
+
+        # Ensure non-positive values for the first parameter
+        chain[:, 0] = -np.abs(chain[:, 0])
+
+        # Randomly sample from the loaded chain
+        idx = np.random.randint(len(chain), size=(chain_samp))
+        chain_sampled = chain[idx]
+
+        print("Chains loaded")
+        return chain_sampled

@@ -72,7 +72,7 @@ def ls_level(folder, nlevels):
     return folder
 
 
-path_program = ls_level(os.getcwd(), 1)
+path_program = ls_level(os.getcwd(), 2)
 print(path_program)
 sys.path.append(path_program)
 
@@ -164,7 +164,7 @@ for iz, zdrop in enumerate(z_test):
         adamw=True,
         nLayers_inn=12,  # 15
         Archive=Archive3D,
-        model_path=f"../data/emulator_models/mpg_dropz{zdrop}.pt",
+        model_path=path_program + f"/data/emulator_models/mpg_dropz{zdrop}.pt",
     )
 
     for s in range(Nsim):
@@ -286,12 +286,12 @@ plot_p3d_LzO(Archive3D, z_use, fractional_errors_sims, savename=folder+"l1O/l1O_
 plot_p3d_LzO(Archive3D, z_use, fractional_errors_sims, savename=folder+"l1O/l1O_z_P3D.pdf");
 
 # %%
-plot_p3d_LzO(Archive3D, z_use, fractional_errors_arinyo, savename=folder+"l1O/l1O_z_P3D_smooth.png");
-plot_p3d_LzO(Archive3D, z_use, fractional_errors_arinyo, savename=folder+"l1O/l1O_z_P3D_smooth.pdf");
+# plot_p3d_LzO(Archive3D, z_use, fractional_errors_arinyo, savename=folder+"l1O/l1O_z_P3D_smooth.png");
+# plot_p3d_LzO(Archive3D, z_use, fractional_errors_arinyo, savename=folder+"l1O/l1O_z_P3D_smooth.pdf");
 
 # %%
-plot_p3d_LzO(Archive3D, z_use, fractional_errors_bench, savename=folder+"fit/fit_z_P3D.png")
-plot_p3d_LzO(Archive3D, z_use, fractional_errors_bench, savename=folder+"fit/fit_z_P3D.pdf")
+# plot_p3d_LzO(Archive3D, z_use, fractional_errors_bench, savename=folder+"fit/fit_z_P3D.png")
+# plot_p3d_LzO(Archive3D, z_use, fractional_errors_bench, savename=folder+"fit/fit_z_P3D.pdf")
 
 # %% [markdown]
 # #### P1D
@@ -302,21 +302,18 @@ fractional_errors_sims_p1d = (p1ds_pred / p1ds_sims - 1)
 fractional_errors_bench_p1d = (p1ds_arinyo / p1ds_sims - 1)
 
 # %%
-plot_p1d_LzO(Archive3D, z_use, fractional_errors_sims_p1d)
-
-# %%
 # plot_p1d_L1O(Archive3D, z_use, fractional_errors_sims_p1d)
 plot_p1d_LzO(Archive3D, z_use, fractional_errors_sims_p1d, savename=folder+"l1O/l1O_z_P1D.png")
 plot_p1d_LzO(Archive3D, z_use, fractional_errors_sims_p1d, savename=folder+"l1O/l1O_z_P1D.pdf")
 
 # %%
-# plot_p1d_L1O(Archive3D, z_use, fractional_errors_arinyo_p1d)
-plot_p1d_LzO(Archive3D, z_use, fractional_errors_arinyo_p1d, savename=folder+"l1O/l1O_z_P1D_smooth.pdf")
-plot_p1d_LzO(Archive3D, z_use, fractional_errors_arinyo_p1d, savename=folder+"l1O/l1O_z_P1D_smooth.png")
+# # plot_p1d_L1O(Archive3D, z_use, fractional_errors_arinyo_p1d)
+# plot_p1d_LzO(Archive3D, z_use, fractional_errors_arinyo_p1d, savename=folder+"l1O/l1O_z_P1D_smooth.pdf")
+# plot_p1d_LzO(Archive3D, z_use, fractional_errors_arinyo_p1d, savename=folder+"l1O/l1O_z_P1D_smooth.png")
 
 # %%
-# plot_p1d_L1O(Archive3D, z_use, fractional_errors_bench_p1d)
-plot_p1d_LzO(Archive3D, z_use, fractional_errors_bench_p1d, savename=folder+"fit/fit_z_P1D.png")
-plot_p1d_LzO(Archive3D, z_use, fractional_errors_bench_p1d, savename=folder+"fit/fit_z_P1D.pdf")
+# # plot_p1d_L1O(Archive3D, z_use, fractional_errors_bench_p1d)
+# plot_p1d_LzO(Archive3D, z_use, fractional_errors_bench_p1d, savename=folder+"fit/fit_z_P1D.png")
+# plot_p1d_LzO(Archive3D, z_use, fractional_errors_bench_p1d, savename=folder+"fit/fit_z_P1D.pdf")
 
 # %%

@@ -98,7 +98,7 @@ zs = np.flip(np.arange(2, 4.6, 0.25))
 k_Mpc = Archive3D.training_data[0]["k3d_Mpc"]
 mu = Archive3D.training_data[0]["mu3d"]
 
-k_mask = (k_Mpc < 4) & (k_Mpc > 0)
+k_mask = (k_Mpc < 5) & (k_Mpc > 0)
 
 k_Mpc = k_Mpc[k_mask]
 mu = mu[k_mask]
@@ -113,8 +113,6 @@ norm_all = k_p1d_Mpc_all / np.pi
 
 # %%
 sim_labels = [
-    "mpg_central",
-    "mpg_seed",
     "mpg_growth",
     "mpg_neutrinos",
     "mpg_curved",
@@ -124,8 +122,12 @@ sim_labels = [
 
 # %%
 sim_labels = [
-    "mpg_central",
     "mpg_seed",
+]
+
+# %%
+sim_labels = [
+    "mpg_central"
 ]
 
 # %% [markdown]
@@ -156,7 +158,7 @@ for ii, sim_label in enumerate(sim_labels):
         P3D_testsims[ii, iz] = out['p3d']
         P1D_testsims[ii, iz] = out['p1d']
         z_testsims[ii, iz] = z
-        arinyo_testsims[ii, iz] = out["coeffs_Arinyo"]
+        arinyo_testsims[ii, iz] = np.array(list(out["coeffs_Arinyo"].values()))
 
 # %% [markdown]
 # #### Loop over test sims, true P1D and P3D
@@ -243,43 +245,10 @@ fractional_error_P1D_sims = (P1D_testsims / P1D_testsims_true - 1)
 folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
 
 # %%
-savename = folder + "test_cosmo/test_cosmo_P1D_ideal"
-for ext in [".png", ".pdf"]:
-    plot_p1d_test_sims(
-        sim_labels,
-        k_p1d_Mpc,
-        fractional_error_P1D_sims,
-        savename=savename+ext,
-        fontsize=20,
-    );
-
-# %%
-savename = folder + "test_cosmo/test_cosmo_P1D_smooth_ideal"
-for ext in [".png", ".pdf"]:
-    plot_p1d_test_sims(
-        sim_labels,
-        k_p1d_Mpc,
-        fractional_error_P1D_arinyo,
-        savename=savename+ext,
-        fontsize=20,
-    )
-
-# %%
-savename = folder + "test_cosmo/test_cosmo_P1D_fit_ideal"
-for ext in [".png", ".pdf"]:
-    plot_p1d_test_sims(
-        sim_labels,
-        k_p1d_Mpc,
-        fractional_error_P1D_bench,
-        savename=savename+ext,
-        fontsize=20,
-    )
-
-# %% [markdown]
-# ## PLOT P3D
-
-# %%
-savename = folder + "test_cosmo/test_cosmo_P3D_ideal"
+# savename = folder + "test_cosmo/test_cosmo_P3D_ideal"
+savename = folder + "test_cosmo/test_cosmo_P3D_others"
+# savename = folder + "test_cosmo/test_cosmo_P3D_central"
+# savename = folder + "test_cosmo/test_cosmo_P3D_seed"
 for ext in [".png", ".pdf"]:
     plot_p3d_test_sims(
         sim_labels,
@@ -290,6 +259,47 @@ for ext in [".png", ".pdf"]:
         savename=savename+ext,
         fontsize=20,
     )
+
+# %%
+# savename = folder + "test_cosmo/test_cosmo_P1D_ideal"
+savename = folder + "test_cosmo/test_cosmo_P1D_others"
+# savename = folder + "test_cosmo/test_cosmo_P1D_central"
+# savename = folder + "test_cosmo/test_cosmo_P1D_seed"
+for ext in [".png", ".pdf"]:
+    plot_p1d_test_sims(
+        sim_labels,
+        k_p1d_Mpc,
+        fractional_error_P1D_sims,
+        savename=savename+ext,
+        fontsize=20,
+    );
+
+# %%
+# savename = folder + "test_cosmo/test_cosmo_P1D_smooth_ideal"
+# for ext in [".png", ".pdf"]:
+#     plot_p1d_test_sims(
+#         sim_labels,
+#         k_p1d_Mpc,
+#         fractional_error_P1D_arinyo,
+#         savename=savename+ext,
+#         fontsize=20,
+#     )
+
+# %%
+# savename = folder + "test_cosmo/test_cosmo_P1D_fit_ideal"
+# for ext in [".png", ".pdf"]:
+#     plot_p1d_test_sims(
+#         sim_labels,
+#         k_p1d_Mpc,
+#         fractional_error_P1D_bench,
+#         savename=savename+ext,
+#         fontsize=20,
+#     )
+
+# %% [markdown]
+# ## PLOT P3D
+
+# %%
 
 # %%
 savename = folder + "test_cosmo/test_cosmo_P3D_smooth.pdf"
