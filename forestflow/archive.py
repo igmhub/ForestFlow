@@ -21,7 +21,6 @@ def get_camb_interp(file, data):
     # if not, do it (to be fixed)
     if os.path.isfile(file) == False:
         cosmo = camb_cosmo.get_cosmology_from_dictionary(data["cosmo_params"])
-
         # get model
         zs = np.arange(2.0, 4.75, 0.25)
         camb_results = camb_cosmo.get_camb_results(

@@ -1,7 +1,7 @@
-notebooks/*.ipynb
-notebooks/*.pdf
-notebooks/*.png
-notebooks/.ipynb_checkpoints/
+**/*.ipynb
+**/*.pdf
+**/*.png
+**/.ipynb_checkpoints/
 data/
-forestflow/__pycache__/
+**/__pycache__/
 forestflow.egg-info/
