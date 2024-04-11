@@ -37,7 +37,7 @@ the emulators and archives.
 - Create a new conda environment. It is usually better to follow python version one or two behind. In January 2024, the latest is 3.12, so we recommend 3.11.
 
 ```
-conda create -n forestflow python=3.11 camb
+conda create -n forestflow -c conda-forge python=3.11 camb fdasrsf pip=24.0
 conda activate forestflow
 ```
 - Install LaCE:

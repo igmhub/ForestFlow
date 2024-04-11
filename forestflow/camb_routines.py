@@ -16,7 +16,7 @@ def get_matter_power_interpolator(
     nonlinear=True,
     var1=None,
     var2=None,
-    hubble_units=True,
+    hubble_units=False,
     k_hunit=True,
     return_z_k=False,
     log_interp=True,
@@ -102,7 +102,9 @@ def get_matter_power_interpolator(
         p_or_log_p = log_p_new
 
     deg_k = min(len(logkh) - 1, 3)
-    res = interpolate.RectBivariateSpline(zs, logkh, p_or_log_p, kx=deg_z, ky=deg_k)
+    res = interpolate.RectBivariateSpline(
+        zs, logkh, p_or_log_p, kx=deg_z, ky=deg_k
+    )
     res.kmin = np.min(khs)
     res.kmax = kmax
     res.islog = log_interp
