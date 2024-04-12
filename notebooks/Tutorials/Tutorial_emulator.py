@@ -54,19 +54,22 @@ print(len(Archive3D.training_data))
 # Not necessary, we have pre-trained emulators
 
 # %%
-p3d_emu = P3DEmulator(
-    Archive3D.training_data,
-    Archive3D.emu_params,
-    nepochs=300,
-    lr=0.001,  # 0.005
-    batch_size=20,
-    step_size=200,
-    gamma=0.1,
-    weight_decay=0,
-    adamw=True,
-    nLayers_inn=12,  # 15
-    Archive=Archive3D,
-    )
+train_emu = False
+
+if train_emu:
+    p3d_emu = P3DEmulator(
+        Archive3D.training_data,
+        Archive3D.emu_params,
+        nepochs=300,
+        lr=0.001,  # 0.005
+        batch_size=20,
+        step_size=200,
+        gamma=0.1,
+        weight_decay=0,
+        adamw=True,
+        nLayers_inn=12,  # 15
+        Archive=Archive3D,
+        )
 
 # %% [markdown]
 # ## LOAD TRAINED EMULATOR
