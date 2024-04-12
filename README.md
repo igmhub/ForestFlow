@@ -64,3 +64,10 @@ jupytext --to ipynb notebooks/*.py
 pip install ipykernel
 python -m ipykernel install --user --name forestflow --display-name forestflow
 ```
+
+- If you want to use Px routines, you need to install hankl:
+
+
+```
+pip install -e .[px]
+```

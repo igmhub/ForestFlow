@@ -22,20 +22,12 @@ import os
 import matplotlib.pyplot as plt
 
 # %%
+import forestflow
 from forestflow.archive import GadgetArchive3D
 
-
 # %%
-def ls_level(folder, nlevels):
-    for ii in range(nlevels):
-        folder = os.path.dirname(folder)
-    folder += "/"
-    return folder
-
-
-path_program = ls_level(os.getcwd(), 1)
-print(path_program)
-sys.path.append(path_program)
+path_program = os.path.dirname(forestflow.__path__[0]) + '/'
+path_program
 
 # %% [markdown]
 # ## LOAD P3D ARCHIVE

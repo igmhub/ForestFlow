@@ -37,6 +37,9 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
+px = [
+    "hankl>=1.1.0"
+]
 jupyter = [
     "jupyter>=1.0.0",
     "jupytext>=1.16.1"
