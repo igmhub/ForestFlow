@@ -41,6 +41,10 @@ from forestflow.model_p3d_arinyo import get_linP_interp
 from forestflow.model_p3d_arinyo import ArinyoModel
 from forestflow.P3D_cINN import P3DEmulator
 
+# %%
+path_program = os.path.dirname(forestflow.__path__[0]) + '/'
+path_program
+
 # %% [markdown]
 # ## Arinyo model from default cosmo and params
 #
@@ -104,10 +108,9 @@ plt.xscale('log')
 # Read sims
 
 # %%
-path_forestflow= os.path.dirname(forestflow.__path__[0]) + "/"
 Archive3D = GadgetArchive3D(
-    base_folder=path_forestflow,
-    folder_data=path_forestflow+"/data/best_arinyo/",
+    base_folder=path_program,
+    folder_data=path_program+"/data/best_arinyo/",
 )
 
 # %%
@@ -211,7 +214,7 @@ p3d_emu = P3DEmulator(
     Archive=Archive3D,
     use_chains=False,
     chain_samp=100_000,
-    model_path="../data/emulator_models/mpg_hypercube.pt",
+    model_path=path_program+"/data/emulator_models/mpg_hypercube.pt",
 )
 
 # %%
