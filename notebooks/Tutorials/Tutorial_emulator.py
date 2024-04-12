@@ -69,14 +69,6 @@ p3d_emu = P3DEmulator(
     )
 
 # %% [markdown]
-# ## TEST EMULATOR
-
-# %%
-sim_label = "mpg_central"
-ind_book = 6
-plot_test_p3d(ind_book, Archive3D, p3d_emu, sim_label)
-
-# %% [markdown]
 # ## LOAD TRAINED EMULATOR
 
 # %% [markdown] jp-MarkdownHeadingCollapsed=true
@@ -99,7 +91,7 @@ p3d_emu = P3DEmulator(
     nLayers_inn=12,  # 15
     Archive=Archive3D,
     chain_samp=100_000,
-    model_path="../data/emulator_models/mpg_hypercube.pt",
+    model_path=path_program+"/data/emulator_models/mpg_hypercube.pt",
 )
 
 # %%
