@@ -8,7 +8,6 @@ from lace.emulator import pnd_archive
 
 from forestflow import model_p3d_arinyo
 from forestflow.fit_p3d import FitPk
-from forestflow.camb_routines import get_matter_power_interpolator
 
 
 def read_extra_sims():

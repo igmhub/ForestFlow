@@ -325,6 +325,7 @@ class P3DEmulator:
         test_arinyo=None,
         kp_Mpc=0.7,
         natural_params=False,
+        verbose=True,
     ):
         """
         Predict the power spectrum using the emulator for a given simulation label and redshift.
@@ -409,15 +410,19 @@ class P3DEmulator:
                 warn(
                     "Adjusting Delta2_p and n_p so these are consistent with the target cosmology"
                 )
-                print(
-                    "Delta2_p: ",
-                    emu_params["Delta2_p"],
-                    "->",
-                    linP_zs["Delta2_p"],
-                )
+                if verbose:
+                    print(
+                        "Delta2_p: ",
+                        emu_params["Delta2_p"],
+                        "->",
+                        linP_zs["Delta2_p"],
+                    )
+                    print("n_p: ", emu_params["n_p"], "->", linP_zs["n_p"])
+
                 emu_params["Delta2_p"] = linP_zs["Delta2_p"]
-                print("n_p: ", emu_params["n_p"], "->", linP_zs["n_p"])
                 emu_params["n_p"] = linP_zs["n_p"]
+            if natural_params:
+                emu_params["f_p"] = linP_zs["f_p"]
 
         # Initialize Arinyo model with the loaded matter power spectrum
         model_Arinyo = ArinyoModel(camb_pk_interp=pk_interp)

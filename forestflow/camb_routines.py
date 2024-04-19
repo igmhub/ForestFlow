@@ -13,7 +13,7 @@ def P_camb(pk_intp, z, kh, grid=None):
 
 def get_matter_power_interpolator(
     camb_results,
-    nonlinear=True,
+    nonlinear=False,
     var1=None,
     var2=None,
     hubble_units=False,

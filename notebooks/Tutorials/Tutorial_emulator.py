@@ -17,6 +17,9 @@
 # # TUTORIAL FOR THE P3D EMULATOR (forestflow)
 
 # %%
+# %load_ext autoreload
+# %autoreload 2
+
 import sys
 import os
 import matplotlib.pyplot as plt

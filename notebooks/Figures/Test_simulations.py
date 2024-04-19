@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 from forestflow.model_p3d_arinyo import ArinyoModel
 from forestflow.archive import GadgetArchive3D
 from forestflow.P3D_cINN import P3DEmulator
-from forestflow.plots.test_sims import plot_p1d_test_sims, plot_p3d_test_sims
+from forestflow.plots.test_sims import plot_p1d_test_sims, plot_p3d_test_sims, get_modes
 from forestflow.utils import params_numpy2dict
 
 from matplotlib import rcParams
@@ -68,7 +68,7 @@ print(len(Archive3D.training_data))
 
 
 # %% [markdown]
-# ## TRAIN EMULATOR
+# ## Load emulator
 
 # %%
 p3d_emu = P3DEmulator(
@@ -109,6 +109,8 @@ k1d_mask = (k_p1d_Mpc < 5) & (k_p1d_Mpc > 0)
 k_p1d_Mpc = k_p1d_Mpc[k1d_mask]
 norm = k_p1d_Mpc / np.pi
 norm_all = k_p1d_Mpc_all / np.pi
+
+n_modes = get_modes()[k_mask]
 
 
 # %%
@@ -152,6 +154,8 @@ for ii, sim_label in enumerate(sim_labels):
             sim_label=sim_label, 
             z=z, 
             emu_params=test_sim_z[0],
+            k_Mpc=k_Mpc,
+            mu=mu,
             kpar_Mpc = k_p1d_Mpc
         )
 
@@ -167,6 +171,7 @@ for ii, sim_label in enumerate(sim_labels):
 P3D_testsims_true = np.zeros((len(sim_labels), Nz, k_Mpc.shape[0]))
 P1D_testsims_true = np.zeros((len(sim_labels), Nz, k_p1d_Mpc.shape[0]))
 P1D_testsims_true_all = np.zeros((len(sim_labels), Nz, k_p1d_Mpc_all.shape[0]))
+Plin_all = np.zeros((len(sim_labels), Nz, k_Mpc.shape[0]))
 
 for ii, sim_label in enumerate(sim_labels):
     test_sim =  Archive3D.get_testing_data(
@@ -178,9 +183,8 @@ for ii, sim_label in enumerate(sim_labels):
         test_sim_z = [d for d in test_sim if d["z"] == z]
 
         # p3d from sim
-        p3d_sim = test_sim_z[0]["p3d_Mpc"][p3d_emu.k_mask]
-
         P3D_testsims_true[ii, iz] = test_sim_z[0]["p3d_Mpc"][k_mask]
+        Plin_all[ii, iz] = test_sim_z[0]["Plin"][k_mask]
         P1D_testsims_true[ii, iz] = test_sim_z[0]["p1d_Mpc"][k1d_mask]
         P1D_testsims_true_all[ii, iz] = test_sim_z[0]["p1d_Mpc"]
 
@@ -237,6 +241,125 @@ fractional_error_P1D_arinyo = (P1D_testsims / P1D_testsims_Arinyo - 1)
 
 fractional_error_P3D_sims = (P3D_testsims / P3D_testsims_true - 1)
 fractional_error_P1D_sims = (P1D_testsims / P1D_testsims_true - 1)
+
+# %% [markdown]
+# ## No ratio
+
+# %%
+folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+savename = folder + "test_cosmo/test_cosmo_P3D_central_noratio"
+
+# %%
+P3D_testsims[ii, iz] = out['p3d']
+P1D_testsims[ii, iz] = out['p1d']
+z_testsims[ii, iz] = z
+
+# %%
+P3D_testsims_true[ii, iz] = test_sim_z[0]["p3d_Mpc"][k_mask]
+P1D_testsims_true[ii, iz] = test_sim_z[0]["p1d_Mpc"][k1d_mask]
+P1D_testsims_true_all[ii, iz] = test_sim_z[0]["p1d_Mpc"]
+
+# %%
+z_testsims.shape
+
+# %%
+isim = 0
+iz = np.argwhere(z_testsims[isim] == 3)[0,0]
+p3d_emu = P3D_testsims[isim, iz]/Plin_all[isim, iz]
+p3d_sim = P3D_testsims_true[isim, iz]/Plin_all[isim, iz]
+
+p1d_emu = P1D_testsims[isim, iz]
+p1d_sim = P1D_testsims_true[isim, iz]
+
+mu_lims = [[0, 0.06], [0.31, 0.38], [0.62, 0.69], [0.94, 1]]
+
+# %%
+mi = 1
+mu_mask = (mu >= mu_lims[mi][0]) & (mu <= mu_lims[mi][1])
+n_modes[mu_mask]
+
+# %%
+
+from matplotlib.lines import Line2D
+import matplotlib.patches as mpatches
+
+# %%
+
+fig, axs = plt.subplots(1, 1, figsize=(8,6))
+ftsize = 20
+nmodes_min = 20
+labs = []
+
+
+for mi in range(len(mu_lims)):
+    color = "C"+str(mi)
+
+    mu_mask = (mu >= mu_lims[mi][0]) & (mu <= mu_lims[mi][1])
+    mu_lab = np.round(np.nanmedian(mu[mu_mask]), decimals=2)
+    n_modes_masked = n_modes[mu_mask]
+
+    ind = np.argwhere(n_modes_masked >= nmodes_min)[:, 0]
+    axs.axvline(
+        x=(k_Mpc[mu_mask])[ind].min(), ls="-", color=color, alpha=0.75, lw=2
+    )
+
+
+    labs.append(f"$\mu\simeq{mu_lab}$")
+    
+    axs.plot(
+        k_Mpc[mu_mask],
+        p3d_sim[mu_mask],
+        ":o",
+        color=color,
+        lw=3,
+    )
+    axs.plot(
+        k_Mpc[mu_mask],
+        p3d_emu[mu_mask],
+        ls="-",
+        color=color,
+        lw=3,
+        alpha=0.75,
+    )
+axs.tick_params(axis="both", which="major", labelsize=ftsize)
+axs.set_xlabel(r'$k\, [\mathrm{Mpc}^{-1}]$', fontsize=ftsize)
+axs.set_ylabel(r'$P_\mathrm{3D}(k, \mu)/P_{\rm lin}(k)$', fontsize=ftsize)
+
+# create manual symbols for legend
+handles = []
+for ii in range(4):
+    handles.append(mpatches.Patch(color='C'+str(ii), label=labs[ii]))
+legend1 = plt.legend(handles=handles, ncol=1, fontsize=ftsize-2, loc="upper right")
+
+line1 = Line2D([0], [0], label=r'Simulation', color='gray', ls=":", marker="o", lw=2)
+line2 = Line2D([0], [0], label=r'Emulator', color='gray', ls="-", lw=2)
+legend2 = plt.legend(handles=[line1, line2], ncol=2, fontsize=ftsize-2, loc="upper left")
+axs.add_artist(legend1)
+axs.add_artist(legend2)
+
+# axs.legend(loc='upper right', ncol=1, fontsize=ftsize-2)
+plt.tight_layout()
+
+plt.xscale('log')
+
+# %%
+labs
+
+# %%
+
+# %%
+for ext in [".png", ".pdf"]:
+    plot_p3d_test_sims_norat(
+        sim_labels,
+        k_Mpc,
+        mu,    
+        k_mask,
+        fractional_error_P3D_sims,
+        savename=savename+ext,
+        fontsize=20,
+    )
+
+# %%
 
 # %% [markdown]
 # ## PLOT P1D
