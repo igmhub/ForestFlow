@@ -303,9 +303,20 @@ def sort_dict(dct, keys):
 
 
 def get_covariance(x, y, return_corr=False):
+    
+    # Calculate the mean and standard deviation along each column
+    mean_x = np.mean(x, axis=0)
+    std_dev_x = np.std(x, axis=0)
+
+    # Create a mask indicating elements within one standard deviation from the mean
+    mask_within_sigma = np.abs(x - mean_x) <= 3*std_dev_x
+
+    # Apply the mask along each column to preserve the shape (N_after_cleaning, 42)
+    x = x[mask_within_sigma.all(axis=1)]
+
+
     cov = (
-        1
-        / (len(x) - 1)
+        1 / (len(x) - 1)
         * np.einsum("ij,jk ->ik", (x - y[None, :]).T, (x - y[None, :]))
     )
     corr = np.corrcoef(cov)
