@@ -1,6 +1,215 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
+import matplotlib.patches as mpatches
+
 from forestflow.utils import sigma68
+
+
+def plot_p3d_snap(
+    folder_out,
+    k_Mpc,
+    mu,
+    p3d_sim,
+    p3d_emu,
+    p3d_std_emu,
+    n_modes,
+    mu_lims,
+    ftsize=20,
+    # nmodes_min=20,
+    kmax_3d=4,
+    kmax_3d_fit=3,
+):
+    fig, axs = plt.subplots(
+        2, 1, figsize=(8, 6), sharex=True, height_ratios=[3, 1]
+    )
+    labs = []
+
+    for ii in range(2):
+        axs[ii].axvline(x=kmax_3d_fit, ls="--", color="k", alpha=0.75, lw=2)
+
+    for mi in range(len(mu_lims)):
+        color = "C" + str(mi)
+
+        mu_mask = (
+            (mu >= mu_lims[mi][0]) & (mu <= mu_lims[mi][1]) & (k_Mpc <= kmax_3d)
+        )
+        mu_lab = np.round(np.nanmedian(mu[mu_mask]), decimals=2)
+        # n_modes_masked = n_modes[mu_mask]
+
+        # ind = np.argwhere(n_modes_masked >= nmodes_min)[:, 0]
+        # axs[0].axvline(
+        #     x=(k_Mpc[mu_mask])[ind].min(), ls="-", color=color, alpha=0.75, lw=2
+        # )
+        # axs[1].axvline(
+        #     x=(k_Mpc[mu_mask])[ind].min(), ls="-", color=color, alpha=0.75, lw=2
+        # )
+
+        labs.append(f"$\mu\simeq{mu_lab}$")
+
+        axs[0].plot(
+            k_Mpc[mu_mask],
+            p3d_sim[mu_mask],
+            ":o",
+            color=color,
+            lw=3,
+        )
+        axs[0].plot(
+            k_Mpc[mu_mask],
+            p3d_emu[mu_mask],
+            ls="-",
+            color=color,
+            lw=3,
+            alpha=0.75,
+        )
+        axs[0].fill_between(
+            k_Mpc[mu_mask],
+            p3d_emu[mu_mask] - p3d_std_emu[mu_mask],
+            p3d_emu[mu_mask] + p3d_std_emu[mu_mask],
+            alpha=0.2,
+            color=color,
+        )
+
+        axs[1].plot(
+            k_Mpc[mu_mask],
+            p3d_emu[mu_mask] / p3d_sim[mu_mask] - 1,
+            ls="-",
+            color=color,
+            lw=3,
+            alpha=0.75,
+        )
+
+        axs[1].fill_between(
+            k_Mpc[mu_mask],
+            (p3d_emu[mu_mask] - p3d_std_emu[mu_mask]) / p3d_sim[mu_mask] - 1,
+            (p3d_emu[mu_mask] + p3d_std_emu[mu_mask]) / p3d_sim[mu_mask] - 1,
+            alpha=0.2,
+            color=color,
+        )
+
+    axs[1].axhline(0, ls=":", color="k", alpha=1, lw=1)
+    axs[1].axhline(-0.1, ls="--", color="k", alpha=1, lw=1)
+    axs[1].axhline(0.1, ls="--", color="k", alpha=1, lw=1)
+
+    axs[0].tick_params(axis="both", which="major", labelsize=ftsize)
+    axs[1].tick_params(axis="both", which="major", labelsize=ftsize)
+    axs[1].set_xlabel(r"$k\, [\mathrm{Mpc}^{-1}]$", fontsize=ftsize)
+    axs[0].set_ylabel(
+        r"$P_\mathrm{3D}(k, \mu)/P_{\rm lin}(k)$", fontsize=ftsize
+    )
+    axs[1].set_ylabel(r"Residual", fontsize=ftsize)
+    axs[1].set_ylim(-0.22, 0.22)
+    axs[0].set_xscale("log")
+
+    # create manual symbols for legend
+    handles = []
+    for ii in range(4):
+        handles.append(mpatches.Patch(color="C" + str(ii), label=labs[ii]))
+    legend1 = axs[0].legend(
+        handles=handles, ncol=1, fontsize=ftsize - 2, loc="upper right"
+    )
+
+    line1 = Line2D(
+        [0], [0], label=r"Simulation", color="gray", ls=":", marker="o", lw=2
+    )
+    line2 = Line2D([0], [0], label=r"ForestFlow", color="gray", ls="-", lw=2)
+    legend2 = axs[0].legend(
+        handles=[line1, line2], ncol=1, fontsize=ftsize - 2, loc="center left"
+    )
+    axs[0].add_artist(legend1)
+    axs[0].add_artist(legend2)
+
+    # axs.legend(loc='upper right', ncol=1, fontsize=ftsize-2)
+    plt.tight_layout()
+
+    for ext in [".png", ".pdf"]:
+        plt.savefig(folder_out + "p3d_snap" + ext)
+
+
+def plot_p1d_snap(
+    folder_out,
+    k_p1d_Mpc,
+    p1d_sim,
+    p1d_emu,
+    p1d_std_emu,
+    ftsize=20,
+    # fact_kmin=4,
+    kmax_1d=4,
+    kmax_1d_fit=3,
+):
+    fig, axs = plt.subplots(
+        2, 1, figsize=(8, 6), sharex=True, height_ratios=[3, 1]
+    )
+    # kmin = 2 * np.pi / 67.5 * fact_kmin
+
+    for ii in range(2):
+        axs[ii].axvline(x=kmax_1d_fit, ls="--", color="k", alpha=0.75, lw=2)
+
+    # for ii in range(2):
+    #     axs[ii].axvline(x=kmin, ls="-", color="C0", alpha=0.75, lw=2)
+
+    mask = k_p1d_Mpc <= kmax_1d
+
+    axs[0].plot(
+        k_p1d_Mpc[mask],
+        p1d_sim[mask],
+        ":o",
+        color="C0",
+        label="Simulation",
+        lw=3,
+    )
+    axs[0].plot(
+        k_p1d_Mpc[mask],
+        p1d_emu[mask],
+        ls="-",
+        color="C1",
+        label="ForestFlow",
+        lw=3,
+        alpha=0.75,
+    )
+    axs[0].fill_between(
+        k_p1d_Mpc[mask],
+        p1d_emu[mask] - p1d_std_emu[mask],
+        p1d_emu[mask] + p1d_std_emu[mask],
+        alpha=0.2,
+        color="C1",
+    )
+
+    axs[1].axhline(0, ls=":", color="k", alpha=1, lw=1)
+    axs[1].axhline(-0.02, ls="--", color="k", alpha=1, lw=1)
+    axs[1].axhline(0.02, ls="--", color="k", alpha=1, lw=1)
+    axs[1].plot(
+        k_p1d_Mpc[mask],
+        p1d_emu[mask] / p1d_sim[mask] - 1,
+        "-",
+        color="C0",
+        lw=3,
+    )
+    axs[1].fill_between(
+        k_p1d_Mpc[mask],
+        (p1d_emu[mask] - p1d_std_emu[mask]) / p1d_sim[mask] - 1,
+        (p1d_emu[mask] + p1d_std_emu[mask]) / p1d_sim[mask] - 1,
+        alpha=0.2,
+        color="C0",
+    )
+
+    axs[0].tick_params(axis="both", which="major", labelsize=ftsize)
+    axs[1].tick_params(axis="both", which="major", labelsize=ftsize)
+    axs[1].set_xlabel(r"$k_\parallel\, [\mathrm{Mpc}^{-1}]$", fontsize=ftsize)
+    axs[0].set_ylabel(
+        r"$\pi^{-1}\, k_\parallel\, P_\mathrm{1D}(k_\parallel)$",
+        fontsize=ftsize,
+    )
+    axs[1].set_ylabel(r"Residual", fontsize=ftsize)
+    axs[0].set_xscale("log")
+    axs[1].set_ylim([-0.052, 0.052])
+    # plt.legend()
+
+    axs[0].legend(loc="upper left", ncol=1, fontsize=ftsize - 2)
+    plt.tight_layout()
+
+    for ext in [".png", ".pdf"]:
+        plt.savefig(folder_out + "p1d_snap" + ext)
 
 
 def plot_p3d_test_sims(
@@ -11,7 +220,8 @@ def plot_p3d_test_sims(
     fractional_errors,
     savename=None,
     fontsize=20,
-    nmodes_min=20,
+    kmax_3d_fit=3,
+    # nmodes_min=20,
 ):
     """
     Plot the fractional errors in the P3D statistic for different redshifts and mu bins.
@@ -67,14 +277,14 @@ def plot_p3d_test_sims(
     mu_lims = [[0, 0.06], [0.31, 0.38], [0.62, 0.69], [0.94, 1]]
 
     # Define colors for different mu bins
-    colors = ["navy", "crimson", "forestgreen", "goldenrod"]
+    # colors = ["navy", "crimson", "forestgreen", "goldenrod"]
     # test_sim = archive.get_testing_data("mpg_central")
 
     # Loop through redshifts
     ii = 0
     for ii in range(len(sim_labels)):
         label = dict_labels[sim_labels[ii]]
-        axs[ii].text(1.4, -0.2, label, fontsize=fontsize)
+        axs[ii].text(1.2, -0.2, label, fontsize=fontsize)
         axs[ii].axhline(y=-0.10, ls="--", color="black")
         axs[ii].axhline(y=0.10, ls="--", color="black")
         axs[ii].axhline(y=0, ls=":", color="black")
@@ -82,19 +292,21 @@ def plot_p3d_test_sims(
         axs[ii].set_ylim(-0.25, 0.25)
         axs[ii].set_yticks(np.array([-0.2, 0, 0.2]))
 
+        axs[ii].axvline(x=kmax_3d_fit, ls="--", color="k", alpha=1, lw=2)
+
         # Loop through mu bins
         for mi in range(len(mu_lims)):
-            color = colors[mi]
+            color = "C" + str(mi)
 
             mu_mask = (mu >= mu_lims[mi][0]) & (mu <= mu_lims[mi][1])
             mu_lab = np.round(np.nanmedian(mu[mu_mask]), decimals=2)
             k_masked = k_Mpc[mu_mask]
-            n_modes_masked = n_modes[mu_mask]
+            # n_modes_masked = n_modes[mu_mask]
 
-            ind = np.argwhere(n_modes_masked >= nmodes_min)[:, 0]
-            axs[ii].axvline(
-                x=k_masked[ind].min(), ls="-", color=color, alpha=0.5
-            )
+            # ind = np.argwhere(n_modes_masked >= nmodes_min)[:, 0]
+            # axs[ii].axvline(
+            #     x=k_masked[ind].min(), ls="-", color=color, alpha=0.5
+            # )
 
             # Calculate fractional error statistics
             frac_err = np.nanmedian(fractional_errors[ii, :, :], 0)
@@ -126,7 +338,7 @@ def plot_p3d_test_sims(
             ax.yaxis.set_label_coords(-0.1, 0.5)
 
     axs[len(axs) - 1].set_xlabel(
-        r"$k\, [\mathrm{cMpc}^{-1}]$", fontsize=fontsize
+        r"$k\, [\mathrm{Mpc}^{-1}]$", fontsize=fontsize
     )
 
     legend = axs[0].legend(loc="upper left", ncols=4, fontsize=fontsize - 6)
@@ -154,7 +366,7 @@ def plot_p1d_test_sims(
     fractional_errors,
     savename=None,
     fontsize=20,
-    fact_kmin=4,
+    kmax_1d_fit=3,
 ):
     """
     Plot the fractional errors in the P1D statistic for different redshifts.
@@ -171,7 +383,7 @@ def plot_p1d_test_sims(
 
     """
 
-    kmin = 2 * np.pi / 67.5 * fact_kmin
+    # kmin = 2 * np.pi / 67.5 * fact_kmin
 
     dict_labels = {
         "mpg_central": "Central",
@@ -203,8 +415,8 @@ def plot_p1d_test_sims(
         ax[c].axhline(y=-0.01, color="black", ls="--", alpha=0.8)
         ax[c].axhline(y=0, color="black", ls=":", alpha=0.8)
         label = dict_labels[sim_labels[c]]
-        ax[c].text(2, -0.05, label, fontsize=fontsize)
-        ax[c].axvline(x=kmin, ls="-", color=colors[0], alpha=0.5)
+        ax[c].text(1.15, -0.05, label, fontsize=fontsize)
+        ax[c].axvline(x=kmax_1d_fit, ls="--", color="k", alpha=1, lw=2)
 
         frac_err = np.nanmedian(fractional_errors[c], 0)
         frac_err_err = sigma68(fractional_errors[c])
@@ -232,9 +444,7 @@ def plot_p1d_test_sims(
     for xx, axi in enumerate(ax):
         if xx == len(ax) // 2:  # Centered y-label
             axi.yaxis.set_label_coords(-0.1, 0.5)
-    ax[-1].set_xlabel(
-        r"$k_\parallel\, [\mathrm{cMpc}^{-1}]$", fontsize=fontsize
-    )
+    ax[-1].set_xlabel(r"$k_\parallel\, [\mathrm{Mpc}^{-1}]$", fontsize=fontsize)
 
     fig.text(
         0.0,

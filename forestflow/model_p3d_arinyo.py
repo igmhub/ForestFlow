@@ -4,6 +4,7 @@ from lace.cosmo import camb_cosmo
 from scipy.integrate import simpson
 from forestflow.camb_routines import P_camb
 from forestflow import pcross
+
 # from forestflow.utils import memoize_numpy_arrays
 
 
@@ -239,19 +240,26 @@ class ArinyoModel(object):
 
         # model small-scales correction (D_NL in Arinyo-i-Prats 2015)
         delta2 = (1 / (2 * np.pi**2)) * k**3 * linP
-        nonlin = delta2 * (pp["q1"] + pp["q2"] * delta2)
+        if "q2" not in pp.keys():
+            nonlin = delta2 * pp["q1"]
+        else:
+            # uncomment for minimizer
+            # q1 = 0.5 * (pp["q1"] + pp["q2"])
+            # q2 = 0.5 * (pp["q1"] - pp["q2"])
+            q1 = pp["q1"]
+            q2 = pp["q2"]
+            nonlin = delta2 * (q1 + q2 * delta2)
         vel = k ** pp["av"] / pp["kvav"] * mu ** pp["bv"]
         press = (k / pp["kp"]) ** 2
 
         D_NL = np.exp(nonlin * (1 - vel) - press)
 
         return linP * lowk_bias**2 * D_NL
-    
-    
+
     def Px_Mpc(self, z, k_par, pp):
         """
         Compute P-cross for the P3D model.
-        
+
         Parameters:
             z (float): Redshift. Cannot be array.
             k_par (array-like): Array of k-parallel values at which to compute Px.
@@ -259,10 +267,11 @@ class ArinyoModel(object):
             rperp (array-like): values (float) of separation in Mpc
             Px_per_kpar (array-like): values (float) of Px for each k parallel and rperp. Shape: (len(k_par), len(rperp)).
         """
-        
-        rperp, Px_per_kpar = pcross.Px_Mpc(k_par,self.P3D_Mpc,z,P3D_mode='pol',**{'pp':pp})
+
+        rperp, Px_per_kpar = pcross.Px_Mpc(
+            k_par, self.P3D_Mpc, z, P3D_mode="pol", **{"pp": pp}
+        )
         return rperp, Px_per_kpar
-        
 
     def rat_P3D(self, z, k, mu, parameters={}):
         """

@@ -81,34 +81,38 @@ class FitPk(object):
         self.fit_type = fit_type
 
         # relative errors with noise floor
-        self.data["std_p3d_sta"] = self.data["std_p3d"] * 1
-        self.data["std_p3d_sys"] = noise_3d * self.data["p3d"]
+        self.data["std_p3d_sta"] = self.data["std_p3d"]
+        self.data["std_p3d_sys"] = noise_3d * self.data["k3d"]
         self.data["std_p3d"] = np.sqrt(
             self.data["std_p3d_sta"] ** 2 + self.data["std_p3d_sys"] ** 2
         )
+        # self.data["std_p3d"][:] = noise_3d
         # k_Mpc < fit_k_Mpc_max
         self.ind_fit3d = (
             np.isfinite(self.data["std_p3d"])
             & (self.data["std_p3d"] != 0)
             & np.isfinite(self.data["p3d"])
             & (self.data["k3d"] < k3d_max)
+            & (self.data["k3d"] > 0)
         )
         self.data["std_p3d"][~self.ind_fit3d] = np.inf
 
         # same for p1d
         if fit_type == "both":
             # relative errors with noise floor
-            self.data["std_p1d_sta"] = self.data["std_p1d"] * 1
-            self.data["std_p1d_sys"] = noise_1d * self.data["p1d"]
+            self.data["std_p1d_sta"] = self.data["std_p1d"]
+            self.data["std_p1d_sys"] = noise_1d
             self.data["std_p1d"] = np.sqrt(
                 self.data["std_p1d_sta"] ** 2 + self.data["std_p1d_sys"] ** 2
             )
+            # self.data["std_p1d"][:] = noise_1d
             # k_Mpc < fit_k_Mpc_max
             self.ind_fit1d = (
                 np.isfinite(self.data["std_p1d"])
                 & (self.data["std_p1d"] != 0)
                 & np.isfinite(self.data["p1d"])
                 & (self.data["k1d"] < k1d_max)
+                & (self.data["k1d"] > 0)
             )
             self.data["std_p1d"][~self.ind_fit1d] = np.inf
 
@@ -181,6 +185,7 @@ class FitPk(object):
         data_p3d = self.data["p3d"][self.ind_fit3d]
 
         # compute model for these wavenumbers
+
         th_p3d = self.get_model_3d(parameters=parameters)[self.ind_fit3d]
 
         # get absolute error
@@ -198,7 +203,7 @@ class FitPk(object):
             # compute model for these wavenumbers
             th_p1d = self.get_model_1d(parameters=parameters)[self.ind_fit1d]
 
-            # compute absolute error
+            # get absolute error
             err_p1d = self.data["std_p1d"][self.ind_fit1d]
 
             # compute chi2

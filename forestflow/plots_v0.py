@@ -61,7 +61,14 @@ def plot_test_parz(Archive3D, p3d_emu, sim_label):
     # plt.savefig("params_cosmo_1.png")
 
 
-def plot_test_p3d(ind_book, Archive3D, p3d_emu, sim_label, plot_emu=True):
+def plot_test_p3d(
+    ind_book,
+    Archive3D,
+    p3d_emu,
+    sim_label,
+    plot_emu=True,
+    training_type="Arinyo",
+):
     """
     Precision of emulator for target sim
     """
@@ -75,7 +82,9 @@ def plot_test_p3d(ind_book, Archive3D, p3d_emu, sim_label, plot_emu=True):
         testing_data = Archive3D.testing_data
 
     # get params
-    input_params = np.zeros((len(testing_data), len(testing_data[0]["Arinyo"])))
+    input_params = np.zeros(
+        (len(testing_data), len(testing_data[0][training_type]))
+    )
     predict_params = np.zeros_like(input_params)
     zs = np.zeros((len(testing_data)))
 
@@ -86,7 +95,7 @@ def plot_test_p3d(ind_book, Archive3D, p3d_emu, sim_label, plot_emu=True):
         #    _cosmo_params[ii] = testing_data[jj][par]
         if plot_emu:
             predict_params[jj] = p3d_emu.predict_Arinyos(testing_data[jj])
-        input_params[jj] = list(testing_data[jj]["Arinyo"].values())
+        input_params[jj] = list(testing_data[jj][training_type].values())
 
     # make sure bias negative (dependence on bias square)
     # input_params[:, 0] = -np.abs(input_params[:, 0])
@@ -294,7 +303,7 @@ def plot_compare_p3d_smooth(
             color="k",
             alpha=0.25,
         )
-        err_sys = like.data["std_p1d_sys"][mask] / data
+        err_sys = like.data["std_p1d_sys"] / data
         ax[2].fill_between(
             like.data["k1d"][mask],
             -err_sys + 1,

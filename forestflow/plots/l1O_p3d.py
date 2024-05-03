@@ -6,10 +6,13 @@ from forestflow.utils import sigma68
 def plot_p3d_L1O(
     archive,
     z_use,
+    z_grid,
     fractional_errors,
     savename=None,
     fontsize=20,
-    nmodes_min=20,
+    # nmodes_min=20,
+    kmax_3d_plot=4,
+    kmax_3d=3,
 ):
     """
     Plot the fractional errors in the P3D statistic for different redshifts and mu bins.
@@ -32,10 +35,10 @@ def plot_p3d_L1O(
     mu = archive.training_data[0]["mu3d"]
 
     # Apply a mask to select relevant k values
-    k_mask = (k_Mpc < 4) & (k_Mpc > 0)
+    k_mask = (k_Mpc < kmax_3d_plot) & (k_Mpc > 0)
     k_Mpc = k_Mpc[k_mask]
     mu = mu[k_mask]
-    n_modes = get_modes()[k_mask]
+    # n_modes = get_modes()[k_mask]
 
     # Create subplots with shared y-axis and x-axis
     fig, axs = plt.subplots(
@@ -51,17 +54,15 @@ def plot_p3d_L1O(
     mu_lims = [[0, 0.06], [0.31, 0.38], [0.62, 0.69], [0.94, 1]]
 
     # Define colors for different mu bins
-    colors = ["navy", "crimson", "forestgreen", "goldenrod"]
-    test_sim = archive.get_testing_data("mpg_central")
-    z_grid = [d["z"] for d in test_sim]
+    # colors = ["navy", "crimson", "forestgreen", "goldenrod"]
+    # test_sim = archive.get_testing_data("mpg_central")
+    # z_grid = [d["z"] for d in test_sim]
 
     # Loop through redshifts
-    ii = 0
-    for i0, z in enumerate(z_grid):
-        if z not in z_use:
-            continue
+    for ii, z in enumerate(z_use):
+        jj = np.argwhere(z_grid == z)[0, 0]
 
-        axs[ii].text(2.2, -0.2, f"$z={z}$", fontsize=fontsize)
+        axs[ii].text(1.8, -0.2, f"$z={z}$", fontsize=fontsize)
         axs[ii].axhline(y=-0.10, ls="--", color="black")
         axs[ii].axhline(y=0.10, ls="--", color="black")
         axs[ii].axhline(y=0, ls=":", color="black")
@@ -69,23 +70,25 @@ def plot_p3d_L1O(
         axs[ii].set_ylim(-0.25, 0.25)
         axs[ii].set_yticks(np.array([-0.2, 0, 0.2]))
 
+        axs[ii].axvline(x=kmax_3d, ls="--", color="k", alpha=0.75)
+
         # Loop through mu bins
         for mi in range(int(len(mu_lims))):
-            color = colors[mi]
+            color = "C" + str(mi)
 
             mu_mask = (mu >= mu_lims[mi][0]) & (mu <= mu_lims[mi][1])
             mu_lab = np.round(np.nanmedian(mu[mu_mask]), decimals=2)
             k_masked = k_Mpc[mu_mask]
-            n_modes_masked = n_modes[mu_mask]
+            # n_modes_masked = n_modes[mu_mask]
 
-            ind = np.argwhere(n_modes_masked >= nmodes_min)[:, 0]
-            axs[ii].axvline(
-                x=k_masked[ind].min(), ls="-", color=color, alpha=0.5
-            )
+            # ind = np.argwhere(n_modes_masked >= nmodes_min)[:, 0]
+            # axs[ii].axvline(
+            #     x=k_masked[ind].min(), ls="-", color=color, alpha=0.5
+            # )
 
             # Calculate fractional error statistics
-            frac_err = np.nanmedian(fractional_errors[:, i0, :], 0)
-            frac_err_err = sigma68(fractional_errors[:, i0, :])
+            frac_err = np.nanmedian(fractional_errors[:, jj, :], 0)
+            frac_err_err = sigma68(fractional_errors[:, jj, :])
 
             frac_err_masked = frac_err[mu_mask]
             frac_err_err_masked = frac_err_err[mu_mask]
@@ -114,7 +117,7 @@ def plot_p3d_L1O(
             ax.yaxis.set_label_coords(-0.1, 0.5)
 
     axs[len(axs) - 1].set_xlabel(
-        r"$k\, [\mathrm{cMpc}^{-1}]$", fontsize=fontsize
+        r"$k\, [\mathrm{Mpc}^{-1}]$", fontsize=fontsize
     )
 
     legend = axs[0].legend(loc="upper left", fontsize=fontsize - 6, ncols=4)
@@ -142,17 +145,19 @@ def plot_p3d_LzO(
     fractional_errors,
     savename=None,
     fontsize=20,
-    nmodes_min=20,
+    # nmodes_min=20,
+    kmax_3d_plot=4,
+    kmax_3d=3,
 ):
     # Extract data from Archive3D
     k_Mpc = archive.training_data[0]["k3d_Mpc"]
     mu = archive.training_data[0]["mu3d"]
 
     # Apply a mask to select relevant k values
-    k_mask = (k_Mpc < 4) & (k_Mpc > 0)
+    k_mask = (k_Mpc < kmax_3d_plot) & (k_Mpc > 0)
     k_Mpc = k_Mpc[k_mask]
     mu = mu[k_mask]
-    n_modes = get_modes()[k_mask]
+    # n_modes = get_modes()[k_mask]
 
     # Create subplots with shared y-axis and x-axis
     fig, axs = plt.subplots(
@@ -179,19 +184,22 @@ def plot_p3d_LzO(
         axs[ii].set_xscale("log")
         axs[ii].set_ylim(-0.25, 0.25)
 
+        # ind = np.argwhere(n_modes_masked >= nmodes_min)[:, 0]
+        axs[ii].axvline(x=kmax_3d, ls="-", color="k", alpha=0.5)
+
         # Loop through mu bins
         for mi in range(int(len(mu_lims))):
-            color = colors[mi]
+            color = "C" + str(mi)
 
             mu_mask = (mu >= mu_lims[mi][0]) & (mu <= mu_lims[mi][1])
             mu_lab = np.round(np.nanmedian(mu[mu_mask]), decimals=2)
             k_masked = k_Mpc[mu_mask]
             n_modes_masked = n_modes[mu_mask]
 
-            ind = np.argwhere(n_modes_masked >= nmodes_min)[:, 0]
-            axs[ii].axvline(
-                x=k_masked[ind].min(), ls="-", color=color, alpha=0.5
-            )
+            # ind = np.argwhere(n_modes_masked >= nmodes_min)[:, 0]
+            # axs[ii].axvline(
+            #     x=k_masked[ind].min(), ls="-", color=color, alpha=0.5
+            # )
 
             # Calculate fractional error statistics
             frac_err = np.nanmedian(fractional_errors[:, ii, :], 0)
@@ -223,7 +231,7 @@ def plot_p3d_LzO(
             ax.yaxis.set_label_coords(-0.1, 0.5)
 
     axs[len(axs) - 1].set_xlabel(
-        r"$k\, [\mathrm{cMpc}^{-1}]$", fontsize=fontsize
+        r"$k\, [\mathrm{Mpc}^{-1}]$", fontsize=fontsize
     )
 
     legend = axs[0].legend(fontsize=fontsize - 6, loc="upper left", ncols=4)

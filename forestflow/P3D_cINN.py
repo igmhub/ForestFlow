@@ -99,6 +99,7 @@ class P3DEmulator:
         use_chains=False,
         chain_samp=100_000,
         Nrealizations=100,
+        training_type="Arinyo_min_q1",
     ):
         # Initialize class attributes with provided arguments
         self.training_data = training_data
@@ -115,12 +116,14 @@ class P3DEmulator:
         self.train = train
         self.Nrealizations = Nrealizations
         self.use_chains = use_chains
+        self.training_type = training_type
 
         self.batch_size = batch_size
         self.lr = lr
         self.weight_decay = weight_decay
         self.archive = Archive
         self.chain_samp = chain_samp
+
         self.Arinyo_params = [
             "bias",
             "beta",
@@ -129,8 +132,11 @@ class P3DEmulator:
             "av",
             "bv",
             "kp",
-            "q2",
         ]
+        if training_type == "Arinyo_min_q1_q2":
+            self.Arinyo_params.append("q2")
+        self.dim_inputSpace = len(self.Arinyo_params)
+
         self.cosmo_fields = [
             "H0",
             "omch2",
@@ -266,7 +272,9 @@ class P3DEmulator:
         training_label = [
             {
                 key: value
-                for key, value in self.training_data[i]["Arinyo"].items()
+                for key, value in self.training_data[i][
+                    self.training_type
+                ].items()
                 if key in self.Arinyo_params
             }
             for i in range(len(self.training_data))
@@ -288,7 +296,8 @@ class P3DEmulator:
         training_label[:, 2] = np.exp(training_label[:, 2])
         training_label[:, 4] = np.exp(training_label[:, 4])
         training_label[:, 6] = np.log(training_label[:, 6])
-        training_label[:, 7] = np.exp(training_label[:, 7])
+        if "q2" in self.Arinyo_params:
+            training_label[:, 7] = np.exp(training_label[:, 7])
 
         # Convert the preprocessed Arinyo parameters to a torch.Tensor object
         training_label = torch.Tensor(training_label)
@@ -556,7 +565,7 @@ class P3DEmulator:
     #         p1d_pred = p1d_pred[k1d_mask]
     #         return p1d_pred
 
-    def _define_cINN_Arinyo(self, dim_inputSpace=8):
+    def _define_cINN_Arinyo(self):
         """
         Define a conditional invertible neural network (cINN) for Arinyo model.
 
@@ -582,7 +591,7 @@ class P3DEmulator:
             )
 
         # Initialize the cINN model
-        emulator = Ff.SequenceINN(dim_inputSpace)
+        emulator = Ff.SequenceINN(self.dim_inputSpace)
 
         # Append AllInOneBlocks to the cINN model based on the specified number of layers
         for l in range(self.nLayers_inn):
@@ -728,23 +737,28 @@ class P3DEmulator:
         Niter = int(self.Nrealizations / self.batch_size)
 
         # Initialize array for Arinyo predictions
-        Arinyo_preds = np.zeros(shape=(Niter, self.batch_size, 8))
+        Arinyo_preds = np.zeros(
+            shape=(Niter, self.batch_size, self.dim_inputSpace)
+        )
         condition = torch.tile(test_data, (self.batch_size, 1))
 
         # Generate predictions
         for ii in range(Niter):
-            z_test = torch.randn(self.batch_size, 8)
+            z_test = torch.randn(self.batch_size, self.dim_inputSpace)
             Arinyo_pred, _ = self.emulator(z_test, condition, rev=True)
 
             # Transform the predictions back to original space
             Arinyo_pred[:, 2] = torch.log(Arinyo_pred[:, 2])
             Arinyo_pred[:, 4] = torch.log(Arinyo_pred[:, 4])
             Arinyo_pred[:, 6] = torch.exp(Arinyo_pred[:, 6])
-            Arinyo_pred[:, 7] = torch.log(Arinyo_pred[:, 7])
+            if "q2" in self.Arinyo_params:
+                Arinyo_pred[:, 7] = torch.log(Arinyo_pred[:, 7])
 
             Arinyo_preds[ii, :] = Arinyo_pred.detach().cpu().numpy()
 
-        Arinyo_preds = Arinyo_preds.reshape(Niter * int(self.batch_size), 8)
+        Arinyo_preds = Arinyo_preds.reshape(
+            Niter * int(self.batch_size), self.dim_inputSpace
+        )
 
         # Generate corner plot if plot is True
         if plot == True:

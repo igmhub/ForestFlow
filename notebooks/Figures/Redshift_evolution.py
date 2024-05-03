@@ -67,6 +67,13 @@ print(len(Archive3D.training_data))
 # ## LOAD EMULATOR
 
 # %%
+# training_type = "Arinyo_min_q1"
+# model_path = path_program + "/data/emulator_models/mpg_q1/mpg_hypercube.pt"
+
+training_type = "Arinyo_min_q1_q2"
+model_path=path_program + "/data/emulator_models/mpg_q1_q2/mpg_hypercube.pt"
+# model_path=path_program + "/data/emulator_models/mpg_hypercube.pt"
+
 p3d_emu = P3DEmulator(
     Archive3D.training_data,
     Archive3D.emu_params,
@@ -79,9 +86,11 @@ p3d_emu = P3DEmulator(
     adamw=True,
     nLayers_inn=12,  # 15
     Archive=Archive3D,
-    Nrealizations=1000,
-    model_path=path_program+"/data/emulator_models/mpg_hypercube.pt",
+    Nrealizations=10000,
+    training_type=training_type,
+    model_path=model_path,
 )
+
 
 # %% [markdown]
 # ## LOAD CENTRAL SIMULATION
@@ -97,7 +106,7 @@ test_sim = central = Archive3D.get_testing_data(
 
 # %%
 Arinyo_coeffs_central = np.array(
-    [list(test_sim[i]["Arinyo"].values()) for i in range(len(test_sim))]
+    [list(test_sim[i][training_type].values()) for i in range(len(test_sim))]
 )
 
 
@@ -138,9 +147,6 @@ for iz, z in enumerate(z_central):
     Arinyo_emu_std.append(out["coeffs_Arinyo_std"])
 
 
-# %%
-Arinyo_emu_std
-
 # %% [markdown]
 # ## PLOT
 
@@ -163,8 +169,8 @@ name_params = ['bias', 'bias_eta', 'q1', 'q2', 'kv', 'av', 'bv', 'kp']
 name2label = {
     'bias':r"$-b_\delta$", 
     'bias_eta':r"$-b_\eta$", 
-    'q1':r"$q_1$", 
-    'q2':r"$q_2$",
+    'q1':r"$0.5(q_1+q_2)$", 
+    'q2':r"$0.5(q_1-q_2)$",
     'kv':r"$k_\mathrm{v}$", 
     'av':r"$a_\mathrm{v}$", 
     'bv':r"$b_\mathrm{v}$", 
@@ -178,9 +184,37 @@ for i in range(len(name_params)):
     else:
         ax1 = ax[1]
     col = "C"+str(i)
-    ari_emu = np.array([d[name_params[i]] for d in Arinyo_emu])
-    ari_emu_std = np.array([d[name_params[i]] for d in Arinyo_emu_std])
-    ari_cen = np.array([d[name_params[i]] for d in Arinyo_sim])
+    if(name_params[i] == "q1"):
+        ari_emu1 = np.array([d["q1"] for d in Arinyo_emu])
+        ari_emu_std1 = np.array([d["q1"] for d in Arinyo_emu_std])
+        ari_cen1 = np.array([d["q1"] for d in Arinyo_sim])
+        
+        ari_emu2 = np.array([d["q2"] for d in Arinyo_emu])
+        ari_emu_std2 = np.array([d["q2"] for d in Arinyo_emu_std])
+        ari_cen2 = np.array([d["q2"] for d in Arinyo_sim])
+
+        ari_emu = 0.5*(ari_emu1 + ari_emu2)
+        ari_emu_std = 0.5*np.sqrt(ari_emu_std1**2 + ari_emu_std2**2)
+        ari_cen = 0.5*(ari_cen1 + ari_cen2)
+    elif(name_params[i] == "q2"):
+        ari_emu1 = np.array([d["q1"] for d in Arinyo_emu])
+        ari_emu_std1 = np.array([d["q1"] for d in Arinyo_emu_std])
+        ari_cen1 = np.array([d["q1"] for d in Arinyo_sim])
+        
+        ari_emu2 = np.array([d["q2"] for d in Arinyo_emu])
+        ari_emu_std2 = np.array([d["q2"] for d in Arinyo_emu_std])
+        ari_cen2 = np.array([d["q2"] for d in Arinyo_sim])
+
+        ari_emu = 0.5*(ari_emu1 - ari_emu2)
+        ari_emu_std = 0.5*np.sqrt(ari_emu_std1**2 + ari_emu_std2**2)
+        ari_cen = 0.5*(ari_cen1 - ari_cen2)
+        print(ari_emu)
+        print(ari_cen)
+    else:
+        ari_emu = np.array([d[name_params[i]] for d in Arinyo_emu])
+        ari_emu_std = np.array([d[name_params[i]] for d in Arinyo_emu_std])
+        ari_cen = np.array([d[name_params[i]] for d in Arinyo_sim])
+    
 
     print(name_params[i])
     print(np.mean(np.abs(ari_emu)/np.abs(ari_cen)-1))
@@ -189,7 +223,7 @@ for i in range(len(name_params)):
     ax1.plot(
         z_central,
         np.abs(ari_cen),
-        "o:",
+        "o",
         color=col,
         lw=2
         # label=name2label[name_params[i]],
@@ -217,7 +251,7 @@ for ii in range(2):
     ax[ii].set_yscale("log")
     ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
 
-ax[0].set_ylim(0.02, 2)
+ax[0].set_ylim(8e-2, 2.5)
 ax[1].set_ylim(0.02, 25)
     
 ax[-1].set_xlabel("$z$", fontsize=ftsize)
@@ -227,9 +261,9 @@ hand = []
 for i in range(4):
     col = "C"+str(i)
     hand.append(mpatches.Patch(color=col, label=name2label[name_params[i]]))
-legend1 = ax[0].legend(fontsize=ftsize-2, loc="lower left", handles=hand, ncols=4)
+legend1 = ax[0].legend(fontsize=ftsize-2, loc="lower right", handles=hand, ncols=2)
 
-line1 = Line2D([0], [0], label='MLE fit', color='k', ls=":", marker="o")
+line1 = Line2D([0], [0], label='Best fit to data', color='k', ls="", marker="o")
 line2 = Line2D([0], [0], label='ForestFlow', color='k', ls="-")
 hand = [line1, line2]
 ax[0].legend(fontsize=ftsize-2, loc="upper left", handles=hand, ncols=2)
@@ -239,7 +273,7 @@ hand = []
 for i in range(4, len(name_params)):
     col = "C"+str(i)
     hand.append(mpatches.Patch(color=col, label=name2label[name_params[i]]))
-legend1 = ax[1].legend(fontsize=ftsize-2, loc="lower left", handles=hand, ncols=4)
+legend1 = ax[1].legend(fontsize=ftsize-2, loc="lower right", handles=hand, ncols=4)
 
 # plt.gca().add_artist(legend1)
 # Adjust layout
@@ -248,8 +282,6 @@ plt.tight_layout()
 plt.savefig(folder_fig+"arinyo_z.png")
 plt.savefig(folder_fig+"arinyo_z.pdf")
 
-# Show the plot
-# plt.show()
 
 # %%
 bias
@@ -260,3 +292,9 @@ bias_eta
 0.03842253599787945
 
 # %%
+bias
+0.00390719542894391
+0.006107702106925415
+bias_eta
+-0.002801677371355595
+0.002991543825280587

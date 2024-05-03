@@ -29,7 +29,13 @@ import matplotlib.pyplot as plt
 from forestflow.model_p3d_arinyo import ArinyoModel
 from forestflow.archive import GadgetArchive3D
 from forestflow.P3D_cINN import P3DEmulator
-from forestflow.plots.test_sims import plot_p1d_test_sims, plot_p3d_test_sims, get_modes
+from forestflow.plots.test_sims import (
+    plot_p1d_test_sims, 
+    plot_p3d_test_sims, 
+    get_modes, 
+    plot_p1d_snap,
+    plot_p3d_snap
+)
 from forestflow.utils import params_numpy2dict
 
 from matplotlib import rcParams
@@ -71,7 +77,18 @@ print(len(Archive3D.training_data))
 # ## Load emulator
 
 # %%
-p3d_emu = P3DEmulator(
+training_type = "Arinyo_min_q1"
+training_type = "Arinyo_min_q1_q2"
+
+if (training_type == "Arinyo_min_q1"):
+    nparams = 7
+    model_path = path_program+"/data/emulator_models/mpg_q1/mpg_hypercube.pt"
+else:
+    nparams = 8
+    model_path = path_program+"/data/emulator_models/mpg_q1_q2/mpg_hypercube.pt"
+    # model_path=path_program+"/data/emulator_models/mpg_hypercube.pt",
+
+emulator = P3DEmulator(
     Archive3D.training_data,
     Archive3D.emu_params,
     nepochs=300,
@@ -83,8 +100,9 @@ p3d_emu = P3DEmulator(
     adamw=True,
     nLayers_inn=12,  # 15
     Archive=Archive3D,
-    Nrealizations=1000,
-    model_path=path_program+"/data/emulator_models/mpg_hypercube.pt",
+    Nrealizations=10000,
+    training_type=training_type,
+    model_path=model_path,
 )
 
 # %% [markdown]
@@ -94,42 +112,42 @@ p3d_emu = P3DEmulator(
 Nsim = 30
 Nz = 11
 zs = np.flip(np.arange(2, 4.6, 0.25))
+kmax_3d_plot = 4
+kmax_1d_plot = 4
+kmax_3d = 3
+kmax_1d = 3
 
 k_Mpc = Archive3D.training_data[0]["k3d_Mpc"]
 mu = Archive3D.training_data[0]["mu3d"]
 
-k_mask = (k_Mpc < 5) & (k_Mpc > 0)
+k_mask = (k_Mpc < kmax_3d_plot) & (k_Mpc > 0)
 
 k_Mpc = k_Mpc[k_mask]
 mu = mu[k_mask]
 
 k_p1d_Mpc_all = Archive3D.training_data[0]["k_Mpc"]
 k_p1d_Mpc = Archive3D.training_data[0]["k_Mpc"]
-k1d_mask = (k_p1d_Mpc < 5) & (k_p1d_Mpc > 0)
+k1d_mask = (k_p1d_Mpc < kmax_1d_plot) & (k_p1d_Mpc > 0)
 k_p1d_Mpc = k_p1d_Mpc[k1d_mask]
-norm = k_p1d_Mpc / np.pi
+norm_p1d = k_p1d_Mpc / np.pi
 norm_all = k_p1d_Mpc_all / np.pi
 
 n_modes = get_modes()[k_mask]
 
 
+
 # %%
 sim_labels = [
+    "mpg_central",    
+    "mpg_seed",
     "mpg_growth",
     "mpg_neutrinos",
     "mpg_curved",
     "mpg_running",
     "mpg_reio",
 ]
-
-# %%
 sim_labels = [
-    "mpg_seed",
-]
-
-# %%
-sim_labels = [
-    "mpg_central"
+    "mpg_central",
 ]
 
 # %% [markdown]
@@ -138,8 +156,12 @@ sim_labels = [
 # %%
 P3D_testsims = np.zeros((len(sim_labels), Nz, k_Mpc.shape[0]))
 P1D_testsims = np.zeros((len(sim_labels), Nz, k_p1d_Mpc.shape[0]))
+
+P3D_std_testsims = np.zeros((len(sim_labels), Nz, k_Mpc.shape[0]))
+P1D_std_testsims = np.zeros((len(sim_labels), Nz, k_p1d_Mpc.shape[0]))
+
 z_testsims = np.zeros((len(sim_labels), Nz))
-arinyo_testsims = np.zeros((len(sim_labels), Nz, 8))
+arinyo_testsims = np.zeros((len(sim_labels), Nz, nparams))
 
 for ii, sim_label in enumerate(sim_labels):
     test_sim = Archive3D.get_testing_data(
@@ -150,7 +172,7 @@ for ii, sim_label in enumerate(sim_labels):
     for iz, z in enumerate(z_grid):
         test_sim_z = [d for d in test_sim if d["z"] == z]
         
-        out = p3d_emu.predict_P3D_Mpc(
+        out = emulator.predict_P3D_Mpc(
             sim_label=sim_label, 
             z=z, 
             emu_params=test_sim_z[0],
@@ -161,6 +183,8 @@ for ii, sim_label in enumerate(sim_labels):
 
         P3D_testsims[ii, iz] = out['p3d']
         P1D_testsims[ii, iz] = out['p1d']
+        P3D_std_testsims[ii, iz] = np.sqrt(np.diag(out["p3d_cov"]))
+        P1D_std_testsims[ii, iz] = np.sqrt(np.diag(out["p1d_cov"]))
         z_testsims[ii, iz] = z
         arinyo_testsims[ii, iz] = np.array(list(out["coeffs_Arinyo"].values()))
 
@@ -196,7 +220,7 @@ for ii, sim_label in enumerate(sim_labels):
 # %%
 P3D_testsims_Arinyo = np.zeros((len(sim_labels), Nz, k_Mpc.shape[0]))
 P1D_testsims_Arinyo = np.zeros((len(sim_labels), Nz, k_p1d_Mpc.shape[0]))
-arinyo_fit = np.zeros((len(sim_labels), Nz, 8))
+arinyo_fit = np.zeros((len(sim_labels), Nz, nparams))
 P1D_testsims_Arinyo_all = np.zeros((len(sim_labels), Nz, k_p1d_Mpc_all.shape[0]))
 
 for ii, sim_label in enumerate(sim_labels):
@@ -216,10 +240,7 @@ for ii, sim_label in enumerate(sim_labels):
         test_sim_z = [d for d in test_sim if d["z"] == z]
 
         # load arinyo module
-
-        BF_arinyo = test_sim_z[0]["Arinyo"]
-        # print(sim_label)
-        # BF_arinyo = test_sim_z[0]["Arinyo_minin"]
+        BF_arinyo = test_sim_z[0][training_type]
 
         p3d_arinyo = model_Arinyo.P3D_Mpc(z, k_Mpc, mu, BF_arinyo)        
         p1d_arinyo = model_Arinyo.P1D_Mpc(z, k_p1d_Mpc, parameters=BF_arinyo)
@@ -250,100 +271,42 @@ folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
 savename = folder + "test_cosmo/test_cosmo_P3D_central_noratio"
 
 # %%
-P3D_testsims[ii, iz] = out['p3d']
-P1D_testsims[ii, iz] = out['p1d']
-z_testsims[ii, iz] = z
-
-# %%
-P3D_testsims_true[ii, iz] = test_sim_z[0]["p3d_Mpc"][k_mask]
-P1D_testsims_true[ii, iz] = test_sim_z[0]["p1d_Mpc"][k1d_mask]
-P1D_testsims_true_all[ii, iz] = test_sim_z[0]["p1d_Mpc"]
-
-# %%
-z_testsims.shape
-
-# %%
 isim = 0
 iz = np.argwhere(z_testsims[isim] == 3)[0,0]
 p3d_emu = P3D_testsims[isim, iz]/Plin_all[isim, iz]
+p3d_std_emu = P3D_std_testsims[isim, iz]/Plin_all[isim, iz]
 p3d_sim = P3D_testsims_true[isim, iz]/Plin_all[isim, iz]
 
-p1d_emu = P1D_testsims[isim, iz]
-p1d_sim = P1D_testsims_true[isim, iz]
+p1d_emu = norm_p1d * P1D_testsims[isim, iz]
+p1d_std_emu = norm_p1d * P1D_std_testsims[isim, iz]
+p1d_sim = norm_p1d * P1D_testsims_true[isim, iz]
 
 mu_lims = [[0, 0.06], [0.31, 0.38], [0.62, 0.69], [0.94, 1]]
 
 # %%
-mi = 1
-mu_mask = (mu >= mu_lims[mi][0]) & (mu <= mu_lims[mi][1])
-n_modes[mu_mask]
+plot_p3d_snap(
+    folder, 
+    k_Mpc, 
+    mu,
+    p3d_sim,
+    p3d_emu,
+    p3d_std_emu,
+    n_modes,
+    mu_lims,
+)
+
+# %%
+plot_p1d_snap(
+    folder, 
+    k_p1d_Mpc, 
+    p1d_sim,
+    p1d_emu,
+    p1d_std_emu,
+)
 
 # %%
 
-from matplotlib.lines import Line2D
-import matplotlib.patches as mpatches
-
 # %%
-
-fig, axs = plt.subplots(1, 1, figsize=(8,6))
-ftsize = 20
-nmodes_min = 20
-labs = []
-
-
-for mi in range(len(mu_lims)):
-    color = "C"+str(mi)
-
-    mu_mask = (mu >= mu_lims[mi][0]) & (mu <= mu_lims[mi][1])
-    mu_lab = np.round(np.nanmedian(mu[mu_mask]), decimals=2)
-    n_modes_masked = n_modes[mu_mask]
-
-    ind = np.argwhere(n_modes_masked >= nmodes_min)[:, 0]
-    axs.axvline(
-        x=(k_Mpc[mu_mask])[ind].min(), ls="-", color=color, alpha=0.75, lw=2
-    )
-
-
-    labs.append(f"$\mu\simeq{mu_lab}$")
-    
-    axs.plot(
-        k_Mpc[mu_mask],
-        p3d_sim[mu_mask],
-        ":o",
-        color=color,
-        lw=3,
-    )
-    axs.plot(
-        k_Mpc[mu_mask],
-        p3d_emu[mu_mask],
-        ls="-",
-        color=color,
-        lw=3,
-        alpha=0.75,
-    )
-axs.tick_params(axis="both", which="major", labelsize=ftsize)
-axs.set_xlabel(r'$k\, [\mathrm{Mpc}^{-1}]$', fontsize=ftsize)
-axs.set_ylabel(r'$P_\mathrm{3D}(k, \mu)/P_{\rm lin}(k)$', fontsize=ftsize)
-
-# create manual symbols for legend
-handles = []
-for ii in range(4):
-    handles.append(mpatches.Patch(color='C'+str(ii), label=labs[ii]))
-legend1 = plt.legend(handles=handles, ncol=1, fontsize=ftsize-2, loc="upper right")
-
-line1 = Line2D([0], [0], label=r'Simulation', color='gray', ls=":", marker="o", lw=2)
-line2 = Line2D([0], [0], label=r'Emulator', color='gray', ls="-", lw=2)
-legend2 = plt.legend(handles=[line1, line2], ncol=2, fontsize=ftsize-2, loc="upper left")
-axs.add_artist(legend1)
-axs.add_artist(legend2)
-
-# axs.legend(loc='upper right', ncol=1, fontsize=ftsize-2)
-plt.tight_layout()
-
-plt.xscale('log')
-
-# %%
-labs
 
 # %%
 
@@ -368,10 +331,10 @@ for ext in [".png", ".pdf"]:
 folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
 
 # %%
-# savename = folder + "test_cosmo/test_cosmo_P3D_ideal"
-savename = folder + "test_cosmo/test_cosmo_P3D_others"
+savename = folder + "test_cosmo/test_cosmo_P3D"
 # savename = folder + "test_cosmo/test_cosmo_P3D_central"
 # savename = folder + "test_cosmo/test_cosmo_P3D_seed"
+# savename = folder + "test_cosmo/test_cosmo_P3D_others"
 for ext in [".png", ".pdf"]:
     plot_p3d_test_sims(
         sim_labels,
@@ -384,10 +347,10 @@ for ext in [".png", ".pdf"]:
     )
 
 # %%
-# savename = folder + "test_cosmo/test_cosmo_P1D_ideal"
-savename = folder + "test_cosmo/test_cosmo_P1D_others"
+savename = folder + "test_cosmo/test_cosmo_P1D"
 # savename = folder + "test_cosmo/test_cosmo_P1D_central"
 # savename = folder + "test_cosmo/test_cosmo_P1D_seed"
+# savename = folder + "test_cosmo/test_cosmo_P1D_others"
 for ext in [".png", ".pdf"]:
     plot_p1d_test_sims(
         sim_labels,
@@ -447,7 +410,7 @@ plot_p3d_test_sims(
 )
 
 # %%
-savename = folder + "test_cosmo/test_cosmo_P3D_fit.pdf"
+savename = folder + "test_cosmo/test_cosmo_P3D_fitq2.pdf"
 plot_p3d_test_sims(
     sim_labels,
     k_Mpc,
@@ -457,16 +420,16 @@ plot_p3d_test_sims(
     savename=savename,
     fontsize=20,
 )
-savename = folder + "test_cosmo/test_cosmo_P3D_fit.png"
-plot_p3d_test_sims(
-    sim_labels,
-    k_Mpc,
-    mu,    
-    k_mask,
-    fractional_error_P3D_bench,
-    savename=savename,
-    fontsize=20,
-)
+# savename = folder + "test_cosmo/test_cosmo_P3D_fit.png"
+# plot_p3d_test_sims(
+#     sim_labels,
+#     k_Mpc,
+#     mu,    
+#     k_mask,
+#     fractional_error_P3D_bench,
+#     savename=savename,
+#     fontsize=20,
+# )
 
 # %%
 

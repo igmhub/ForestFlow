@@ -51,13 +51,24 @@ Archive3D = GadgetArchive3D(
 print(len(Archive3D.training_data))
 
 
+# %%
+Archive3D.training_data[0].keys()
+
+# %%
+all_training_type = {
+    'Arinyo': "MCMC minimum, q1 and q2, k=kpar=5", 
+    'Arinyo_minin': "Minimizer, q1 and q2, k=kpar=5",
+    'Arinyo_min_q1': "Minimizer, q1, k=kpar=3", 
+    'Arinyo_min_q1_q2': "Minimizer, q1 and q2, k=kpar=3",
+}
+
 # %% [markdown]
 # ## TRAIN EMULATOR
 #
 # Not necessary, we have pre-trained emulators
 
 # %%
-train_emu = False
+train_emu = True
 
 if train_emu:
     p3d_emu = P3DEmulator(
@@ -72,6 +83,10 @@ if train_emu:
         adamw=True,
         nLayers_inn=12,  # 15
         Archive=Archive3D,
+        # training_type='Arinyo_min_q1_q2',
+        # save_path=path_program+"/data/emulator_models/mpg_q1_q2.pt",
+        training_type='Arinyo_min_q1',
+        save_path=path_program+"/data/emulator_models/mpg_q1.pt",
         )
 
 # %% [markdown]
@@ -97,13 +112,27 @@ p3d_emu = P3DEmulator(
     nLayers_inn=12,  # 15
     Archive=Archive3D,
     chain_samp=100_000,
-    model_path=path_program+"/data/emulator_models/mpg_hypercube.pt",
+    # model_path=path_program+"/data/emulator_models/mpg_hypercube.pt",
+    # training_type='Arinyo_min_q1_q2',
+    # model_path=path_program+"/data/emulator_models/mpg_q1_q2.pt",
+    training_type='Arinyo_min_q1',
+    model_path=path_program+"/data/emulator_models/mpg_q1.pt",
 )
 
 # %%
 sim_label = "mpg_central"
 ind_book = 6
 plot_test_p3d(ind_book, Archive3D, p3d_emu, sim_label)
+
+# %%
+sim_label = "mpg_central"
+ind_book = 6
+plot_test_p3d(ind_book, Archive3D, p3d_emu, sim_label, training_type='Arinyo_min_q1_q2')
+
+# %%
+sim_label = "mpg_central"
+ind_book = 6
+plot_test_p3d(ind_book, Archive3D, p3d_emu, sim_label, training_type='Arinyo_min_q1')
 
 # %% [markdown]
 # ## PREDICT P1D AND P3D
