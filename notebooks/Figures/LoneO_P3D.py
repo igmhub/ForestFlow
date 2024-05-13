@@ -33,6 +33,11 @@ from forestflow.plots.l1O_p1d import plot_p1d_L1O
 
 from matplotlib import rcParams
 
+from forestflow.utils import (
+    params_numpy2dict,
+    transform_arinyo_params,
+)
+
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
@@ -109,12 +114,14 @@ else:
 # %%
 p3ds_pred = np.zeros(shape=(Nsim, Nz, k_Mpc.shape[0]))
 p1ds_pred = np.zeros(shape=(Nsim, Nz, k_p1d_Mpc.shape[0]))
+param_pred = np.zeros(shape=(Nsim, Nz, nparams))
 
 p3ds_arinyo = np.zeros(shape=(Nsim, Nz, k_Mpc.shape[0]))
 p1ds_arinyo = np.zeros(shape=(Nsim, Nz, k_p1d_Mpc.shape[0]))
 
 p3ds_sims = np.zeros(shape=(Nsim, Nz, k_Mpc.shape[0]))
 p1ds_sims = np.zeros(shape=(Nsim, Nz, k_p1d_Mpc.shape[0]))
+param_sims = np.zeros(shape=(Nsim, Nz, nparams))
 
 for s in range(Nsim):
     print(f"Starting simulation {s}")
@@ -171,14 +178,17 @@ for s in range(Nsim):
             kpar_Mpc=k_p1d_Mpc,
             z=z, 
             emu_params=dict_sim[0],
+            natural_params=True,
         )
         p3ds_pred[s, iz] = out['p3d']
         p1ds_pred[s, iz] = out['p1d']
+        param_pred[s, iz] = list(out['coeffs_Arinyo'].values())
 
         # BF_arinyo = dict_sim[0]["Arinyo_minin"]
         BF_arinyo = dict_sim[0][training_type]
         p3ds_arinyo[s, iz] = model_Arinyo.P3D_Mpc(z, k_Mpc, mu, BF_arinyo)
         p1ds_arinyo[s, iz] = model_Arinyo.P1D_Mpc(z, k_p1d_Mpc, parameters=BF_arinyo)
+        param_sims[s, iz] = list(transform_arinyo_params(BF_arinyo, dict_sim[0]["f_p"]).values())
         
     p3d_emu = 0
         
@@ -239,7 +249,17 @@ for s in range(Nsim):
 
 
 # %%
-zs
+for ii in range(2):
+    print(ii)
+    print(np.mean(param_pred[...,ii]/param_sims[...,ii]-1))
+    print(np.std(param_pred[...,ii]/param_sims[...,ii]-1))
+    rat = 0.5*(np.percentile(param_pred[...,ii]/param_sims[...,ii]-1, 68) - np.percentile(param_pred[...,ii]/param_sims[...,ii]-1, 16))
+    print(rat)
+    # rat = 0.5*(np.percentile(param_pred[...,ii]/param_sims[...,ii]-1, 68, axis=0) - np.percentile(param_pred[...,ii]/param_sims[...,ii]-1, 16, axis=0))
+    # print(rat)
+
+# %%
+1.8 and 0.9
 
 # %% [markdown]
 # ### L1O of each sim

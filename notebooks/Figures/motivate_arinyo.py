@@ -40,8 +40,11 @@ from forestflow.archive import GadgetArchive3D
 from forestflow.model_p3d_arinyo import get_linP_interp
 from forestflow.model_p3d_arinyo import ArinyoModel
 from forestflow.P3D_cINN import P3DEmulator
+from forestflow.rebin_p3d import p3d_allkmu, get_p3d_modes, p3d_rebin_mu
 
 # %% [markdown]
+# # Jump to start here
+#
 # ## Arinyo model from default cosmo and params
 #
 # For more details about the Arinyo model see Eq. 4.5 from Givans+22 (https://arxiv.org/abs/2205.00962)
@@ -118,7 +121,9 @@ if plot:
     plt.xscale('log')
 
 # %% [markdown]
-# ### Best-fitting Arinyo model to LaCE simulation
+# # Start here
+#
+# ## Best-fitting Arinyo model to LaCE simulation
 #
 # The Arinyo model was optimized to reproduce both the P3D and P1D down to 4 Mpc (both)
 
@@ -141,9 +146,6 @@ zs = 3
 test_sim_z = [d for d in test_sim if d["z"] == zs][0]
 
 # %%
-z_grid
-
-# %%
 # ind_book = 50 # select a random simulation
 
 k3d_Mpc = test_sim_z['k3d_Mpc']
@@ -157,14 +159,15 @@ p1d_Mpc = test_sim_z['p1d_Mpc']
 # arinyo_params = test_sim_z['Arinyo_min_q1'] # best-fitting Arinyo params
 arinyo_params = test_sim_z['Arinyo_min_q1_q2'] # best-fitting Arinyo params
 
-nn_k = 200 # number of k bins
 kmax = 4
 kmax_fit = 3
-k = np.logspace(np.log10(0.08), np.log10(kmax), nn_k)
-mu = np.nanmean(mu3d, axis=0)
-nn_mu = mu.shape[0] # number of mu bins
-k2d = np.tile(k[:, np.newaxis], nn_mu) # k grid for P3D
-mu2d = np.tile(mu[:, np.newaxis], nn_k).T # mu grid for P3D
+kmu_modes = get_p3d_modes(kmax)
+
+# k = np.logspace(np.log10(0.08), np.log10(kmax), nn_k)
+# mu = np.nanmean(mu3d, axis=0)
+# nn_mu = mu.shape[0] # number of mu bins
+# k2d = np.tile(k[:, np.newaxis], nn_mu) # k grid for P3D
+# mu2d = np.tile(mu[:, np.newaxis], nn_k).T # mu grid for P3D
 
 # k2d = k3d_Mpc
 # k = np.nanmean(k2d, axis=1)
@@ -177,42 +180,96 @@ mu2d = np.tile(mu[:, np.newaxis], nn_k).T # mu grid for P3D
 # p1d = arinyo.P1D_Mpc(zs[0], kpar, parameters=arinyo.default_params) # get P1D at target z
 
 # plin = arinyo.linP_Mpc(zs[0], k) # get linear power spectrum at target z
-model_p3d = test_sim_z['model'].P3D_Mpc(zs, k2d, mu2d, arinyo_params)
-plin = test_sim_z['model'].linP_Mpc(zs, k)
+model_p3d = test_sim_z['model'].P3D_Mpc(zs, k3d_Mpc, mu3d, arinyo_params)
+plin = test_sim_z['model'].linP_Mpc(zs, k3d_Mpc)
 
+_ = p3d_allkmu(test_sim_z['model'], zs, arinyo_params, kmu_modes)
+model_p3d_all, plin_all = _
 
-print(zs)
-arinyo_params
 
 # %% [markdown]
-# #### Plot P3D from simulation
+# ### Plot P3D from simulation
 
 # %% [markdown]
-# #### Compare P3D from simulation and best-fitting Arinyo
+# #### Maximum difference between fiducial and full P3D at each k
+
+# %%
+print("central k of bin,", "max diff [%]")
+for ii in range(model_p3d_all.shape[0]):
+    print(np.nanmean(k3d_Mpc[ii]), 100*np.nanmax(np.abs(model_p3d_all[ii]/model_p3d[ii]-1)))
+
+# %% [markdown]
+# Rebin data to only use 4 mu bins
+
+# %%
+plin_all.shape
+
+# %%
+
+n_mubins = 4
+nk = model_p3d_all.shape[0]
+
+_ = p3d_rebin_mu(k3d_Mpc[:nk], mu3d[:nk], model_p3d_all, kmu_modes, n_mubins=n_mubins)
+knew, munew, rebin_model_p3d_all, mu_bins = _
+_ = p3d_rebin_mu(k3d_Mpc[:nk], mu3d[:nk], model_p3d[:nk], kmu_modes, n_mubins=n_mubins)
+knew, munew, rebin_model_p3d, mu_bins = _
+
+
+_ = p3d_rebin_mu(k3d_Mpc[:nk], mu3d[:nk], plin[:nk], kmu_modes, n_mubins=n_mubins)
+knew, munew, rebin_plin, mu_bins = _
+_ = p3d_rebin_mu(k3d_Mpc[:nk], mu3d[:nk], plin_all, kmu_modes, n_mubins=n_mubins)
+knew, munew, rebin_plin_all, mu_bins = _
+
+_ = p3d_rebin_mu(k3d_Mpc[:nk], mu3d[:nk], p3d_Mpc[:nk], kmu_modes, n_mubins=n_mubins)
+knew, munew, rebin_p3d, mu_bins = _
+
 
 # %%
 folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
 
-fig, ax = plt.subplots(1, figsize=(8,6))
+fig, ax = plt.subplots(2, figsize=(8,6), sharex=True, height_ratios=[3, 1])
 ftsize = 20
 
-jj = 0
-for ii in range(0, p3d_Mpc.shape[1], 3):
-    col = 'C'+str(jj)
-        
-    lab = r'$\mu\simeq$'+str(np.round(mu[ii], 2))
-    mask = k3d_Mpc[:, ii] <= kmax
-    ax.plot(k3d_Mpc[mask, ii], p3d_Mpc[mask, ii]/Plin[mask, ii], col+'o:', label=lab)
-    ax.plot(k, model_p3d[:, ii]/plin, col+'-', lw=2, alpha=0.8)
-    kaiser = arinyo_params["bias"]**2*(1+arinyo_params["beta"]*mu[ii]**2)**2
-    ax.axhline(kaiser, color=col, ls='--', lw=1.5, alpha=0.8)
-    jj += 1
-ax.axvline(kmax_fit, color="k", ls='--', lw=1.5, alpha=0.8)
-ax.set_xscale('log')
-ax.set_xlabel(r'$k\, [\mathrm{Mpc}^{-1}]$', fontsize=ftsize)
-ax.set_ylabel(r'$P_\mathrm{3D}(k, \mu)/P_{\rm L}(k)$', fontsize=ftsize)
-ax.legend(loc='upper right', ncol=1, fontsize=ftsize-2)
-ax.tick_params(axis="both", which="major", labelsize=ftsize)
+for ii in range(n_mubins):
+    col = 'C'+str(ii)
+
+    mu_large = munew[np.argwhere(np.isfinite(munew[:, ii]))[0,0], ii]
+    kaiser = arinyo_params["bias"]**2 * (1 + arinyo_params["beta"]*mu_large**2)**2
+    if(ii != n_mubins-1):
+        lab = str(mu_bins[ii])+r'$\leq\mu<$'+str(mu_bins[ii+1])
+    else:
+        lab = str(mu_bins[ii])+r'$\leq\mu\leq$'+str(mu_bins[ii+1])
+
+    _ = np.isfinite(knew[:, ii])
+    x = knew[_, ii]
+    y = rebin_p3d[_, ii]/rebin_plin_all[_, ii]
+    ax[0].plot(x, y, col+'o:', label=lab)
+
+    y = rebin_model_p3d[_,ii]/rebin_plin[_, ii]
+    ax[0].plot(x, y, col+'-', lw=2, alpha=0.8)
+    y = rebin_model_p3d_all[_,ii]/rebin_plin_all[_, ii]
+    ax[0].plot(x, y, col+'--', lw=2, alpha=0.8)
+    
+    ax[0].axhline(kaiser, color=col, ls='--', lw=1.5, alpha=0.8)
+
+    y = rebin_model_p3d[_,ii]/rebin_p3d[_, ii]-1
+    ax[1].plot(x, y, col+'-', lw=2, alpha=0.8)
+    y = rebin_model_p3d_all[_,ii]/rebin_p3d[_, ii]-1
+    ax[1].plot(x, y, col+'--', lw=2, alpha=0.8)
+
+ax[0].axvline(kmax_fit, color="k", ls='--', lw=1.5, alpha=0.8)
+
+ax[1].axhline(0, color="k", ls=':', lw=1.5, alpha=0.8)
+ax[1].axhline(0.1, color="k", ls='--', lw=1.5, alpha=0.8)
+ax[1].axhline(-0.1, color="k", ls='--', lw=1.5, alpha=0.8)
+ax[1].set_ylim(-0.21, 0.21)
+ax[0].set_xscale('log')
+ax[1].set_xlabel(r'$k\, [\mathrm{Mpc}^{-1}]$', fontsize=ftsize)
+ax[0].set_ylabel(r'$P_\mathrm{3D}(k, \mu)/P_{\rm L}(k)$', fontsize=ftsize)
+ax[1].set_ylabel(r'Residual', fontsize=ftsize)
+ax[0].legend(loc='upper right', ncol=1, fontsize=ftsize-2)
+for ii in range(2):
+    ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
 plt.tight_layout()
 # plt.savefig(folder+"arinyo_sim_q1.png")
 # plt.savefig(folder+"arinyo_sim_q2.png")
@@ -220,7 +277,7 @@ plt.tight_layout()
 plt.savefig(folder+"arinyo_sim.pdf")
 
 # %% [markdown]
-# ### Stop here
+# # Stop here
 
 # %%
 for ii in range(0, p3d_Mpc.shape[1]):

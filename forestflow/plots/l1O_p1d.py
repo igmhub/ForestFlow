@@ -141,13 +141,13 @@ def plot_p1d_LzO(
     # Loop through redshifts
     color = "purple"
     for ii, z in enumerate(z_use):
-        axs[ii].text(3.2, -0.025, f"$z={z}$", fontsize=fontsize)
+        axs[ii].axvline(x=kmax_p1d, ls="--", color="k", alpha=0.75)
+        axs[ii].text(1.8, -0.025, f"$z={z}$", fontsize=fontsize)
         axs[ii].axhline(y=-0.01, ls="--", color="black")
         axs[ii].axhline(y=0.01, ls="--", color="black")
         axs[ii].axhline(y=0, ls=":", color="black")
         axs[ii].set_xscale("log")
         axs[ii].set_ylim(-0.035, 0.035)
-        axs[ii].axvline(x=kmin, ls="-", color=color, alpha=0.5)
 
         # Calculate fractional error statistics
         frac_err = np.nanmedian(fractional_errors[:, ii, :], 0)

@@ -177,7 +177,7 @@ def plot_p3d_LzO(
 
     # Loop through redshifts
     for ii, z in enumerate(z_use):
-        axs[ii].text(2.2, -0.2, f"$z={z}$", fontsize=fontsize)
+        axs[ii].text(1.8, -0.2, f"$z={z}$", fontsize=fontsize)
         axs[ii].axhline(y=-0.10, ls="--", color="black")
         axs[ii].axhline(y=0.10, ls="--", color="black")
         axs[ii].axhline(y=0, ls=":", color="black")
@@ -185,7 +185,7 @@ def plot_p3d_LzO(
         axs[ii].set_ylim(-0.25, 0.25)
 
         # ind = np.argwhere(n_modes_masked >= nmodes_min)[:, 0]
-        axs[ii].axvline(x=kmax_3d, ls="-", color="k", alpha=0.5)
+        axs[ii].axvline(x=kmax_3d, ls="--", color="k", alpha=0.75)
 
         # Loop through mu bins
         for mi in range(int(len(mu_lims))):
@@ -194,7 +194,7 @@ def plot_p3d_LzO(
             mu_mask = (mu >= mu_lims[mi][0]) & (mu <= mu_lims[mi][1])
             mu_lab = np.round(np.nanmedian(mu[mu_mask]), decimals=2)
             k_masked = k_Mpc[mu_mask]
-            n_modes_masked = n_modes[mu_mask]
+            # n_modes_masked = n_modes[mu_mask]
 
             # ind = np.argwhere(n_modes_masked >= nmodes_min)[:, 0]
             # axs[ii].axvline(

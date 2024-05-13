@@ -96,19 +96,36 @@ print(len(Archive3D.training_data))
 # %%
 Nrealizations = 100
 Nsim = 30
+Nz = 11
+zs = np.flip(np.arange(2, 4.6, 0.25))
+kmax_1d = 3
+kmax_3d = 3
+kmax_1d_plot = 4
+kmax_3d_plot = 4
 
 k_Mpc = Archive3D.training_data[0]["k3d_Mpc"]
 mu = Archive3D.training_data[0]["mu3d"]
 
-k_mask = (k_Mpc < 4) & (k_Mpc > 0)
-
+k_mask = (k_Mpc < kmax_3d_plot) & (k_Mpc > 0)
 k_Mpc = k_Mpc[k_mask]
 mu = mu[k_mask]
 
 k_p1d_Mpc = Archive3D.training_data[0]["k_Mpc"]
-k1d_mask = (k_p1d_Mpc < 5) & (k_p1d_Mpc > 0)
+k1d_mask = (k_p1d_Mpc < kmax_1d_plot) & (k_p1d_Mpc > 0)
 k_p1d_Mpc = k_p1d_Mpc[k1d_mask]
 norm = k_p1d_Mpc / np.pi
+
+# %%
+# training_type = "Arinyo_min_q1"
+training_type = "Arinyo_min_q1_q2"
+
+if (training_type == "Arinyo_min_q1"):
+    nparams = 7
+    model_path = path_program+"/data/emulator_models/mpg_q1/"
+else:
+    nparams = 8
+    model_path = path_program+"/data/emulator_models/mpg_q1_q2/"
+    # model_path=path_program+"/data/emulator_models/mpg_hypercube.pt",
 
 # %% [markdown]
 # ## LEAVE REDSHIFT OUT TEST
@@ -135,27 +152,10 @@ for iz, zdrop in enumerate(z_test):
 
     training_data = [d for d in Archive3D.training_data if d["z"] != zdrop]
 
-    # p3d_emu = P3DEmulator(
-    #     training_data,
-    #     Archive3D.emu_params,
-    #     nepochs=300,
-    #     lr=0.001,  # 0.005
-    #     batch_size=20,
-    #     step_size=200,
-    #     gamma=0.1,
-    #     weight_decay=0,
-    #     adamw=True,
-    #     nLayers_inn=12,  # 15
-    #     Archive=Archive3D,
-    #     use_chains=False,
-    #     chain_samp=100_000,
-    #     folder_chains="/data/desi/scratch/jchavesm/p3d_fits_new/",
-    # )
-    
     p3d_emu = P3DEmulator(
         training_data,
         Archive3D.emu_params,
-        nepochs=1,
+        nepochs=300,
         lr=0.001,  # 0.005
         batch_size=20,
         step_size=200,
@@ -163,8 +163,11 @@ for iz, zdrop in enumerate(z_test):
         weight_decay=0,
         adamw=True,
         nLayers_inn=12,  # 15
+        Nrealizations=200,
         Archive=Archive3D,
-        model_path=path_program + f"/data/emulator_models/mpg_dropz{zdrop}.pt",
+        training_type=training_type,
+        # save_path=model_path + f"mpg_dropz{zdrop}.pt",
+        model_path=model_path + f"mpg_dropz{zdrop}.pt",
     )
 
     for s in range(Nsim):
@@ -183,31 +186,26 @@ for iz, zdrop in enumerate(z_test):
             and d["val_scaling"] == 1
         ]
 
-        # p1d from sim
-        p1d_sim, p1d_k = p3d_emu.get_p1d_sim(dict_sim)
-
-        # p3d from sim
-        p3d_sim = dict_sim[0]["p3d_Mpc"][p3d_emu.k_mask]
-        p3d_sim = np.array(p3d_sim)
-
-        p1ds_sims[s, iz] = p1d_sim
-        p3ds_sims[s, iz] = p3d_sim
+        p1ds_sims[s, iz] = dict_sim[0]["p1d_Mpc"][k1d_mask]
+        p3ds_sims[s, iz] = dict_sim[0]["p3d_Mpc"][k_mask]
 
         # load BF Arinyo and estimated the p3d and p1d from BF arinyo parameters
         out = p3d_emu.predict_P3D_Mpc(
             sim_label=f"mpg_{s}", 
             z=zdrop, 
             emu_params=dict_sim[0],
-            kpar_Mpc = k_p1d_Mpc
+            k_Mpc=k_Mpc,
+            mu=mu,
+            kpar_Mpc=k_p1d_Mpc,
         )
         # t_keys(['coeffs_Arinyo', 'Plin', 'p3d_cov', 'p3d', 'p1d', 'p1d_cov'])
         BF_arinyo = dict_sim[0]["Arinyo_minin"]
 
         p3ds_arinyo[s, iz] = model_Arinyo.P3D_Mpc(zdrop, k_Mpc, mu, BF_arinyo)
-        p1ds_arinyo[s, iz] = model_Arinyo.P1D_Mpc(zdrop, k_p1d_Mpc, parameters=BF_arinyo) * norm
+        p1ds_arinyo[s, iz] = model_Arinyo.P1D_Mpc(zdrop, k_p1d_Mpc, parameters=BF_arinyo)
         
         p3ds_pred[s, iz] = out['p3d']
-        p1ds_pred[s, iz] = out['p1d'] * norm
+        p1ds_pred[s, iz] = out['p1d']
 
     print(
         "Mean fractional error P3D pred to Arinyo",

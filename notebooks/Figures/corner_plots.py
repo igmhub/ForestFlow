@@ -133,6 +133,7 @@ p3d_emu = P3DEmulator(
 # %%
 z_use = 3.0
 central = Archive3D.get_testing_data(sim_label="mpg_central")
+# central = Archive3D.get_testing_data(sim_label="mpg_seed")
 central_z3 = [d for d in central if d["z"] == z_use]
 
 # %%
@@ -149,7 +150,7 @@ cosmo_central = [
 condition_central = sort_dict(cosmo_central, Archive3D.emu_params)
 
 # %%
-Arinyo_coeffs_central = central_z3[0]["Arinyo"]
+Arinyo_coeffs_central = central_z3[0][training_type]
 
 # %%
 Arinyo_preds, Arinyo_preds_mean = p3d_emu.predict_Arinyos(
@@ -206,10 +207,12 @@ _par = transform_arinyo_params(
 )
 arinyo_mle_natural = np.array(list(_par.values()))
 
-arinyo_emu_natural[:,0] = -np.abs(arinyo_emu_natural[:,0])
-arinyo_emu_natural[:,1] = -np.abs(arinyo_emu_natural[:,1])
-arinyo_sim_natural[:,0] = -np.abs(arinyo_sim_natural[:,0])
-arinyo_sim_natural[:,1] = -np.abs(arinyo_sim_natural[:,1])
+print(arinyo_mle_natural)
+
+for ii in range(2):
+    arinyo_emu_natural[:,ii] = -np.abs(arinyo_emu_natural[:,ii])
+    arinyo_sim_natural[:,ii] = -np.abs(arinyo_sim_natural[:,ii])
+    arinyo_mle_natural[ii] = -np.abs(arinyo_mle_natural[ii])
 
 arinyo_emu_natural = arinyo_emu_natural[:, param_order]
 arinyo_sim_natural = arinyo_sim_natural[:, param_order]
@@ -230,9 +233,6 @@ std = np.std(arinyo_sim_natural, axis=0)
 std = 0.5*(np.percentile(arinyo_sim_natural, 68, axis=0) - np.percentile(arinyo_sim_natural, 16, axis=0))
 
 arinyo_mle_natural/std
-
-# %%
-5.2 and 4.4
 
 # %%
 folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
@@ -290,13 +290,16 @@ corner(
 # Increase the label font size for this plot
 
 ftsize1 = 45
-ftsize2 = 30
+ftsize2 = 35
 axes = corner_plot.get_axes()
 for ax in axes:
     ax.xaxis.label.set_fontsize(ftsize1)
     ax.yaxis.label.set_fontsize(ftsize1)
     ax.xaxis.set_tick_params(labelsize=ftsize2)
     ax.yaxis.set_tick_params(labelsize=ftsize2)
+    if ax.lines or ax.collections:
+        ax.xaxis.set_major_locator(plt.MaxNLocator(3))
+        ax.yaxis.set_major_locator(plt.MaxNLocator(3))
 
 black_line = Line2D([0], [0], color="C2", lw=10, label="Best fit")
 blue_patch = mpatches.Patch(color="C1", label="Posterior")
@@ -307,7 +310,7 @@ axes[7].legend(
     bbox_to_anchor=(1, 0.7),
     fontsize=ftsize1,
 )
-axes[0].set_ylabel("$\log N$", fontsize=30)
+axes[0].set_ylabel("$\log N$", fontsize=ftsize1)
 # plt.savefig(folder+"contours_central_z3_q1.pdf", bbox_inches="tight")
 plt.savefig(folder+"contours_central_z3_q1_q2.pdf", bbox_inches="tight")
 
