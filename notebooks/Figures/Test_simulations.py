@@ -14,8 +14,7 @@
 # ---
 
 # %% [markdown]
-# # NOTEBOOK PRODUCING FIGURE X, Y P3D PAPER
-#
+# # Central simulation at z=3, l10 test simulations
 
 # %%
 # %load_ext autoreload
