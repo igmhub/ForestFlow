@@ -14,8 +14,9 @@
 # ---
 
 # %% [markdown]
-# # NOTEBOOK PRODUCING FIGURE X, Y P3D PAPER
+# # Corner plot
 #
+# No longer in the paper
 
 # %%
 # %load_ext autoreload
