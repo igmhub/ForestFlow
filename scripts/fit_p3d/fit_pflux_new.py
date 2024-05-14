@@ -4,6 +4,7 @@ import sys, os
 from forestflow.model_p3d_arinyo import ArinyoModel
 from forestflow.fit_p3d import FitPk
 from forestflow.archive import GadgetArchive3D
+from forestflow.rebin_p3d import get_p3d_modes
 
 
 def get_default_params():
@@ -50,53 +51,51 @@ def get_default_params():
     return parameters_q, priors_q, parameters_q2, priors_q2
 
 
-def get_flag_out(
-    ind_sim,
-    kmax_3d,
-    noise_3d,
-    kmax_1d,
-    noise_1d,
-):
+def get_flag_out(ind_sim, kmax_3d, kmax_1d):
     flag = (
         "fit_sim_label_"
         + str(ind_sim)
         + "_kmax3d_"
         + str(kmax_3d)
-        + "_noise3d_"
-        + str(noise_3d)
         + "_kmax1d_"
         + str(kmax_1d)
-        + "_noise1d_"
-        + str(noise_1d)
     )
     return flag
 
 
-def get_input_data(data, err_p3d, err_p1d):
+def get_input_data(data, kmax_fit):
     data_dict = {}
-    data_dict["units"] = "N"
     data_dict["z"] = np.atleast_1d(data["z"])
-    data_dict["k3d"] = data["k3d_Mpc"]
+    data_dict["kmu_modes"] = get_p3d_modes(kmax_fit)
+
+    data_dict["k3d_Mpc"] = data["k3d_Mpc"]
     data_dict["mu3d"] = data["mu3d"]
-    data_dict["p3d"] = data["p3d_Mpc"] * data["k3d_Mpc"] ** 3 / 2 / np.pi**2
-    # same weight all scales
-    data_dict["std_p3d"] = data_dict["p3d"][...] * 0
+    data_dict["p3d_Mpc"] = data["p3d_Mpc"]
 
-    data_dict["k1d"] = data["k_Mpc"]
-    data_dict["p1d"] = data["p1d_Mpc"] * data["k_Mpc"] / np.pi
-    # same weight all scales
-    data_dict["std_p1d"] = data["k_Mpc"][:] * 0
+    n_modes = np.zeros_like(data_dict["k3d_Mpc"])
+    for ii in range(data_dict["k3d_Mpc"].shape[0]):
+        for jj in range(data_dict["k3d_Mpc"].shape[1]):
+            key = f"{ii}_{jj}_k"
+            if key in data_dict["kmu_modes"]:
+                n_modes[ii, jj] = data_dict["kmu_modes"][key].shape[0]
 
-    linp = data["Plin"] * data["k3d_Mpc"] ** 3 / 2 / np.pi**2
+    data_dict["std_p3d"] = 1 / n_modes
+
+    data_dict["k1d_Mpc"] = data["k_Mpc"]
+    data_dict["p1d_Mpc"] = data["p1d_Mpc"]
+    data_dict["std_p1d"] = np.pi / data["k_Mpc"] / np.mean(n_modes.sum(axis=0))
+
     model = data["model"]
 
-    return data_dict, model, linp
+    return data_dict, model
 
 
 def main():
     path_program = "/home/jchaves/Proyectos/projects/lya/ForestFlow/"
     folder_lya_data = path_program + "/data/best_arinyo/"
-    folder_save = "/home/jchaves/Proyectos/projects/lya/data/forestflow/fits/"
+    folder_save = (
+        "/home/jchaves/Proyectos/projects/lya/data/forestflow/fits_modes/"
+    )
 
     Archive3D = GadgetArchive3D(
         base_folder=path_program[:-1],
@@ -106,17 +105,11 @@ def main():
     )
     print(len(Archive3D.training_data))
 
-    ind_book = 0
-    k3d_Mpc = Archive3D.training_data[ind_book]["k3d_Mpc"]
-    mu3d = Archive3D.training_data[ind_book]["mu3d"]
-    k1d_Mpc = Archive3D.training_data[ind_book]["k_Mpc"]
-
     # fit options
     kmax_3d = 3
     kmax_1d = 3
-    noise_3d = 0.01
-    noise_1d = 0.01
     fit_type = "both"
+    all_q = [True]
 
     # loop sim_labels
     for sim_label in Archive3D.list_sim:
@@ -131,8 +124,8 @@ def main():
         else:
             list_sim_use = Archive3D.get_testing_data(sim_label)
 
-        res_params = np.zeros((len(list_sim_use), 8, 2))
-        res_chi2 = np.zeros((len(list_sim_use), 2))
+        res_params = np.zeros((len(list_sim_use), 8, len(all_q)))
+        res_chi2 = np.zeros((len(list_sim_use), len(all_q)))
         ind_snap = np.zeros((len(list_sim_use)))
         val_scaling = np.zeros((len(list_sim_use)))
 
@@ -143,7 +136,7 @@ def main():
             val_scaling[isim] = sim_use["val_scaling"]
             print()
             print(val_scaling[isim], sim_use["z"])
-            for iq2, use_q2 in enumerate([False, True]):
+            for iq2, use_q2 in enumerate(all_q):
                 _ = get_default_params()
                 parameters_q, priors_q, parameters_q2, priors_q2 = _
                 if use_q2:
@@ -156,9 +149,10 @@ def main():
                 # set initial conditions for the fit
                 for ii, par in enumerate(parameters):
                     parameters[par] = np.abs(sim_use["Arinyo"][par])
+                parameters["beta"] += 0.2
 
                 # get input data
-                data_dict, model, linp = get_input_data(sim_use, 0, 0)
+                data_dict, model = get_input_data(sim_use, kmax_3d)
 
                 # set fitting model
                 fit = FitPk(
@@ -167,8 +161,6 @@ def main():
                     fit_type=fit_type,
                     k3d_max=kmax_3d,
                     k1d_max=kmax_1d,
-                    noise_3d=noise_3d,
-                    noise_1d=noise_1d,
                     priors=priors,
                 )
 
@@ -192,14 +184,14 @@ def main():
 
         # save results to file
         # folder and name of output file
-        out_file = get_flag_out(sim_label, kmax_3d, noise_3d, kmax_1d, noise_1d)
+        out_file = get_flag_out(sim_label, kmax_3d, kmax_1d)
         np.savez(
             folder_save + out_file,
             chi2=res_chi2,
             best_params=res_params,
             ind_snap=ind_snap,
             val_scaling=val_scaling,
-            readme="sim, param, w/o w/ q2",
+            # readme="sim, param, w/o w/ q2",
         )
 
 

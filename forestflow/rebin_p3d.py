@@ -55,7 +55,7 @@ def get_p3d_modes(kmax, lbox=67.5, k_Mpc_max=20, n_k_bins=20, n_mu_bins=16):
     n_k_bins = k_bin_edges.shape[0] - 1
     nn = k_bin_edges[-1] // k_fun + 1
 
-    # define grid
+    # define grid of k modes
     _ = np.mgrid[-nn : nn + 1 : 1, -nn : nn + 1 : 1, -nn : nn + 1 : 1] * k_fun
     xgrid, ygrid, zgrid = _
     # nper = np.sqrt(nx**2+ny**2)
@@ -79,10 +79,12 @@ def get_p3d_modes(kmax, lbox=67.5, k_Mpc_max=20, n_k_bins=20, n_mu_bins=16):
     return dict_out
 
 
-def p3d_allkmu(model, zs, arinyo, kmu_modes, nk=14, nmu=16):
+def p3d_allkmu(model, zs, arinyo, kmu_modes, nk=14, nmu=16, compute_plin=True):
     """Get p3d and plin for all k-mu bins"""
     p3d = np.zeros((nk, nmu))
-    plin = np.zeros((nk, nmu))
+    if compute_plin:
+        plin = np.zeros((nk, nmu))
+
     for ii in range(nk):
         for jj in range(nmu):
             flag = str(ii) + "_" + str(jj)
@@ -91,6 +93,10 @@ def p3d_allkmu(model, zs, arinyo, kmu_modes, nk=14, nmu=16):
                 muev = kmu_modes[flag + "_mu"]
                 p3d_allmodes = model.P3D_Mpc(zs, kev, muev, arinyo)
                 p3d[ii, jj] = np.mean(p3d_allmodes)
-                plin_allmodes = model.linP_Mpc(zs, kev)
-                plin[ii, jj] = np.mean(plin_allmodes)
-    return p3d, plin
+                if compute_plin:
+                    plin_allmodes = model.linP_Mpc(zs, kev)
+                    plin[ii, jj] = np.mean(plin_allmodes)
+    if compute_plin:
+        return p3d, plin
+    else:
+        return p3d
