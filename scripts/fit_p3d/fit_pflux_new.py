@@ -162,6 +162,7 @@ def main():
                     k3d_max=kmax_3d,
                     k1d_max=kmax_1d,
                     priors=priors,
+                    all_kmu=True,
                 )
 
                 chia = fit.get_chi2(parameters)
