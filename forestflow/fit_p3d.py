@@ -144,6 +144,7 @@ class FitPk(object):
                 nk=self.nk,
                 nmu=self.nmu,
                 compute_plin=False,
+                minimize=True,
             )
         else:
             p3d = self.model.P3D_Mpc(
@@ -151,6 +152,7 @@ class FitPk(object):
                 self.data["k3d"],
                 self.data["mu3d"],
                 parameters,
+                minimize=True,
             )
 
         return p3d
@@ -181,6 +183,7 @@ class FitPk(object):
             k_perp_min=k_perp_min,
             k_perp_max=k_perp_max,
             n_k_perp=n_k_perp,
+            minimize=True,
         )
 
         return p1d

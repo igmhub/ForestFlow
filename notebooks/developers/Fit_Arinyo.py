@@ -212,7 +212,7 @@ print("and best_params", best_fit_params)
 val = np.array(list(best_fit_params.values()))
 res_params = val
 res_chi2 = chia
-        
+
 
 # %% [markdown]
 # ### Check precision
@@ -233,6 +233,7 @@ model_p3d, plin = p3d_allkmu(
     nk=nk,
     nmu=16,
     compute_plin=True,
+    minimize=True
 )
 
 
@@ -261,7 +262,8 @@ knew, munew, rebin_plin, mu_bins = _
 model_p1d = sim_use["model"].P1D_Mpc(
     data_dict["z"][0], 
     data_dict["k1d_Mpc"],
-    parameters=best_fit_params
+    parameters=best_fit_params,
+    minimize=True,
 )
 model_p1d = model_p1d[k1d_mask]
 

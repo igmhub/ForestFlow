@@ -79,7 +79,16 @@ def get_p3d_modes(kmax, lbox=67.5, k_Mpc_max=20, n_k_bins=20, n_mu_bins=16):
     return dict_out
 
 
-def p3d_allkmu(model, zs, arinyo, kmu_modes, nk=14, nmu=16, compute_plin=True):
+def p3d_allkmu(
+    model,
+    zs,
+    arinyo,
+    kmu_modes,
+    nk=14,
+    nmu=16,
+    compute_plin=True,
+    minimize=False,
+):
     """Get p3d and plin for all k-mu bins"""
     p3d = np.zeros((nk, nmu))
     if compute_plin:
@@ -91,7 +100,9 @@ def p3d_allkmu(model, zs, arinyo, kmu_modes, nk=14, nmu=16, compute_plin=True):
             if flag + "_k" in kmu_modes:
                 kev = kmu_modes[flag + "_k"]
                 muev = kmu_modes[flag + "_mu"]
-                p3d_allmodes = model.P3D_Mpc(zs, kev, muev, arinyo)
+                p3d_allmodes = model.P3D_Mpc(
+                    zs, kev, muev, arinyo, minimize=minimize
+                )
                 p3d[ii, jj] = np.mean(p3d_allmodes)
                 if compute_plin:
                     plin_allmodes = model.linP_Mpc(zs, kev)
