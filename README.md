@@ -49,13 +49,14 @@ conda activate forestflow
 ```
 git clone https://github.com/igmhub/ForestFlow.git
 cd ForestFlow
-pip install -e .[jupyter]
+pip install -e . [jupyter] # try with or without space between the . and jupyter if you need it
 ``` 
 
 - Generate notebooks:
 
 ```
-jupytext --to ipynb notebooks/*.py
+pip install jupytext
+jupytext --to ipynb notebooks/*/*.py
 ```
 
 - If you want to use notebooks via JupyterHub, you'll also need to download `ipykernel`:
