@@ -106,7 +106,8 @@ def get_input_dataz(list_data, kmax_fit):
 
 
 def main():
-    path_program = forestflow.__path__[0]
+    path_program = forestflow.__path__[0][:-10]
+    print(path_program)
     folder_lya_data = path_program + "/data/best_arinyo/"
     folder_save = path_program + "/data/best_arinyo/minimizer_z/"
     folder_minimizer = path_program + "data/best_arinyo/minimizer/"
@@ -154,9 +155,8 @@ def main():
                 folder_minimizer, sim_label, data_dict["z"]
             )
 
-            params_minimizer = np.concatenate(
-                np.array(list(parameters.values()))
-            )
+            params_minimizer = np.concatenate(list(parameters.values()))
+
             names = np.array(list(parameters.keys())).reshape(-1)
 
             # set fitting model
