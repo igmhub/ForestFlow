@@ -93,7 +93,8 @@ knew, munew, rebin_p3d, mu_bins = _
 
 # %%
 # arinyo_params = test_sim_z['Arinyo_min_q1'] # best-fitting Arinyo params
-arinyo_params = test_sim_z['Arinyo_min_q1_q2'] # best-fitting Arinyo params
+# arinyo_params = test_sim_z['Arinyo_min_q1_q2'] # best-fitting Arinyo params
+arinyo_params = test_sim_z['Arinyo_min'] # best-fitting Arinyo params
 
 # old
 # model_p3d = test_sim_z['model'].P3D_Mpc(zs, k3d_Mpc, mu3d, arinyo_params)

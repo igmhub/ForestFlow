@@ -37,7 +37,7 @@ rcParams["font.family"] = "STIXGeneral"
 from lace.cosmo import camb_cosmo
 import forestflow
 from forestflow.model_p3d_arinyo import get_linP_interp, ArinyoModel
-from forestflow.fit_p3d import FitPk
+from forestflow.fit_p3dz import FitPkz
 from pyDOE2.doe_lhs import lhs
 from forestflow.rebin_p3d import p3d_allkmu, get_p3d_modes, p3d_rebin_mu
 
@@ -145,166 +145,369 @@ def get_input_data(data, kmax_fit):
 
     return data_dict, model
 
+def get_default_paramsz(sim_label, z, val_scaling=1):
+
+    # names = ["bias", "beta", "q1", "kvav", "av", "bv", "kp", "q2"]
+    names = ["bias", "beta", "q1", "kvav", "av", "bv", "kp"]
+    
+    priors = {
+        "bias": [1e-3, 3],
+        "beta": [5e-3, 7],
+        "q1": [1e-2, 8],
+        "kvav": [1e-3, 5],
+        "av": [1e-3, 2],
+        "bv": [1e-1, 5],
+        "kp": [3, 30],
+        # "q2": [0, 5],
+    }
+
+    folder = "/home/jchaves/Proyectos/projects/lya/ForestFlow/data/best_arinyo/minimizer/"
+    file = f"fit_sim_label_{sim_label}_kmax3d_3_kmax1d_3.npz"
+    dat = np.load(folder+file)
+    in_parameters = {}
+    _ = dat["val_scaling"] == val_scaling
+    # param_ind = dat["best_params"][_, :, 0]
+    # order = np.array([2, 2, 1, 1, 2, 0, 1, 0])
+    param_ind = dat["best_params"][_, :-1, 0]
+    order = np.array([2, 2, 1, 1, 2, 0, 1])
+    for ii in range(param_ind.shape[1]):
+        _ = param_ind[:,ii] < priors[names[ii]][0]
+        param_ind[_,ii] = priors[names[ii]][0]
+        
+        _ = param_ind[:,ii] > priors[names[ii]][1]
+        param_ind[_,ii] = priors[names[ii]][1]
+
+        res = np.polyfit(z, np.log10(param_ind[:,ii]), deg=order[ii]) 
+        p = 10 ** np.poly1d(res)(z)
+        print(names[ii], priors[names[ii]][0], np.min(p), priors[names[ii]][1], np.max(p))
+        in_parameters[names[ii]] = res
+
+    return in_parameters, param_ind, order, priors
+
+def get_input_dataz(list_data, kmax_fit):
+    data_dict = {}
+    
+    data_dict["z"] = np.array([d["z"] for d in list_data])
+    data_dict["kmu_modes"] = get_p3d_modes(kmax_fit)
+    nz = data_dict["z"].shape[0]
+
+    data_dict["k3d_Mpc"] = list_data[0]["k3d_Mpc"]
+    data_dict["mu3d"] = list_data[0]["mu3d"]
+    data_dict["k1d_Mpc"] = list_data[0]["k_Mpc"]
+    
+    n_modes = np.zeros_like(data_dict["k3d_Mpc"])
+    for ii in range(data_dict["k3d_Mpc"].shape[0]):
+        for jj in range(data_dict["k3d_Mpc"].shape[1]):
+            key = f"{ii}_{jj}_k"
+            if key in data_dict["kmu_modes"]:
+                n_modes[ii, jj] = data_dict["kmu_modes"][key].shape[0]
+    
+    data_dict["p3d_Mpc"] = np.zeros((nz, *data_dict["k3d_Mpc"].shape))
+    data_dict["std_p3d"] = np.zeros_like(data_dict["p3d_Mpc"])
+    data_dict["p1d_Mpc"] = np.zeros((nz, data_dict["k1d_Mpc"].shape[0]))
+    data_dict["std_p1d"] = np.zeros_like(data_dict["p1d_Mpc"])
+    model = []
+    for ii in range(nz):
+        data_dict["p3d_Mpc"][ii] = list_data[ii]["p3d_Mpc"]
+        data_dict["p1d_Mpc"][ii] = list_data[ii]["p1d_Mpc"]
+        normz = data_dict["z"][ii]**3
+        data_dict["std_p3d"][ii] = normz / n_modes * data_dict["k3d_Mpc"]**0.25
+        data_dict["std_p1d"][ii] = normz * np.pi / data_dict["k1d_Mpc"] / np.mean(n_modes.sum(axis=0))
+        model.append(list_data[ii]["model"])
+
+    return data_dict, model
+
 
 # %% [markdown]
 # ### IC
 
 # %%
+Archive3D.list_sim_test
 
+# %%
+
+# %%
 kmax_3d = 3
 kmax_1d = 3
 use_q2 = True
 fit_type = "both"
+sim_label = "mpg_central"
+sim_label = "mpg_seed"
 
-list_sim_use = Archive3D.get_testing_data("mpg_central")
+list_sim_use = Archive3D.get_testing_data(sim_label)
 # list_sim_use = Archive3D.get_testing_data("mpg_seed")
 
-isim = 6
-sim_use = list_sim_use[isim]
-print(sim_use["z"])
+data_dict, model = get_input_dataz(list_sim_use,  kmax_3d)
 
 # get initial parameters for fit
-_ = get_default_params()
-parameters_q, priors_q, parameters_q2, priors_q2 = _
-if use_q2:
-    parameters = parameters_q2
-    priors = priors_q2
-else:
-    parameters = parameters_q
-    priors = priors_q
+parameters, param_ind, order, priors = get_default_paramsz(sim_label, data_dict["z"])
 
-for ii, par in enumerate(parameters):
-    parameters[par] = np.abs(sim_use['Arinyo'][par])
-# parameters["bias"] = 0.1
-parameters["beta"] = 1.5
+# parameters = best_fit_params.copy()
+# parameters["bias"] = np.array([-0.02183114,  0.48450093, -1.90681541])
+
+params_minimizer = np.concatenate(np.array(list(parameters.values())))
+names = np.array(list(parameters.keys())).reshape(-1)
 
 # %% [markdown]
 # ### Fit
 
 # %%
-# get input data
-data_dict, model = get_input_data(sim_use,  kmax_3d)
-
 # set fitting model
-fit = FitPk(
+fit = FitPkz(
     data_dict,
     model,
+    names=names,
+    priors=priors,
     fit_type=fit_type,
     k3d_max=kmax_3d,
     k1d_max=kmax_1d,
-    priors=priors,
+    order=order,
+    verbose=True
 )
 
-chia = fit.get_chi2(parameters)
-best_fit_params = parameters.copy()
+chia = fit.get_chi2(params_minimizer)
 print("Initial chi2", chia)
+
+# %%
+params_minimizer = np.concatenate(np.array(list(best_fit_params.values())))
+
+# %%
+results, best_fit_params = fit.maximize_likelihood(params_minimizer)
+params_minimizer = np.concatenate(np.array(list(best_fit_params.values())))
+chi2 = fit.get_chi2(params_minimizer)
+print("Final chi2", chi2)
 print("and best_params", best_fit_params)
 
-results, _best_fit_params = fit.maximize_likelihood(best_fit_params)
-chi2 = fit.get_chi2(_best_fit_params)
-if chi2 < chia:
-    chia = chi2
-    best_fit_params = _best_fit_params.copy()
-# the output is chia and best_fit_params
-print("Final chi2", chia)
-print("and best_params", best_fit_params)
+# %%
+best_fit_params_long = best_fit_params.copy()
 
-val = np.array(list(best_fit_params.values()))
-res_params = val
-res_chi2 = chia
+# %%
+best_fit_params
 
+# %%
+best_fit_params_long
+
+# %%
+1.37
+
+# %%
+# in_parameters = {}
+# # 4?
+order = np.array([2, 2, 1, 1, 2, 0, 1])
+
+for ii, key in enumerate(best_fit_params):
+    if(ii == 1):
+        pass
+    else:
+        continue
+    col = "C"+str(ii)
+    res2 = best_fit_params[key]
+    p2 = 10 ** np.poly1d(res2)(data_dict["z"])
+    res = np.polyfit(data_dict["z"], np.log10(param_ind[:,ii]), deg=order[ii])
+    p = 10 ** np.poly1d(res)(data_dict["z"])
+
+    # res3 = np.polyfit(data_dict["z"], np.log10(p2), deg=2)
+    res3 = best_fit_params_long[key]
+    p3 = 10 ** np.poly1d(res3)(data_dict["z"])
+
+    # print(p2/p3)
+    
+    plt.plot(data_dict["z"], p2, col+"-")
+    plt.plot(data_dict["z"], p3, col+".-")
+    plt.plot(data_dict["z"], p, col+"--")
+    plt.plot(data_dict["z"], param_ind[:, ii], col+":o", label=key)
+plt.yscale("log")
+# plt.ylim(1e-1, 20)
+plt.legend(ncol=2)
+
+# %%
+priors = {
+        "bias": [1e-3, 3],
+        "beta": [5e-3, 7],
+        "q1": [1e-2, 8],
+        "kvav": [1e-3, 5],
+        "av": [1e-3, 2],
+        "bv": [1e-1, 5],
+        "kp": [3, 30],
+        # "q2": [0, 5],
+    }
+
+# %%
+
+# %%
+best_fit_params2 = best_fit_params.copy()
+
+# %%
+paramz = []
+for ii in range(fit.nz):
+    param = {}
+    for jj, key in enumerate(best_fit_params2):
+        param[key] = 10 ** np.poly1d(best_fit_params2[key])(fit.data["z"][ii])
+    paramz.append(param)
+
+# %%
+# priors = {
+#         "bias": [1e-2, 3],
+#         "beta": [1e-2, 3],
+#         "q1": [0, 5],
+#         "kvav": [1e-2, 5],
+#         "av": [1e-2, 5],
+#         "bv": [1e-1, 7],
+#         "kp": [5, 30],
+#         "q2": [0, 5],
+#     }
+
+# %%
+paramz[0]
+
+# %%
+paramz2[0]
+
+# %%
+paramz[0]["beta"] = 0.5
+
+# %%
+# paramz[6]["bias"] = 0.214
+# paramz[6]["beta"] = 1.42
+# paramz[6]["kvav"] = 0.45
+
+# paramz[6]["av"] = 0.43
+# paramz[6]["bv"] = 1.7
+# paramz[-1]["q1"] = 0.5
+# paramz[0]["q2"] = 0.2
+# paramz[6]["kp"] = 15
+
+# %%
+# paramz[-1]["bias"] = 0.1
+# paramz[-1]["beta"] = 1.45
+# paramz[-1]["kvav"] = 0.32
+
+# # paramz[-1]["av"] = 0.43
+# paramz[-1]["bv"] = 1.7
+# # paramz[-1]["q1"] = 0.5
+# # paramz[-1]["q2"] = 0
+# paramz[-1]["kp"] = 22
 
 # %% [markdown]
 # ### Check precision
 
 # %%
-n_mubins = 4
-k3d_mask = data_dict["k3d_Mpc"][:, 0] <= kmax_3d
-k1d_mask = (data_dict["k1d_Mpc"] <= kmax_1d) & (
-    data_dict["k1d_Mpc"] > 0
-)
+for iz in range(len(data_dict["z"])):
 
-nk = np.sum(k3d_mask)
-model_p3d, plin = p3d_allkmu(
-    sim_use["model"],
-    data_dict["z"][0],
-    best_fit_params,
-    data_dict["kmu_modes"],
-    nk=nk,
-    nmu=16,
-    compute_plin=True,
-    minimize=True
-)
+    if(data_dict["z"][iz] == 2) | (data_dict["z"][iz] == 3):
+        pass
+    else:
+        continue
 
-
-_ = p3d_rebin_mu(sim_use["k3d_Mpc"][:nk], 
-                 sim_use["mu3d"][:nk], 
-                 sim_use["p3d_Mpc"][:nk], 
-                 data_dict["kmu_modes"], 
-                 n_mubins=n_mubins)
-knew, munew, rebin_p3d, mu_bins = _
-
-_ = p3d_rebin_mu(sim_use["k3d_Mpc"][:nk], 
-                 sim_use["mu3d"][:nk], 
-                 model_p3d[:nk], 
-                 data_dict["kmu_modes"], 
-                 n_mubins=n_mubins)
-knew, munew, rebin_model_p3d, mu_bins = _
-
-
-_ = p3d_rebin_mu(sim_use["k3d_Mpc"][:nk], 
-                 sim_use["mu3d"][:nk], 
-                 plin[:nk], 
-                 data_dict["kmu_modes"], 
-                 n_mubins=n_mubins)
-knew, munew, rebin_plin, mu_bins = _
-
-model_p1d = sim_use["model"].P1D_Mpc(
-    data_dict["z"][0], 
-    data_dict["k1d_Mpc"],
-    parameters=best_fit_params,
-    minimize=True,
-)
-model_p1d = model_p1d[k1d_mask]
-
-# %%
-jj = 0
-fig, ax = plt.subplots(2,sharex=True)
-for ii in range(0, 4):
-    col = f"C{jj}"
-    x = knew[:, ii]    
-    _ = np.isfinite(x)
-    y = rebin_p3d[:,ii]/rebin_plin[:, ii]
-    ax[0].plot(x[_], y[_], col+"o:")
+    n_mubins = 4
+    k3d_mask = data_dict["k3d_Mpc"][:, 0] <= kmax_3d
+    k1d_mask = (data_dict["k1d_Mpc"] <= kmax_1d) & (
+        data_dict["k1d_Mpc"] > 0
+    )
     
-    y = rebin_model_p3d[:,ii]/rebin_plin[:,ii]
-    ax[0].plot(x[_], y[_], col+"-")
+    nk = np.sum(k3d_mask)
+    model_p3d, plin = p3d_allkmu(
+        list_sim_use[iz]["model"],
+        data_dict["z"][iz],
+        paramz[iz],
+        data_dict["kmu_modes"],
+        nk=nk,
+        nmu=16,
+        compute_plin=True,
+        minimize=True
+    )
     
-    y = rebin_model_p3d[:,ii]/rebin_p3d[:,ii] - 1
-    # mask = (((data_dict["mu3d"][:12])[fit.ind_fit3d] >= np.nanmin(data_dict["mu3d"][:,ii])) 
-    #         & ((data_dict["mu3d"][:12])[fit.ind_fit3d] <= np.nanmax(data_dict["mu3d"][:,ii])))
-    # y = (rebin_model_p3d[_,ii]-data_dict["p3d_Mpc"][k3d_mask, ii][_])/fit.err_p3d[mask]
-    ax[1].plot(x[_], y[_], col+"-")
-    jj += 1
-ax[1].axhline(0, linestyle=":", color="k")
-ax[1].axhline(0.1, linestyle=":", color="k")
-ax[1].axhline(-0.1, linestyle=":", color="k")
-ax[0].set_xscale("log")
-# plt.yscale("log")
+    
+    _ = p3d_rebin_mu(list_sim_use[iz]["k3d_Mpc"][:nk], 
+                     list_sim_use[iz]["mu3d"][:nk], 
+                     list_sim_use[iz]["p3d_Mpc"][:nk], 
+                     data_dict["kmu_modes"], 
+                     n_mubins=n_mubins)
+    knew, munew, rebin_p3d, mu_bins = _
+    
+    _ = p3d_rebin_mu(list_sim_use[iz]["k3d_Mpc"][:nk], 
+                     list_sim_use[iz]["mu3d"][:nk], 
+                     model_p3d[:nk], 
+                     data_dict["kmu_modes"], 
+                     n_mubins=n_mubins)
+    knew, munew, rebin_model_p3d, mu_bins = _
+    
+    
+    _ = p3d_rebin_mu(list_sim_use[iz]["k3d_Mpc"][:nk], 
+                     list_sim_use[iz]["mu3d"][:nk], 
+                     plin[:nk], 
+                     data_dict["kmu_modes"], 
+                     n_mubins=n_mubins)
+    knew, munew, rebin_plin, mu_bins = _
+    
+    model_p1d = list_sim_use[iz]["model"].P1D_Mpc(
+        data_dict["z"][iz], 
+        data_dict["k1d_Mpc"],
+        parameters=paramz[iz],
+        minimize=True,
+    )
+    model_p1d = model_p1d[k1d_mask]
+    
+    jj = 0
+    fig, ax = plt.subplots(3, sharex=True)
+    for ii in range(0, 4):
+        col = f"C{jj}"
+        x = knew[:, ii]    
+        _ = np.isfinite(x)
+        y = rebin_p3d[:,ii]/rebin_plin[:, ii]
+        ax[0].plot(x[_], y[_], col+"o:")
+        
+        y = rebin_model_p3d[:,ii]/rebin_plin[:,ii]
+        ax[0].plot(x[_], y[_], col+"-")
+        
+        y = rebin_model_p3d[:,ii]/rebin_p3d[:,ii] - 1
+        ax[1].plot(x[_], y[_], col+"-")
 
-# %%
-fig, ax = plt.subplots(2, sharex=True)
-x = data_dict["k1d_Mpc"][k1d_mask]
-ax[0].plot(x, x*data_dict["p1d_Mpc"][k1d_mask], "o:")
-ax[0].plot(x, x*model_p1d, "-")
+        # norm = 1
+        # norm = (data_dict["z"][iz])**3.5
+        y = (rebin_p3d[:,ii]-rebin_model_p3d[:,ii])/data_dict["std_p3d"][iz][:12, ii*5]
+        ax[2].plot(x[_], y[_], col+"-")
 
-y = model_p1d/data_dict["p1d_Mpc"][k1d_mask]-1
-# y = (model_p1d-data_dict["p1d_Mpc"][k1d_mask])/fit.err_p1d
-ax[1].plot(x, y, "-")
-ax[1].axhline(0, linestyle=":", color="k")
-ax[1].axhline(0.01, linestyle=":", color="k")
-ax[1].axhline(-0.01, linestyle=":", color="k")
-ax[0].set_xscale("log")
+        
+        jj += 1
+    ax[1].axhline(0, linestyle=":", color="k")
+    ax[1].axhline(0.1, linestyle=":", color="k")
+    ax[1].axhline(-0.1, linestyle=":", color="k")
+
+    
+    ax[2].axhline(0, linestyle=":", color="k")
+    ax[2].axhline(1, linestyle=":", color="k")
+    ax[2].axhline(-1, linestyle=":", color="k")
+    
+    ax[0].set_xscale("log")
+    ax[0].set_title(data_dict["z"][iz])
+    # plt.yscale("log")
+    
+    fig, ax = plt.subplots(3, sharex=True)
+    x = data_dict["k1d_Mpc"][k1d_mask]
+    ax[0].plot(x, x*list_sim_use[iz]["p1d_Mpc"][k1d_mask], "o:")
+    ax[0].plot(x, x*model_p1d, "-")
+    
+    y = model_p1d/list_sim_use[iz]["p1d_Mpc"][k1d_mask]-1
+    # y = (model_p1d-data_dict["p1d_Mpc"][k1d_mask])/fit.err_p1d
+    ax[1].plot(x, y, "-")
+
+    # norm = np.nanmax(list_sim_use[iz]["p1d_Mpc"][k1d_mask])
+    # norm = 1
+    # norm = (data_dict["z"][iz])**3*0.5
+    y = (list_sim_use[iz]["p1d_Mpc"][k1d_mask]-model_p1d)/data_dict["std_p1d"][iz][k1d_mask]
+    ax[2].plot(x, y, "-")
+
+    
+    ax[2].axhline(0, linestyle=":", color="k")
+    ax[2].axhline(1, linestyle=":", color="k")
+    ax[2].axhline(-1, linestyle=":", color="k")
+
+    
+    ax[1].axhline(0, linestyle=":", color="k")
+    ax[1].axhline(0.01, linestyle=":", color="k")
+    ax[1].axhline(-0.01, linestyle=":", color="k")
+    ax[0].set_xscale("log")
 
 # %%
 

@@ -14,7 +14,7 @@
 # ---
 
 # %% [markdown]
-# # TUTORIAL FOR THE P3D EMULATOR (forestflow)
+# # Tutorial for ForestFlow
 
 # %%
 # %load_ext autoreload
@@ -57,9 +57,7 @@ Archive3D.training_data[0].keys()
 # %%
 all_training_type = {
     'Arinyo': "MCMC minimum, q1 and q2, k=kpar=5", 
-    'Arinyo_minin': "Minimizer, q1 and q2, k=kpar=5",
-    'Arinyo_min_q1': "Minimizer, q1, k=kpar=3", 
-    'Arinyo_min_q1_q2': "Minimizer, q1 and q2, k=kpar=3",
+    'Arinyo_min': "Minimizer, q1 and q2, k=kpar=3",
 }
 
 # %% [markdown]
@@ -83,11 +81,9 @@ if train_emu:
         adamw=True,
         nLayers_inn=12,  # 15
         Archive=Archive3D,
-        # training_type='Arinyo_min_q1_q2',
-        # save_path=path_program+"/data/emulator_models/mpg_q1_q2.pt",
-        training_type='Arinyo_min_q1',
-        save_path=path_program+"/data/emulator_models/mpg_q1.pt",
-        )
+        training_type='Arinyo_min',
+        save_path=path_program+"/data/emulator_models/mpg_last.pt",
+    )
 
 # %% [markdown]
 # ## LOAD TRAINED EMULATOR
@@ -112,11 +108,8 @@ p3d_emu = P3DEmulator(
     nLayers_inn=12,  # 15
     Archive=Archive3D,
     chain_samp=100_000,
-    # model_path=path_program+"/data/emulator_models/mpg_hypercube.pt",
-    # training_type='Arinyo_min_q1_q2',
-    # model_path=path_program+"/data/emulator_models/mpg_q1_q2.pt",
-    training_type='Arinyo_min_q1',
-    model_path=path_program+"/data/emulator_models/mpg_q1.pt",
+    training_type='Arinyo_min',
+    model_path=path_program+"/data/emulator_models/mpg_last.pt",
 )
 
 # %%

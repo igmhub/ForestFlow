@@ -16,7 +16,9 @@ def plot_motivate_model(
     ftsize=20,
     kmax_fit=3,
 ):
-    fig, ax = plt.subplots(2, figsize=(8, 6), sharex=True, height_ratios=[3, 1])
+    fig, ax = plt.subplots(
+        3, figsize=(8, 10), sharex=True, height_ratios=[3, 1, 1]
+    )
 
     labs = []
     for ii in range(rebin_p3d.shape[1]):
@@ -46,20 +48,23 @@ def plot_motivate_model(
         ax[1].plot(x, y, col + "-", lw=2, alpha=0.8)
 
         y = kaiser[_] * rebin_plin[_, ii] / rebin_p3d[_, ii] - 1
-        ax[1].plot(x, y, col + "--", lw=2, alpha=0.8)
+        ax[2].plot(x, y, col + "--", lw=2, alpha=0.8)
 
-    for ii in range(2):
+    for ii in range(3):
         ax[ii].axvline(kmax_fit, color="k", ls="--", lw=1.5, alpha=0.8)
 
-    ax[1].axhline(0, color="k", ls=":", lw=1.5, alpha=0.8)
-    ax[1].axhline(0.1, color="k", ls="--", lw=1.5, alpha=0.8)
-    ax[1].axhline(-0.1, color="k", ls="--", lw=1.5, alpha=0.8)
+    for ii in range(1, 3):
+        ax[ii].axhline(0, color="k", ls=":", lw=1.5, alpha=0.8)
+        ax[ii].axhline(0.1, color="k", ls="--", lw=1.5, alpha=0.8)
+        ax[ii].axhline(-0.1, color="k", ls="--", lw=1.5, alpha=0.8)
+        ax[ii].set_ylim(-0.21, 0.21)
+
     ax[0].set_ylim(bottom=-0.01)
-    ax[1].set_ylim(-0.21, 0.21)
     ax[0].set_xscale("log")
-    ax[1].set_xlabel(r"$k\, [\mathrm{Mpc}^{-1}]$", fontsize=ftsize)
+    ax[-1].set_xlabel(r"$k\, [\mathrm{Mpc}^{-1}]$", fontsize=ftsize)
     ax[0].set_ylabel(r"$P_\mathrm{3D}(k, \mu)/P_{\rm L}(k)$", fontsize=ftsize)
-    ax[1].set_ylabel(r"Residual", fontsize=ftsize)
+    ax[1].set_ylabel(r"Residual fit", fontsize=ftsize)
+    ax[2].set_ylabel(r"Residual Kaiser", fontsize=ftsize)
     # ax[0].legend(loc='upper right', ncol=1, fontsize=ftsize-2)
     hand = []
     for i in range(4):
@@ -85,7 +90,7 @@ def plot_motivate_model(
     ax[0].legend(fontsize=ftsize - 2, loc="lower left", handles=hand, ncols=3)
     ax[0].add_artist(legend1)
 
-    for ii in range(2):
+    for ii in range(3):
         ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
     plt.tight_layout()
 

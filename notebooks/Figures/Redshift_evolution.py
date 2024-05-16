@@ -67,12 +67,8 @@ print(len(Archive3D.training_data))
 # ## LOAD EMULATOR
 
 # %%
-# training_type = "Arinyo_min_q1"
-# model_path = path_program + "/data/emulator_models/mpg_q1/mpg_hypercube.pt"
-
-training_type = "Arinyo_min_q1_q2"
-model_path=path_program + "/data/emulator_models/mpg_q1_q2/mpg_hypercube.pt"
-# model_path=path_program + "/data/emulator_models/mpg_hypercube.pt"
+training_type = "Arinyo_min"
+model_path=path_program + "/data/emulator_models/mpg_last.pt"
 
 p3d_emu = P3DEmulator(
     Archive3D.training_data,
@@ -87,7 +83,7 @@ p3d_emu = P3DEmulator(
     nLayers_inn=12,  # 15
     Archive=Archive3D,
     # Nrealizations=10000,
-    Nrealizations=100,
+    Nrealizations=1000,
     training_type=training_type,
     model_path=model_path,
 )
@@ -156,16 +152,22 @@ for iz, z in enumerate(z_central):
 # ## PLOT
 
 # %%
-
 from forestflow.plots.params_z import plot_arinyo_z
 
 # %%
 folder_fig = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
 
 # %%
+for ii in range(len(Arinyo_emu)):
+    print(ii, Arinyo_emu[ii]["kv"])
+    Arinyo_emu[ii]["kv"] = Arinyo_emu[ii]["kv"]**Arinyo_emu[ii]["av"]
+    print(Arinyo_emu[ii]["kv"])
+
+# %%
 plot_arinyo_z(z_central, Arinyo_central, Arinyo_seed, Arinyo_emu, Arinyo_emu_std, folder_fig=folder_fig, ftsize=20)
 
 # %%
+z_central
 
 # %%
 

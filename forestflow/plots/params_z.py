@@ -13,11 +13,12 @@ def plot_arinyo_z(
     folder_fig=None,
     ftsize=20,
 ):
+    z_central = np.array(z_central)
     # Create a 2x1 grid for plotting
     fig, ax = plt.subplots(
         4, 1, figsize=(8, 12), sharex=True, height_ratios=[3, 1, 3, 1]
     )
-    name_params = ["bias", "bias_eta", "q1", "q2", "kv", "av", "bv", "kp"]
+    name_params = ["bias", "bias_eta", "q1", "kp", "q2", "kv", "av", "bv"]
     # name_params = list(Arinyo_emu[0].keys())
 
     name2label = {
@@ -85,6 +86,13 @@ def plot_arinyo_z(
         ax1.plot(z_central, np.abs(ari_cen), "--", color=col, lw=2)
         ax1.plot(z_central, np.abs(ari_seed), "-.", color=col, lw=2)
 
+        res = np.polyfit(z_central[:-1], np.log10(np.abs(ari_emu))[:-1], deg=2)
+        print(res)
+        p = 10 ** (res[0] * z_central**2 + res[1] * z_central + res[2])
+        # p = 10 ** (res[0] * z_central + res[1])
+        ax1.plot(z_central, p, color="k")
+        ax2.plot(z_central, p / np.abs(ari_emu) - 1, color="k")
+
         ax1.plot(
             z_central,
             np.abs(ari_emu),
@@ -143,11 +151,12 @@ def plot_arinyo_z(
     for ii in range(1, 5, 2):
         ax[ii].set_ylabel("Residual", fontsize=ftsize)
         ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
-        ax[ii].set_ylim(-0.6, 0.6)
         ax[ii].axhline(y=0, color="k", ls=":", lw=2)
 
-    ax[0].set_ylim(8e-2, 2.5)
-    ax[2].set_ylim(0.02, 25)
+    ax[0].set_ylim(8e-2, 25)
+    ax[1].set_ylim(-0.1, 0.1)
+    ax[2].set_ylim(1e-3, 3)
+    ax[3].set_ylim(-1.0, 1.0)
 
     ax[-1].set_xlabel("$z$", fontsize=ftsize)
 

@@ -36,6 +36,7 @@ from forestflow.plots.test_sims import (
     plot_p3d_snap
 )
 from forestflow.utils import params_numpy2dict
+from forestflow.rebin_p3d import p3d_allkmu, get_p3d_modes, p3d_rebin_mu
 
 from matplotlib import rcParams
 
@@ -78,14 +79,15 @@ print(len(Archive3D.training_data))
 # %%
 training_type = "Arinyo_min_q1"
 training_type = "Arinyo_min_q1_q2"
+training_type = "Arinyo_min"
 
 if (training_type == "Arinyo_min_q1"):
     nparams = 7
     model_path = path_program+"/data/emulator_models/mpg_q1/mpg_hypercube.pt"
 else:
     nparams = 8
-    model_path = path_program+"/data/emulator_models/mpg_q1_q2/mpg_hypercube.pt"
-    # model_path=path_program+"/data/emulator_models/mpg_hypercube.pt",
+    # model_path = path_program+"/data/emulator_models/mpg_q1_q2/mpg_hypercube.pt"
+    model_path=path_program+"/data/emulator_models/mpg_last.pt"
 
 emulator = P3DEmulator(
     Archive3D.training_data,
@@ -109,30 +111,26 @@ emulator = P3DEmulator(
 
 # %%
 Nsim = 30
-Nz = 11
 zs = np.flip(np.arange(2, 4.6, 0.25))
+Nz = zs.shape[0]
+
+n_mubins = 4
 kmax_3d_plot = 4
 kmax_1d_plot = 4
-kmax_3d = 3
-kmax_1d = 3
 
-k_Mpc = Archive3D.training_data[0]["k3d_Mpc"]
-mu = Archive3D.training_data[0]["mu3d"]
+sim = Archive3D.training_data[0]
 
-k_mask = (k_Mpc < kmax_3d_plot) & (k_Mpc > 0)
+k3d_Mpc = sim['k3d_Mpc']
+mu3d = sim['mu3d']
+kmu_modes = get_p3d_modes(kmax_3d_plot)
 
-k_Mpc = k_Mpc[k_mask]
-mu = mu[k_mask]
+mask_3d = k3d_Mpc[:, 0] <= kmax_3d_plot
 
-k_p1d_Mpc_all = Archive3D.training_data[0]["k_Mpc"]
-k_p1d_Mpc = Archive3D.training_data[0]["k_Mpc"]
-k1d_mask = (k_p1d_Mpc < kmax_1d_plot) & (k_p1d_Mpc > 0)
-k_p1d_Mpc = k_p1d_Mpc[k1d_mask]
-norm_p1d = k_p1d_Mpc / np.pi
-norm_all = k_p1d_Mpc_all / np.pi
+_ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], p3d_Mpc[mask_3d], kmu_modes, n_mubins=n_mubins)
+knew, munew, rebin_p3d, mu_bins = _
 
-n_modes = get_modes()[k_mask]
-
+mask_1d = sim['k_Mpc'] <= kmax_1d_plot
+k1d_Mpc = sim['k_Mpc'][mask_1d]
 
 
 # %%

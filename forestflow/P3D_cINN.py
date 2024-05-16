@@ -133,7 +133,7 @@ class P3DEmulator:
             "bv",
             "kp",
         ]
-        if training_type == "Arinyo_min_q1_q2":
+        if training_type == "Arinyo_min":
             self.Arinyo_params.append("q2")
         self.dim_inputSpace = len(self.Arinyo_params)
 

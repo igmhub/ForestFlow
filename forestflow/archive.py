@@ -124,8 +124,8 @@ class GadgetArchive3D(GadgetArchive):
             self.add_Arinyo_minimizer_last(
                 self.training_data, sim_label="mpg_hypercube"
             )
-        # minimizer, combuted for both, axes, and phases
-        self.add_Arinyo_minimizer(self.training_data)
+        # # minimizer, computed for both, axes, and phases
+        # self.add_Arinyo_minimizer(self.training_data)
 
         self.add_plin(
             self.training_data,
@@ -257,27 +257,15 @@ class GadgetArchive3D(GadgetArchive):
         sim_label=None,
         kmax_3d=3,
         kmax_1d=3,
-        noise_3d=0.01,
-        noise_1d=0.01,
     ):
-        def get_flag_out(
-            ind_sim,
-            kmax_3d,
-            noise_3d,
-            kmax_1d,
-            noise_1d,
-        ):
+        def get_flag_out(ind_sim, kmax_3d, kmax_1d):
             flag = (
                 "fit_sim_label_"
                 + str(ind_sim)
                 + "_kmax3d_"
                 + str(kmax_3d)
-                + "_noise3d_"
-                + str(noise_3d)
                 + "_kmax1d_"
                 + str(kmax_1d)
-                + "_noise1d_"
-                + str(noise_1d)
             )
             return flag
 
@@ -285,9 +273,7 @@ class GadgetArchive3D(GadgetArchive):
             ii = 0
             for isim in range(30):
                 ind_sim = archive[ii]["sim_label"]
-                flag = get_flag_out(
-                    ind_sim, kmax_3d, noise_3d, kmax_1d, noise_1d
-                )
+                flag = get_flag_out(ind_sim, kmax_3d, kmax_1d)
                 file = (
                     self.base_folder
                     + "/data/best_arinyo/minimizer/"
@@ -309,15 +295,12 @@ class GadgetArchive3D(GadgetArchive):
                         & (val_scaling == archive[ii]["val_scaling"])
                     )[0, 0]
 
-                    archive[ii]["Arinyo_min_q1"] = params_numpy2dict_minimizer(
-                        best_params[ind, :-1, 0]
+                    archive[ii]["Arinyo_min"] = params_numpy2dict_minimizer(
+                        best_params[ind, :, 0]
                     )
-                    archive[ii][
-                        "Arinyo_min_q1_q2"
-                    ] = params_numpy2dict_minimizer(best_params[ind, :, 1])
                     ii += 1
         else:
-            flag = get_flag_out(sim_label, kmax_3d, noise_3d, kmax_1d, noise_1d)
+            flag = get_flag_out(sim_label, kmax_3d, kmax_1d)
             file = (
                 self.base_folder
                 + "/data/best_arinyo/minimizer/"
@@ -335,11 +318,8 @@ class GadgetArchive3D(GadgetArchive):
                     (ind_snap == archive[ii]["ind_snap"])
                     & (val_scaling == archive[ii]["val_scaling"])
                 )[0, 0]
-                archive[ii]["Arinyo_min_q1"] = params_numpy2dict_minimizer(
-                    best_params[ind, :-1, 0]
-                )
-                archive[ii]["Arinyo_min_q1_q2"] = params_numpy2dict_minimizer(
-                    best_params[ind, :, 1]
+                archive[ii]["Arinyo_min"] = params_numpy2dict_minimizer(
+                    best_params[ind, :, 0]
                 )
 
     def add_Arinyo_model(

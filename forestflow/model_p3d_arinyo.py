@@ -241,7 +241,12 @@ class ArinyoModel(object):
         # model small-scales correction (D_NL in Arinyo-i-Prats 2015)
         delta2 = (1 / (2 * np.pi**2)) * k**3 * linP
         if "q2" not in pp.keys():
-            nonlin = delta2 * pp["q1"]
+            if minimize:
+                q1 = 0.5 * pp["q1"]
+                q2 = 0.5 * pp["q1"]
+                nonlin = delta2 * (q1 + q2 * delta2)
+            else:
+                nonlin = delta2 * pp["q1"]
         else:
             # uncomment for minimizer
             if minimize:
