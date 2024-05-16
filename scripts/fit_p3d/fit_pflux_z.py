@@ -1,4 +1,5 @@
 import numpy as np
+import forestflow
 import sys, os
 
 from forestflow.model_p3d_arinyo import ArinyoModel
@@ -101,13 +102,14 @@ def get_input_dataz(list_data, kmax_fit):
     return data_dict, model
 
 
+# /global/homes/j/jjchaves/data/forestflow
+
+
 def main():
-    path_program = "/home/jchaves/Proyectos/projects/lya/ForestFlow/"
+    path_program = forestflow.__path__[0]
     folder_lya_data = path_program + "/data/best_arinyo/"
-    folder_save = (
-        "/home/jchaves/Proyectos/projects/lya/data/forestflow/fits_modesz/"
-    )
-    folder_minimizer = "/home/jchaves/Proyectos/projects/lya/ForestFlow/data/best_arinyo/minimizer/"
+    folder_save = path_program + "/data/best_arinyo/minimizer_z/"
+    folder_minimizer = path_program + "data/best_arinyo/minimizer/"
 
     Archive3D = GadgetArchive3D(
         base_folder=path_program[:-1],
