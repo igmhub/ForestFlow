@@ -150,6 +150,12 @@ def main():
                 list_sim_use = Archive3D.get_testing_data(sim_label)
                 val_scaling = 1
 
+            out_file = folder_save + get_flag_out(
+                sim_label, val_scaling, kmax_3d, kmax_1d
+            )
+            if os.path.isfile(out_file + ".npz"):
+                continue
+
             data_dict, model = get_input_dataz(list_sim_use, kmax_3d)
             parameters, param_ind, order, priors = get_default_paramsz(
                 folder_minimizer, sim_label, data_dict["z"]
@@ -185,12 +191,8 @@ def main():
 
             # save results to file
             # folder and name of output file
-            out_file = get_flag_out(sim_label, val_scaling, kmax_3d, kmax_1d)
-            np.savez(
-                folder_save + out_file,
-                chi2=chi2,
-                best_params=best_fit_params,
-            )
+
+            np.savez(out_file, chi2=chi2, best_params=best_fit_params)
 
 
 if __name__ == "__main__":
