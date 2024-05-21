@@ -55,6 +55,7 @@ class FitPkz(object):
         order=None,
         verbose=False,
         all_kmu=True,
+        test=False,
     ):
         """
         Setup P3D flux power model and measurement.
@@ -84,6 +85,7 @@ class FitPkz(object):
         self.priors = priors
         self.all_kmu = all_kmu
         self.order = order
+        self.test = test
 
         k3d_mask = self.data["k3d_Mpc"][:, 0] <= k3d_max
         self.nz = self.data["z"].shape[0]
@@ -381,6 +383,10 @@ class FitPkz(object):
         """
 
         # lambda function to minimize
+        if self.test:
+            maxiter = 5
+        else:
+            maxiter = 2000
 
         chi2_in = self.get_chi2(parameters)
 
@@ -389,7 +395,7 @@ class FitPkz(object):
                 self.get_log_like,
                 parameters,
                 method="Nelder-Mead",
-                options={"maxiter": 4000},
+                options={"maxiter": maxiter},
             )
 
             parameters = results.x

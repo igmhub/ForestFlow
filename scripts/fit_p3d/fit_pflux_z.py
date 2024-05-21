@@ -176,15 +176,15 @@ def main():
                 k1d_max=kmax_1d,
                 order=order,
                 verbose=False,
+                test=True,
             )
 
             chia = fit.get_chi2(params_minimizer)
             print("Initial chi2", chia)
 
             results, best_fit_params = fit.maximize_likelihood(params_minimizer)
-            params_minimizer = np.concatenate(
-                np.array(list(best_fit_params.values()))
-            )
+            params_minimizer = np.concatenate(list(best_fit_params.values()))
+
             chi2 = fit.get_chi2(params_minimizer)
             print("Final chi2", chi2)
             print("and best_params", best_fit_params)
@@ -193,6 +193,8 @@ def main():
             # folder and name of output file
 
             np.savez(out_file, chi2=chi2, best_params=best_fit_params)
+            print("Saved to", out_file)
+            sys.exit()
 
 
 if __name__ == "__main__":
