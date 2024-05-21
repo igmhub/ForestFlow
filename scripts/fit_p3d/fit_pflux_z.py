@@ -183,7 +183,6 @@ def main():
                 k1d_max=kmax_1d,
                 order=order,
                 verbose=False,
-                test=True,
             )
 
             chia = fit.get_chi2(params_minimizer)
