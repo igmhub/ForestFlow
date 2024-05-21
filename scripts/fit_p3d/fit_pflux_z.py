@@ -106,6 +106,8 @@ def get_input_dataz(list_data, kmax_fit):
 
 
 def main():
+    args = sys.argv[1:]
+
     path_program = forestflow.__path__[0][:-10]
     print(path_program)
     folder_lya_data = path_program + "/data/best_arinyo/"
@@ -128,6 +130,11 @@ def main():
 
     # loop sim_labels
     for sim_label in Archive3D.list_sim:
+        if (args[0] != "") and (sim_label == args[0]):
+            pass
+        else:
+            continue
+
         print(sim_label)
         print()
         print()
@@ -148,7 +155,7 @@ def main():
                         list_sim_use.append(isim)
             else:
                 list_sim_use = Archive3D.get_testing_data(sim_label)
-                val_scaling = 1
+                val_scaling = 1.0
 
             out_file = folder_save + get_flag_out(
                 sim_label, val_scaling, kmax_3d, kmax_1d
@@ -194,7 +201,6 @@ def main():
 
             np.savez(out_file, chi2=chi2, best_params=best_fit_params)
             print("Saved to", out_file)
-            sys.exit()
 
 
 if __name__ == "__main__":
