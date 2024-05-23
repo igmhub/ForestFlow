@@ -248,6 +248,18 @@ parameters, param_ind, order, priors = get_default_paramsz(sim_label, data_dict[
 params_minimizer = np.concatenate(np.array(list(parameters.values())))
 names = np.array(list(parameters.keys())).reshape(-1)
 
+# %%
+parameters = {'bias': np.array([-0.02612176,  0.49865012, -1.91246964]),
+ 'beta': np.array([-0.0739654 ,  0.2916148 , -0.05783508]),
+ 'q1': np.array([ 0.26445976, -0.91410792]),
+ 'kvav': np.array([ 0.18747969, -0.80355048]),
+ 'av': np.array([-0.16330166,  1.09833536, -2.28063046]),
+ 'bv': np.array([0.25569833]),
+ 'kp': np.array([0.06015869, 0.92459092])}
+
+# %%
+np.concatenate(list(parameters.values()))
+
 # %% [markdown]
 # ### Fit
 

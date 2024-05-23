@@ -63,6 +63,27 @@ def params_numpy2dict_minimizer(params):
     return dict_param
 
 
+def params_numpy2dict_minimizerz(params):
+    """
+    Converts a numpy array of parameters to a dictionary.
+
+    Args:
+        params (numpy.ndarray): Array of parameters.
+
+    Returns:
+        dict: Dictionary containing the parameters with their corresponding names.
+    """
+    dict_param = {}
+    for key in params:
+        if key == "q1":
+            dict_param["q1"] = 0.5 * params[key]
+        else:
+            dict_param[key] = params[key]
+    dict_param["q2"] = dict_param["q1"]
+
+    return dict_param
+
+
 def transform_arinyo_params(dict_arinyo_params, fcosmo):
     dict_arinyo_params_out = {}
     for key in dict_arinyo_params.keys():

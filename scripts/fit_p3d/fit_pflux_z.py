@@ -127,6 +127,7 @@ def main():
     kmax_1d = 3
     fit_type = "both"
     all_val_scaling = np.array([0.9, 0.95, 1.0, 1.05, 1.1])
+    maxiter = 5000
 
     # loop sim_labels
     for sim_label in Archive3D.list_sim:
@@ -157,16 +158,22 @@ def main():
                 list_sim_use = Archive3D.get_testing_data(sim_label)
                 val_scaling = 1.0
 
-            out_file = folder_save + get_flag_out(
-                sim_label, val_scaling, kmax_3d, kmax_1d
-            )
-            if os.path.isfile(out_file + ".npz"):
-                continue
-
             data_dict, model = get_input_dataz(list_sim_use, kmax_3d)
             parameters, param_ind, order, priors = get_default_paramsz(
                 folder_minimizer, sim_label, data_dict["z"]
             )
+
+            out_file = folder_save + get_flag_out(
+                sim_label, val_scaling, kmax_3d, kmax_1d
+            )
+
+            if os.path.isfile(out_file + ".npz"):
+                file_data = np.load(out_file + ".npz", allow_pickle=True)
+                chi2 = file_data["chi2"]
+                if chi2 < 1:
+                    continue
+                else:
+                    parameters = file_data["best_params"].item()
 
             params_minimizer = np.concatenate(list(parameters.values()))
 
@@ -183,6 +190,7 @@ def main():
                 k1d_max=kmax_1d,
                 order=order,
                 verbose=False,
+                maxiter=maxiter,
             )
 
             chia = fit.get_chi2(params_minimizer)

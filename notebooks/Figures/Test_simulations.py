@@ -77,17 +77,22 @@ print(len(Archive3D.training_data))
 # ## Load emulator
 
 # %%
-training_type = "Arinyo_min_q1"
-training_type = "Arinyo_min_q1_q2"
-training_type = "Arinyo_min"
+# training_type = "Arinyo_min_q1"
+# training_type = "Arinyo_min_q1_q2"
+# training_type = "Arinyo_min"
+training_type = "Arinyo_minz"
 
 if (training_type == "Arinyo_min_q1"):
     nparams = 7
     model_path = path_program+"/data/emulator_models/mpg_q1/mpg_hypercube.pt"
-else:
+elif(training_type == "Arinyo_min"):
     nparams = 8
     # model_path = path_program+"/data/emulator_models/mpg_q1_q2/mpg_hypercube.pt"
     model_path=path_program+"/data/emulator_models/mpg_last.pt"
+elif(training_type == "Arinyo_minz"):
+    nparams = 8
+    # model_path = path_program+"/data/emulator_models/mpg_q1_q2/mpg_hypercube.pt"
+    model_path=path_program+"/data/emulator_models/mpg_minz.pt"
 
 emulator = P3DEmulator(
     Archive3D.training_data,
@@ -107,31 +112,111 @@ emulator = P3DEmulator(
 )
 
 # %% [markdown]
-# ## TEST EMULATOR TEST SIMULATIONS
+# #### General stuff
 
 # %%
 Nsim = 30
 zs = np.flip(np.arange(2, 4.6, 0.25))
 Nz = zs.shape[0]
 
+
 n_mubins = 4
 kmax_3d_plot = 4
 kmax_1d_plot = 4
+kmax_fit = 3
 
 sim = Archive3D.training_data[0]
 
 k3d_Mpc = sim['k3d_Mpc']
 mu3d = sim['mu3d']
+p3d_Mpc = sim['p3d_Mpc']
 kmu_modes = get_p3d_modes(kmax_3d_plot)
 
 mask_3d = k3d_Mpc[:, 0] <= kmax_3d_plot
 
-_ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], p3d_Mpc[mask_3d], kmu_modes, n_mubins=n_mubins)
-knew, munew, rebin_p3d, mu_bins = _
-
-mask_1d = sim['k_Mpc'] <= kmax_1d_plot
+mask_1d = (sim['k_Mpc'] <= kmax_1d_plot) & (sim['k_Mpc'] > 0)
 k1d_Mpc = sim['k_Mpc'][mask_1d]
+p1d_Mpc = sim['p1d_Mpc'][mask_1d]
 
+# %% [markdown]
+# ### Central simulation
+
+# %%
+zcen = 3
+
+info_power = {
+    "sim_label": "mpg_central",
+    "k3d_Mpc": k3d_Mpc[mask_3d, :],
+    "mu": mu3d[mask_3d, :],
+    "kmu_modes": kmu_modes,
+    "k1d_Mpc": k1d_Mpc,
+    "return_p3d": True,
+    "return_p1d": True,
+    "return_cov": True,
+    "z": zcen,
+}
+
+sim_label = info_power["sim_label"]
+test_sim = Archive3D.get_testing_data(
+    sim_label, force_recompute_plin=False
+)
+test_sim_z = [d for d in test_sim if d["z"] == info_power["z"]]
+emu_params = test_sim_z[0]
+
+out = emulator.evaluate(
+    emu_params=emu_params,
+    info_power=info_power,
+    natural_params=True,
+    Nrealizations=1000
+)
+
+# %% [markdown]
+# #### Rebin data
+
+# %%
+_ = p3d_rebin_mu(out["k_Mpc"], out["mu"], test_sim_z[0]["p3d_Mpc"][mask_3d], kmu_modes, n_mubins=n_mubins)
+knew, munew, rebin_p3d_sim, mu_bins = _
+
+_ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["p3d"], kmu_modes, n_mubins=n_mubins)
+knew, munew, rebin_p3d_emu, mu_bins = _
+
+_ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["p3d_std"], kmu_modes, n_mubins=n_mubins)
+knew, munew, rebin_p3d_std_emu, mu_bins = _
+
+_ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["Plin"], kmu_modes, n_mubins=n_mubins)
+knew, munew, rebin_plin, mu_bins = _
+
+# %%
+norm_p1d = out["k1d_Mpc"]/np.pi
+p1d_emu = norm_p1d * out["p1d"]
+p1d_std_emu = norm_p1d * out["p1d_std"]
+p1d_sim = norm_p1d * test_sim_z[0]["p1d_Mpc"][mask_1d]
+
+# %%
+folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+plot_p3d_snap(
+    folder, 
+    knew, 
+    munew,
+    rebin_p3d_sim/rebin_plin,
+    rebin_p3d_emu/rebin_plin,
+    rebin_p3d_std_emu/rebin_plin,
+    mu_bins,
+)
+
+# %%
+plot_p1d_snap(
+    folder, 
+    out["k1d_Mpc"], 
+    p1d_sim,
+    p1d_emu,
+    p1d_std_emu,
+)
+
+# %%
+
+# %% [markdown]
+# ## TEST SIMULATIONS
 
 # %%
 sim_labels = [
@@ -143,216 +228,82 @@ sim_labels = [
     "mpg_running",
     "mpg_reio",
 ]
-sim_labels = [
-    "mpg_central",
-]
-
-# %% [markdown]
-# #### Loop over test sims, emulator prediction
 
 # %%
-P3D_testsims = np.zeros((len(sim_labels), Nz, k_Mpc.shape[0]))
-P1D_testsims = np.zeros((len(sim_labels), Nz, k_p1d_Mpc.shape[0]))
+arr_p3d_sim = np.zeros((len(sim_labels), Nz, np.sum(mask_3d), n_mubins))
+arr_p3d_emu = np.zeros((len(sim_labels), Nz, np.sum(mask_3d), n_mubins))
+arr_p1d_sim = np.zeros((len(sim_labels), Nz, np.sum(mask_1d)))
+arr_p1d_emu = np.zeros((len(sim_labels), Nz, np.sum(mask_1d)))
 
-P3D_std_testsims = np.zeros((len(sim_labels), Nz, k_Mpc.shape[0]))
-P1D_std_testsims = np.zeros((len(sim_labels), Nz, k_p1d_Mpc.shape[0]))
-
-z_testsims = np.zeros((len(sim_labels), Nz))
-arinyo_testsims = np.zeros((len(sim_labels), Nz, nparams))
-
-for ii, sim_label in enumerate(sim_labels):
+for isim, sim_label in enumerate(sim_labels):    
     test_sim = Archive3D.get_testing_data(
         sim_label, force_recompute_plin=False
     )
-    z_grid = [d["z"] for d in test_sim]
 
+    z_grid = [d["z"] for d in test_sim]
     for iz, z in enumerate(z_grid):
+        print(sim_label, z)
         test_sim_z = [d for d in test_sim if d["z"] == z]
+
+        info_power = {
+            "sim_label": sim_label,
+            "k3d_Mpc": k3d_Mpc[mask_3d, :],
+            "mu": mu3d[mask_3d, :],
+            "kmu_modes": kmu_modes,
+            "k1d_Mpc": k1d_Mpc,
+            "return_p3d": True,
+            "return_p1d": True,
+            # "return_cov": True,
+            "z": z,
+        }
+
+        emu_params = test_sim_z[0]
         
-        out = emulator.predict_P3D_Mpc(
-            sim_label=sim_label, 
-            z=z, 
-            emu_params=test_sim_z[0],
-            k_Mpc=k_Mpc,
-            mu=mu,
-            kpar_Mpc = k_p1d_Mpc
+        out = emulator.evaluate(
+            emu_params=emu_params,
+            info_power=info_power,
+            # natural_params=True,
+            Nrealizations=100
         )
-
-        P3D_testsims[ii, iz] = out['p3d']
-        P1D_testsims[ii, iz] = out['p1d']
-        P3D_std_testsims[ii, iz] = np.sqrt(np.diag(out["p3d_cov"]))
-        P1D_std_testsims[ii, iz] = np.sqrt(np.diag(out["p1d_cov"]))
-        z_testsims[ii, iz] = z
-        arinyo_testsims[ii, iz] = np.array(list(out["coeffs_Arinyo"].values()))
-
-# %% [markdown]
-# #### Loop over test sims, true P1D and P3D
-
-# %%
-P3D_testsims_true = np.zeros((len(sim_labels), Nz, k_Mpc.shape[0]))
-P1D_testsims_true = np.zeros((len(sim_labels), Nz, k_p1d_Mpc.shape[0]))
-P1D_testsims_true_all = np.zeros((len(sim_labels), Nz, k_p1d_Mpc_all.shape[0]))
-Plin_all = np.zeros((len(sim_labels), Nz, k_Mpc.shape[0]))
-
-for ii, sim_label in enumerate(sim_labels):
-    test_sim =  Archive3D.get_testing_data(
-        sim_label, force_recompute_plin=False
-    )
-    z_grid = [d["z"] for d in test_sim]
-
-    for iz, z in enumerate(z_grid):
-        test_sim_z = [d for d in test_sim if d["z"] == z]
-
-        # p3d from sim
-        P3D_testsims_true[ii, iz] = test_sim_z[0]["p3d_Mpc"][k_mask]
-        Plin_all[ii, iz] = test_sim_z[0]["Plin"][k_mask]
-        P1D_testsims_true[ii, iz] = test_sim_z[0]["p1d_Mpc"][k1d_mask]
-        P1D_testsims_true_all[ii, iz] = test_sim_z[0]["p1d_Mpc"]
-
-
-# %% [markdown]
-# #### Loop over test sims, P1D and P3D from MCMC Arinyo
-#
+        
+        _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], test_sim_z[0]["p3d_Mpc"][mask_3d], kmu_modes, n_mubins=n_mubins)
+        knew, munew, arr_p3d_sim[isim, iz], mu_bins = _
+        
+        _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["p3d"], kmu_modes, n_mubins=n_mubins)
+        knew, munew, arr_p3d_emu[isim, iz], mu_bins = _
+        
+        arr_p1d_emu[isim, iz] = out["p1d"]
+        arr_p1d_sim[isim, iz] = test_sim_z[0]["p1d_Mpc"][mask_1d]
 
 # %%
-P3D_testsims_Arinyo = np.zeros((len(sim_labels), Nz, k_Mpc.shape[0]))
-P1D_testsims_Arinyo = np.zeros((len(sim_labels), Nz, k_p1d_Mpc.shape[0]))
-arinyo_fit = np.zeros((len(sim_labels), Nz, nparams))
-P1D_testsims_Arinyo_all = np.zeros((len(sim_labels), Nz, k_p1d_Mpc_all.shape[0]))
-
-for ii, sim_label in enumerate(sim_labels):
-    # Find the index of the underscore
-    underscore_index = sim_label.find("_")
-    lab = sim_label[underscore_index + 1 :]
-    
-    flag = f"Plin_interp_sim{lab}.npy"
-    file_plin_inter = folder_interp + flag
-    pk_interp = np.load(file_plin_inter, allow_pickle=True).all()
-    model_Arinyo = ArinyoModel(camb_pk_interp=pk_interp)
-
-    test_sim = Archive3D.get_testing_data(sim_label, force_recompute_plin=False)
-    z_grid = [d["z"] for d in test_sim]
-
-    for iz, z in enumerate(z_grid):
-        test_sim_z = [d for d in test_sim if d["z"] == z]
-
-        # load arinyo module
-        BF_arinyo = test_sim_z[0][training_type]
-
-        p3d_arinyo = model_Arinyo.P3D_Mpc(z, k_Mpc, mu, BF_arinyo)        
-        p1d_arinyo = model_Arinyo.P1D_Mpc(z, k_p1d_Mpc, parameters=BF_arinyo)
-
-        P3D_testsims_Arinyo[ii, iz] = p3d_arinyo
-        P1D_testsims_Arinyo[ii, iz] = p1d_arinyo
-        P1D_testsims_Arinyo_all[ii, iz] = model_Arinyo.P1D_Mpc(z, k_p1d_Mpc_all, parameters=BF_arinyo)
-        # arinyo_fit[ii, iz] = BF_arinyo
-
-# %% [markdown]
-# ### Define fractional errors
-
-# %%
-fractional_error_P3D_bench = (P3D_testsims_Arinyo / P3D_testsims_true - 1)
-fractional_error_P1D_bench = (P1D_testsims_Arinyo / P1D_testsims_true - 1)
-
-fractional_error_P3D_arinyo = (P3D_testsims / P3D_testsims_Arinyo - 1)
-fractional_error_P1D_arinyo = (P1D_testsims / P1D_testsims_Arinyo - 1)
-
-fractional_error_P3D_sims = (P3D_testsims / P3D_testsims_true - 1)
-fractional_error_P1D_sims = (P1D_testsims / P1D_testsims_true - 1)
-
-# %% [markdown]
-# ## No ratio
-
-# %%
-folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
-savename = folder + "test_cosmo/test_cosmo_P3D_central_noratio"
-
-# %%
-isim = 0
-iz = np.argwhere(z_testsims[isim] == 3)[0,0]
-p3d_emu = P3D_testsims[isim, iz]/Plin_all[isim, iz]
-p3d_std_emu = P3D_std_testsims[isim, iz]/Plin_all[isim, iz]
-p3d_sim = P3D_testsims_true[isim, iz]/Plin_all[isim, iz]
-
-p1d_emu = norm_p1d * P1D_testsims[isim, iz]
-p1d_std_emu = norm_p1d * P1D_std_testsims[isim, iz]
-p1d_sim = norm_p1d * P1D_testsims_true[isim, iz]
-
-mu_lims = [[0, 0.06], [0.31, 0.38], [0.62, 0.69], [0.94, 1]]
-
-# %%
-plot_p3d_snap(
-    folder, 
-    k_Mpc, 
-    mu,
-    p3d_sim,
-    p3d_emu,
-    p3d_std_emu,
-    n_modes,
-    mu_lims,
-)
-
-# %%
-plot_p1d_snap(
-    folder, 
-    k_p1d_Mpc, 
-    p1d_sim,
-    p1d_emu,
-    p1d_std_emu,
-)
-
-# %%
-
-# %%
-
-# %%
-
-# %%
-for ext in [".png", ".pdf"]:
-    plot_p3d_test_sims_norat(
-        sim_labels,
-        k_Mpc,
-        mu,    
-        k_mask,
-        fractional_error_P3D_sims,
-        savename=savename+ext,
-        fontsize=20,
-    )
-
-# %%
-
-# %% [markdown]
-# ## PLOT P1D
+rat_p3d = arr_p3d_emu/arr_p3d_sim - 1
+rat_p1d = arr_p1d_emu/arr_p1d_sim - 1
 
 # %%
 folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
 
 # %%
 savename = folder + "test_cosmo/test_cosmo_P3D"
-# savename = folder + "test_cosmo/test_cosmo_P3D_central"
-# savename = folder + "test_cosmo/test_cosmo_P3D_seed"
-# savename = folder + "test_cosmo/test_cosmo_P3D_others"
 for ext in [".png", ".pdf"]:
     plot_p3d_test_sims(
         sim_labels,
-        k_Mpc,
-        mu,    
-        k_mask,
-        fractional_error_P3D_sims,
+        knew,
+        munew,
+        rat_p3d,
+        mu_bins=mu_bins,
         savename=savename+ext,
         fontsize=20,
     )
 
 # %%
+
+# %%
 savename = folder + "test_cosmo/test_cosmo_P1D"
-# savename = folder + "test_cosmo/test_cosmo_P1D_central"
-# savename = folder + "test_cosmo/test_cosmo_P1D_seed"
-# savename = folder + "test_cosmo/test_cosmo_P1D_others"
 for ext in [".png", ".pdf"]:
     plot_p1d_test_sims(
         sim_labels,
-        k_p1d_Mpc,
-        fractional_error_P1D_sims,
+        out["k1d_Mpc"],
+        rat_p1d,
         savename=savename+ext,
         fontsize=20,
     );

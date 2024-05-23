@@ -13,10 +13,8 @@ def plot_p3d_snap(
     p3d_sim,
     p3d_emu,
     p3d_std_emu,
-    n_modes,
-    mu_lims,
+    mu_bins,
     ftsize=20,
-    # nmodes_min=20,
     kmax_3d=4,
     kmax_3d_fit=3,
 ):
@@ -28,13 +26,21 @@ def plot_p3d_snap(
     for ii in range(2):
         axs[ii].axvline(x=kmax_3d_fit, ls="--", color="k", alpha=0.75, lw=2)
 
-    for mi in range(len(mu_lims)):
+    for mi in range(len(mu_bins) - 1):
+        if mi != p3d_sim.shape[1] - 1:
+            lab = str(mu_bins[mi]) + r"$\leq\mu<$" + str(mu_bins[mi + 1])
+        else:
+            lab = str(mu_bins[mi]) + r"$\leq\mu\leq$" + str(mu_bins[mi + 1])
+        labs.append(lab)
+
         color = "C" + str(mi)
 
-        mu_mask = (
-            (mu >= mu_lims[mi][0]) & (mu <= mu_lims[mi][1]) & (k_Mpc <= kmax_3d)
-        )
-        mu_lab = np.round(np.nanmedian(mu[mu_mask]), decimals=2)
+        mu_mask = np.isfinite(p3d_sim[:, mi])
+
+        # mu_mask = (
+        #     (mu >= mu_lims[mi][0]) & (mu <= mu_lims[mi][1]) & (k_Mpc <= kmax_3d)
+        # )
+        # mu_lab = np.round(np.nanmedian(mu[mu_mask]), decimals=2)
         # n_modes_masked = n_modes[mu_mask]
 
         # ind = np.argwhere(n_modes_masked >= nmodes_min)[:, 0]
@@ -45,34 +51,34 @@ def plot_p3d_snap(
         #     x=(k_Mpc[mu_mask])[ind].min(), ls="-", color=color, alpha=0.75, lw=2
         # )
 
-        labs.append(f"$\mu\simeq{mu_lab}$")
+        # labs.append(f"$\mu\simeq{mu_lab}$")
 
         axs[0].plot(
-            k_Mpc[mu_mask],
-            p3d_sim[mu_mask],
+            k_Mpc[mu_mask, mi],
+            p3d_sim[mu_mask, mi],
             ":o",
             color=color,
             lw=3,
         )
         axs[0].plot(
-            k_Mpc[mu_mask],
-            p3d_emu[mu_mask],
+            k_Mpc[mu_mask, mi],
+            p3d_emu[mu_mask, mi],
             ls="-",
             color=color,
             lw=3,
             alpha=0.75,
         )
         axs[0].fill_between(
-            k_Mpc[mu_mask],
-            p3d_emu[mu_mask] - p3d_std_emu[mu_mask],
-            p3d_emu[mu_mask] + p3d_std_emu[mu_mask],
+            k_Mpc[mu_mask, mi],
+            p3d_emu[mu_mask, mi] - p3d_std_emu[mu_mask, mi],
+            p3d_emu[mu_mask, mi] + p3d_std_emu[mu_mask, mi],
             alpha=0.2,
             color=color,
         )
 
         axs[1].plot(
-            k_Mpc[mu_mask],
-            p3d_emu[mu_mask] / p3d_sim[mu_mask] - 1,
+            k_Mpc[mu_mask, mi],
+            p3d_emu[mu_mask, mi] / p3d_sim[mu_mask, mi] - 1,
             ls="-",
             color=color,
             lw=3,
@@ -80,9 +86,13 @@ def plot_p3d_snap(
         )
 
         axs[1].fill_between(
-            k_Mpc[mu_mask],
-            (p3d_emu[mu_mask] - p3d_std_emu[mu_mask]) / p3d_sim[mu_mask] - 1,
-            (p3d_emu[mu_mask] + p3d_std_emu[mu_mask]) / p3d_sim[mu_mask] - 1,
+            k_Mpc[mu_mask, mi],
+            (p3d_emu[mu_mask, mi] - p3d_std_emu[mu_mask, mi])
+            / p3d_sim[mu_mask, mi]
+            - 1,
+            (p3d_emu[mu_mask, mi] + p3d_std_emu[mu_mask, mi])
+            / p3d_sim[mu_mask, mi]
+            - 1,
             alpha=0.2,
             color=color,
         )
@@ -114,7 +124,7 @@ def plot_p3d_snap(
     )
     line2 = Line2D([0], [0], label=r"ForestFlow", color="gray", ls="-", lw=2)
     legend2 = axs[0].legend(
-        handles=[line1, line2], ncol=1, fontsize=ftsize - 2, loc="center left"
+        handles=[line1, line2], ncol=1, fontsize=ftsize - 2, loc="upper left"
     )
     axs[0].add_artist(legend1)
     axs[0].add_artist(legend2)
@@ -216,12 +226,11 @@ def plot_p3d_test_sims(
     sim_labels,
     k_Mpc,
     mu,
-    k_mask,
-    fractional_errors,
+    residual,
+    mu_bins,
     savename=None,
     fontsize=20,
     kmax_3d_fit=3,
-    # nmodes_min=20,
 ):
     """
     Plot the fractional errors in the P3D statistic for different redshifts and mu bins.
@@ -249,16 +258,6 @@ def plot_p3d_test_sims(
         "mpg_reio": "Reionization",
     }
 
-    # Extract data from Archive3D
-    # k_Mpc = archive.training_data[0]["k3d_Mpc"]
-    # mu = archive.training_data[0]["mu3d"]
-
-    # # Apply a mask to select relevant k values
-    # k_mask = (k_Mpc < 4) & (k_Mpc > 0)
-    # k_Mpc = k_Mpc[k_mask]
-    # mu = mu[k_mask]
-    n_modes = get_modes()[k_mask]
-
     # Create subplots with shared y-axis and x-axis
     fig, axs = plt.subplots(
         len(sim_labels),
@@ -273,15 +272,7 @@ def plot_p3d_test_sims(
     except:
         axs = [axs]
 
-    # Define mu bins
-    mu_lims = [[0, 0.06], [0.31, 0.38], [0.62, 0.69], [0.94, 1]]
-
-    # Define colors for different mu bins
-    # colors = ["navy", "crimson", "forestgreen", "goldenrod"]
-    # test_sim = archive.get_testing_data("mpg_central")
-
     # Loop through redshifts
-    ii = 0
     for ii in range(len(sim_labels)):
         label = dict_labels[sim_labels[ii]]
         axs[ii].text(1.2, -0.2, label, fontsize=fontsize)
@@ -295,38 +286,37 @@ def plot_p3d_test_sims(
         axs[ii].axvline(x=kmax_3d_fit, ls="--", color="k", alpha=1, lw=2)
 
         # Loop through mu bins
-        for mi in range(len(mu_lims)):
+        for mi in range(len(mu_bins) - 1):
+            if mi != residual.shape[-1] - 1:
+                lab = str(mu_bins[mi]) + r"$\leq\mu<$" + str(mu_bins[mi + 1])
+            else:
+                lab = str(mu_bins[mi]) + r"$\leq\mu\leq$" + str(mu_bins[mi + 1])
+            # labs.append(lab)
+            if ii == mi:
+                lab = lab
+            else:
+                lab = None
+
             color = "C" + str(mi)
 
-            mu_mask = (mu >= mu_lims[mi][0]) & (mu <= mu_lims[mi][1])
-            mu_lab = np.round(np.nanmedian(mu[mu_mask]), decimals=2)
-            k_masked = k_Mpc[mu_mask]
-            # n_modes_masked = n_modes[mu_mask]
-
-            # ind = np.argwhere(n_modes_masked >= nmodes_min)[:, 0]
-            # axs[ii].axvline(
-            #     x=k_masked[ind].min(), ls="-", color=color, alpha=0.5
-            # )
+            mu_mask = np.isfinite(k_Mpc[:, mi])
 
             # Calculate fractional error statistics
-            frac_err = np.nanmedian(fractional_errors[ii, :, :], 0)
-            frac_err_err = sigma68(fractional_errors[ii, :, :])
-
-            frac_err_masked = frac_err[mu_mask]
-            frac_err_err_masked = frac_err_err[mu_mask]
+            frac_err = np.mean(residual[ii, :, mu_mask, mi], axis=1)
+            frac_err_err = np.std(residual[ii, :, mu_mask, mi], axis=1)
 
             # Add a line plot with shaded error region to the current subplot
             axs[ii].plot(
-                k_masked,
-                frac_err_masked,
-                label=f"$\mu\simeq{mu_lab}$",
+                k_Mpc[mu_mask, mi],
+                frac_err,
+                label=lab,
                 color=color,
                 lw=2.5,
             )
             axs[ii].fill_between(
-                k_masked,
-                frac_err_masked - frac_err_err_masked,
-                frac_err_masked + frac_err_err_masked,
+                k_Mpc[mu_mask, mi],
+                frac_err - frac_err_err,
+                frac_err + frac_err_err,
                 color=color,
                 alpha=0.2,
             )
@@ -341,8 +331,11 @@ def plot_p3d_test_sims(
         r"$k\, [\mathrm{Mpc}^{-1}]$", fontsize=fontsize
     )
 
-    legend = axs[0].legend(loc="upper left", ncols=4, fontsize=fontsize - 6)
-    legend.get_frame().set_alpha(0.9)
+    for ii in range(len(mu_bins) - 1):
+        legend = axs[ii].legend(
+            loc="upper left", ncols=1, fontsize=fontsize - 6
+        )
+        legend.get_frame().set_alpha(0.9)
 
     # Adjust spacing between subplots
     # plt.tight_layout()

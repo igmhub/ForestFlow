@@ -95,6 +95,12 @@ knew, munew, rebin_p3d, mu_bins = _
 # arinyo_params = test_sim_z['Arinyo_min_q1'] # best-fitting Arinyo params
 # arinyo_params = test_sim_z['Arinyo_min_q1_q2'] # best-fitting Arinyo params
 arinyo_params = test_sim_z['Arinyo_min'] # best-fitting Arinyo params
+# arinyo_params = test_sim_z['Arinyo_minz'] # best-fitting Arinyo params
+
+kaiser_params = arinyo_params.copy()
+kaiser_params["q1"] = 0
+kaiser_params["q2"] = 0
+kaiser_params["kp"] = 10**5
 
 # old
 # model_p3d = test_sim_z['model'].P3D_Mpc(zs, k3d_Mpc, mu3d, arinyo_params)
@@ -103,8 +109,14 @@ arinyo_params = test_sim_z['Arinyo_min'] # best-fitting Arinyo params
 _ = p3d_allkmu(test_sim_z['model'], zs, arinyo_params, kmu_modes)
 model_p3d, plin = _
 
+_ = p3d_allkmu(test_sim_z['model'], zs, kaiser_params, kmu_modes)
+kaiser_p3d, plin = _
+
 _ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], model_p3d, kmu_modes, n_mubins=n_mubins)
 knew, munew, rebin_model_p3d, mu_bins = _
+
+_ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], kaiser_p3d, kmu_modes, n_mubins=n_mubins)
+knew, munew, rebin_kaiser_p3d, mu_bins = _
 
 _ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], plin, kmu_modes, n_mubins=n_mubins)
 knew, munew, rebin_plin, mu_bins = _
@@ -118,7 +130,7 @@ from forestflow.plots.motivate_model import plot_motivate_model
 
 # %%
 folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
-plot_motivate_model(knew, munew, mu_bins, rebin_p3d, rebin_model_p3d, rebin_plin, arinyo_params, folder=folder, kmax_fit=3)
+plot_motivate_model(knew, munew, mu_bins, rebin_p3d, rebin_model_p3d, rebin_kaiser_p3d, rebin_plin, folder=folder, kmax_fit=3)
 
 # %% [markdown]
 # ## Explain how to use Arinyo model for other combinations of k and mu
