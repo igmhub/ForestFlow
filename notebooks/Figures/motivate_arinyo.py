@@ -58,8 +58,6 @@ Archive3D = GadgetArchive3D(
 )
 
 # %%
-
-# %%
 test_sim = Archive3D.get_testing_data(
     "mpg_central", force_recompute_plin=False
 )

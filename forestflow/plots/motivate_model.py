@@ -39,10 +39,10 @@ def plot_motivate_model(
         y = rebin_model_p3d[_, ii] / rebin_plin[_, ii]
         ax[0].plot(x, y, col + "-", lw=2, alpha=0.8)
 
-        y = rebin_model_p3d[_, ii] / rebin_p3d[_, ii] - 1
+        y = rebin_p3d[_, ii] / rebin_model_p3d[_, ii] - 1
         ax[1].plot(x, y, col + "-", lw=2, alpha=0.8)
 
-        y = rebin_kaiser_p3d[_, ii] / rebin_p3d[_, ii] - 1
+        y = rebin_kaiser_p3d[_, ii] / rebin_model_p3d[_, ii] - 1
         ax[1].plot(x, y, col + "--", lw=1, alpha=0.8)
 
     for ii in range(2):

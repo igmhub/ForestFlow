@@ -55,10 +55,10 @@ print(len(Archive3D.training_data))
 Archive3D.training_data[0].keys()
 
 # %%
-all_training_type = {
-    'Arinyo': "MCMC minimum, q1 and q2, k=kpar=5", 
-    'Arinyo_min': "Minimizer, q1 and q2, k=kpar=3",
-}
+# all_training_type = {
+#     'Arinyo': "MCMC minimum, q1 and q2, k=kpar=5", 
+#     'Arinyo_min': "Minimizer, q1 and q2, k=kpar=3",
+# }
 
 # %% [markdown]
 # ## TRAIN EMULATOR
@@ -81,9 +81,63 @@ if train_emu:
         adamw=True,
         nLayers_inn=12,  # 15
         Archive=Archive3D,
-        training_type='Arinyo_min',
-        save_path=path_program+"/data/emulator_models/mpg_last.pt",
+        training_type='Arinyo_minz',
+        save_path=path_program+"/data/emulator_models/mpg_jointz.pt",
     )
+
+# %% [markdown]
+# ### Evaluate emulator
+
+# %%
+from forestflow.rebin_p3d import get_p3d_modes
+
+# %%
+kmax_3d_plot = 4
+kmax_1d_plot = 4
+kmax_fit = 3
+
+sim = Archive3D.training_data[0]
+
+k3d_Mpc = sim['k3d_Mpc']
+mu3d = sim['mu3d']
+kmu_modes = get_p3d_modes(kmax_3d_plot)
+
+mask_3d = k3d_Mpc[:, 0] <= kmax_3d_plot
+
+mask_1d = (sim['k_Mpc'] <= kmax_1d_plot) & (sim['k_Mpc'] > 0)
+k1d_Mpc = sim['k_Mpc']
+
+zcen = 3
+
+info_power = {
+    "sim_label": "mpg_central",
+    "k3d_Mpc": k3d_Mpc[mask_3d, :],
+    "mu": mu3d[mask_3d, :],
+    "kmu_modes": kmu_modes,
+    "k1d_Mpc": k1d_Mpc[mask_1d],
+    "return_p3d": True,
+    "return_p1d": True,
+    "return_cov": True,
+    "z": zcen,
+}
+
+sim_label = info_power["sim_label"]
+test_sim = Archive3D.get_testing_data(
+    sim_label, force_recompute_plin=False
+)
+test_sim_z = [d for d in test_sim if d["z"] == info_power["z"]]
+emu_params = test_sim_z[0]
+
+out = emulator.evaluate(
+    emu_params=emu_params,
+    info_power=info_power,
+    natural_params=True,
+    Nrealizations=1000
+)
+
+
+# %% [markdown]
+# ### STOP HERE
 
 # %% [markdown]
 # ## LOAD TRAINED EMULATOR
@@ -109,7 +163,7 @@ p3d_emu = P3DEmulator(
     Archive=Archive3D,
     chain_samp=100_000,
     training_type='Arinyo_min',
-    model_path=path_program+"/data/emulator_models/mpg_last.pt",
+    model_path=path_program+"/data/emulator_models/mpg_jointz.pt",
 )
 
 # %%
