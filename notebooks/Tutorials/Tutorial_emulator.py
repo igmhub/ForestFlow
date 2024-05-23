@@ -128,13 +128,16 @@ test_sim = Archive3D.get_testing_data(
 test_sim_z = [d for d in test_sim if d["z"] == info_power["z"]]
 emu_params = test_sim_z[0]
 
-out = emulator.evaluate(
+out = p3d_emu.evaluate(
     emu_params=emu_params,
     info_power=info_power,
     natural_params=True,
-    Nrealizations=1000
+    Nrealizations=100
 )
 
+
+# %%
+out.keys()
 
 # %% [markdown]
 # ### STOP HERE
