@@ -347,6 +347,8 @@ class P3DEmulator:
             Dict: Dictionary containing the predicted Arinyo parameters and (if needed) power spectrum
         """
 
+        return_p1d = False
+        return_p3d = False
         if Nrealizations is None:
             Nrealizations = self.Nrealizations
 
@@ -392,13 +394,9 @@ class P3DEmulator:
 
             if "return_p3d" in info_power:
                 return_p3d = info_power["return_p3d"]
-            else:
-                return_p3d = False
 
             if "return_p1d" in info_power:
                 return_p1d = info_power["return_p1d"]
-            else:
-                return_p1d = False
 
             if return_p3d:
                 try:

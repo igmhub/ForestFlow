@@ -31,6 +31,8 @@ from forestflow.P3D_cINN import P3DEmulator
 from forestflow.plots.l1O_p3d import plot_p3d_L1O
 from forestflow.plots.l1O_p1d import plot_p1d_L1O
 
+from forestflow.rebin_p3d import get_p3d_modes
+
 from matplotlib import rcParams
 
 from forestflow.utils import (
@@ -75,55 +77,13 @@ Archive3D = GadgetArchive3D(
 print(len(Archive3D.training_data))
 
 
-# %%
-Nsim = 30
-Nz = 11
-zs = np.flip(np.arange(2, 4.6, 0.25))
-kmax_1d = 3
-kmax_3d = 3
-kmax_1d_plot = 4
-kmax_3d_plot = 4
-
-k_Mpc = Archive3D.training_data[0]["k3d_Mpc"]
-mu = Archive3D.training_data[0]["mu3d"]
-
-k_mask = (k_Mpc < kmax_3d_plot) & (k_Mpc > 0)
-k_Mpc = k_Mpc[k_mask]
-mu = mu[k_mask]
-
-k_p1d_Mpc = Archive3D.training_data[0]["k_Mpc"]
-k1d_mask = (k_p1d_Mpc < kmax_1d_plot) & (k_p1d_Mpc > 0)
-k_p1d_Mpc = k_p1d_Mpc[k1d_mask]
-norm = k_p1d_Mpc / np.pi
-
-# %%
-training_type = "Arinyo_min_q1"
-training_type = "Arinyo_min_q1_q2"
-
-if (training_type == "Arinyo_min_q1"):
-    nparams = 7
-    model_path = path_program+"/data/emulator_models/mpg_q1/"
-else:
-    nparams = 8
-    model_path = path_program+"/data/emulator_models/mpg_q1_q2/"
-    # model_path=path_program+"/data/emulator_models/mpg_hypercube.pt",
-
 # %% [markdown]
-# ## LEAVE ONE OUT TEST
+# ### Train L1Os
 
 # %%
-p3ds_pred = np.zeros(shape=(Nsim, Nz, k_Mpc.shape[0]))
-p1ds_pred = np.zeros(shape=(Nsim, Nz, k_p1d_Mpc.shape[0]))
-param_pred = np.zeros(shape=(Nsim, Nz, nparams))
-
-p3ds_arinyo = np.zeros(shape=(Nsim, Nz, k_Mpc.shape[0]))
-p1ds_arinyo = np.zeros(shape=(Nsim, Nz, k_p1d_Mpc.shape[0]))
-
-p3ds_sims = np.zeros(shape=(Nsim, Nz, k_Mpc.shape[0]))
-p1ds_sims = np.zeros(shape=(Nsim, Nz, k_p1d_Mpc.shape[0]))
-param_sims = np.zeros(shape=(Nsim, Nz, nparams))
-
-for s in range(Nsim):
+model_path = path_program+"/data/emulator_models/joint_z/"
+training_type = "Arinyo_minz"
+for s in range(6, 30):
     print(f"Starting simulation {s}")
     print()
 
@@ -145,107 +105,125 @@ for s in range(Nsim):
         Nrealizations=200,
         Archive=Archive3D,
         training_type=training_type,
-        # save_path=model_path + "mpg_drop"+str(s)+".pt",
-        # model_path=path_program+f"/data/emulator_models/mpg_drop{s}.pt",
-        model_path=model_path + "mpg_drop"+str(s)+".pt",
+        save_path=model_path + "mpg_drop"+str(s)+".pt",
     )
 
+# %% [markdown]
+# ### Evaluate L1Os
+
+# %%
+training_type = "Arinyo_minz"
+model_path = path_program+"/data/emulator_models/joint_z/"
+
+Nsim = 30
+zs = np.flip(np.arange(2, 4.6, 0.25))
+Nz = zs.shape[0]
+
+
+n_mubins = 4
+kmax_3d_plot = 4
+kmax_1d_plot = 4
+kmax_fit = 3
+
+sim = Archive3D.training_data[0]
+
+k3d_Mpc = sim['k3d_Mpc']
+mu3d = sim['mu3d']
+p3d_Mpc = sim['p3d_Mpc']
+kmu_modes = get_p3d_modes(kmax_3d_plot)
+
+mask_3d = k3d_Mpc[:, 0] <= kmax_3d_plot
+
+mask_1d = (sim['k_Mpc'] <= kmax_1d_plot) & (sim['k_Mpc'] > 0)
+k1d_Mpc = sim['k_Mpc'][mask_1d]
+p1d_Mpc = sim['p1d_Mpc'][mask_1d]
+
+# %%
+arr_p3d_sim = np.zeros((Nsim, Nz, np.sum(mask_3d), n_mubins))
+arr_p3d_emu = np.zeros((Nsim, Nz, np.sum(mask_3d), n_mubins))
+arr_p3d_fit = np.zeros((Nsim, Nz, np.sum(mask_3d), n_mubins))
+arr_p1d_sim = np.zeros((Nsim, Nz, np.sum(mask_1d)))
+arr_p1d_emu = np.zeros((Nsim, Nz, np.sum(mask_1d)))
+arr_p1d_fit = np.zeros((Nsim, Nz, np.sum(mask_1d)))
+params_sim = np.zeros((Nsim, Nz, 2))
+params_emu = np.zeros((Nsim, Nz, 2))
+
+for isim in range(Nsim):
+    sim_label = f"mpg_{s}"
+    print(f"Starting simulation {s}")
+    print()
+
+    training_data = [
+        d for d in Archive3D.training_data if d["sim_label"] != sim_label
+    ]
+
+    p3d_emu = P3DEmulator(
+        training_data,
+        Archive3D.emu_params,
+        nepochs=300,
+        lr=0.001,  # 0.005
+        batch_size=20,
+        step_size=200,
+        gamma=0.1,
+        weight_decay=0,
+        adamw=True,
+        nLayers_inn=12,  # 15
+        Nrealizations=200,
+        Archive=Archive3D,
+        training_type=training_type,
+        model_path=model_path + "mpg_drop"+str(s)+".pt",
+    )
     
-    # load arinyo module
-    flag = f"Plin_interp_sim{s}.npy"
-    file_plin_inter = folder_interp + flag
-    pk_interp = np.load(file_plin_inter, allow_pickle=True).all()
-    model_Arinyo = ArinyoModel(camb_pk_interp=pk_interp)
     for iz, z in enumerate(zs):
         # define test sim
         dict_sim = [
             d
             for d in Archive3D.training_data
             if d["z"] == z
-            and d["sim_label"] == f"mpg_{s}"
+            and d["sim_label"] == sim_label
             and d["val_scaling"] == 1
         ]
 
-        # p1d and p3d from sim
-        p1ds_sims[s, iz] = dict_sim[0]["p1d_Mpc"][k1d_mask]
-        p3ds_sims[s, iz] = dict_sim[0]["p3d_Mpc"][k_mask]
-
-        # load BF Arinyo and estimated the p3d and p1d from BF arinyo parameters
-        out = p3d_emu.predict_P3D_Mpc(
-            sim_label=f"mpg_{s}", 
-            k_Mpc=k_Mpc,
-            mu=mu,
-            kpar_Mpc=k_p1d_Mpc,
-            z=z, 
+        info_power = {
+            "sim_label": sim_label,
+            "k3d_Mpc": k3d_Mpc[mask_3d, :],
+            "mu": mu3d[mask_3d, :],
+            "kmu_modes": kmu_modes,
+            "k1d_Mpc": k1d_Mpc,
+            "return_p3d": True,
+            "return_p1d": True,
+            "z": z,
+        }
+        
+        out = emulator.evaluate(
             emu_params=dict_sim[0],
+            info_power=info_power,
             natural_params=True,
+            Nrealizations=100
         )
-        p3ds_pred[s, iz] = out['p3d']
-        p1ds_pred[s, iz] = out['p1d']
-        param_pred[s, iz] = list(out['coeffs_Arinyo'].values())
+        
+        # p1d and p3d from sim
+        p1ds_sims[isim, iz] = dict_sim[0]["p1d_Mpc"][mask_1d]
+        _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], dict_sim[0]["p3d_Mpc"][mask_3d], kmu_modes, n_mubins=n_mubins)
+        knew, munew, arr_p3d_sim[isim, iz], mu_bins = _
+        
+        _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["p3d"], kmu_modes, n_mubins=n_mubins)
+        knew, munew, arr_p3d_emu[isim, iz], mu_bins = _
 
-        # BF_arinyo = dict_sim[0]["Arinyo_minin"]
-        BF_arinyo = dict_sim[0][training_type]
-        p3ds_arinyo[s, iz] = model_Arinyo.P3D_Mpc(z, k_Mpc, mu, BF_arinyo)
-        p1ds_arinyo[s, iz] = model_Arinyo.P1D_Mpc(z, k_p1d_Mpc, parameters=BF_arinyo)
-        param_sims[s, iz] = list(transform_arinyo_params(BF_arinyo, dict_sim[0]["f_p"]).values())
+        arr_p1d_emu[isim, iz] = out["p1d"]
+        arr_p1d_sim[isim, iz] = test_sim_z[0]["p1d_Mpc"][mask_1d]
+
+        params_emu[isim, iz, 0] = out['coeffs_Arinyo']["bias"]
+        params_emu[isim, iz, 1] = out['coeffs_Arinyo']["bias_eta"]
+
+        params_emu[isim, iz, 0] = out['coeffs_Arinyo']["bias"]
+        params_emu[isim, iz, 1] = out['coeffs_Arinyo']["bias_eta"]
+
+        _ = transform_arinyo_params(dict_sim[0]["Arinyo_minz"], dict_sim[0]["f_p"])        
+        params_sim[isim, iz, 0] = _["bias"]
+        params_sim[isim, iz, 1] = _["bias_eta"]
         
     p3d_emu = 0
-        
-    
-    # print(
-    #     "Mean fractional error P3D pred to Arinyo",
-    #     ((p3ds_pred[s] / p3ds_arinyo[s] - 1) * 100).mean(),
-    # )
-    # print(
-    #     "Std fractional error P3D pre to Arinyo",
-    #     ((p3ds_pred[s] / p3ds_arinyo[s] - 1) * 100).std(),
-    # )
-
-    # print(
-    #     "Mean fractional error P3D Arinyo model",
-    #     ((p3ds_arinyo[s] / p3ds_sims[s] - 1) * 100).mean(),
-    # )
-    # print(
-    #     "Std fractional error P3D Arinyo model",
-    #     ((p3ds_arinyo[s] / p3ds_sims[s] - 1) * 100).std(),
-    # )
-
-    print(
-        "Mean fractional error P3D pred to sim",
-        ((p3ds_pred[s] / p3ds_sims[s] - 1) * 100).mean(),
-    )
-    print(
-        "Std fractional error P3D pred to sim",
-        ((p3ds_pred[s] / p3ds_sims[s] - 1) * 100).std(),
-    )
-
-    # print(
-    #     "Mean fractional error P1D pred to Arinyo",
-    #     ((p1ds_pred[s] / p1ds_arinyo[s] - 1) * 100).mean(),
-    # )
-    # print(
-    #     "Std fractional error P1D pred to Arinyo",
-    #     ((p1ds_pred[s] / p1ds_arinyo[s] - 1) * 100).std(),
-    # )
-
-    # print(
-    #     "Mean fractional error P1D Arinyo model",
-    #     ((p1ds_arinyo[s] / p1ds_sims[s] - 1) * 100).mean(),
-    # )
-    # print(
-    #     "Std fractional error P1D Arinyo model",
-    #     ((p1ds_arinyo[s] / p1ds_sims[s] - 1) * 100).std(),
-    # )
-
-    print(
-        "Mean fractional error P1D pred to sim",
-        ((p1ds_pred[s] / p1ds_sims[s] - 1) * 100).mean(),
-    )
-    print(
-        "Std fractional error P1D pred to sim",
-        ((p1ds_pred[s] / p1ds_sims[s] - 1) * 100).std(),
-    )
 
 
 # %%

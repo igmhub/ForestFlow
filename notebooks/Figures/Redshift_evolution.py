@@ -67,10 +67,11 @@ print(len(Archive3D.training_data))
 # ## LOAD EMULATOR
 
 # %%
-training_type = "Arinyo_min"
-model_path=path_program + "/data/emulator_models/mpg_last.pt"
+# training_type = "Arinyo_min"
+# model_path=path_program + "/data/emulator_models/mpg_last.pt"
 training_type = "Arinyo_minz"
-model_path=path_program + "/data/emulator_models/mpg_minz.pt"
+# model_path=path_program + "/data/emulator_models/mpg_minz.pt"
+model_path=path_program + "/data/emulator_models/mpg_jointz.pt"
 
 p3d_emu = P3DEmulator(
     Archive3D.training_data,
@@ -87,8 +88,8 @@ p3d_emu = P3DEmulator(
     # Nrealizations=10000,
     Nrealizations=1000,
     training_type=training_type,
-    # model_path=model_path,
-    save_path=model_path,
+    model_path=model_path,
+    # save_path=model_path,
 )
 
 
@@ -141,11 +142,10 @@ Arinyo_emu_std = []
 
 for iz, z in enumerate(z_central):
     test_sim_z = [d for d in central if d["z"] == z]
-    out = p3d_emu.predict_P3D_Mpc(
-        sim_label="mpg_central", 
-        z=z,
+    out = p3d_emu.evaluate(
         emu_params=test_sim_z[0],
-        natural_params=True
+        natural_params=True,
+        Nrealizations=100,
     )
     Arinyo_emu.append(out["coeffs_Arinyo"])
     Arinyo_emu_std.append(out["coeffs_Arinyo_std"])
@@ -161,6 +161,14 @@ from forestflow.plots.params_z import plot_arinyo_z
 folder_fig = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
 
 # %%
+bias
+cen-emu -0.0028719256747865673 0.5071391708792158
+cen-seed -0.46064259186610673 0.7446030330496832
+bias_eta
+cen-emu 0.3298325921080317 1.3438673375712111
+cen-seed 0.7267055563844246 1.2642489688679464
+
+# %%
 # for ii in range(len(Arinyo_emu)):
 #     print(ii, Arinyo_emu[ii]["kv"])
 #     Arinyo_emu[ii]["kv"] = Arinyo_emu[ii]["kv"]**Arinyo_emu[ii]["av"]
@@ -170,9 +178,27 @@ folder_fig = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
 plot_arinyo_z(z_central, Arinyo_central, Arinyo_seed, Arinyo_emu, Arinyo_emu_std, folder_fig=folder_fig, ftsize=20)
 
 # %%
-z_central
+Arinyo_central[0].keys()
 
 # %%
+kaiser_cen = np.zeros((len(Arinyo_central), 2))
+kaiser_seed = np.zeros((len(Arinyo_central), 2))
+kaiser_seed = np.zeros((len(Arinyo_central), 2))
+for iz in range(len(Arinyo_central)):
+    kaiser_cen[iz, 0] = (Arinyo_central[iz]["bias"])**2
+    kaiser_cen[iz, 1] = (Arinyo_central[iz]["bias"] + Arinyo_central[iz]["bias_eta"])**2
+    kaiser_seed[iz, 0] = (Arinyo_seed[iz]["bias"])**2
+    kaiser_seed[iz, 1] = (Arinyo_seed[iz]["bias"] + Arinyo_seed[iz]["bias_eta"])**2
 
+# %%
+s_pred = np.percentile(kaiser_cen[:,0]/kaiser_seed[:,0] - 1, [16, 84])
+s_pred = 0.5 * (s_pred[1] - s_pred[0]) * 100
+print(s_pred)
+
+
+# %%
+s_pred = np.percentile(kaiser_cen[:,1]/kaiser_seed[:,1] - 1, [16, 84])
+s_pred = 0.5 * (s_pred[1] - s_pred[0]) * 100
+print(s_pred)
 
 # %%

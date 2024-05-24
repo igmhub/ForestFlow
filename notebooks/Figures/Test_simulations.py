@@ -92,7 +92,7 @@ elif(training_type == "Arinyo_min"):
 elif(training_type == "Arinyo_minz"):
     nparams = 8
     # model_path = path_program+"/data/emulator_models/mpg_q1_q2/mpg_hypercube.pt"
-    model_path=path_program+"/data/emulator_models/mpg_minz.pt"
+    model_path=path_program+"/data/emulator_models/mpg_jointz.pt"
 
 emulator = P3DEmulator(
     Archive3D.training_data,
@@ -167,7 +167,7 @@ out = emulator.evaluate(
     emu_params=emu_params,
     info_power=info_power,
     natural_params=True,
-    Nrealizations=1000
+    Nrealizations=100
 )
 
 # %% [markdown]
@@ -212,8 +212,6 @@ plot_p1d_snap(
     p1d_emu,
     p1d_std_emu,
 )
-
-# %%
 
 # %% [markdown]
 # ## TEST SIMULATIONS
