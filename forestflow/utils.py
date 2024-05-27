@@ -31,6 +31,59 @@ def params_numpy2dict(params):
     return dict_param
 
 
+def params_numpy2dict_minimizer(params):
+    """
+    Converts a numpy array of parameters to a dictionary.
+
+    Args:
+        params (numpy.ndarray): Array of parameters.
+
+    Returns:
+        dict: Dictionary containing the parameters with their corresponding names.
+    """
+    param_names = [
+        "bias",
+        "beta",
+        "q1",
+        "kvav",
+        "av",
+        "bv",
+        "kp",
+        "q2",
+    ]
+    dict_param = {}
+    for ii in range(params.shape[0]):
+        dict_param[param_names[ii]] = params[ii]
+
+    if "q2" in dict_param.keys():
+        q1 = 0.5 * (dict_param["q1"] + dict_param["q2"])
+        q2 = 0.5 * (dict_param["q1"] - dict_param["q2"])
+        dict_param["q1"] = q1
+        dict_param["q2"] = q2
+    return dict_param
+
+
+def params_numpy2dict_minimizerz(params):
+    """
+    Converts a numpy array of parameters to a dictionary.
+
+    Args:
+        params (numpy.ndarray): Array of parameters.
+
+    Returns:
+        dict: Dictionary containing the parameters with their corresponding names.
+    """
+    dict_param = {}
+    for key in params:
+        if key == "q1":
+            dict_param["q1"] = 0.5 * params[key]
+        else:
+            dict_param[key] = params[key]
+    dict_param["q2"] = dict_param["q1"]
+
+    return dict_param
+
+
 def transform_arinyo_params(dict_arinyo_params, fcosmo):
     dict_arinyo_params_out = {}
     for key in dict_arinyo_params.keys():
@@ -350,6 +403,11 @@ def load_Arinyo_chains(
     sim_label=None,
     z=None,
     chain_samp=10_000,
+    kmax_3d=3,
+    kmax_1d=3,
+    noise_3d=0.01,
+    noise_1d=0.01,
+    training_type="Arinyo_min_q1_q2",
 ):
     """
     Load Arinyo model chains from stored files for all the training LH simulations.
@@ -377,20 +435,20 @@ def load_Arinyo_chains(
 
             # Construct file tag based on simulation parameters
             tag = (
-                "fit_sim"
-                + sim_label[4:]
+                "fit_sim_label_"
+                + sim_label
                 + "_tau"
                 + str(np.round(scale_tau, 2))
                 + "_z"
                 + str(ind_z)
                 + "_kmax3d"
-                + str(archive.kmax_3d)
+                + str(kmax_3d)
                 + "_noise3d"
-                + str(archive.noise_3d)
+                + str(noise_3d)
                 + "_kmax1d"
-                + str(archive.kmax_1d)
+                + str(kmax_1d)
                 + "_noise1d"
-                + str(archive.noise_1d)
+                + str(noise_1d)
             )
 
             # Load Arinyo model chain from file
@@ -418,29 +476,51 @@ def load_Arinyo_chains(
         ind_z = z
 
         # Construct file tag based on simulation parameters
+        # tag = (
+        #     "fit_sim"
+        #     + sim_label[4:]
+        #     + "_tau"
+        #     + str(np.round(scale_tau, 2))
+        #     + "_z"
+        #     + str(ind_z)
+        #     + "_kmax3d"
+        #     + str(archive.kmax_3d)
+        #     + "_noise3d"
+        #     + str(archive.noise_3d)
+        #     + "_kmax1d"
+        #     + str(archive.kmax_1d)
+        #     + "_noise1d"
+        #     + str(archive.noise_1d)
+        # )
         tag = (
-            "fit_sim"
-            + sim_label[4:]
-            + "_tau"
+            "fit_sim_label_"
+            + sim_label
+            + "_tau_"
             + str(np.round(scale_tau, 2))
-            + "_z"
+            + "_z_"
             + str(ind_z)
-            + "_kmax3d"
-            + str(archive.kmax_3d)
-            + "_noise3d"
-            + str(archive.noise_3d)
-            + "_kmax1d"
-            + str(archive.kmax_1d)
-            + "_noise1d"
-            + str(archive.noise_1d)
+            + "_kmax3d_"
+            + str(kmax_3d)
+            + "_noise3d_"
+            + str(noise_3d)
+            + "_kmax1d_"
+            + str(kmax_1d)
+            + "_noise1d_"
+            + str(noise_1d)
         )
 
         # Load Arinyo model chain from file
         file_arinyo = np.load(folder_chains + tag + ".npz")
-        chain = file_arinyo["chain"].copy()
+        chain = file_arinyo["chain"]
 
         # Ensure non-positive values for the first parameter
         chain[:, 0] = -np.abs(chain[:, 0])
+
+        if training_type == "Arinyo_min_q1_q2":
+            q1 = 0.5 * (chain[:, 2] + chain[:, -1])
+            q2 = 0.5 * (chain[:, 2] - chain[:, -1])
+            chain[:, 2] = q1
+            chain[:, -1] = q2
 
         # Randomly sample from the loaded chain
         idx = np.random.randint(len(chain), size=(chain_samp))

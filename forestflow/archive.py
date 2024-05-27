@@ -9,7 +9,11 @@ from lace.utils.exceptions import ExceptionList
 
 # from lace.utils.misc import split_string
 
-from forestflow.utils import params_numpy2dict
+from forestflow.utils import (
+    params_numpy2dict,
+    params_numpy2dict_minimizer,
+    params_numpy2dict_minimizerz,
+)
 from forestflow.model_p3d_arinyo import ArinyoModel
 
 
@@ -43,6 +47,16 @@ def get_camb_interp(file, data):
         pk_interp = np.load(file, allow_pickle=True).all()
 
     return pk_interp
+
+
+def paramz_to_paramind(z, paramz):
+    paramind = []
+    for ii in range(len(z)):
+        param = {}
+        for key in paramz:
+            param[key] = 10 ** np.poly1d(paramz[key])(z[ii])
+        paramind.append(param)
+    return paramind
 
 
 class GadgetArchive3D(GadgetArchive):
@@ -121,8 +135,14 @@ class GadgetArchive3D(GadgetArchive):
                 self.training_data,
                 "mpg_hypercube",
             )
-        # minimizer, combuted for both, axes, and phases
-        self.add_Arinyo_minimizer(self.training_data)
+            self.add_Arinyo_minimizer_indiv(
+                self.training_data, sim_label="mpg_hypercube"
+            )
+            self.add_Arinyo_minimizer_joint(
+                self.training_data, sim_label="mpg_hypercube"
+            )
+        # # minimizer, computed for both, axes, and phases
+        # self.add_Arinyo_minimizer(self.training_data)
 
         self.add_plin(
             self.training_data,
@@ -143,6 +163,8 @@ class GadgetArchive3D(GadgetArchive):
             sim_label, ind_rescaling=ind_rescaling
         )
         self.add_Arinyo_fits(testing_data, sim_label)
+        self.add_Arinyo_minimizer_indiv(testing_data, sim_label)
+        self.add_Arinyo_minimizer_joint(testing_data, sim_label)
         self.add_Arinyo_model(testing_data)
         self.add_plin(
             testing_data,
@@ -246,6 +268,145 @@ class GadgetArchive3D(GadgetArchive):
         nelem = len(archive)
         for ii in range(nelem):
             archive[ii]["Arinyo_minin"] = params_numpy2dict(best_params[ii])
+
+    def add_Arinyo_minimizer_indiv(
+        self,
+        archive,
+        sim_label=None,
+        kmax_3d=3,
+        kmax_1d=3,
+    ):
+        def get_flag_out(ind_sim, kmax_3d, kmax_1d):
+            flag = (
+                "fit_sim_label_"
+                + str(ind_sim)
+                + "_kmax3d_"
+                + str(kmax_3d)
+                + "_kmax1d_"
+                + str(kmax_1d)
+            )
+            return flag
+
+        if sim_label == "mpg_hypercube":
+            ii = 0
+            for isim in range(30):
+                ind_sim = archive[ii]["sim_label"]
+                flag = get_flag_out(ind_sim, kmax_3d, kmax_1d)
+                file = (
+                    self.base_folder
+                    + "/data/best_arinyo/minimizer/"
+                    + flag
+                    + ".npz"
+                )
+                data = np.load(file)
+                best_params = data["best_params"]
+                ind_snap = data["ind_snap"]
+                val_scaling = data["val_scaling"]
+
+                nelem = best_params.shape[0]
+                for jj in range(nelem):
+                    if ind_sim != archive[ii]["sim_label"]:
+                        raise ValueError("sim_label does not match")
+
+                    ind = np.argwhere(
+                        (ind_snap == archive[ii]["ind_snap"])
+                        & (val_scaling == archive[ii]["val_scaling"])
+                    )[0, 0]
+
+                    archive[ii]["Arinyo_min"] = params_numpy2dict_minimizer(
+                        best_params[ind, :, 0]
+                    )
+                    ii += 1
+        else:
+            flag = get_flag_out(sim_label, kmax_3d, kmax_1d)
+            file = (
+                self.base_folder
+                + "/data/best_arinyo/minimizer/"
+                + flag
+                + ".npz"
+            )
+            data = np.load(file)
+            best_params = data["best_params"]
+            ind_snap = data["ind_snap"]
+            val_scaling = data["val_scaling"]
+
+            nelem = len(archive)
+            for ii in range(nelem):
+                ind = np.argwhere(
+                    (ind_snap == archive[ii]["ind_snap"])
+                    & (val_scaling == archive[ii]["val_scaling"])
+                )[0, 0]
+                archive[ii]["Arinyo_min"] = params_numpy2dict_minimizer(
+                    best_params[ind, :, 0]
+                )
+
+    def add_Arinyo_minimizer_joint(
+        self,
+        archive,
+        sim_label=None,
+        kmax_3d=3,
+        kmax_1d=3,
+    ):
+        def get_flag_out(ind_sim, val_scaling, kmax_3d, kmax_1d):
+            flag = (
+                "fit_sim_label_"
+                + str(ind_sim)
+                + "_val_scaling_"
+                + str(np.round(val_scaling, 2))
+                + "_kmax3d_"
+                + str(kmax_3d)
+                + "_kmax1d_"
+                + str(kmax_1d)
+            )
+            return flag
+
+        if sim_label == "mpg_hypercube":
+            nsim = 30
+            arr_val_scaling = [0.9, 0.95, 1.0, 1.05, 1.1]
+        else:
+            nsim = 1
+            arr_val_scaling = [1.0]
+        z = self.list_sim_redshifts.copy()
+
+        id_sim_label = []
+        id_val_scaling = []
+        id_z = []
+        arr_params = []
+
+        for isim in range(nsim):
+            if sim_label == "mpg_hypercube":
+                ind_sim = "mpg_" + str(isim)
+            else:
+                ind_sim = sim_label
+            for val_scaling in arr_val_scaling:
+                flag = get_flag_out(ind_sim, val_scaling, kmax_3d, kmax_1d)
+                file = (
+                    self.base_folder
+                    + "/data/best_arinyo/minimizer_z/"
+                    + flag
+                    + ".npz"
+                )
+                data = np.load(file, allow_pickle=True)
+                best_params = paramz_to_paramind(z, data["best_params"].item())
+                for iz in range(len(z)):
+                    id_sim_label.append(ind_sim)
+                    id_val_scaling.append(np.round(val_scaling, 2))
+                    id_z.append(np.round(z[iz], 2))
+                    arr_params.append(best_params[iz])
+
+        id_sim_label = np.array(id_sim_label)
+        id_val_scaling = np.array(id_val_scaling)
+        id_z = np.array(id_z)
+
+        for ii in range(len(archive)):
+            _ = np.argwhere(
+                (archive[ii]["sim_label"] == id_sim_label)
+                & (np.round(archive[ii]["z"], 2) == id_z)
+                & (np.round(archive[ii]["val_scaling"], 2) == id_val_scaling)
+            )[0, 0]
+            archive[ii]["Arinyo_minz"] = params_numpy2dict_minimizerz(
+                arr_params[_]
+            )
 
     def add_Arinyo_model(
         self,

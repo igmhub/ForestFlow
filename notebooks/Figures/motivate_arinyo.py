@@ -40,9 +40,100 @@ from forestflow.archive import GadgetArchive3D
 from forestflow.model_p3d_arinyo import get_linP_interp
 from forestflow.model_p3d_arinyo import ArinyoModel
 from forestflow.P3D_cINN import P3DEmulator
+from forestflow.rebin_p3d import p3d_allkmu, get_p3d_modes, p3d_rebin_mu
 
 # %% [markdown]
-# ## Arinyo model from default cosmo and params
+# ## Best-fitting Arinyo model to central
+#
+# The Arinyo model was optimized to reproduce both the P3D and P1D down to 3 Mpc (both)
+
+# %% [markdown]
+# Read sims
+
+# %%
+path_forestflow= os.path.dirname(forestflow.__path__[0]) + "/"
+Archive3D = GadgetArchive3D(
+    base_folder=path_forestflow,
+    folder_data=path_forestflow+"/data/best_arinyo/",
+)
+
+# %%
+test_sim = Archive3D.get_testing_data(
+    "mpg_central", force_recompute_plin=False
+)
+z_grid = [d["z"] for d in test_sim]
+zs = 3
+test_sim_z = [d for d in test_sim if d["z"] == zs][0]
+
+# %% [markdown]
+# ### Data from simulation, rebin to 4 mu bins
+
+# %%
+n_mubins = 4
+kmax = 4
+kmax_fit = 3
+
+k3d_Mpc = test_sim_z['k3d_Mpc']
+mu3d = test_sim_z['mu3d']
+p3d_Mpc = test_sim_z['p3d_Mpc']
+
+kmu_modes = get_p3d_modes(kmax)
+
+mask_3d = k3d_Mpc[:, 0] <= kmax
+
+_ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], p3d_Mpc[mask_3d], kmu_modes, n_mubins=n_mubins)
+knew, munew, rebin_p3d, mu_bins = _
+
+# mask_1d = test_sim_z['k_Mpc'] <= kmax
+# k1d_Mpc = test_sim_z['k_Mpc'][mask_1d]
+# p1d_Mpc = test_sim_z['p1d_Mpc'][mask_1d]
+
+# %% [markdown]
+# ### Model, also rebin
+
+# %%
+# arinyo_params = test_sim_z['Arinyo_min_q1'] # best-fitting Arinyo params
+# arinyo_params = test_sim_z['Arinyo_min_q1_q2'] # best-fitting Arinyo params
+arinyo_params = test_sim_z['Arinyo_min'] # best-fitting Arinyo params
+# arinyo_params = test_sim_z['Arinyo_minz'] # best-fitting Arinyo params
+
+kaiser_params = arinyo_params.copy()
+kaiser_params["q1"] = 0
+kaiser_params["q2"] = 0
+kaiser_params["kp"] = 10**5
+
+# old
+# model_p3d = test_sim_z['model'].P3D_Mpc(zs, k3d_Mpc, mu3d, arinyo_params)
+# plin = test_sim_z['model'].linP_Mpc(zs, k3d_Mpc)
+
+_ = p3d_allkmu(test_sim_z['model'], zs, arinyo_params, kmu_modes)
+model_p3d, plin = _
+
+_ = p3d_allkmu(test_sim_z['model'], zs, kaiser_params, kmu_modes)
+kaiser_p3d, plin = _
+
+_ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], model_p3d, kmu_modes, n_mubins=n_mubins)
+knew, munew, rebin_model_p3d, mu_bins = _
+
+_ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], kaiser_p3d, kmu_modes, n_mubins=n_mubins)
+knew, munew, rebin_kaiser_p3d, mu_bins = _
+
+_ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], plin, kmu_modes, n_mubins=n_mubins)
+knew, munew, rebin_plin, mu_bins = _
+
+
+# %% [markdown]
+# ### Plot P3D from simulation
+
+# %%
+from forestflow.plots.motivate_model import plot_motivate_model
+
+# %%
+folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+plot_motivate_model(knew, munew, mu_bins, rebin_p3d, rebin_model_p3d, rebin_kaiser_p3d, rebin_plin, folder=folder, kmax_fit=3)
+
+# %% [markdown]
+# ## Explain how to use Arinyo model for other combinations of k and mu
 #
 # For more details about the Arinyo model see Eq. 4.5 from Givans+22 (https://arxiv.org/abs/2205.00962)
 
@@ -74,79 +165,48 @@ p1d = arinyo.P1D_Mpc(zs[0], kpar, parameters=arinyo.default_params) # get P1D at
 # #### Plot P3D
 
 # %%
-folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
-
-fig, ax = plt.subplots(1, figsize=(8,6))
-ftsize = 20
-
-kdiff = np.zeros((p3d.shape[1], 2))
-for ii in range(p3d.shape[1]):
-    if(ii < 10):
-        col = 'C'+str(ii)
-    else:
-        col = 'mediumseagreen'
-    lab = r'$\mu=$'+str(np.round(mu[ii], 2))
-    # if ii % 2 == 0:
-    #     lab = r'$\mu=$'+str(np.round(mu[ii], 2))
-    # else:
-    #     lab = None
-    ax.loglog(k, p3d[:, ii]/plin, color=col, label=lab, lw=2)
-    ax.plot(k, p3d[0, ii]/plin[0]+k[:]*0, '--', color=col)
-    _ = np.argwhere(np.abs(p3d[:, ii]/plin/(p3d[0, ii]/plin[0])-1) > 0.005)[0,0]
-    kdiff[ii, 0] = k[_]
-    kdiff[ii, 1] = (p3d[:, ii]/plin)[_]
-ax.plot(kdiff[:, 0], kdiff[:, 1], "k:", lw=3)
-ax.set_xlabel(r'$k$ [Mpc]', fontsize=ftsize)
-ax.set_ylabel(r'$P_F(k, \mu)/P_{\rm L}(k)$', fontsize=ftsize)
-ax.legend(loc='lower left', ncol=4, fontsize=ftsize-5)
-ax.tick_params(axis="both", which="major", labelsize=ftsize)
-plt.tight_layout()
-plt.savefig(folder+"arinyo.png")
-plt.savefig(folder+"arinyo.pdf")
+plot = False
+if plot:
+    folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+    
+    fig, ax = plt.subplots(1, figsize=(8,6))
+    ftsize = 20
+    
+    kdiff = np.zeros((p3d.shape[1], 2))
+    for ii in range(p3d.shape[1]):
+        if(ii < 10):
+            col = 'C'+str(ii)
+        else:
+            col = 'mediumseagreen'
+        lab = r'$\mu=$'+str(np.round(mu[ii], 2))
+        # if ii % 2 == 0:
+        #     lab = r'$\mu=$'+str(np.round(mu[ii], 2))
+        # else:
+        #     lab = None
+        ax.loglog(k, p3d[:, ii]/plin, color=col, label=lab, lw=2)
+        ax.plot(k, p3d[0, ii]/plin[0]+k[:]*0, '--', color=col)
+        _ = np.argwhere(np.abs(p3d[:, ii]/plin/(p3d[0, ii]/plin[0])-1) > 0.005)[0,0]
+        kdiff[ii, 0] = k[_]
+        kdiff[ii, 1] = (p3d[:, ii]/plin)[_]
+    ax.plot(kdiff[:, 0], kdiff[:, 1], "k:", lw=3)
+    ax.set_xlabel(r'$k$ [Mpc]', fontsize=ftsize)
+    ax.set_ylabel(r'$P_F(k, \mu)/P_{\rm L}(k)$', fontsize=ftsize)
+    ax.legend(loc='lower left', ncol=4, fontsize=ftsize-5)
+    ax.tick_params(axis="both", which="major", labelsize=ftsize)
+    plt.tight_layout()
+    plt.savefig(folder+"arinyo.png")
+    plt.savefig(folder+"arinyo.pdf")
 
 # %% [markdown]
 # #### Plot P1D
 
 # %%
-plt.plot(kpar, p1d)
-plt.xlabel(r'$k$ [Mpc]')
-plt.ylabel(r'$P_{\rm 1D}(k)$')
-plt.xscale('log')
-
-# %% [markdown]
-# ### Best-fitting Arinyo model to LaCE simulation
-#
-# The Arinyo model was optimized to reproduce both the P3D and P1D down to 4 Mpc (both)
-
-# %% [markdown]
-# Read sims
-
-# %%
-path_forestflow= os.path.dirname(forestflow.__path__[0]) + "/"
-Archive3D = GadgetArchive3D(
-    base_folder=path_forestflow,
-    folder_data=path_forestflow+"/data/best_arinyo/",
-)
-
-# %%
-ind_book = 50 # select a random simulation
-
-zs = np.array([Archive3D.training_data[ind_book]['z']]) 
-
-k3d_Mpc = Archive3D.training_data[ind_book]['k3d_Mpc']
-mu3d = Archive3D.training_data[ind_book]['mu3d']
-p3d_Mpc = Archive3D.training_data[ind_book]['p3d_Mpc']
-Plin = Archive3D.training_data[ind_book]['Plin']
-
-k1d_Mpc = Archive3D.training_data[ind_book]['k_Mpc']
-p1d_Mpc = Archive3D.training_data[ind_book]['p1d_Mpc']
-
-arinyo_params = Archive3D.training_data[ind_book]['Arinyo_minin'] # best-fitting Arinyo params
-print(zs)
-arinyo_params
-
-# %% [markdown]
-# #### Plot P3D from simulation
+plot = False
+if plot:
+    plt.plot(kpar, p1d)
+    plt.xlabel(r'$k$ [Mpc]')
+    plt.ylabel(r'$P_{\rm 1D}(k)$')
+    plt.xscale('log')
 
 # %%
 for ii in range(0, p3d_Mpc.shape[1]):
@@ -158,56 +218,6 @@ for ii in range(0, p3d_Mpc.shape[1]):
 plt.xlabel(r'$k$ [Mpc]')
 plt.ylabel(r'$P/P_{\rm lin}$')
 plt.legend(loc='lower left')
-
-# %% [markdown]
-# #### Compare P3D from simulation and best-fitting Arinyo
-
-# %%
-nn_k = 200 # number of k bins
-k = np.logspace(np.log10(0.08), np.log10(8), nn_k)
-mu = np.nanmean(mu3d, axis=0)
-nn_mu = mu.shape[0] # number of mu bins
-k2d = np.tile(k[:, np.newaxis], nn_mu) # k grid for P3D
-mu2d = np.tile(mu[:, np.newaxis], nn_k).T # mu grid for P3D
-
-# k2d = k3d_Mpc
-# k = np.nanmean(k2d, axis=1)
-# mu2d = mu3d
-
-# kpar = np.logspace(-1, np.log10(5), nn_k) # kpar for P1D
-
-# plin = arinyo.linP_Mpc(zs[0], k) # get linear power spectrum at target z
-# p3d = arinyo.P3D_Mpc(zs[0], k2d, mu2d, arinyo.default_params) # get P3D at target z
-# p1d = arinyo.P1D_Mpc(zs[0], kpar, parameters=arinyo.default_params) # get P1D at target z
-
-# plin = arinyo.linP_Mpc(zs[0], k) # get linear power spectrum at target z
-model_p3d = Archive3D.training_data[ind_book]['model'].P3D_Mpc(zs[0], k2d, mu2d, arinyo_params)
-plin = Archive3D.training_data[ind_book]['model'].linP_Mpc(zs[0], k)
-
-# %%
-folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
-
-fig, ax = plt.subplots(1, figsize=(8,6))
-ftsize = 20
-
-jj = 0
-for ii in range(0, p3d_Mpc.shape[1], 3):
-    col = 'C'+str(jj)
-        
-    lab = r'$\mu\simeq$'+str(np.round(mu[ii], 2))
-    mask = k3d_Mpc[:, ii] <= 10
-    ax.loglog(k3d_Mpc[mask, ii], p3d_Mpc[mask, ii]/Plin[mask, ii], col+'o:', label=lab)
-    ax.plot(k, model_p3d[:, ii]/plin, col+'-', lw=2, alpha=0.8)
-    kaiser = arinyo_params["bias"]**2*(1+arinyo_params["beta"]*mu[ii]**2)**2
-    ax.plot(k, kaiser+k[:]*0, col+'--', lw=1.5, alpha=0.8)
-    jj += 1
-ax.set_xlabel(r'$k\, [\mathrm{cMpc}^{-1}]$', fontsize=ftsize)
-ax.set_ylabel(r'$P_\mathrm{3D}(k, \mu)/P_{\rm L}(k)$', fontsize=ftsize)
-ax.legend(loc='lower left', ncol=3, fontsize=ftsize-2)
-ax.tick_params(axis="both", which="major", labelsize=ftsize)
-plt.tight_layout()
-plt.savefig(folder+"arinyo_sim.png")
-plt.savefig(folder+"arinyo_sim.pdf")
 
 # %% [markdown]
 # #### Ratio
