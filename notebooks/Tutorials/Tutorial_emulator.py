@@ -66,7 +66,7 @@ Archive3D.training_data[0].keys()
 # Not necessary, we have pre-trained emulators
 
 # %%
-train_emu = True
+train_emu = False
 
 if train_emu:
     p3d_emu = P3DEmulator(
@@ -83,6 +83,22 @@ if train_emu:
         Archive=Archive3D,
         training_type='Arinyo_minz',
         save_path=path_program+"/data/emulator_models/mpg_jointz.pt",
+    )
+else:
+    p3d_emu = P3DEmulator(
+        Archive3D.training_data,
+        Archive3D.emu_params,
+        nepochs=300,
+        lr=0.001,  # 0.005
+        batch_size=20,
+        step_size=200,
+        gamma=0.1,
+        weight_decay=0,
+        adamw=True,
+        nLayers_inn=12,  # 15
+        Archive=Archive3D,
+        training_type='Arinyo_minz',
+        model_path=path_program+"/data/emulator_models/mpg_jointz.pt",
     )
 
 # %% [markdown]
