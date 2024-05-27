@@ -31,7 +31,7 @@ from forestflow.P3D_cINN import P3DEmulator
 from forestflow.plots.l1O_p3d import plot_p3d_L1O
 from forestflow.plots.l1O_p1d import plot_p1d_L1O
 
-from forestflow.rebin_p3d import get_p3d_modes
+from forestflow.rebin_p3d import get_p3d_modes, p3d_allkmu, p3d_rebin_mu
 
 from matplotlib import rcParams
 
@@ -149,8 +149,8 @@ params_sim = np.zeros((Nsim, Nz, 2))
 params_emu = np.zeros((Nsim, Nz, 2))
 
 for isim in range(Nsim):
-    sim_label = f"mpg_{s}"
-    print(f"Starting simulation {s}")
+    sim_label = f"mpg_{isim}"
+    print(f"Starting simulation {isim}")
     print()
 
     training_data = [
@@ -171,7 +171,7 @@ for isim in range(Nsim):
         Nrealizations=200,
         Archive=Archive3D,
         training_type=training_type,
-        model_path=model_path + "mpg_drop"+str(s)+".pt",
+        model_path=model_path + "mpg_drop"+str(isim)+".pt",
     )
     
     for iz, z in enumerate(zs):
@@ -195,7 +195,7 @@ for isim in range(Nsim):
             "z": z,
         }
         
-        out = emulator.evaluate(
+        out = p3d_emu.evaluate(
             emu_params=dict_sim[0],
             info_power=info_power,
             natural_params=True,
@@ -203,7 +203,6 @@ for isim in range(Nsim):
         )
         
         # p1d and p3d from sim
-        p1ds_sims[isim, iz] = dict_sim[0]["p1d_Mpc"][mask_1d]
         _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], dict_sim[0]["p3d_Mpc"][mask_3d], kmu_modes, n_mubins=n_mubins)
         knew, munew, arr_p3d_sim[isim, iz], mu_bins = _
         
@@ -211,10 +210,7 @@ for isim in range(Nsim):
         knew, munew, arr_p3d_emu[isim, iz], mu_bins = _
 
         arr_p1d_emu[isim, iz] = out["p1d"]
-        arr_p1d_sim[isim, iz] = test_sim_z[0]["p1d_Mpc"][mask_1d]
-
-        params_emu[isim, iz, 0] = out['coeffs_Arinyo']["bias"]
-        params_emu[isim, iz, 1] = out['coeffs_Arinyo']["bias_eta"]
+        arr_p1d_sim[isim, iz] = dict_sim[0]["p1d_Mpc"][mask_1d]
 
         params_emu[isim, iz, 0] = out['coeffs_Arinyo']["bias"]
         params_emu[isim, iz, 1] = out['coeffs_Arinyo']["bias_eta"]
@@ -229,15 +225,15 @@ for isim in range(Nsim):
 # %%
 for ii in range(2):
     print(ii)
-    print(np.mean(param_pred[...,ii]/param_sims[...,ii]-1))
-    print(np.std(param_pred[...,ii]/param_sims[...,ii]-1))
-    rat = 0.5*(np.percentile(param_pred[...,ii]/param_sims[...,ii]-1, 68) - np.percentile(param_pred[...,ii]/param_sims[...,ii]-1, 16))
-    print(rat)
+    print(np.mean(params_emu[...,ii]/params_sim[...,ii]-1))
+    print(np.std(params_emu[...,ii]/params_sim[...,ii]-1))
+    rat = 0.5*(np.percentile(params_emu[...,ii]/params_sim[...,ii]-1, 68) - np.percentile(params_emu[...,ii]/params_sim[...,ii]-1, 16))
+    print(rat * 100)
     # rat = 0.5*(np.percentile(param_pred[...,ii]/param_sims[...,ii]-1, 68, axis=0) - np.percentile(param_pred[...,ii]/param_sims[...,ii]-1, 16, axis=0))
     # print(rat)
 
-# %%
-1.8 and 0.9
+# %% [markdown]
+# 2.6 and 4.1 per cent
 
 # %% [markdown]
 # ### L1O of each sim
@@ -250,22 +246,22 @@ folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
 z_use = np.arange(2, 4.5, 0.5)[::-1]
 z_use
 
-# %%
-zs
-
 # %% [markdown]
 # #### P3D
 
 # %%
-fractional_errors_arinyo = (p3ds_pred / p3ds_arinyo -1)
-fractional_errors_sims = (p3ds_pred / p3ds_sims -1)
-fractional_errors_bench = (p3ds_arinyo / p3ds_sims -1)
+fractional_errors_sims.shape
+
+# %%
+# fractional_errors_arinyo = (p3ds_pred / p3ds_arinyo -1)
+fractional_errors_sims = (arr_p3d_emu / arr_p3d_sim -1)
+# fractional_errors_bench = (p3ds_arinyo / p3ds_sims -1)
 
 # %%
 # plot_p3d_L1O(Archive3D, z_use, fractional_errors_sims)
 # plot_p3d_L1O(Archive3D, z_use, fractional_errors_sims, kmax_3d_plot=kmax_3d_plot, savename=folder+"l1O/l1O_P3D_q1.png");
 plot_p3d_L1O(Archive3D, z_use, zs, fractional_errors_sims, kmax_3d_plot=kmax_3d_plot, savename=folder+"l1O/l1O_P3D.png");
-plot_p3d_L1O(Archive3D, z_use, zs, fractional_errors_sims, kmax_3d_plot=kmax_3d_plot, savename=folder+"l1O/l1O_P3D.pdf");
+# plot_p3d_L1O(Archive3D, z_use, zs, fractional_errors_sims, kmax_3d_plot=kmax_3d_plot, savename=folder+"l1O/l1O_P3D.pdf");
 
 # %%
 # # plot_p3d_L1O(Archive3D, z_use, fractional_errors_arinyo)
