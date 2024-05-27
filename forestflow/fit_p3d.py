@@ -6,6 +6,9 @@ import copy
 
 from forestflow.utils import purge_chains, init_chains, params_numpy2dict
 from forestflow.plot_routines import plot_template
+from forestflow.rebin_p3d import p3d_allkmu, p3d_rebin_mu, get_p3d_modes
+
+# from forestflow.rebin_p3d import p3d_allkmu, get_p3d_modes, p3d_rebin_mu
 
 
 class FitPk(object):
@@ -43,12 +46,13 @@ class FitPk(object):
         data,
         model,
         fit_type="p3d",
-        k3d_max=10,
-        k1d_max=10,
-        noise_3d=0.05,
-        noise_1d=0.05,
+        k3d_max=3,
+        k1d_max=3,
+        noise_3d=0,
+        noise_1d=0,
         priors=None,
         verbose=False,
+        all_kmu=True,
     ):
         """
         Setup P3D flux power model and measurement.
@@ -75,42 +79,49 @@ class FitPk(object):
         self.data = copy.deepcopy(data)
         self.model = model
         self.priors = priors
-        self.units = self.data["units"]
+        self.all_kmu = all_kmu
+
+        k3d_mask = self.data["k3d_Mpc"][:, 0] <= k3d_max
+        self.nk = np.sum(k3d_mask)
+        self.nmu = self.data["k3d_Mpc"].shape[1]
+        self.data["p3d_Mpc"] = self.data["p3d_Mpc"][k3d_mask, :]
+        if all_kmu == False:
+            self.data["k3d_Mpc"] = self.data["k3d_Mpc"][k3d_mask, :]
+            self.data["mu3d"] = self.data["mu3d"][k3d_mask, :]
 
         # p3d or both
         self.fit_type = fit_type
 
         # relative errors with noise floor
-        self.data["std_p3d_sta"] = self.data["std_p3d"] * 1
-        self.data["std_p3d_sys"] = noise_3d * self.data["p3d"]
+        self.data["std_p3d_sta"] = self.data["std_p3d"][k3d_mask, :]
+        self.data["std_p3d_sys"] = noise_3d
         self.data["std_p3d"] = np.sqrt(
             self.data["std_p3d_sta"] ** 2 + self.data["std_p3d_sys"] ** 2
         )
-        # k_Mpc < fit_k_Mpc_max
-        self.ind_fit3d = (
-            np.isfinite(self.data["std_p3d"])
-            & (self.data["std_p3d"] != 0)
-            & np.isfinite(self.data["p3d"])
-            & (self.data["k3d"] < k3d_max)
-        )
-        self.data["std_p3d"][~self.ind_fit3d] = np.inf
+
+        # get P3D measurement for bins included in fit
+        self.ind_fit3d = np.isfinite(self.data["p3d_Mpc"])
+        self.data_p3d = self.data["p3d_Mpc"][self.ind_fit3d]
+        self.err_p3d = self.data["std_p3d"][self.ind_fit3d]
+        self.nbins3d = np.sum(self.ind_fit3d)
 
         # same for p1d
         if fit_type == "both":
+            k1d_mask = (self.data["k1d_Mpc"] <= k1d_max) & (
+                self.data["k1d_Mpc"] > 0
+            )
+            self.data["k1d_Mpc"] = self.data["k1d_Mpc"][k1d_mask]
+            self.data["p1d_Mpc"] = self.data["p1d_Mpc"][k1d_mask]
             # relative errors with noise floor
-            self.data["std_p1d_sta"] = self.data["std_p1d"] * 1
-            self.data["std_p1d_sys"] = noise_1d * self.data["p1d"]
+            self.data["std_p1d_sta"] = self.data["std_p1d"][k1d_mask]
+            self.data["std_p1d_sys"] = noise_1d
             self.data["std_p1d"] = np.sqrt(
                 self.data["std_p1d_sta"] ** 2 + self.data["std_p1d_sys"] ** 2
             )
-            # k_Mpc < fit_k_Mpc_max
-            self.ind_fit1d = (
-                np.isfinite(self.data["std_p1d"])
-                & (self.data["std_p1d"] != 0)
-                & np.isfinite(self.data["p1d"])
-                & (self.data["k1d"] < k1d_max)
-            )
-            self.data["std_p1d"][~self.ind_fit1d] = np.inf
+            self.ind_fit1d = np.isfinite(self.data["p1d_Mpc"])
+            self.data_p1d = self.data["p1d_Mpc"][self.ind_fit1d]
+            self.err_p1d = self.data["std_p1d"][self.ind_fit1d]
+            self.nbins1d = np.sum(self.ind_fit1d)
 
     def get_model_3d(self, parameters={}):
         """
@@ -124,14 +135,26 @@ class FitPk(object):
         """
 
         # identify (k,mu) for bins included in fit
-        p3d = self.model.P3D_Mpc(
-            self.data["z"][0],
-            self.data["k3d"],
-            self.data["mu3d"],
-            parameters,
-        )
-        if self.units == "N":
-            p3d *= self.data["k3d"] ** 3 / 2 / np.pi**2
+        if self.all_kmu:
+            p3d = p3d_allkmu(
+                self.model,
+                self.data["z"][0],
+                parameters,
+                self.data["kmu_modes"],
+                nk=self.nk,
+                nmu=self.nmu,
+                compute_plin=False,
+                minimize=True,
+            )
+        else:
+            p3d = self.model.P3D_Mpc(
+                self.data["z"][0],
+                self.data["k3d"],
+                self.data["mu3d"],
+                parameters,
+                minimize=True,
+            )
+
         return p3d
 
     def get_model_1d(
@@ -155,63 +178,48 @@ class FitPk(object):
         """
         p1d = self.model.P1D_Mpc(
             self.data["z"][0],
-            self.data["k1d"],
+            self.data["k1d_Mpc"],
             parameters=parameters,
             k_perp_min=k_perp_min,
             k_perp_max=k_perp_max,
             n_k_perp=n_k_perp,
+            minimize=True,
         )
-        if self.units == "N":
-            p1d *= self.data["k1d"] / np.pi
+
         return p1d
 
-    def get_chi2(self, parameters={}, return_npoints=False):
+    def get_chi2(self, parameters={}):
         """
         Compute chi squared for a particular P3D model.
 
         Args:
             parameters (dict, optional): Dictionary with parameters to use. Defaults to {}.
-            return_npoints (bool, optional): Whether to return the number of data points used. Defaults to False.
 
         Returns:
             float or tuple: Chi squared value or tuple containing chi squared and number of data points.
         """
 
-        # get P3D measurement for bins included in fit
-        data_p3d = self.data["p3d"][self.ind_fit3d]
-
         # compute model for these wavenumbers
         th_p3d = self.get_model_3d(parameters=parameters)[self.ind_fit3d]
 
-        # get absolute error
-        err_p3d = self.data["std_p3d"][self.ind_fit3d]
-
         # compute chi2
-        chi2 = np.sum(((data_p3d - th_p3d) / err_p3d) ** 2) / np.sum(
-            self.ind_fit3d
+        chi2 = (
+            np.sum(((self.data_p3d - th_p3d) / self.err_p3d) ** 2)
+            / self.nbins3d
         )
 
         if self.fit_type == "both":
-            # get P1D measurement for bins included in fit
-            data_p1d = self.data["p1d"][self.ind_fit1d]
-
             # compute model for these wavenumbers
             th_p1d = self.get_model_1d(parameters=parameters)[self.ind_fit1d]
 
-            # compute absolute error
-            err_p1d = self.data["std_p1d"][self.ind_fit1d]
-
             # compute chi2
-            chi2_p1d = np.sum(((data_p1d - th_p1d) / err_p1d) ** 2) / np.sum(
-                self.ind_fit1d
+            chi2_p1d = (
+                np.sum(((self.data_p1d - th_p1d) / self.err_p1d) ** 2)
+                / self.nbins1d
             )
             chi2 += chi2_p1d
 
-        if return_npoints:
-            npoints = len(data)
-            return chi2, npoints
-        else:
-            return chi2
+        return chi2
 
     def get_log_like(self, parameters={}):
         """
@@ -224,7 +232,7 @@ class FitPk(object):
             float: Log likelihood value.
         """
 
-        return -0.5 * self.get_chi2(parameters, return_npoints=False)
+        return -0.5 * self.get_chi2(parameters)
 
     def _log_like(self, values, parameter_names):
         """
@@ -325,7 +333,7 @@ class FitPk(object):
         if out_priors != 0:
             return -np.inf
         else:
-            return -0.5 * self.get_chi2(parameters, return_npoints=False)
+            return -0.5 * self.get_chi2(parameters)
 
     def explore_likelihood(
         self,

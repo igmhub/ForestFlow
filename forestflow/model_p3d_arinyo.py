@@ -4,6 +4,7 @@ from lace.cosmo import camb_cosmo
 from scipy.integrate import simpson
 from forestflow.camb_routines import P_camb
 from forestflow import pcross
+
 # from forestflow.utils import memoize_numpy_arrays
 
 
@@ -217,7 +218,7 @@ class ArinyoModel(object):
 
         return linP * lowk_bias**2 * D_NL
 
-    def P3D_Mpc(self, z, k, mu, pp):
+    def P3D_Mpc(self, z, k, mu, pp, minimize=False):
         """
         Compute the model for the 3D flux power spectrum in units of Mpc^3.
 
@@ -239,19 +240,33 @@ class ArinyoModel(object):
 
         # model small-scales correction (D_NL in Arinyo-i-Prats 2015)
         delta2 = (1 / (2 * np.pi**2)) * k**3 * linP
-        nonlin = delta2 * (pp["q1"] + pp["q2"] * delta2)
+        if "q2" not in pp.keys():
+            if minimize:
+                q1 = 0.5 * pp["q1"]
+                q2 = 0.5 * pp["q1"]
+                nonlin = delta2 * (q1 + q2 * delta2)
+            else:
+                nonlin = delta2 * pp["q1"]
+        else:
+            # uncomment for minimizer
+            if minimize:
+                q1 = 0.5 * (pp["q1"] + pp["q2"])
+                q2 = 0.5 * (pp["q1"] - pp["q2"])
+            else:
+                q1 = pp["q1"]
+                q2 = pp["q2"]
+            nonlin = delta2 * (q1 + q2 * delta2)
         vel = k ** pp["av"] / pp["kvav"] * mu ** pp["bv"]
         press = (k / pp["kp"]) ** 2
 
         D_NL = np.exp(nonlin * (1 - vel) - press)
 
         return linP * lowk_bias**2 * D_NL
-    
-    
+
     def Px_Mpc(self, z, k_par, pp):
         """
         Compute P-cross for the P3D model.
-        
+
         Parameters:
             z (float): Redshift. Cannot be array.
             k_par (array-like): Array of k-parallel values at which to compute Px.
@@ -259,10 +274,11 @@ class ArinyoModel(object):
             rperp (array-like): values (float) of separation in Mpc
             Px_per_kpar (array-like): values (float) of Px for each k parallel and rperp. Shape: (len(k_par), len(rperp)).
         """
-        
-        rperp, Px_per_kpar = pcross.Px_Mpc(k_par,self.P3D_Mpc,z,P3D_mode='pol',**{'pp':pp})
+
+        rperp, Px_per_kpar = pcross.Px_Mpc(
+            k_par, self.P3D_Mpc, z, P3D_mode="pol", **{"pp": pp}
+        )
         return rperp, Px_per_kpar
-        
 
     def rat_P3D(self, z, k, mu, parameters={}):
         """
@@ -465,7 +481,9 @@ class ArinyoModel(object):
 
         return p1d
 
-    def _P1D_lnkperp_fast(self, z, ln_k_perp, kpars, parameters={}):
+    def _P1D_lnkperp_fast(
+        self, z, ln_k_perp, kpars, parameters={}, minimize=False
+    ):
         """
         Compute P1D by integrating P3D in terms of ln(k_perp) using a fast method.
 
@@ -493,14 +511,18 @@ class ArinyoModel(object):
         fact = (1 / (2 * np.pi)) * k_perp[:, np.newaxis] ** 2
         fact = fact.swapaxes(0, 1)
 
-        p3d_fix_k_par = self.P3D_Mpc(z, k, mu, parameters) * fact
+        p3d_fix_k_par = (
+            self.P3D_Mpc(z, k, mu, parameters, minimize=minimize) * fact
+        )
 
         # perform numerical integration
         p1d = simpson(p3d_fix_k_par, ln_k_perp, dx=dlnk, axis=1)
 
         return p1d
 
-    def _rat_P1D_lnkperp_fast(self, z, ln_k_perp, kpars, parameters={}):
+    def _rat_P1D_lnkperp_fast(
+        self, z, ln_k_perp, kpars, parameters={}, minimize=False
+    ):
         """
         Compute P1D by integrating P3D in terms of ln(k_perp) using a fast method.
 
@@ -527,7 +549,9 @@ class ArinyoModel(object):
 
         fact = (1 / (2 * np.pi)) * k_perp[:, np.newaxis] ** 2
         fact = fact.swapaxes(0, 1)
-        p3d_fix_k_par = self.rat_P3D(z, k, mu, parameters) * fact
+        p3d_fix_k_par = (
+            self.rat_P3D(z, k, mu, parameters, minimize=minimize) * fact
+        )
 
         # perform numerical integration
         p1d = simpson(p3d_fix_k_par, ln_k_perp, dx=dlnk, axis=1)
@@ -586,6 +610,7 @@ class ArinyoModel(object):
         k_perp_max=100,
         n_k_perp=99,
         parameters={},
+        minimize=False,
     ):
         """
         Returns P1D for specified values of k_par, with the option to specify values of k_perp to be integrated over.
@@ -606,7 +631,9 @@ class ArinyoModel(object):
             np.log(k_perp_min), np.log(k_perp_max), n_k_perp
         )
 
-        p1d = self._P1D_lnkperp_fast(z, ln_k_perp, k_par, parameters)
+        p1d = self._P1D_lnkperp_fast(
+            z, ln_k_perp, k_par, parameters, minimize=minimize
+        )
 
         return p1d
 

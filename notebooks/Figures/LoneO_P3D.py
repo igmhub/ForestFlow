@@ -31,7 +31,14 @@ from forestflow.P3D_cINN import P3DEmulator
 from forestflow.plots.l1O_p3d import plot_p3d_L1O
 from forestflow.plots.l1O_p1d import plot_p1d_L1O
 
+from forestflow.rebin_p3d import get_p3d_modes, p3d_allkmu, p3d_rebin_mu
+
 from matplotlib import rcParams
+
+from forestflow.utils import (
+    params_numpy2dict,
+    transform_arinyo_params,
+)
 
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
@@ -70,39 +77,15 @@ Archive3D = GadgetArchive3D(
 print(len(Archive3D.training_data))
 
 
-# %%
-Nsim = 30
-Nz = 11
-zs = np.flip(np.arange(2, 4.6, 0.25))
-
-k_Mpc = Archive3D.training_data[0]["k3d_Mpc"]
-mu = Archive3D.training_data[0]["mu3d"]
-
-k_mask = (k_Mpc < 4) & (k_Mpc > 0)
-
-k_Mpc = k_Mpc[k_mask]
-mu = mu[k_mask]
-
-k_p1d_Mpc = Archive3D.training_data[0]["k_Mpc"]
-k1d_mask = (k_p1d_Mpc < 5) & (k_p1d_Mpc > 0)
-k_p1d_Mpc = k_p1d_Mpc[k1d_mask]
-norm = k_p1d_Mpc / np.pi
-
 # %% [markdown]
-# ## LEAVE ONE OUT TEST
+# ### Train L1Os
 
 # %%
-p3ds_pred = np.zeros(shape=(Nsim, Nz, k_Mpc.shape[0]))
-p1ds_pred = np.zeros(shape=(Nsim, Nz, k_p1d_Mpc.shape[0]))
-
-p3ds_arinyo = np.zeros(shape=(Nsim, Nz, k_Mpc.shape[0]))
-p1ds_arinyo = np.zeros(shape=(Nsim, Nz, k_p1d_Mpc.shape[0]))
-
-p3ds_sims = np.zeros(shape=(Nsim, Nz, k_Mpc.shape[0]))
-p1ds_sims = np.zeros(shape=(Nsim, Nz, k_p1d_Mpc.shape[0]))
-
-for s in range(Nsim):
+model_path = path_program+"/data/emulator_models/joint_z/"
+training_type = "Arinyo_minz"
+for s in range(6, 30):
     print(f"Starting simulation {s}")
+    print()
 
     training_data = [
         d for d in Archive3D.training_data if d["sim_label"] != f"mpg_{s}"
@@ -111,7 +94,7 @@ for s in range(Nsim):
     p3d_emu = P3DEmulator(
         training_data,
         Archive3D.emu_params,
-        nepochs=1,
+        nepochs=300,
         lr=0.001,  # 0.005
         batch_size=20,
         step_size=200,
@@ -119,107 +102,138 @@ for s in range(Nsim):
         weight_decay=0,
         adamw=True,
         nLayers_inn=12,  # 15
+        Nrealizations=200,
         Archive=Archive3D,
-        model_path=path_program+f"/data/emulator_models/mpg_drop{s}.pt",
+        training_type=training_type,
+        save_path=model_path + "mpg_drop"+str(s)+".pt",
     )
 
-    for iz, z in enumerate(zs):
-        # load arinyo module
-        flag = f"Plin_interp_sim{s}.npy"
-        file_plin_inter = folder_interp + flag
-        pk_interp = np.load(file_plin_inter, allow_pickle=True).all()
-        model_Arinyo = ArinyoModel(camb_pk_interp=pk_interp)
+# %% [markdown]
+# ### Evaluate L1Os
 
+# %%
+training_type = "Arinyo_minz"
+model_path = path_program+"/data/emulator_models/joint_z/"
+
+Nsim = 30
+zs = np.flip(np.arange(2, 4.6, 0.25))
+Nz = zs.shape[0]
+
+
+n_mubins = 4
+kmax_3d_plot = 4
+kmax_1d_plot = 4
+kmax_fit = 3
+
+sim = Archive3D.training_data[0]
+
+k3d_Mpc = sim['k3d_Mpc']
+mu3d = sim['mu3d']
+p3d_Mpc = sim['p3d_Mpc']
+kmu_modes = get_p3d_modes(kmax_3d_plot)
+
+mask_3d = k3d_Mpc[:, 0] <= kmax_3d_plot
+
+mask_1d = (sim['k_Mpc'] <= kmax_1d_plot) & (sim['k_Mpc'] > 0)
+k1d_Mpc = sim['k_Mpc'][mask_1d]
+p1d_Mpc = sim['p1d_Mpc'][mask_1d]
+
+# %%
+arr_p3d_sim = np.zeros((Nsim, Nz, np.sum(mask_3d), n_mubins))
+arr_p3d_emu = np.zeros((Nsim, Nz, np.sum(mask_3d), n_mubins))
+arr_p3d_fit = np.zeros((Nsim, Nz, np.sum(mask_3d), n_mubins))
+arr_p1d_sim = np.zeros((Nsim, Nz, np.sum(mask_1d)))
+arr_p1d_emu = np.zeros((Nsim, Nz, np.sum(mask_1d)))
+arr_p1d_fit = np.zeros((Nsim, Nz, np.sum(mask_1d)))
+params_sim = np.zeros((Nsim, Nz, 2))
+params_emu = np.zeros((Nsim, Nz, 2))
+
+for isim in range(Nsim):
+    sim_label = f"mpg_{isim}"
+    print(f"Starting simulation {isim}")
+    print()
+
+    training_data = [
+        d for d in Archive3D.training_data if d["sim_label"] != sim_label
+    ]
+
+    p3d_emu = P3DEmulator(
+        training_data,
+        Archive3D.emu_params,
+        nepochs=300,
+        lr=0.001,  # 0.005
+        batch_size=20,
+        step_size=200,
+        gamma=0.1,
+        weight_decay=0,
+        adamw=True,
+        nLayers_inn=12,  # 15
+        Nrealizations=200,
+        Archive=Archive3D,
+        training_type=training_type,
+        model_path=model_path + "mpg_drop"+str(isim)+".pt",
+    )
+    
+    for iz, z in enumerate(zs):
         # define test sim
         dict_sim = [
             d
             for d in Archive3D.training_data
             if d["z"] == z
-            and d["sim_label"] == f"mpg_{s}"
+            and d["sim_label"] == sim_label
             and d["val_scaling"] == 1
         ]
 
-        # p1d from sim
-        p1d_sim, p1d_k = p3d_emu.get_p1d_sim(dict_sim)
-
-        # p3d from sim
-        p3d_sim = dict_sim[0]["p3d_Mpc"][p3d_emu.k_mask]
-        p3d_sim = np.array(p3d_sim)
-
-        p1ds_sims[s, iz] = p1d_sim
-        p3ds_sims[s, iz] = p3d_sim
-
-        # load BF Arinyo and estimated the p3d and p1d from BF arinyo parameters
-        out = p3d_emu.predict_P3D_Mpc(
-            sim_label=f"mpg_{s}", 
-            z=z, 
-            emu_params=dict_sim[0],
-            kpar_Mpc = k_p1d_Mpc
-        )
-        # t_keys(['coeffs_Arinyo', 'Plin', 'p3d_cov', 'p3d', 'p1d', 'p1d_cov'])
-        BF_arinyo = dict_sim[0]["Arinyo_minin"]
-
-        p3ds_arinyo[s, iz] = model_Arinyo.P3D_Mpc(z, k_Mpc, mu, BF_arinyo)
-        p1ds_arinyo[s, iz] = model_Arinyo.P1D_Mpc(z, k_p1d_Mpc, parameters=BF_arinyo) * norm
+        info_power = {
+            "sim_label": sim_label,
+            "k3d_Mpc": k3d_Mpc[mask_3d, :],
+            "mu": mu3d[mask_3d, :],
+            "kmu_modes": kmu_modes,
+            "k1d_Mpc": k1d_Mpc,
+            "return_p3d": True,
+            "return_p1d": True,
+            "z": z,
+        }
         
-        p3ds_pred[s, iz] = out['p3d']
-        p1ds_pred[s, iz] = out['p1d'] * norm
+        out = p3d_emu.evaluate(
+            emu_params=dict_sim[0],
+            info_power=info_power,
+            natural_params=True,
+            Nrealizations=100
+        )
+        
+        # p1d and p3d from sim
+        _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], dict_sim[0]["p3d_Mpc"][mask_3d], kmu_modes, n_mubins=n_mubins)
+        knew, munew, arr_p3d_sim[isim, iz], mu_bins = _
+        
+        _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["p3d"], kmu_modes, n_mubins=n_mubins)
+        knew, munew, arr_p3d_emu[isim, iz], mu_bins = _
 
-    
-    print(
-        "Mean fractional error P3D pred to Arinyo",
-        ((p3ds_pred[s] / p3ds_arinyo[s] - 1) * 100).mean(),
-    )
-    print(
-        "Std fractional error P3D pre to Arinyo",
-        ((p3ds_pred[s] / p3ds_arinyo[s] - 1) * 100).std(),
-    )
+        arr_p1d_emu[isim, iz] = out["p1d"]
+        arr_p1d_sim[isim, iz] = dict_sim[0]["p1d_Mpc"][mask_1d]
 
-    print(
-        "Mean fractional error P3D Arinyo model",
-        ((p3ds_arinyo[s] / p3ds_sims[s] - 1) * 100).mean(),
-    )
-    print(
-        "Std fractional error P3D Arinyo model",
-        ((p3ds_arinyo[s] / p3ds_sims[s] - 1) * 100).std(),
-    )
+        params_emu[isim, iz, 0] = out['coeffs_Arinyo']["bias"]
+        params_emu[isim, iz, 1] = out['coeffs_Arinyo']["bias_eta"]
 
-    print(
-        "Mean fractional error P3D pred to sim",
-        ((p3ds_pred[s] / p3ds_sims[s] - 1) * 100).mean(),
-    )
-    print(
-        "Std fractional error P3D pred to sim",
-        ((p3ds_pred[s] / p3ds_sims[s] - 1) * 100).std(),
-    )
+        _ = transform_arinyo_params(dict_sim[0]["Arinyo_minz"], dict_sim[0]["f_p"])        
+        params_sim[isim, iz, 0] = _["bias"]
+        params_sim[isim, iz, 1] = _["bias_eta"]
+        
+    p3d_emu = 0
 
-    print(
-        "Mean fractional error P1D pred to Arinyo",
-        ((p1ds_pred[s] / p1ds_arinyo[s] - 1) * 100).mean(),
-    )
-    print(
-        "Std fractional error P1D pred to Arinyo",
-        ((p1ds_pred[s] / p1ds_arinyo[s] - 1) * 100).std(),
-    )
 
-    print(
-        "Mean fractional error P1D Arinyo model",
-        ((p1ds_arinyo[s] / p1ds_sims[s] - 1) * 100).mean(),
-    )
-    print(
-        "Std fractional error P1D Arinyo model",
-        ((p1ds_arinyo[s] / p1ds_sims[s] - 1) * 100).std(),
-    )
+# %%
+for ii in range(2):
+    print(ii)
+    print(np.mean(params_emu[...,ii]/params_sim[...,ii]-1))
+    print(np.std(params_emu[...,ii]/params_sim[...,ii]-1))
+    rat = 0.5*(np.percentile(params_emu[...,ii]/params_sim[...,ii]-1, 68) - np.percentile(params_emu[...,ii]/params_sim[...,ii]-1, 16))
+    print(rat * 100)
+    # rat = 0.5*(np.percentile(param_pred[...,ii]/param_sims[...,ii]-1, 68, axis=0) - np.percentile(param_pred[...,ii]/param_sims[...,ii]-1, 16, axis=0))
+    # print(rat)
 
-    print(
-        "Mean fractional error P1D pred to sim",
-        ((p1ds_pred[s] / p1ds_sims[s] - 1) * 100).mean(),
-    )
-    print(
-        "Std fractional error P1D pred to sim",
-        ((p1ds_pred[s] / p1ds_sims[s] - 1) * 100).std(),
-    )
-
+# %% [markdown]
+# 2.6 and 4.1 per cent
 
 # %% [markdown]
 # ### L1O of each sim
@@ -229,21 +243,25 @@ for s in range(Nsim):
 
 # %%
 folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
-z_use = np.arange(2, 4.5, 0.5)
+z_use = np.arange(2, 4.5, 0.5)[::-1]
 z_use
 
 # %% [markdown]
 # #### P3D
 
 # %%
-fractional_errors_arinyo = (p3ds_pred / p3ds_arinyo -1)
-fractional_errors_sims = (p3ds_pred / p3ds_sims -1)
-fractional_errors_bench = (p3ds_arinyo / p3ds_sims -1)
+fractional_errors_sims.shape
+
+# %%
+# fractional_errors_arinyo = (p3ds_pred / p3ds_arinyo -1)
+fractional_errors_sims = (arr_p3d_emu / arr_p3d_sim -1)
+# fractional_errors_bench = (p3ds_arinyo / p3ds_sims -1)
 
 # %%
 # plot_p3d_L1O(Archive3D, z_use, fractional_errors_sims)
-plot_p3d_L1O(Archive3D, z_use, fractional_errors_sims, savename=folder+"l1O/l1O_P3D.png");
-plot_p3d_L1O(Archive3D, z_use, fractional_errors_sims, savename=folder+"l1O/l1O_P3D.pdf");
+# plot_p3d_L1O(Archive3D, z_use, fractional_errors_sims, kmax_3d_plot=kmax_3d_plot, savename=folder+"l1O/l1O_P3D_q1.png");
+plot_p3d_L1O(Archive3D, z_use, zs, fractional_errors_sims, kmax_3d_plot=kmax_3d_plot, savename=folder+"l1O/l1O_P3D.png");
+# plot_p3d_L1O(Archive3D, z_use, zs, fractional_errors_sims, kmax_3d_plot=kmax_3d_plot, savename=folder+"l1O/l1O_P3D.pdf");
 
 # %%
 # # plot_p3d_L1O(Archive3D, z_use, fractional_errors_arinyo)
@@ -268,8 +286,10 @@ fractional_errors_bench_p1d = (p1ds_arinyo / p1ds_sims - 1)
 
 # %%
 # plot_p1d_L1O(Archive3D, z_use, fractional_errors_sims_p1d)
-plot_p1d_L1O(Archive3D, z_use, fractional_errors_sims_p1d, savename=folder+"l1O/l1O_P1D.png")
-plot_p1d_L1O(Archive3D, z_use, fractional_errors_sims_p1d, savename=folder+"l1O/l1O_P1D.pdf")
+# plot_p1d_L1O(Archive3D, z_use, fractional_errors_sims_p1d, savename=folder+"l1O/l1O_P1D.png")
+# plot_p1d_L1O(Archive3D, z_use, fractional_errors_sims_p1d, savename=folder+"l1O/l1O_P1D_q1.png")
+plot_p1d_L1O(Archive3D, z_use, zs, fractional_errors_sims_p1d, savename=folder+"l1O/l1O_P1D.png")
+plot_p1d_L1O(Archive3D, z_use, zs, fractional_errors_sims_p1d, savename=folder+"l1O/l1O_P1D.pdf")
 
 # %%
 # # plot_p1d_L1O(Archive3D, z_use, fractional_errors_arinyo_p1d)
