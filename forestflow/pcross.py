@@ -77,9 +77,9 @@ def Px_Mpc_detailed(
     P3D_mode="pol",
     min_rperp=10**-2,
     max_rperp=100,
-    min_kperp=10.0**-20,
+    min_kperp=10.0**-7,
     max_kperp=10.0**3,
-    nkperp=2**16,
+    nkperp=2**11,
     trans_to_p1d=True,
     interpmin=0.005,
     interpmax=0.2,
@@ -110,7 +110,10 @@ def Px_Mpc_detailed(
     """
 
     import hankl
-
+    if len(z)>1:
+        raise ValueError("Only one z value can be passed.")
+    if 0 in kpars:
+        raise ValueError("kpar list must not contain zero.")
     nkpar = len(kpars)
     kperps = np.logspace(
         np.log10(min_kperp), np.log10(max_kperp), nkperp
@@ -185,10 +188,10 @@ def Px_Mpc_detailed(
             # save Px for that range
             Px_per_kpar.append(Px[rperp_minidx:rperp_maxidx])
         else:
-            # return the closest results to the user-requested values
-            if ik == 0:
-                same_rperp = [np.argmin(abs(rperp - rp)) for rp in rperp_choice]
-                rperp_save = rperp[same_rperp]
-            Px_per_kpar.append(Px[same_rperp])
+            # get an interpolator function that returns Px at the user-requested values for rperp
+            Px_func = CubicSpline(rperp, Px)
+            Px_per_kpar.append(Px_func(rperp_choice))
+            if ik == 0: # only need to rename once
+                rperp_save = rperp_choice
     Px_per_kpar = np.asarray(Px_per_kpar)
     return rperp_save, Px_per_kpar
