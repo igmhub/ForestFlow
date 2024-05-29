@@ -83,6 +83,7 @@ kmax_3d_plot = 4
 kmax_1d_plot = 4
 
 sim = Archive3D.training_data[0]
+print(sim["z"])
 
 k3d_Mpc = sim['k3d_Mpc']
 mu3d = sim['mu3d']
