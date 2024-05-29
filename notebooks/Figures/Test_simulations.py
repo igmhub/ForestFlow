@@ -119,7 +119,6 @@ Nsim = 30
 zs = np.flip(np.arange(2, 4.6, 0.25))
 Nz = zs.shape[0]
 
-
 n_mubins = 4
 kmax_3d_plot = 4
 kmax_1d_plot = 4
