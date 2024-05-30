@@ -55,15 +55,22 @@ def plot_arinyo_z(
             norm = 1
 
         print(name_params[i])
-        s_bias = np.median(ari_emu / ari_cen - 1)
-        s_pred = np.percentile(ari_emu / ari_cen - 1, [16, 84])
-        s_pred = 0.5 * (s_pred[1] - s_pred[0])
-        print("cen-emu", s_bias * 100, s_pred * 100)
 
         s_bias = np.median(ari_seed / ari_cen - 1)
         s_pred = np.percentile(ari_seed / ari_cen - 1, [16, 84])
         s_pred = 0.5 * (s_pred[1] - s_pred[0])
         print("cen-seed", s_bias * 100, s_pred * 100)
+
+        y = np.concatenate([ari_seed / ari_emu, ari_emu / ari_cen]) - 1
+        s_bias = np.median(y)
+        s_pred = np.percentile(y - 1, [16, 84])
+        s_pred = 0.5 * (s_pred[1] - s_pred[0])
+        print("sim-emu", s_bias * 100, s_pred * 100)
+
+        s_bias = np.median(ari_emu / ari_cen - 1)
+        s_pred = np.percentile(ari_emu / ari_cen - 1, [16, 84])
+        s_pred = 0.5 * (s_pred[1] - s_pred[0])
+        print("cen-emu", s_bias * 100, s_pred * 100)
 
         s_bias = np.median(ari_seed / ari_emu - 1)
         s_pred = np.percentile(ari_seed / ari_emu - 1, [16, 84])
