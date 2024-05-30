@@ -544,7 +544,7 @@ class P3DEmulator:
             # Predict multiple realizations and calculate the covariance matrix
             p3ds_pred = np.zeros(shape=(Nrealizations, len(k_Mpc)))
             p1ds_pred = np.zeros(shape=(Nrealizations, len(k1d_Mpc)))
-            for r in range(Nrealizations):
+            for r in range(len(coeff_dict)):
                 if return_p3d:
                     if "kmu_modes" in info_power:
                         _ = p3d_allkmu(
