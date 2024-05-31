@@ -512,24 +512,29 @@ class P3DEmulator:
             # Initialize Arinyo model with the loaded matter power spectrum
             model_Arinyo = ArinyoModel(camb_pk_interp=pk_interp)
 
-            if "kmu_modes" in info_power:
-                _, out_dict["Plin"] = p3d_allkmu(
-                    model_Arinyo,
-                    info_power["z"],
-                    coeff_dict[0],
-                    info_power["kmu_modes"],
-                    nk=nd1,
-                    nmu=nd2,
-                    compute_plin=True,
-                    minimize=False,
-                )
-            else:
-                out_dict["Plin"] = model_Arinyo.linP_Mpc(info_power["z"], k_Mpc)
+            if return_p3d:
+                if "kmu_modes" in info_power:
+                    _, out_dict["Plin"] = p3d_allkmu(
+                        model_Arinyo,
+                        info_power["z"],
+                        coeff_dict[0],
+                        info_power["kmu_modes"],
+                        nk=nd1,
+                        nmu=nd2,
+                        compute_plin=True,
+                        minimize=False,
+                    )
+                else:
+                    out_dict["Plin"] = model_Arinyo.linP_Mpc(
+                        info_power["z"], k_Mpc
+                    )
 
             # Predict power spectrum using Arinyo model with predicted coefficients
             # Predict multiple realizations and calculate the covariance matrix
-            p3ds_pred = np.zeros(shape=(Nrealizations, len(k_Mpc)))
-            p1ds_pred = np.zeros(shape=(Nrealizations, len(k1d_Mpc)))
+            if return_p3d:
+                p3ds_pred = np.zeros(shape=(Nrealizations, len(k_Mpc)))
+            if return_p1d:
+                p1ds_pred = np.zeros(shape=(Nrealizations, len(k1d_Mpc)))
             for r in range(Nrealizations):
                 if return_p3d:
                     if "kmu_modes" in info_power:
