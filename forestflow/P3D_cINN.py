@@ -496,7 +496,7 @@ class P3DEmulator:
             if self.training_type == "Arinyo_minz":
                 _par["q2"] = _par["q1"]
             coeff_dict.append(_par)
-
+            
         if natural_params:
             arinyo_pred = transform_arinyo_params(
                 arinyo_pred, emu_params["f_p"]
@@ -576,7 +576,7 @@ class P3DEmulator:
                     diag = np.diag(p3d_cov)
                     if nd2 != 0:
                         diag = diag.reshape(nd1, nd2)
-                    out_dict["p3d_std"] = diag
+                    out_dict["p3d_std"] = np.sqrt(diag)
 
                 if nd2 != 0:
                     p3d_arinyo = p3d_arinyo.reshape(nd1, nd2)
@@ -592,7 +592,7 @@ class P3DEmulator:
                 out_dict["k1d_Mpc"] = k1d_Mpc
                 if return_cov:
                     p1d_cov = get_covariance(p1ds_pred, p1d_arinyo)
-                    out_dict["p1d_std"] = np.diag(p1d_cov)
+                    out_dict["p1d_std"] = np.sqrt(np.diag(p1d_cov))
 
         return out_dict
 
