@@ -33,11 +33,10 @@ def p3d_rebin_mu(k3d, mu, p3d, kmu_modes, n_mubins=4, return_modes=False):
             mu_new[jj, ii] = wmean(mu[jj, _], modes[jj, _])
             p3d_new[jj, ii] = wmean(p3d[jj, _], modes[jj, _])
 
-
-if return_modes:
-    return k3d_new, mu_new, p3d_new, mu_bins, modes_new
-else:
-    return k3d_new, mu_new, p3d_new, mu_bins
+    if return_modes:
+        return k3d_new, mu_new, p3d_new, mu_bins, modes_new
+    else:
+        return k3d_new, mu_new, p3d_new, mu_bins
 
 
 def get_p3d_modes(kmax, lbox=67.5, k_Mpc_max=20, n_k_bins=20, n_mu_bins=16):
