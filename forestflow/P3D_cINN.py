@@ -535,7 +535,7 @@ class P3DEmulator:
                 p3ds_pred = np.zeros(shape=(Nrealizations, len(k_Mpc)))
             if return_p1d:
                 p1ds_pred = np.zeros(shape=(Nrealizations, len(k1d_Mpc)))
-            for r in range(Nrealizations):
+            for r in range(len(coeff_dict)):
                 if return_p3d:
                     if "kmu_modes" in info_power:
                         _ = p3d_allkmu(
@@ -567,7 +567,7 @@ class P3DEmulator:
                     diag = np.diag(p3d_cov)
                     if nd2 != 0:
                         diag = diag.reshape(nd1, nd2)
-                    out_dict["p3d_std"] = diag
+                    out_dict["p3d_std"] = np.sqrt(diag)
 
                 if nd2 != 0:
                     p3d_arinyo = p3d_arinyo.reshape(nd1, nd2)
@@ -583,7 +583,7 @@ class P3DEmulator:
                 out_dict["k1d_Mpc"] = k1d_Mpc
                 if return_cov:
                     p1d_cov = get_covariance(p1ds_pred, p1d_arinyo)
-                    out_dict["p1d_std"] = np.diag(p1d_cov)
+                    out_dict["p1d_std"] = np.sqrt(np.diag(p1d_cov))
 
         return out_dict
 
