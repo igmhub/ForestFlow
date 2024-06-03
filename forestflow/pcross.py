@@ -110,8 +110,11 @@ def Px_Mpc_detailed(
     """
 
     import hankl
-    if len(z)>1:
-        raise ValueError("Only one z value can be passed.")
+    if isinstance(z, list) or isinstance(z, np.ndarray):
+        if len(z)>1:
+            raise ValueError("Only one z value can be passed.")
+        else:
+            z = z[0]
     if 0 in kpars:
         raise ValueError("kpar list must not contain zero.")
     nkpar = len(kpars)
