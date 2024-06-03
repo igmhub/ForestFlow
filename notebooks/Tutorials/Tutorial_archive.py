@@ -14,16 +14,22 @@
 # ---
 
 # %% [markdown]
-# # TUTORIAL FOR THE P3D EMULATOR (forestflow)
+# # Tutorial Archive
+#
+# It shows how to read the data and plot P3D
 
 # %%
-import sys
+# %load_ext autoreload
+# %autoreload 2
+
+import numpy as np
 import os
+import sys
 import matplotlib.pyplot as plt
 
-# %%
 import forestflow
 from forestflow.archive import GadgetArchive3D
+from forestflow.rebin_p3d import p3d_allkmu, get_p3d_modes, p3d_rebin_mu
 
 # %%
 path_program = os.path.dirname(forestflow.__path__[0]) + '/'
@@ -45,34 +51,68 @@ print(len(Archive3D.training_data))
 
 
 # %% [markdown]
-# ## GET TRAINING DATA
+# #### Extract training data
+#
+# 30 fixed-and-paired simulations with 5 mean-flux rescalings per snapshot each of 11 snapshots between 2 < z < 4.5 
+
+# %%
+training_data = Archive3D.training_data
 
 # %% [markdown]
-# #### This consists of 30 simulations, with 11 snapshots per simulation within 2 < z < 4.5 and 5 mean-flux rescalings per snapshot
+# #### Extract testing data
+#
+# There are 6 test simulations:
+# - central simulations (mpg_central): simulations centered at the training Latin hypercube simulations
+# - seed simulations (mpg_seed): simulations centered at the training Latin hypercube simulations with different initial conditions
+# - growth simulation (mpg_growth): Simulation with a different growth rate than the training simulations
+# - neutrinos simulation (mpg_neutrinos): Simulations with massive neutrinos
+# - running simulations (mpg_running): Simulation with a different running of the spectral index.
+# - reionization simulations (mpg_reio): Simulation with a different HeII reionization history
 
 # %%
-training_data = Archive3D.get_training_data(Archive3D.emu_params)
+sim = Archive3D.get_testing_data("mpg_central")
 
 # %% [markdown]
-# ## GET TESTING DATA
-
-# %% [markdown]
-# #### There are 6 test simulations:
-# #### - central simulations (mpg_central): simulations centered at the training Latin hypercube simulations
-# #### - seed simulations (mpg_seed): simulations centered at the training Latin hypercube simulations with different initial conditions
-# #### - growth simulation (mpg_growth): Simulation with a different growth rate than the training simulations
-# #### - neutrinos simulation (mpg_neutrinos): Simulations with massive neutrinos
-# #### - running simulations (mpg_running): Simulation with a different running of the spectral index.
-# #### - reionization simulations (mpg_reio): Simulation with a different HeII reionization history
+# ### Plot P3D and P1D
+#
+# We will rebin P3D to reduce noise
 
 # %%
-central = Archive3D.get_testing_data("mpg_central", force_recompute_plin=True)
+n_mubins = 4
+kmax_3d_plot = 4
+kmax_1d_plot = 4
+
+sim = Archive3D.training_data[0]
+print(sim["z"])
+
+k3d_Mpc = sim['k3d_Mpc']
+mu3d = sim['mu3d']
+p3d_Mpc = sim['p3d_Mpc']
+# get modes in each k-mu bin
+kmu_modes = get_p3d_modes(kmax_3d_plot)
+
+mask_3d = k3d_Mpc[:, 0] <= kmax_3d_plot
+
+mask_1d = (sim['k_Mpc'] <= kmax_1d_plot) & (sim['k_Mpc'] > 0)
+k1d_Mpc = sim['k_Mpc'][mask_1d]
+p1d_Mpc = sim['p1d_Mpc'][mask_1d]
 
 # %%
-neutrinos = Archive3D.get_testing_data(
-    "mpg_neutrinos", force_recompute_plin=True
-)
+# apply rebinning
+_ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], p3d_Mpc[mask_3d], kmu_modes, n_mubins=n_mubins)
+knew, munew, rebin_p3d_sim, mu_bins = _
+
+# normalize P1D
+p1d_sim = k1d_Mpc/np.pi * p1d_Mpc
 
 # %%
+for ii in range(n_mubins):
+    _ = np.isfinite(rebin_p3d_sim[:, ii])
+    plt.plot(knew[_, ii], knew[_, ii]**2*rebin_p3d_sim[_, ii])
+plt.xscale('log')
+
+# %%
+plt.plot(k1d_Mpc, p1d_sim)
+plt.xscale('log')
 
 # %%

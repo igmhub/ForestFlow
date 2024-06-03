@@ -411,8 +411,9 @@ def plot_p1d_test_sims(
         ax[c].text(1.15, -0.05, label, fontsize=fontsize)
         ax[c].axvline(x=kmax_1d_fit, ls="--", color="k", alpha=1, lw=2)
 
-        frac_err = np.nanmedian(fractional_errors[c], 0)
-        frac_err_err = sigma68(fractional_errors[c])
+        frac_err = np.median(fractional_errors[c])
+        # frac_err_err = sigma68(fractional_errors[c])
+        frac_err_err = np.std(fractional_errors[c])
 
         ax[c].plot(
             k_p1d_Mpc,

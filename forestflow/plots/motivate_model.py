@@ -32,18 +32,18 @@ def plot_motivate_model(
         x = knew[_, ii]
         y = rebin_p3d[_, ii] / rebin_plin[_, ii]
         kaiser = rebin_kaiser_p3d[_, ii] / rebin_plin[_, ii]
-        ax[0].plot(x, y, col + "o:")
+        ax[0].plot(x, y, col + "o:", lw=3)
 
-        ax[0].plot(x, kaiser, color=col, ls="--", lw=2, alpha=0.8)
+        ax[0].plot(x, kaiser, color=col, ls="--", lw=1.5, alpha=0.5)
 
         y = rebin_model_p3d[_, ii] / rebin_plin[_, ii]
-        ax[0].plot(x, y, col + "-", lw=2, alpha=0.8)
+        ax[0].plot(x, y, col + "-", lw=3, alpha=0.8)
 
         y = rebin_p3d[_, ii] / rebin_model_p3d[_, ii] - 1
-        ax[1].plot(x, y, col + "-", lw=2, alpha=0.8)
+        ax[1].plot(x, y, col + ":o", lw=3)
 
         y = rebin_kaiser_p3d[_, ii] / rebin_model_p3d[_, ii] - 1
-        ax[1].plot(x, y, col + "--", lw=1, alpha=0.8)
+        ax[1].plot(x, y, col + "--", lw=1.5, alpha=0.5)
 
     for ii in range(2):
         ax[ii].axvline(kmax_fit, color="k", ls="--", lw=1.5, alpha=0.8)
@@ -54,7 +54,7 @@ def plot_motivate_model(
         ax[ii].axhline(-0.1, color="k", ls="--", lw=1.5, alpha=0.8)
         ax[ii].set_ylim(-0.21, 0.21)
 
-    ax[0].set_ylim(bottom=-0.01)
+    # ax[0].set_ylim(bottom=-0.01)
     ax[0].set_xscale("log")
     ax[-1].set_xlabel(r"$k\, [\mathrm{Mpc}^{-1}]$", fontsize=ftsize)
     ax[0].set_ylabel(r"$P_\mathrm{3D}(k, \mu)/P_{\rm L}(k)$", fontsize=ftsize)
@@ -70,19 +70,26 @@ def plot_motivate_model(
     )
 
     line1 = Line2D(
-        [0], [0], label="Central", color="k", ls=":", marker="o", linewidth=2
+        [0], [0], label="Simulation", color="k", ls=":", marker="o", linewidth=2
     )
-    line2 = Line2D([0], [0], label="Fit", color="k", ls="-", linewidth=2)
+    line2 = Line2D(
+        [0],
+        [0],
+        label=r"Fit w/ $D_\mathrm{NL}$",
+        color="k",
+        ls="-",
+        linewidth=2,
+    )
     line3 = Line2D(
         [0],
         [0],
-        label=r"Kaiser",
+        label=r"Fit w/o $D_\mathrm{NL}$",
         color="k",
         ls="--",
         linewidth=2,
     )
-    hand = [line1, line2, line3]
-    ax[0].legend(fontsize=ftsize - 2, loc="lower left", handles=hand, ncols=3)
+    hand = [line2, line3, line1]
+    ax[0].legend(fontsize=ftsize - 2, loc="center left", handles=hand, ncols=1)
     ax[0].add_artist(legend1)
 
     for ii in range(2):

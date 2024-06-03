@@ -352,6 +352,9 @@ class P3DEmulator:
         if Nrealizations is None:
             Nrealizations = self.Nrealizations
 
+        # output
+        out_dict = {}
+
         # check p3d info
         if info_power is not None:
             # check cosmology
@@ -382,7 +385,9 @@ class P3DEmulator:
                 return_cov = False
 
             # Redshift
-            if "z" not in info_power:
+            if "z" in info_power:
+                z = info_power["z"]
+            else:
                 msg = "z must be in info_power"
                 raise ValueError(msg)
 
@@ -454,28 +459,11 @@ class P3DEmulator:
                 sim_cosmo = camb_cosmo.get_cosmology(**cosmo)
                 linP_zs = fit_linP.get_linP_Mpc_zs(sim_cosmo, [z], kp_Mpc)[0]
                 out_dict["linP_zs"] = linP_zs
-                if (emu_params["Delta2_p"] != linP_zs["Delta2_p"]) or (
-                    emu_params["n_p"] != linP_zs["n_p"]
-                ):
-                    warn(
-                        "Adjusting Delta2_p and n_p so these are consistent with the target cosmology"
-                    )
-                    if verbose:
-                        print(
-                            "Delta2_p: ",
-                            emu_params["Delta2_p"],
-                            "->",
-                            linP_zs["Delta2_p"],
-                        )
-                        print("n_p: ", emu_params["n_p"], "->", linP_zs["n_p"])
-
-                    emu_params["Delta2_p"] = linP_zs["Delta2_p"]
-                    emu_params["n_p"] = linP_zs["n_p"]
+                emu_params["Delta2_p"] = linP_zs["Delta2_p"]
+                emu_params["n_p"] = linP_zs["n_p"]
+                emu_params["alpha_p"] = linP_zs["alpha_p"]
                 if natural_params:
                     emu_params["f_p"] = linP_zs["f_p"]
-
-        # output
-        out_dict = {}
 
         # Predict Arinyo coefficients for the given test conditions
         coeffs_all, coeffs_mean = self.predict_Arinyos(
@@ -524,24 +512,29 @@ class P3DEmulator:
             # Initialize Arinyo model with the loaded matter power spectrum
             model_Arinyo = ArinyoModel(camb_pk_interp=pk_interp)
 
-            if "kmu_modes" in info_power:
-                _, out_dict["Plin"] = p3d_allkmu(
-                    model_Arinyo,
-                    info_power["z"],
-                    coeff_dict[0],
-                    info_power["kmu_modes"],
-                    nk=nd1,
-                    nmu=nd2,
-                    compute_plin=True,
-                    minimize=False,
-                )
-            else:
-                out_dict["Plin"] = model_Arinyo.linP_Mpc(info_power["z"], k_Mpc)
+            if return_p3d:
+                if "kmu_modes" in info_power:
+                    _, out_dict["Plin"] = p3d_allkmu(
+                        model_Arinyo,
+                        info_power["z"],
+                        coeff_dict[0],
+                        info_power["kmu_modes"],
+                        nk=nd1,
+                        nmu=nd2,
+                        compute_plin=True,
+                        minimize=False,
+                    )
+                else:
+                    out_dict["Plin"] = model_Arinyo.linP_Mpc(
+                        info_power["z"], k_Mpc
+                    )
 
             # Predict power spectrum using Arinyo model with predicted coefficients
             # Predict multiple realizations and calculate the covariance matrix
-            p3ds_pred = np.zeros(shape=(Nrealizations, len(k_Mpc)))
-            p1ds_pred = np.zeros(shape=(Nrealizations, len(k1d_Mpc)))
+            if return_p3d:
+                p3ds_pred = np.zeros(shape=(Nrealizations, len(k_Mpc)))
+            if return_p1d:
+                p1ds_pred = np.zeros(shape=(Nrealizations, len(k1d_Mpc)))
             for r in range(Nrealizations):
                 if return_p3d:
                     if "kmu_modes" in info_power:

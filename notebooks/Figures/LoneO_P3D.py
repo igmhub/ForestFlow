@@ -119,7 +119,6 @@ Nsim = 30
 zs = np.flip(np.arange(2, 4.6, 0.25))
 Nz = zs.shape[0]
 
-
 n_mubins = 4
 kmax_3d_plot = 4
 kmax_1d_plot = 4
@@ -244,60 +243,41 @@ for ii in range(2):
 # %%
 folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
 z_use = np.arange(2, 4.5, 0.5)[::-1]
-z_use
+
+mask_z = np.zeros(len(z_use), dtype=int)
+for ii in range(len(z_use)):
+    mask_z[ii] = np.argwhere(z_use[ii] == zs)[0,0]
+mask_z
+
+# %%
+residual.shape
 
 # %% [markdown]
 # #### P3D
 
 # %%
-fractional_errors_sims.shape
+residual = (arr_p3d_emu / arr_p3d_sim -1)
 
 # %%
-# fractional_errors_arinyo = (p3ds_pred / p3ds_arinyo -1)
-fractional_errors_sims = (arr_p3d_emu / arr_p3d_sim -1)
-# fractional_errors_bench = (p3ds_arinyo / p3ds_sims -1)
+# savename = folder+"l1O/l1O_P3D.png"
+# plot_p3d_L1O(z_use, knew, munew, residual[:, mask_z, :, :], mu_bins, kmax_3d_fit=kmax_fit, savename=savename)
+savename = folder+"l1O/l1O_P3D.pdf"
+plot_p3d_L1O(z_use, knew, munew, residual[:, mask_z, :, :], mu_bins, kmax_3d_fit=kmax_fit, savename=savename)
+
 
 # %%
-# plot_p3d_L1O(Archive3D, z_use, fractional_errors_sims)
-# plot_p3d_L1O(Archive3D, z_use, fractional_errors_sims, kmax_3d_plot=kmax_3d_plot, savename=folder+"l1O/l1O_P3D_q1.png");
-plot_p3d_L1O(Archive3D, z_use, zs, fractional_errors_sims, kmax_3d_plot=kmax_3d_plot, savename=folder+"l1O/l1O_P3D.png");
-# plot_p3d_L1O(Archive3D, z_use, zs, fractional_errors_sims, kmax_3d_plot=kmax_3d_plot, savename=folder+"l1O/l1O_P3D.pdf");
-
-# %%
-# # plot_p3d_L1O(Archive3D, z_use, fractional_errors_arinyo)
-# plot_p3d_L1O(Archive3D, z_use, fractional_errors_arinyo, savename=folder+"l1O/l1O_P3D_smooth.png");
-# plot_p3d_L1O(Archive3D, z_use, fractional_errors_arinyo, savename=folder+"l1O/l1O_P3D_smooth.pdf");
-
-# %%
-# # plot_p3d_L1O(Archive3D, z_use, fractional_errors_bench)
-# plot_p3d_L1O(Archive3D, z_use, fractional_errors_bench, savename=folder+"fit/fit_P3D.png")
-# plot_p3d_L1O(Archive3D, z_use, fractional_errors_bench, savename=folder+"fit/fit_P3D.pdf")
 
 # %% [markdown]
 # #### P1D
 
 # %%
-fractional_errors_arinyo_p1d = (p1ds_pred / p1ds_arinyo - 1)
-fractional_errors_sims_p1d = (p1ds_pred / p1ds_sims - 1)
-fractional_errors_bench_p1d = (p1ds_arinyo / p1ds_sims - 1)
+residual = (arr_p1d_emu / arr_p1d_sim -1)
+residual.shape
 
 # %%
-# plot_p1d_L1O(Archive3D, z_use, fractional_errors_sims_p1d)
+# savename=folder+"l1O/l1O_P1D.png"
+# plot_p1d_L1O(z_use, k1d_Mpc, residual[:, mask_z, :], kmax_1d_fit=kmax_fit, savename=savename)
+savename=folder+"l1O/l1O_P1D.pdf"
+plot_p1d_L1O(z_use, k1d_Mpc, residual[:, mask_z, :], kmax_1d_fit=kmax_fit, savename=savename)
 
-# %%
-# plot_p1d_L1O(Archive3D, z_use, fractional_errors_sims_p1d)
-# plot_p1d_L1O(Archive3D, z_use, fractional_errors_sims_p1d, savename=folder+"l1O/l1O_P1D.png")
-# plot_p1d_L1O(Archive3D, z_use, fractional_errors_sims_p1d, savename=folder+"l1O/l1O_P1D_q1.png")
-plot_p1d_L1O(Archive3D, z_use, zs, fractional_errors_sims_p1d, savename=folder+"l1O/l1O_P1D.png")
-plot_p1d_L1O(Archive3D, z_use, zs, fractional_errors_sims_p1d, savename=folder+"l1O/l1O_P1D.pdf")
-
-# %%
-# # plot_p1d_L1O(Archive3D, z_use, fractional_errors_arinyo_p1d)
-# plot_p1d_L1O(Archive3D, z_use, fractional_errors_arinyo_p1d, savename=folder+"l1O/l1O_P1D_smooth.pdf")
-# plot_p1d_L1O(Archive3D, z_use, fractional_errors_arinyo_p1d, savename=folder+"l1O/l1O_P1D_smooth.png")
-
-# %%
-# # plot_p1d_L1O(Archive3D, z_use, fractional_errors_bench_p1d)
-# plot_p1d_L1O(Archive3D, z_use, fractional_errors_bench_p1d, savename=folder+"fit/fit_P1D.png")
-# plot_p1d_L1O(Archive3D, z_use, fractional_errors_bench_p1d, savename=folder+"fit/fit_P1D.pdf")
 # %%

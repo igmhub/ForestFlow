@@ -145,7 +145,7 @@ for iz, z in enumerate(z_central):
     out = p3d_emu.evaluate(
         emu_params=test_sim_z[0],
         natural_params=True,
-        Nrealizations=100,
+        Nrealizations=10000,
     )
     Arinyo_emu.append(out["coeffs_Arinyo"])
     Arinyo_emu_std.append(out["coeffs_Arinyo_std"])
@@ -159,14 +159,6 @@ from forestflow.plots.params_z import plot_arinyo_z
 
 # %%
 folder_fig = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
-
-# %%
-bias
-cen-emu -0.0028719256747865673 0.5071391708792158
-cen-seed -0.46064259186610673 0.7446030330496832
-bias_eta
-cen-emu 0.3298325921080317 1.3438673375712111
-cen-seed 0.7267055563844246 1.2642489688679464
 
 # %%
 # for ii in range(len(Arinyo_emu)):
