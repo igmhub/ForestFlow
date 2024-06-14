@@ -71,6 +71,48 @@ Archive3D = GadgetArchive3D(
 )
 print(len(Archive3D.training_data))
 
+# %%
+list_central = Archive3D.get_testing_data("mpg_central")
+list_seed = Archive3D.get_testing_data("mpg_seed")
+
+list_merge = []
+zlist = []
+par_merge = ["mF", "T0", "gamma", "sigT_Mpc", "kF_Mpc"]
+for ii in range(len(list_central)):
+    cen = list_central[ii]
+    seed = list_seed[ii]
+    zlist.append(cen["z"])
+    # print(cen["z"], seed["z"])
+
+    tar = cen.copy()
+    for par in par_merge:
+        tar[par] = 0.5 * (cen[par] + seed[par])
+        
+    tar["p1d_Mpc"] = (cen["mF"]**2 * cen["p1d_Mpc"] + seed["mF"]**2 * seed["p1d_Mpc"]) / tar["mF"]**2 / 2
+    tar["p3d_Mpc"] = (cen["mF"]**2 * cen["p3d_Mpc"] + seed["mF"]**2 * seed["p3d_Mpc"]) / tar["mF"]**2 / 2
+
+    # print(cen["mF"], seed["mF"], tar["mF"])
+    list_merge.append(tar)
+
+# %%
+from forestflow.utils import params_numpy2dict_minimizerz
+
+def paramz_to_paramind(z, paramz):
+    paramind = []
+    for ii in range(len(z)):
+        param = {}
+        for key in paramz:
+            param[key] = 10 ** np.poly1d(paramz[key])(z[ii])
+        paramind.append(param)
+    return paramind
+
+file = path_program + "/data/best_arinyo/minimizer_z/fit_sim_label_combo_val_scaling_1_kmax3d_3_kmax1d_3.npz"
+data = np.load(file, allow_pickle=True)
+best_params = paramz_to_paramind(zlist, data["best_params"].item())
+
+for ii in range(len(list_merge)):
+    list_merge[ii]["Arinyo_minz"] = params_numpy2dict_minimizerz(best_params[ii])
+
 
 # %% [markdown]
 # ### Priors and seeds
@@ -233,14 +275,19 @@ use_q2 = True
 fit_type = "both"
 sim_label = "mpg_central"
 sim_label = "mpg_seed"
+sim_label = "combo"
 
-list_sim_use = Archive3D.get_testing_data(sim_label)
-# list_sim_use = Archive3D.get_testing_data("mpg_seed")
+if(sim_label == "combo"):
+    list_sim_use = list_merge
+    sim_param_input = "mpg_central"
+else:
+    list_sim_use = Archive3D.get_testing_data(sim_label)
+    sim_param_input = sim_label
 
 data_dict, model = get_input_dataz(list_sim_use,  kmax_3d)
 
 # get initial parameters for fit
-parameters, param_ind, order, priors = get_default_paramsz(sim_label, data_dict["z"])
+parameters, param_ind, order, priors = get_default_paramsz(sim_param_input, data_dict["z"])
 
 # parameters = best_fit_params.copy()
 # parameters["bias"] = np.array([-0.02183114,  0.48450093, -1.90681541])
@@ -281,7 +328,7 @@ chia = fit.get_chi2(params_minimizer)
 print("Initial chi2", chia)
 
 # %%
-params_minimizer = np.concatenate(np.array(list(best_fit_params.values())))
+# params_minimizer = np.concatenate(np.array(list(best_fit_params.values())))
 
 # %%
 results, best_fit_params = fit.maximize_likelihood(params_minimizer)
@@ -290,17 +337,36 @@ chi2 = fit.get_chi2(params_minimizer)
 print("Final chi2", chi2)
 print("and best_params", best_fit_params)
 
-# %%
-best_fit_params_long = best_fit_params.copy()
 
 # %%
-best_fit_params
+def get_flag_out(ind_sim, val_scaling, kmax_3d, kmax_1d):
+    flag = (
+        "fit_sim_label_"
+        + str(ind_sim)
+        + "_val_scaling_"
+        + str(np.round(val_scaling, 2))
+        + "_kmax3d_"
+        + str(kmax_3d)
+        + "_kmax1d_"
+        + str(kmax_1d)
+    )
+    return flag
+
+folder_save = forestflow.__path__[0][:-10] + "/data/best_arinyo/minimizer_z/"
+val_scaling = 1
+
+out_file = folder_save + get_flag_out(
+    "combo", val_scaling, kmax_3d, kmax_1d
+)
+
+print(out_file)
 
 # %%
-best_fit_params_long
+np.savez(out_file, chi2=chi2, best_params=best_fit_params)
+print("Saved to", out_file)
 
-# %%
-1.37
+# %% [markdown]
+# #### check redshift dependence
 
 # %%
 # in_parameters = {}
@@ -333,20 +399,6 @@ plt.yscale("log")
 plt.legend(ncol=2)
 
 # %%
-priors = {
-        "bias": [1e-3, 3],
-        "beta": [5e-3, 7],
-        "q1": [1e-2, 8],
-        "kvav": [1e-3, 5],
-        "av": [1e-3, 2],
-        "bv": [1e-1, 5],
-        "kp": [3, 30],
-        # "q2": [0, 5],
-    }
-
-# %%
-
-# %%
 best_fit_params2 = best_fit_params.copy()
 
 # %%
@@ -356,49 +408,6 @@ for ii in range(fit.nz):
     for jj, key in enumerate(best_fit_params2):
         param[key] = 10 ** np.poly1d(best_fit_params2[key])(fit.data["z"][ii])
     paramz.append(param)
-
-# %%
-# priors = {
-#         "bias": [1e-2, 3],
-#         "beta": [1e-2, 3],
-#         "q1": [0, 5],
-#         "kvav": [1e-2, 5],
-#         "av": [1e-2, 5],
-#         "bv": [1e-1, 7],
-#         "kp": [5, 30],
-#         "q2": [0, 5],
-#     }
-
-# %%
-paramz[0]
-
-# %%
-paramz2[0]
-
-# %%
-paramz[0]["beta"] = 0.5
-
-# %%
-# paramz[6]["bias"] = 0.214
-# paramz[6]["beta"] = 1.42
-# paramz[6]["kvav"] = 0.45
-
-# paramz[6]["av"] = 0.43
-# paramz[6]["bv"] = 1.7
-# paramz[-1]["q1"] = 0.5
-# paramz[0]["q2"] = 0.2
-# paramz[6]["kp"] = 15
-
-# %%
-# paramz[-1]["bias"] = 0.1
-# paramz[-1]["beta"] = 1.45
-# paramz[-1]["kvav"] = 0.32
-
-# # paramz[-1]["av"] = 0.43
-# paramz[-1]["bv"] = 1.7
-# # paramz[-1]["q1"] = 0.5
-# # paramz[-1]["q2"] = 0
-# paramz[-1]["kp"] = 22
 
 # %% [markdown]
 # ### Check precision

@@ -18,6 +18,47 @@
 #
 # Need to be updated
 
+# %% [markdown]
+# For paper 
+#     
+# %%%%%%%%%%%%%%%%%%%
+# \begin{figure*}
+# \includegraphics[width=\columnwidth]{figures/sensitivity_P3D.pdf}
+# \includegraphics[width=\columnwidth]{figures/sensitivity_P1D.pdf}
+# \centering
+# \caption{Dependence of \pthreed (left panel) and \poned (right panel) on \forestflow parameters. Each panel displays the results for variations in the parameter quoted at its top. The blue and orange colors show the relative difference between \forestflow predictions for the \simcentral simulation at $z=3$ and \forestflow predictions for the minimum and maximum value of the target parameter for the \lacehc simulations at $z=3$, respectively. In the left panel, solid and dashed lines depict the results for $\mu=0$ and 1, respectively. As we can see, the dependence of \pthreed and \poned upon $n_\mathrm{p}$ and \mflux is the strongest among the cosmological and IGM parameters, respectively.
+# }
+# \label{fig:sensitivity}
+# \end{figure*}
+# %%%%%%%%%%%%%%%%%%%
+#
+# \section{Sensitivity of \forestflow to input parameters (WIP)}
+# \label{sec:results_sensitivity}
+#
+# \jch{Start with dependence of Arinyo on input parameters, then statistics.}
+#
+# In Fig.~\ref{fig:sensitivity}, we display the dependence \pthreed and \poned on each of the \forestflow parameters at a time. The blue and orange colors show the relative difference between \forestflow predictions for the \simcentral simulation at $z=3$ and \forestflow predictions for the minimum and maximum value of the target parameter for the \lacehc simulations at $z=3$, respectively. Specifically, the minimum, central, and maximum values of the parameters are $\Delta_\mathrm{p}^2=0.32$, 0.35, and 0.37; $n_\mathrm{p}=-2.40$, -2.30, and -2.20; $\mflux=0.64$, 0.66, and 0.68; $\sigma_\mathrm{T}=0.11$, 0.13, and 0.15; $\gamma=1.31$, 1.51, and 1.71; and $k_\mathrm{F}=8.63$, 10.63, and 12.63. As we can see, the dependence of \pthreed and \poned upon $n_\mathrm{p}$ and \mflux is the strongest. In what follows, we compare the previous results with measurements from a set of hydrodynamical simulations run by varying one of the input parameters at a time while holding fixed all others \citep{mcdonald2003MeasurementCosmologicalGeometry, mcdonald2005LinearTheoryPower}:
+#
+# \begin{itemize}
+#     \item $\Delta_\mathrm{p}^2$. The perpendicular modes of \pthreed increase with this property on all scales, while parallel modes and \poned do so only on scales larger than $\simeq1.3\iMpc$ and decrease on smaller scales. The first behavior is explained by the linear relation between $\Delta_\mathrm{p}^2$ and $A_\mathrm{s}$, the large-scale amplitude of the power spectrum. The second trend is driven by the increasing strength of nonlinear peculiar velocities when the power increases; this is because larger velocities induce stronger suppression of small-scale power along the line of sight. \afr{I don't understand why you talk about $A_s$ here.} \jch{I am following the same line of thought as in McDonald's papers, but I am happy to change it if you have a better explanation in mind.}
+#     These results are fully compatible with measurements from simulations ran varying $\Delta_\mathrm{p}^2$ while holding fixed all other parameters \citep{mcdonald2003MeasurementCosmologicalGeometry, mcdonald2005LinearTheoryPower}.
+#
+#     \item $n_\mathrm{p}$. We naively expect that an increase in the slope decreases the power on large scales while increasing it on small scales. However, as discussed above, an increase in the power also increases the amplitude of nonlinear velocities, thereby leading to a stronger suppression of the power on small scales. Taken together, these physical effects explain the trends displayed by all statistics, which also agree with those found in simulations.
+#
+#     \item \mflux. The amplitude of \pthreed and \poned decreases with increasing flux across all scales; this is because \jch{Andreu: could you explain this?}. 
+#     \afr{Yes, I think we can write a simple toy model to understand this. We can talk about this in person.}
+#     These results are also in line with those found in simulations.
+#
+#     \item $\sigma_\mathrm{T}$. This parameter controls the strength of thermal broadening (see \S\ref{sec:strategy_params}), which explains why its increase primarily suppresses the line-of-sight power on small scales. It also induces small changes in the amplitude on large scales, also found in simulations. \jch{Andreu: any explanation for this behavior?}
+#
+#     \item $\gamma$. An increase in this parameter decreases the optical depth and increases the thermal broadening, which explains the decreased power on large scales and the stronger line-of-sight suppression. 
+#     \afr{I thought you were varying this parameter while keeping the others fixed? If so, there should be no change in optical depth or in thermal broadening...} \jch{Explain in detail the dependence with the size of the systems.}
+#     Both trends are in agreement with simulations.
+#
+#     \item $k_\mathrm{F}$. This parameter controls the pressure smoothing scale, and thus it primarily controls the small-scale behavior of the power spectra. As expected, an increase leads to an increment of the small-scale power for perpendicular scales and \poned. On the other hand, the power decreases for parallel scales, which is explained because \jch{Andreu: could you explain this trend?} 
+#     \afr{I'm not sure the large-scale behaviour in P3D is easy to explain intuitively. You are messing with the mapping between matter fluctuation and flux when changing very high-k, you are changing the biases. Why in this direction? I don't know. It is also possible that the emulator is not capturing very well the dependency with $k_F$, but the plot is a bit busy and difficult to read.}. \jch{Plot fixed, check again same scaling as in sims} No pairs of simulations have been run while holding fixed this parameter, but a change in redshift together with the rescaling of other parameters led to similar results \citep{mcdonald2003MeasurementCosmologicalGeometry}.
+# \end{itemize}
+
 # %%
 # %load_ext autoreload
 # %autoreload 2

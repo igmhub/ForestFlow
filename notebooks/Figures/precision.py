@@ -14,7 +14,7 @@
 # ---
 
 # %% [markdown]
-# # Redshift evolution of Arinyo parameters
+# # Study precision of model for P3D and P1D
 
 # %%
 # %load_ext autoreload
@@ -73,7 +73,7 @@ training_type = "Arinyo_minz"
 # model_path=path_program + "/data/emulator_models/mpg_minz.pt"
 model_path=path_program + "/data/emulator_models/mpg_jointz.pt"
 
-p3d_emu = P3DEmulator(
+emulator = P3DEmulator(
     Archive3D.training_data,
     Archive3D.emu_params,
     nepochs=300,
@@ -146,13 +146,9 @@ for ii in range(len(list_merge)):
     list_merge[ii]["Arinyo_minz"] = params_numpy2dict_minimizerz(best_params[ii])
 
 # %% [markdown]
-# ### Plot ratios sims
-
-# %%
-zs = 3
-central_z = [d for d in central if d["z"] == zs][0]
-seed_z = [d for d in seed if d["z"] == zs][0]
-booth_z = [d for d in list_merge if d["z"] == zs][0]
+# ### Error from cosmic variance
+#
+# Difference across z between best-fitting models to central and seed relative to their average
 
 # %%
 from forestflow.rebin_p3d import p3d_allkmu, get_p3d_modes, p3d_rebin_mu
@@ -163,112 +159,166 @@ n_mubins = 4
 kmax = 4
 kmax_fit = 3
 
-k3d_Mpc = central_z['k3d_Mpc']
-mu3d = central_z['mu3d']
-
+k3d_Mpc = central[0]['k3d_Mpc']
+mu3d = central[0]['mu3d']
 kmu_modes = get_p3d_modes(kmax)
-
 mask_3d = k3d_Mpc[:, 0] <= kmax
+mask_1d = central[0]['k_Mpc'] < kmax
+k1d_Mpc = central[0]['k_Mpc'][mask_1d]
 
-mask_1d = central_z['k_Mpc'] < kmax
-
-k1d_Mpc = central_z['k_Mpc'][mask_1d]
-p1d_central = central_z['p1d_Mpc'][mask_1d]
-p1d_seed = seed_z['p1d_Mpc'][mask_1d]
-p1d_both = booth_z['p1d_Mpc'][mask_1d]
-
-# rebin
-
-_ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], central_z['p3d_Mpc'][mask_3d], kmu_modes, n_mubins=n_mubins)
-knew, munew, p3d_central, mu_bins = _
-
-_ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], seed_z['p3d_Mpc'][mask_3d], kmu_modes, n_mubins=n_mubins)
-knew, munew, p3d_seed, mu_bins = _
-
-_ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], booth_z['p3d_Mpc'][mask_3d], kmu_modes, n_mubins=n_mubins, return_modes=True)
-knew, munew, p3d_both, mu_bins, n_modes = _
+info_power = {
+    "sim_label": "mpg_central",
+    "k3d_Mpc": k3d_Mpc[mask_3d, :],
+    "mu": mu3d[mask_3d, :],
+    "kmu_modes": kmu_modes,
+    "k1d_Mpc": k1d_Mpc,
+    "return_p3d": True,
+    "return_p1d": True,
+    "return_cov": True,
+}
 
 # %%
-folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
-# for ii in range(len(list_central)):
+eva_emu = False
 
-ftsize = 20
-fig, arx = plt.subplots(2, 1, figsize=(8, 6))
-lw = 2
-ndiff = 2
-corr_factor = np.sqrt(ndiff)
-ax = arx[0]
+list_sims = [central, seed, list_merge]
+nsims = len(list_sims)
 
-for ii in range(4):
-    col = "C"+str(ii)
+p3d_measured = np.zeros((nsims, len(central), np.sum(mask_3d), n_mubins))
+p3d_model = np.zeros((nsims, len(central), np.sum(mask_3d), n_mubins))
+if eva_emu:
+    p3d_emu = np.zeros((len(central), np.sum(mask_3d), n_mubins))
 
-    _ = np.isfinite(knew[:, ii])
-    ax.plot(knew[_, ii], p3d_central[_, ii]/p3d_both[_, ii]-1, col+"-", lw=lw, alpha=0.7)
-    ax.plot(knew[_, ii], p3d_seed[_, ii]/p3d_both[_, ii]-1, col+"--", lw=lw, alpha=0.7)
-    ax.plot(knew[_, ii], np.sqrt(2/n_modes[_,ii])/corr_factor, col+":")
-    ax.plot(knew[_, ii], -np.sqrt(2/n_modes[_,ii])/corr_factor, col+":")
-    # plt.plot(x[mask], cen["p1d_Mpc"][mask]/tar["p1d_Mpc"][mask])
-    # plt.plot(x[mask], seed["p1d_Mpc"][mask]/tar["p1d_Mpc"][mask])
-ax.set_ylim(-0.1, 0.3)
+p1d_measured = np.zeros((nsims, len(central), np.sum(mask_1d)))
+p1d_model = np.zeros((nsims, len(central), np.sum(mask_1d)))
+if eva_emu:
+    p1d_emu = np.zeros((len(central), np.sum(mask_1d)))
+
+for isnap in range(len(central)):
+    z = central[isnap]["z"]
+    if eva_emu:
+        info_power["z"] = z    
+        out = emulator.evaluate(
+            emu_params=central[isnap],
+            info_power=info_power,
+            Nrealizations=100
+        )    
+        _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["p3d"], kmu_modes, n_mubins=n_mubins)
+        knew, munew, p3d_emu[isnap], mu_bins = _
+        p1d_emu[isnap] = out["p1d"]
+    
+    for ii in range(nsims):
+        sim = list_sims[ii]
+    
+        _ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], sim[isnap]['p3d_Mpc'][mask_3d], kmu_modes, n_mubins=n_mubins)
+        knew, munew, p3d_measured[ii, isnap, ...], mu_bins = _
+        p1d_measured[ii, isnap, :] = sim[isnap]['p1d_Mpc'][mask_1d]
+    
+        pp = sim[isnap]["Arinyo_minz"]
+        p3d_model[ii, isnap, ...] = sim[isnap]["model"].P3D_Mpc(z, knew, munew, pp)
+        p1d_model[ii, isnap, :] = sim[isnap]["model"].P1D_Mpc(z, k1d_Mpc, parameters=pp)
+
+# %%
+sim[isnap].keys()
+
+# %%
+per_use = [50, 16, 84]
+per3_data = np.nanpercentile(p3d_measured[:2]/p3d_measured[2] - 1, per_use, axis=(0,1,3))
+per3_model = np.nanpercentile(p3d_model[:2]/p3d_model[2] - 1, per_use, axis=(0,1,3))
+per3_data_emu = np.nanpercentile(p3d_emu/p3d_measured[0] - 1, per_use, axis=(0,2))
+per3_data_model = np.nanpercentile(p3d_model[0]/p3d_measured[0] - 1, per_use, axis=(0, 2))
+
+per1_data = np.nanpercentile(p1d_measured[:2]/p1d_measured[2] - 1, per_use, axis=(0,1))
+per1_model = np.nanpercentile(p1d_model[:2]/p1d_model[2] - 1, per_use, axis=(0,1))
+per1_data_emu = np.nanpercentile(p1d_emu/p1d_measured[0] - 1, per_use, axis=(0))
+per1_data_model = np.nanpercentile(p1d_model[0]/p1d_measured[0] - 1, per_use, axis=(0))
+
+# %%
+
+# %%
+knew_av = np.nanmedian(knew, axis=1)
+
+# %%
+plt.errorbar(knew_av, per_data[0], np.abs(per_data[1:]-per_data[0]), alpha=0.5)
+plt.errorbar(knew_av, per_model[0], np.abs(per_model[1:]-per_model[0]), alpha=0.5)
+plt.errorbar(knew_av, per_data_emu[0], np.abs(per_data_emu[1:]-per_data_emu[0]), alpha=0.5)
+
+plt.xscale("log")
+
+# %%
+lw = 3
+
+fig, ax = plt.subplots(1)
+
+ax.plot(knew_av, 0.5*(per3_data[2]-per3_data[1])*100, alpha=0.5, lw=lw, 
+        label="Data: cosmic variance")
+ax.plot(knew_av, 0.5*(per3_model[2]-per3_model[1])*100, alpha=0.5, lw=lw, 
+        label="Fit: cosmic variance")
+ax.plot(knew_av, 0.5*(per3_data_model[2]-per3_data_model[1])*100, alpha=0.5, lw=lw, 
+        label="Fit vs data")
+ax.plot(knew_av, 0.5*(per3_data_emu[2]-per3_data_emu[1])*100, alpha=0.5, lw=lw, 
+        label="ForestFlow vs data")
+
+ax.set_ylabel("Error P3D [%]")
+ax.set_xlabel("k")
+ax.legend()
+
 ax.set_xscale("log")
-ax.set_ylabel("Residual", fontsize=ftsize)
-ax.set_xlabel(r"$k$ [Mpc$^{-1}$]", fontsize=ftsize)
+plt.savefig("pre_p3d.png")
 
-ax.tick_params(axis="both", which="major", labelsize=ftsize)
-ax.axhline(y=0, color="k", ls=":", lw=2)
+# %%
+lw = 3
 
-hand = []
-for i in range(4):
-    if i != 3:
-        lab = str(mu_bins[i]) + r"$\leq\mu<$" + str(mu_bins[i + 1])
-    else:
-        lab = str(mu_bins[i]) + r"$\leq\mu\leq$" + str(mu_bins[i + 1])
-    col = "C" + str(i)
-    hand.append(mpatches.Patch(color=col, label=lab))
-legend1 = ax.legend(
-    fontsize=ftsize - 2, loc="upper right", handles=hand, ncols=1
-)
+fig, ax = plt.subplots(1)
 
-line1 = Line2D(
-    [0], [0], label="Gaussian error", color="k", ls=":", linewidth=2
-)
-line2 = Line2D([0], [0], label="Central", color="k", ls="-", linewidth=2)
-line3 = Line2D([0], [0], label="Seed", color="k", ls="--", linewidth=2)
-hand = [line1, line2, line3]
-ax.legend(fontsize=ftsize - 2, loc="upper right", handles=hand, ncols=1)
-# ax.add_artist(legend1)
+ax.plot(k1d_Mpc, 0.5*(per1_data[2]-per1_data[1])*100, alpha=0.5, lw=lw, 
+        label="Data: cosmic variance")
+ax.plot(k1d_Mpc, 0.5*(per1_model[2]-per1_model[1])*100, alpha=0.5, lw=lw, 
+        label="Fit: cosmic variance")
+ax.plot(k1d_Mpc, 0.5*(per1_data_model[2]-per1_data_model[1])*100, alpha=0.5, lw=lw, 
+        label="Fit vs data")
+ax.plot(k1d_Mpc, 0.5*(per1_data_emu[2]-per1_data_emu[1])*100, alpha=0.5, lw=lw, 
+        label="ForestFlow vs data")
 
-
-ax = arx[1]
-
-
-ax.plot(k1d_Mpc, p1d_central/p1d_both-1, "C0-", lw=lw, alpha=0.7)
-ax.plot(k1d_Mpc, p1d_seed/p1d_both-1, "C1--", lw=lw, alpha=0.7)
-# ax.plot(k1d_Mpc, k1d_Mpc[:]*0+np.sqrt(2/500**2), "C1--", lw=lw, alpha=0.7)
+ax.set_ylabel("Error P1D [%]")
+ax.set_xlabel("kpar")
+ax.legend()
 
 ax.set_xscale("log")
-ax.set_ylabel("Residual", fontsize=ftsize)
-ax.set_xlabel(r"$k_\parallel$ [Mpc$^{-1}$]", fontsize=ftsize)
+plt.savefig("pre_p1d.png")
 
-ax.tick_params(axis="both", which="major", labelsize=ftsize)
-ax.axhline(y=0, color="k", ls=":", lw=2)
+# %%
+# per3_data = np.nanpercentile(p3d_measured[:2]/p3d_measured[2] - 1, per_use, axis=(0,1,3))
+# per3_model = np.nanpercentile(p3d_model[:2]/p3d_model[2] - 1, per_use, axis=(0,1,3))
+per3_data_emu = np.nanpercentile(p3d_emu/p3d_measured[0] - 1, per_use, axis=(2))
+per3_data_model = np.nanpercentile(p3d_model[0]/p3d_measured[0] - 1, per_use, axis=(2))
 
-# line1 = Line2D(
-#     [0], [0], label="Gaussian error", color="C2", ls=":", linewidth=2
-# )
-line2 = Line2D([0], [0], label="Central", color="C0", ls="-", linewidth=2)
-line3 = Line2D([0], [0], label="Seed", color="C1", ls="--", linewidth=2)
-hand = [line2, line3]
-ax.legend(fontsize=ftsize - 2, loc="upper left", handles=hand, ncols=1)
-# ax.add_artist(legend1)
+# per1_data = np.nanpercentile(p1d_measured[:2]/p1d_measured[2] - 1, per_use, axis=(0,1))
+# per1_model = np.nanpercentile(p1d_model[:2]/p1d_model[2] - 1, per_use, axis=(0,1))
+per1_data_emu = np.nanpercentile(p1d_emu/p1d_measured[0] - 1, per_use)
+per1_data_model = np.nanpercentile(p1d_model[0]/p1d_measured[0] - 1, per_use)
 
+# %%
+for ii in range(per3_data_emu.shape[1]):
+    col = "C"+str(ii%10)
+    plt.plot(knew_av, per3_data_model[0, ii], col, label="z="+str(zlist[ii]))
+    plt.plot(knew_av, per3_data_emu[0, ii], col+'--')
+plt.xscale('log')
 
-plt.tight_layout()
-plt.savefig(folder+"cvariance.pdf")
+plt.ylabel("P3D/P3Ddata-1")
+plt.xlabel("k")
+plt.legend()
+plt.savefig("p3d_z.png")
+
+# %%
+per3_data_emu.shape
 
 # %%
 
 # %%
+p3d_measured.shape
+
+# %%
+per_data[1]
 
 # %% [markdown]
 # ### Continue

@@ -31,7 +31,6 @@ from forestflow.P3D_cINN import P3DEmulator
 from forestflow.plots.test_sims import (
     plot_p1d_test_sims, 
     plot_p3d_test_sims, 
-    get_modes, 
     plot_p1d_snap,
     plot_p3d_snap
 )
@@ -293,6 +292,7 @@ for ext in [".png", ".pdf"]:
     )
 
 # %%
+rat_p1d.shape
 
 # %%
 savename = folder + "test_cosmo/test_cosmo_P1D"

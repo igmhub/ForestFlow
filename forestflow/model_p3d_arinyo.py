@@ -686,6 +686,7 @@ class ArinyoModel(object):
         parameters={},
     ):
         """
+        It used to work, I need to take a deeper look now
         Computes the relative error of P1D.
 
         Parameters:
@@ -704,26 +705,49 @@ class ArinyoModel(object):
                 - sampling_sigma__p1d (array-like): Estimated error from sampling variance.
         """
         n_k_par = k_par.shape[0]
+        d_k_par = k_par[1] - k_par[0]
 
         # array of k_perp that fit within simulation box (important!)
         nk_max = int(Lbox / res_los / 2)
+        nk_max = 200
         k_perp_min = 2 * np.pi / Lbox
         k_perp_max = k_perp_min * nk_max
         ln_k_perp = np.linspace(
             np.log(k_perp_min), np.log(k_perp_max), n_k_perp
         )
         k_perp = np.exp(ln_k_perp)
+        k_perp_cen = np.exp(0.5 * (ln_k_perp[1:] + ln_k_perp[:-1]))
+
+        # get modes in box
+        nn = int(k_perp[-1] // k_perp_min + 1)
+
+        _ = (
+            np.mgrid[-nn : nn + 1 : 1, -nn : nn + 1 : 1, -nn : nn + 1 : 1]
+            * k_perp_min
+        )
+        xgrid, ygrid, zgrid = _
+        kper_grid = np.sqrt(xgrid**2 + ygrid**2)
+        kpar_grid = zgrid.copy()
+        xgrid, ygrid, zgrid = 0, 0, 0
 
         # get p3d and number of modes as a function of k_par and k_per
-        p3d = np.zeros((n_k_par, n_k_perp))
-        nmod = np.zeros((n_k_par, n_k_perp))
-        for ii in range(n_k_perp):
-            k = np.sqrt(k_par**2 + k_perp[ii] ** 2)
-            dk = k[1:] - k[:-1]
-            dk = np.concatenate([dk, np.atleast_1d(dk[-1])])
-            mu = k_par / k
-            p3d[:, ii] = self.P3D_Mpc(z, k, mu)
-            nmod[:, ii] = get_nmod(k, dk, Lbox)
+        p3d = np.zeros((n_k_par, n_k_perp - 1))
+        nmod = np.zeros((n_k_par, n_k_perp - 1))
+
+        for ii in range(n_k_par):
+            print(ii, n_k_par)
+            for jj in range(n_k_perp - 1):
+                _ = (
+                    (kpar_grid >= k_par[ii] - d_k_par / 2)
+                    & (kpar_grid < k_par[ii] + d_k_par / 2)
+                    & (kper_grid >= k_perp[jj])
+                    & (kper_grid < k_perp[jj + 1])
+                )
+
+                k = np.sqrt(kpar_grid[_] ** 2 + kper_grid[_] ** 2)
+                mu = kpar_grid[_] / k
+                p3d[ii, jj] = np.mean(self.P3D_Mpc(z, k, mu, parameters))
+                nmod[ii, jj] = np.sum(_)
 
         ## estimate error from cosmic variance (new, JCM)
 
@@ -731,15 +755,15 @@ class ArinyoModel(object):
         sigma_p3d = np.sqrt(2 / nmod) * p3d
 
         # p1d = 1/(2*pi) int_kmin^kmax dkper kper p3d
-        # I am not sure whether should be pi or 2*pi, depends on the convention?
-        # we use 2*pi above so let's go with that
-        p1d = self.P1D_Mpc(z, k_par)
+        p1d = self.P1D_Mpc(z, k_par, parameters=parameters)
 
         # in practise, we only need to evaluate the derivatives and error at kper=kmax
         # dp1d/dp3d = dP1d/dkpar (dkpar/dp3d)_kmin^kmax
-        # dp1d_dkpar = (1/pi) int_kmin^kmax dkper kper dp3d/dkpar
+        # dp1d_dkpar = (1/2/pi) int_kmin^kmax dkper kper dp3d/dkpar
         dp3d_dkpar = np.gradient(p3d, k_par, axis=0)
-        dp1d_dkpar = simpson(dp3d_dkpar * k_perp, k_perp, axis=1) / (2 * np.pi)
+        dp1d_dkpar = simpson(dp3d_dkpar * k_perp_cen, k_perp_cen, axis=1) / (
+            2 * np.pi
+        )
         dp1d_dp3d = dp1d_dkpar / dp3d_dkpar[:, -1]
 
         # err_p1d = |dp1d/dp3d| * sigma_p3d_kmin^kmax
