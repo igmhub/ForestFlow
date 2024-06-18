@@ -64,36 +64,6 @@ print(len(Archive3D.training_data))
 
 
 # %% [markdown]
-# ## LOAD EMULATOR
-
-# %%
-# training_type = "Arinyo_min"
-# model_path=path_program + "/data/emulator_models/mpg_last.pt"
-training_type = "Arinyo_minz"
-# model_path=path_program + "/data/emulator_models/mpg_minz.pt"
-model_path=path_program + "/data/emulator_models/mpg_jointz.pt"
-
-emulator = P3DEmulator(
-    Archive3D.training_data,
-    Archive3D.emu_params,
-    nepochs=300,
-    lr=0.001,  # 0.005
-    batch_size=20,
-    step_size=200,
-    gamma=0.1,
-    weight_decay=0,
-    adamw=True,
-    nLayers_inn=12,  # 15
-    Archive=Archive3D,
-    # Nrealizations=10000,
-    Nrealizations=1000,
-    training_type=training_type,
-    model_path=model_path,
-    # save_path=model_path,
-)
-
-
-# %% [markdown]
 # ## LOAD SIMULATIONS
 
 # %%
@@ -138,12 +108,13 @@ def paramz_to_paramind(z, paramz):
         paramind.append(param)
     return paramind
 
-file = path_program + "/data/best_arinyo/minimizer_z/fit_sim_label_combo_val_scaling_1_kmax3d_3_kmax1d_3.npz"
+file = path_program + "/data/best_arinyo/minimizer/fit_sim_label_combo_kmax3d_5_kmax1d_4.npz"
 data = np.load(file, allow_pickle=True)
-best_params = paramz_to_paramind(zlist, data["best_params"].item())
+# best_params = paramz_to_paramind(zlist, data["best_params"].item())
 
 for ii in range(len(list_merge)):
-    list_merge[ii]["Arinyo_minz"] = params_numpy2dict_minimizerz(best_params[ii])
+    list_merge[ii]["Arinyo_min"] = data["best_params"][ii]
+    # list_merge[ii]["Arinyo_minz"] = params_numpy2dict_minimizerz(best_params[ii])
 
 # %% [markdown]
 # ### Error from cosmic variance
@@ -156,55 +127,33 @@ from matplotlib.lines import Line2D
 import matplotlib.patches as mpatches
 
 n_mubins = 4
-kmax = 4
-kmax_fit = 3
+kmax_3d_fit = 5
+kmax_1d_fit = 4
+kmax_3d = kmax_3d_fit + 1
+kmax_1d = kmax_1d_fit + 1
 
 k3d_Mpc = central[0]['k3d_Mpc']
 mu3d = central[0]['mu3d']
-kmu_modes = get_p3d_modes(kmax)
-mask_3d = k3d_Mpc[:, 0] <= kmax
-mask_1d = central[0]['k_Mpc'] < kmax
+kmu_modes = get_p3d_modes(kmax_3d)
+mask_3d = k3d_Mpc[:, 0] <= kmax_3d
+nk = np.sum(mask_3d)
+mask_1d = central[0]['k_Mpc'] < kmax_1d
 k1d_Mpc = central[0]['k_Mpc'][mask_1d]
 
-info_power = {
-    "sim_label": "mpg_central",
-    "k3d_Mpc": k3d_Mpc[mask_3d, :],
-    "mu": mu3d[mask_3d, :],
-    "kmu_modes": kmu_modes,
-    "k1d_Mpc": k1d_Mpc,
-    "return_p3d": True,
-    "return_p1d": True,
-    "return_cov": True,
-}
 
 # %%
-eva_emu = False
-
 list_sims = [central, seed, list_merge]
 nsims = len(list_sims)
 
 p3d_measured = np.zeros((nsims, len(central), np.sum(mask_3d), n_mubins))
 p3d_model = np.zeros((nsims, len(central), np.sum(mask_3d), n_mubins))
-if eva_emu:
-    p3d_emu = np.zeros((len(central), np.sum(mask_3d), n_mubins))
+params = np.zeros((nsims, len(central), 2))
 
 p1d_measured = np.zeros((nsims, len(central), np.sum(mask_1d)))
 p1d_model = np.zeros((nsims, len(central), np.sum(mask_1d)))
-if eva_emu:
-    p1d_emu = np.zeros((len(central), np.sum(mask_1d)))
 
 for isnap in range(len(central)):
     z = central[isnap]["z"]
-    if eva_emu:
-        info_power["z"] = z    
-        out = emulator.evaluate(
-            emu_params=central[isnap],
-            info_power=info_power,
-            Nrealizations=100
-        )    
-        _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["p3d"], kmu_modes, n_mubins=n_mubins)
-        knew, munew, p3d_emu[isnap], mu_bins = _
-        p1d_emu[isnap] = out["p1d"]
     
     for ii in range(nsims):
         sim = list_sims[ii]
@@ -213,211 +162,73 @@ for isnap in range(len(central)):
         knew, munew, p3d_measured[ii, isnap, ...], mu_bins = _
         p1d_measured[ii, isnap, :] = sim[isnap]['p1d_Mpc'][mask_1d]
     
-        pp = sim[isnap]["Arinyo_minz"]
-        p3d_model[ii, isnap, ...] = sim[isnap]["model"].P3D_Mpc(z, knew, munew, pp)
+        pp = sim[isnap]["Arinyo_min"]
+        model_p3d, plin = p3d_allkmu(
+            sim[isnap]['model'],
+            z,
+            pp,
+            kmu_modes,
+            nk=nk,
+            nmu=16,
+            compute_plin=True,
+        )        
+        _ = p3d_rebin_mu(k3d_Mpc[:nk], 
+                         mu3d[:nk], 
+                         model_p3d[:nk], 
+                         kmu_modes, 
+                         n_mubins=n_mubins)
+        knew, munew, rebin_model_p3d, mu_bins = _
+        
+        p3d_model[ii, isnap, ...] = rebin_model_p3d
         p1d_model[ii, isnap, :] = sim[isnap]["model"].P1D_Mpc(z, k1d_Mpc, parameters=pp)
 
-# %%
-sim[isnap].keys()
+        params[ii, isnap, 0] = pp["bias"]
+        params[ii, isnap, 1] = pp["beta"]
 
 # %%
-per_use = [50, 16, 84]
-per3_data = np.nanpercentile(p3d_measured[:2]/p3d_measured[2] - 1, per_use, axis=(0,1,3))
-per3_model = np.nanpercentile(p3d_model[:2]/p3d_model[2] - 1, per_use, axis=(0,1,3))
-per3_data_emu = np.nanpercentile(p3d_emu/p3d_measured[0] - 1, per_use, axis=(0,2))
-per3_data_model = np.nanpercentile(p3d_model[0]/p3d_measured[0] - 1, per_use, axis=(0, 2))
+for iz in range(len(central)):
 
-per1_data = np.nanpercentile(p1d_measured[:2]/p1d_measured[2] - 1, per_use, axis=(0,1))
-per1_model = np.nanpercentile(p1d_model[:2]/p1d_model[2] - 1, per_use, axis=(0,1))
-per1_data_emu = np.nanpercentile(p1d_emu/p1d_measured[0] - 1, per_use, axis=(0))
-per1_data_model = np.nanpercentile(p1d_model[0]/p1d_measured[0] - 1, per_use, axis=(0))
-
-# %%
-
-# %%
-knew_av = np.nanmedian(knew, axis=1)
-
-# %%
-plt.errorbar(knew_av, per_data[0], np.abs(per_data[1:]-per_data[0]), alpha=0.5)
-plt.errorbar(knew_av, per_model[0], np.abs(per_model[1:]-per_model[0]), alpha=0.5)
-plt.errorbar(knew_av, per_data_emu[0], np.abs(per_data_emu[1:]-per_data_emu[0]), alpha=0.5)
-
-plt.xscale("log")
-
-# %%
-lw = 3
-
-fig, ax = plt.subplots(1)
-
-ax.plot(knew_av, 0.5*(per3_data[2]-per3_data[1])*100, alpha=0.5, lw=lw, 
-        label="Data: cosmic variance")
-ax.plot(knew_av, 0.5*(per3_model[2]-per3_model[1])*100, alpha=0.5, lw=lw, 
-        label="Fit: cosmic variance")
-ax.plot(knew_av, 0.5*(per3_data_model[2]-per3_data_model[1])*100, alpha=0.5, lw=lw, 
-        label="Fit vs data")
-ax.plot(knew_av, 0.5*(per3_data_emu[2]-per3_data_emu[1])*100, alpha=0.5, lw=lw, 
-        label="ForestFlow vs data")
-
-ax.set_ylabel("Error P3D [%]")
-ax.set_xlabel("k")
-ax.legend()
-
-ax.set_xscale("log")
-plt.savefig("pre_p3d.png")
-
-# %%
-lw = 3
-
-fig, ax = plt.subplots(1)
-
-ax.plot(k1d_Mpc, 0.5*(per1_data[2]-per1_data[1])*100, alpha=0.5, lw=lw, 
-        label="Data: cosmic variance")
-ax.plot(k1d_Mpc, 0.5*(per1_model[2]-per1_model[1])*100, alpha=0.5, lw=lw, 
-        label="Fit: cosmic variance")
-ax.plot(k1d_Mpc, 0.5*(per1_data_model[2]-per1_data_model[1])*100, alpha=0.5, lw=lw, 
-        label="Fit vs data")
-ax.plot(k1d_Mpc, 0.5*(per1_data_emu[2]-per1_data_emu[1])*100, alpha=0.5, lw=lw, 
-        label="ForestFlow vs data")
-
-ax.set_ylabel("Error P1D [%]")
-ax.set_xlabel("kpar")
-ax.legend()
-
-ax.set_xscale("log")
-plt.savefig("pre_p1d.png")
-
-# %%
-# per3_data = np.nanpercentile(p3d_measured[:2]/p3d_measured[2] - 1, per_use, axis=(0,1,3))
-# per3_model = np.nanpercentile(p3d_model[:2]/p3d_model[2] - 1, per_use, axis=(0,1,3))
-per3_data_emu = np.nanpercentile(p3d_emu/p3d_measured[0] - 1, per_use, axis=(2))
-per3_data_model = np.nanpercentile(p3d_model[0]/p3d_measured[0] - 1, per_use, axis=(2))
-
-# per1_data = np.nanpercentile(p1d_measured[:2]/p1d_measured[2] - 1, per_use, axis=(0,1))
-# per1_model = np.nanpercentile(p1d_model[:2]/p1d_model[2] - 1, per_use, axis=(0,1))
-per1_data_emu = np.nanpercentile(p1d_emu/p1d_measured[0] - 1, per_use)
-per1_data_model = np.nanpercentile(p1d_model[0]/p1d_measured[0] - 1, per_use)
-
-# %%
-for ii in range(per3_data_emu.shape[1]):
-    col = "C"+str(ii%10)
-    plt.plot(knew_av, per3_data_model[0, ii], col, label="z="+str(zlist[ii]))
-    plt.plot(knew_av, per3_data_emu[0, ii], col+'--')
-plt.xscale('log')
-
-plt.ylabel("P3D/P3Ddata-1")
-plt.xlabel("k")
-plt.legend()
-plt.savefig("p3d_z.png")
-
-# %%
-per3_data_emu.shape
-
-# %%
-
-# %%
-p3d_measured.shape
-
-# %%
-per_data[1]
-
-# %% [markdown]
-# ### Continue
-
-# %%
-Arinyo_coeffs_central = np.array(
-    [list(central[i][training_type].values()) for i in range(len(central))]
-)
-
-Arinyo_coeffs_seed = np.array(
-    [list(seed[i][training_type].values()) for i in range(len(seed))]
-)
-
-Arinyo_coeffs_merge = np.array(
-    [list(list_merge[i][training_type].values()) for i in range(len(list_merge))]
-)
-
-
-# %%
-Arinyo_central = []
-Arinyo_seed = []
-Arinyo_merge = []
-for ii in range(Arinyo_coeffs_central.shape[0]):
-    dict_params = params_numpy2dict(Arinyo_coeffs_central[ii])
-    new_params = transform_arinyo_params(dict_params, central[ii]["f_p"])
-    Arinyo_central.append(new_params)
+    # if(central["z"][iz] == 2) | (central["z"][iz] == 3) | (central["z"][iz] == 4.5):
+    if(central[iz]["z"] != 0):
+        pass
+    else:
+        continue
     
-    dict_params = params_numpy2dict(Arinyo_coeffs_seed[ii])
-    new_params = transform_arinyo_params(dict_params, seed[ii]["f_p"])
-    Arinyo_seed.append(new_params)
+    jj = 0
+    fig, ax = plt.subplots(2, sharex=True)
+    
+    for ii in range(n_mubins):
+        col = f"C{ii}"
+        x = knew[:, ii] 
+        _ = np.isfinite(x)        
+        y = (p3d_model[0, iz, :, ii] - p3d_model[1, iz, :, ii])/p3d_model[2, iz, :, ii]/np.sqrt(2)
+        ax[0].plot(x[_], y[_], col+"-")
 
-    dict_params = params_numpy2dict(Arinyo_coeffs_merge[ii])
-    new_params = transform_arinyo_params(dict_params, list_merge[ii]["f_p"])
-    Arinyo_merge.append(new_params)
-
-# %% [markdown]
-# ## LOOP OVER REDSHIFTS PREDICTING THE ARINYO PARAMETERS
-
-# %%
-z_central = [d["z"] for d in central]
-z_central
-
-# %%
-Arinyo_emu = []
-Arinyo_emu_std = []
-
-for iz, z in enumerate(z_central):
-    test_sim_z = [d for d in central if d["z"] == z]
-    out = p3d_emu.evaluate(
-        emu_params=test_sim_z[0],
-        natural_params=True,
-        Nrealizations=10000,
-    )
-    Arinyo_emu.append(out["coeffs_Arinyo"])
-    Arinyo_emu_std.append(out["coeffs_Arinyo_std"])
-
-
-# %% [markdown]
-# ## PLOT
+    ax[0].axhline(0, linestyle=":", color="k")
+    ax[0].axhline(0.1, linestyle=":", color="k")
+    ax[0].axhline(-0.1, linestyle=":", color="k")
+    ax[0].axvline(kmax_3d_fit, linestyle=":", color="k")
+    
+    x = k1d_Mpc
+    y = (p1d_model[0, iz, :] - p1d_model[1, iz, :])/p1d_model[2, iz, :]/np.sqrt(2)
+    ax[1].plot(x, y, "-")
+    
+    ax[1].axhline(0, linestyle=":", color="k")
+    ax[1].axhline(0.01, linestyle=":", color="k")
+    ax[1].axhline(-0.01, linestyle=":", color="k")
+    ax[1].axvline(kmax_1d_fit, linestyle=":", color="k")
+    
+    ax[0].set_title("z="+str(central[iz]["z"]))
+    ax[0].set_xscale("log")
+    ax[0].set_ylim(-0.2, 0.2)
+    ax[1].set_ylim(-0.02, 0.02)
 
 # %%
-from forestflow.plots.params_z import plot_arinyo_z, plot_forestflow_z
+z_grid = np.array([d["z"] for d in central])
 
-# %%
-folder_fig = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
-
-# %%
-# for ii in range(len(Arinyo_emu)):
-#     print(ii, Arinyo_emu[ii]["kv"])
-#     Arinyo_emu[ii]["kv"] = Arinyo_emu[ii]["kv"]**Arinyo_emu[ii]["av"]
-#     print(Arinyo_emu[ii]["kv"])
-
-# %%
-plot_arinyo_z(z_central, Arinyo_central, Arinyo_seed, Arinyo_merge, folder_fig=folder_fig, ftsize=20)
-
-# %%
-plot_forestflow_z(z_central, Arinyo_central, Arinyo_seed, Arinyo_emu, Arinyo_emu_std, folder_fig=folder_fig, ftsize=20)
-
-# %%
-Arinyo_central[0].keys()
-
-# %%
-kaiser_cen = np.zeros((len(Arinyo_central), 2))
-kaiser_seed = np.zeros((len(Arinyo_central), 2))
-kaiser_merge = np.zeros((len(Arinyo_central), 2))
-for iz in range(len(Arinyo_central)):
-    kaiser_cen[iz, 0] = (Arinyo_central[iz]["bias"])**2
-    kaiser_cen[iz, 1] = (Arinyo_central[iz]["bias"] + Arinyo_central[iz]["bias_eta"])**2
-    kaiser_seed[iz, 0] = (Arinyo_seed[iz]["bias"])**2
-    kaiser_seed[iz, 1] = (Arinyo_seed[iz]["bias"] + Arinyo_seed[iz]["bias_eta"])**2
-    kaiser_merge[iz, 0] = (Arinyo_merge[iz]["bias"])**2
-    kaiser_merge[iz, 1] = (Arinyo_merge[iz]["bias"] + Arinyo_merge[iz]["bias_eta"])**2
-
-# %%
 for ii in range(2):
-    y = np.concatenate([kaiser_cen[:,ii]/kaiser_merge[:,ii] - 1, kaiser_seed[:,ii]/kaiser_merge[:,ii] - 1])
-    s_pred = np.percentile(y, [16, 50, 84])
-    std = 0.5 * (s_pred[2] - s_pred[0]) * 100
-    print(ii, s_pred[1]* 100, std)
-
+    y = (params[0, :, ii] - params[1, :, ii])/params[2, :, ii]/np.sqrt(2)
+    print(np.mean(y)*100, np.std(y)*100)
+    plt.plot(z_grid, y)
 
 # %%

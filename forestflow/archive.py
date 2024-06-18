@@ -158,12 +158,16 @@ class GadgetArchive3D(GadgetArchive):
         sim_label,
         ind_rescaling=0,
         force_recompute_plin=False,
+        kmax_3d=5,
+        kmax_1d=4,
     ):
         testing_data = super().get_testing_data(
             sim_label, ind_rescaling=ind_rescaling
         )
         self.add_Arinyo_fits(testing_data, sim_label)
-        self.add_Arinyo_minimizer_indiv(testing_data, sim_label)
+        self.add_Arinyo_minimizer_indiv(
+            testing_data, sim_label, kmax_3d, kmax_1d
+        )
         self.add_Arinyo_minimizer_joint(testing_data, sim_label)
         self.add_Arinyo_model(testing_data)
         self.add_plin(
@@ -325,20 +329,21 @@ class GadgetArchive3D(GadgetArchive):
                 + flag
                 + ".npz"
             )
-            data = np.load(file)
+            data = np.load(file, allow_pickle=True)
             best_params = data["best_params"]
-            ind_snap = data["ind_snap"]
-            val_scaling = data["val_scaling"]
+            # ind_snap = data["ind_snap"]
+            # val_scaling = data["val_scaling"]
 
             nelem = len(archive)
             for ii in range(nelem):
-                ind = np.argwhere(
-                    (ind_snap == archive[ii]["ind_snap"])
-                    & (val_scaling == archive[ii]["val_scaling"])
-                )[0, 0]
-                archive[ii]["Arinyo_min"] = params_numpy2dict_minimizer(
-                    best_params[ind, :, 0]
-                )
+                # ind = np.argwhere(
+                #     (ind_snap == archive[ii]["ind_snap"])
+                #     & (val_scaling == archive[ii]["val_scaling"])
+                # )[0, 0]
+                archive[ii]["Arinyo_min"] = best_params[ii]
+                # params_numpy2dict_minimizer(
+                #     best_params[ind, :, 0]
+                # )
 
     def add_Arinyo_minimizer_joint(
         self,
