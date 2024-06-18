@@ -98,8 +98,8 @@ def main():
     kmax_3d = 5
     kmax_1d = 4
     fit_type = "both"
-    maxiter = 4
-    # maxiter = 400
+    # maxiter = 4
+    maxiter = 400
 
     # loop sim_labels
     for sim_label in Archive3D.list_sim:
@@ -135,7 +135,8 @@ def main():
             print()
 
             parameters = sim_use["Arinyo_min"]
-            parameters["q2"] = np.abs(parameters["q2"])
+            parameters["q1"] += np.abs(parameters["q2"])
+            parameters["q2"] = 0.05
             print(parameters)
 
             params_minimizer = np.array(list(parameters.values()))
