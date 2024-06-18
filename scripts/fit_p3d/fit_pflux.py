@@ -78,11 +78,12 @@ def get_input_data(z_use, data, kmax_fit):
 
 
 def main():
-    path_program = "/home/jchaves/Proyectos/projects/lya/ForestFlow/"
+    args = sys.argv[1:]
+
+    path_program = forestflow.__path__[0][:-10]
+    print(path_program)
     folder_lya_data = path_program + "/data/best_arinyo/"
-    folder_save = (
-        "/home/jchaves/Proyectos/projects/lya/data/forestflow/fits_modes/"
-    )
+    folder_save = path_program + "/data/best_arinyo/minimizer/"
 
     Archive3D = GadgetArchive3D(
         base_folder=path_program[:-1],
@@ -96,9 +97,16 @@ def main():
     kmax_3d = 5
     kmax_1d = 4
     fit_type = "both"
+    maxiter = 4
+    # maxiter = 400
 
     # loop sim_labels
     for sim_label in Archive3D.list_sim:
+        if (args[0] != "") and (sim_label == args[0]):
+            pass
+        else:
+            continue
+
         print(sim_label)
         print()
         print()
@@ -111,11 +119,6 @@ def main():
             list_sim_use = Archive3D.get_testing_data(
                 sim_label, kmax_3d=3, kmax_1d=3
             )
-
-        if sim_label == "mpg_central":
-            pass
-        else:
-            continue
 
         res_params = []
         res_chi2 = np.zeros((len(list_sim_use)))
@@ -146,7 +149,7 @@ def main():
                 fit_type=fit_type,
                 k3d_max=kmax_3d,
                 k1d_max=kmax_1d,
-                maxiter=400,
+                maxiter=maxiter,
             )
 
             chia = fit.get_chi2(params_minimizer)
@@ -172,6 +175,7 @@ def main():
             ind_snap=ind_snap,
             val_scaling=val_scaling,
         )
+        print("Saved to", folder_save + out_file)
 
 
 if __name__ == "__main__":
