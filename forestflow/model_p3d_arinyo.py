@@ -218,7 +218,7 @@ class ArinyoModel(object):
 
         return linP * lowk_bias**2 * D_NL
 
-    def P3D_Mpc(self, z, k, mu, pp, minimize=False):
+    def P3D_Mpc(self, z, k, mu, pp):
         """
         Compute the model for the 3D flux power spectrum in units of Mpc^3.
 
@@ -241,21 +241,12 @@ class ArinyoModel(object):
         # model small-scales correction (D_NL in Arinyo-i-Prats 2015)
         delta2 = (1 / (2 * np.pi**2)) * k**3 * linP
         if "q2" not in pp.keys():
-            if minimize:
-                q1 = 0.5 * pp["q1"]
-                q2 = 0.5 * pp["q1"]
-                nonlin = delta2 * (q1 + q2 * delta2)
-            else:
-                nonlin = delta2 * pp["q1"]
+            q1 = np.abs(pp["q1"])
+            q2 = 0
         else:
-            # uncomment for minimizer
-            if minimize:
-                q1 = 0.5 * (pp["q1"] + pp["q2"])
-                q2 = 0.5 * (pp["q1"] - pp["q2"])
-            else:
-                q1 = pp["q1"]
-                q2 = pp["q2"]
-            nonlin = delta2 * (q1 + q2 * delta2)
+            q1 = np.abs(pp["q1"])
+            q2 = np.abs(pp["q2"])
+        nonlin = delta2 * (q1 + q2 * delta2)
         vel = k ** pp["av"] / pp["kvav"] * mu ** pp["bv"]
         press = (k / pp["kp"]) ** 2
 
@@ -279,28 +270,6 @@ class ArinyoModel(object):
             k_par, self.P3D_Mpc, z, P3D_mode="pol", **{"pp": pp}
         )
         return rperp, Px_per_kpar
-
-    def rat_P3D(self, z, k, mu, parameters={}):
-        """
-        Compute the model for the ratio of the 3D flux power spectrum and Plin (no units).
-
-        Parameters:
-            z (float): Redshift.
-            k (float): Wavenumber.
-            mu (float): Cosine of the angle between the line-of-sight and the wavevector.
-            parameters (dict, optional): Additional parameters for the model. Defaults to {}.
-
-        Returns:
-            float: Computed value of the ratio of the 3D flux power spectrum and Plin.
-        """
-
-        # model large-scales biasing for delta_flux(k)
-        lowk_bias = self.lowk_biasing(mu, parameters)
-
-        # model small-scales correction (D_NL in Arinyo-i-Prats 2015)
-        D_NL = self.small_scales_correction(z, k, mu, parameters)
-
-        return lowk_bias**2 * D_NL
 
     def lowk_biasing(self, mu, parameters={}):
         """
@@ -481,9 +450,7 @@ class ArinyoModel(object):
 
         return p1d
 
-    def _P1D_lnkperp_fast(
-        self, z, ln_k_perp, kpars, parameters={}, minimize=False
-    ):
+    def _P1D_lnkperp_fast(self, z, ln_k_perp, kpars, parameters={}):
         """
         Compute P1D by integrating P3D in terms of ln(k_perp) using a fast method.
 
@@ -511,47 +478,7 @@ class ArinyoModel(object):
         fact = (1 / (2 * np.pi)) * k_perp[:, np.newaxis] ** 2
         fact = fact.swapaxes(0, 1)
 
-        p3d_fix_k_par = (
-            self.P3D_Mpc(z, k, mu, parameters, minimize=minimize) * fact
-        )
-
-        # perform numerical integration
-        p1d = simpson(p3d_fix_k_par, ln_k_perp, dx=dlnk, axis=1)
-
-        return p1d
-
-    def _rat_P1D_lnkperp_fast(
-        self, z, ln_k_perp, kpars, parameters={}, minimize=False
-    ):
-        """
-        Compute P1D by integrating P3D in terms of ln(k_perp) using a fast method.
-
-        Parameters:
-            z (float): Redshift.
-            ln_k_perp (array-like): Array of natural logarithms of the perpendicular wavenumber.
-            kpars (array-like): Array of parallel wavenumbers.
-            parameters (dict, optional): Additional parameters for the model. Defaults to {}.
-
-        Returns:
-            array-like: Computed values of P1D.
-        """
-
-        # get interval for integration
-        dlnk = ln_k_perp[1] - ln_k_perp[0]
-
-        # get function to be integrated
-        # it is equivalent of the inner loop of _P1D_lnkperp
-        k_perp = np.exp(ln_k_perp)
-        k = np.sqrt(kpars[np.newaxis, :] ** 2 + k_perp[:, np.newaxis] ** 2)
-        mu = kpars[np.newaxis, :] / k
-        k = k.swapaxes(0, 1)
-        mu = mu.swapaxes(0, 1)
-
-        fact = (1 / (2 * np.pi)) * k_perp[:, np.newaxis] ** 2
-        fact = fact.swapaxes(0, 1)
-        p3d_fix_k_par = (
-            self.rat_P3D(z, k, mu, parameters, minimize=minimize) * fact
-        )
+        p3d_fix_k_par = self.P3D_Mpc(z, k, mu, parameters) * fact
 
         # perform numerical integration
         p1d = simpson(p3d_fix_k_par, ln_k_perp, dx=dlnk, axis=1)
@@ -610,7 +537,6 @@ class ArinyoModel(object):
         k_perp_max=100,
         n_k_perp=99,
         parameters={},
-        minimize=False,
     ):
         """
         Returns P1D for specified values of k_par, with the option to specify values of k_perp to be integrated over.
@@ -631,9 +557,7 @@ class ArinyoModel(object):
             np.log(k_perp_min), np.log(k_perp_max), n_k_perp
         )
 
-        p1d = self._P1D_lnkperp_fast(
-            z, ln_k_perp, k_par, parameters, minimize=minimize
-        )
+        p1d = self._P1D_lnkperp_fast(z, ln_k_perp, k_par, parameters)
 
         return p1d
 

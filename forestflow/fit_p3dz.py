@@ -159,7 +159,6 @@ class FitPkz(object):
                     nk=self.nk,
                     nmu=self.nmu,
                     compute_plin=False,
-                    minimize=True,
                 )
             else:
                 p3d = self.model[ii].P3D_Mpc(
@@ -201,7 +200,6 @@ class FitPkz(object):
                 k_perp_min=k_perp_min,
                 k_perp_max=k_perp_max,
                 n_k_perp=n_k_perp,
-                minimize=True,
             )
             p1d_model[ii, :] = p1d
 
@@ -389,7 +387,11 @@ class FitPkz(object):
 
         chi2_in = self.get_chi2(parameters)
 
-        for it in range(1):
+        for it in range(10):
+            if self.verbose:
+                print("Iteration:", it, chi2_in)
+                print("")
+
             results = minimize(
                 self.get_log_like,
                 parameters,
@@ -403,7 +405,7 @@ class FitPkz(object):
             if self.verbose:
                 print(it, chi2_in, chi2_out)
 
-            if np.abs(chi2_in - chi2_out) < 0.1:
+            if np.abs(chi2_in - chi2_out) < 0.05:
                 break
             else:
                 chi2_in = chi2_out * 1

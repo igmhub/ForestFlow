@@ -45,6 +45,7 @@ class FitPk(object):
         self,
         data,
         model,
+        names=None,
         fit_type="p3d",
         k3d_max=3,
         k1d_max=3,
@@ -53,6 +54,7 @@ class FitPk(object):
         priors=None,
         verbose=False,
         all_kmu=True,
+        maxiter=1000,
     ):
         """
         Setup P3D flux power model and measurement.
@@ -80,6 +82,8 @@ class FitPk(object):
         self.model = model
         self.priors = priors
         self.all_kmu = all_kmu
+        self.maxiter = maxiter
+        self.names = names
 
         k3d_mask = self.data["k3d_Mpc"][:, 0] <= k3d_max
         self.nk = np.sum(k3d_mask)
@@ -138,21 +142,19 @@ class FitPk(object):
         if self.all_kmu:
             p3d = p3d_allkmu(
                 self.model,
-                self.data["z"][0],
+                self.data["z"],
                 parameters,
                 self.data["kmu_modes"],
                 nk=self.nk,
                 nmu=self.nmu,
                 compute_plin=False,
-                minimize=True,
             )
         else:
             p3d = self.model.P3D_Mpc(
-                self.data["z"][0],
+                self.data["z"],
                 self.data["k3d"],
                 self.data["mu3d"],
                 parameters,
-                minimize=True,
             )
 
         return p3d
@@ -177,13 +179,12 @@ class FitPk(object):
             ndarray: Model for the 1D flux power spectrum.
         """
         p1d = self.model.P1D_Mpc(
-            self.data["z"][0],
+            self.data["z"],
             self.data["k1d_Mpc"],
             parameters=parameters,
             k_perp_min=k_perp_min,
             k_perp_max=k_perp_max,
             n_k_perp=n_k_perp,
-            minimize=True,
         )
 
         return p1d
@@ -198,9 +199,11 @@ class FitPk(object):
         Returns:
             float or tuple: Chi squared value or tuple containing chi squared and number of data points.
         """
-
+        dict_params = {}
+        for ii, param in enumerate(self.names):
+            dict_params[param] = parameters[ii]
         # compute model for these wavenumbers
-        th_p3d = self.get_model_3d(parameters=parameters)[self.ind_fit3d]
+        th_p3d = self.get_model_3d(parameters=dict_params)[self.ind_fit3d]
 
         # compute chi2
         chi2 = (
@@ -210,13 +213,17 @@ class FitPk(object):
 
         if self.fit_type == "both":
             # compute model for these wavenumbers
-            th_p1d = self.get_model_1d(parameters=parameters)[self.ind_fit1d]
+            th_p1d = self.get_model_1d(parameters=dict_params)[self.ind_fit1d]
 
             # compute chi2
             chi2_p1d = (
                 np.sum(((self.data_p1d - th_p1d) / self.err_p1d) ** 2)
                 / self.nbins1d
             )
+
+            if self.verbose:
+                print(chi2, chi2_p1d)
+
             chi2 += chi2_p1d
 
         return chi2
@@ -232,7 +239,7 @@ class FitPk(object):
             float: Log likelihood value.
         """
 
-        return -0.5 * self.get_chi2(parameters)
+        return 0.5 * self.get_chi2(parameters)
 
     def _log_like(self, values, parameter_names):
         """
@@ -277,36 +284,37 @@ class FitPk(object):
             tuple: Tuple containing the optimization results and the best-fit parameters.
         """
 
-        ndim = len(parameters)
-        names = list(parameters.keys())
-        params_in = np.array(list(parameters.values()))
+        # ndim = len(parameters)
+        # names = list(parameters.keys())
+        # params_in = np.array(list(parameters.values()))
 
-        # lambda function to minimize
-        minus_log_like = lambda *args: -self._log_like(*args)
-
-        chi2_in = self.get_chi2(params_numpy2dict(params_in))
+        chi2_in = self.get_chi2(parameters)
 
         for it in range(10):
-            if it != 0:
-                chi2_in = chi2_out * 1
+            if self.verbose:
+                print("Iteration:", it, chi2_in)
+                print("")
 
             results = minimize(
-                minus_log_like,
-                params_in,
-                args=(names),
-                method="BFGS",
+                self.get_log_like,
+                parameters,
+                method="Nelder-Mead",
+                options={"maxiter": self.maxiter},
             )
 
-            params_in = results.x
-            chi2_out = self.get_chi2(params_numpy2dict(params_in))
+            parameters = results.x
+            chi2_out = self.get_chi2(parameters)
+
+            if self.verbose:
+                print(it, chi2_in, chi2_out)
+                print(params_numpy2dict(parameters))
 
             if np.abs(chi2_in - chi2_out) < 0.1:
                 break
+            else:
+                chi2_in = chi2_out * 1
 
-        if self.verbose:
-            print("iterations", it)
-
-        best_fit_parameters = params_numpy2dict(params_in)
+        best_fit_parameters = params_numpy2dict(parameters)
 
         return results, best_fit_parameters
 
@@ -510,7 +518,7 @@ class FitPk(object):
 
         # compute linear power spectrum (for plotting)
         linp = (
-            self.model.linP_Mpc(z=self.data["z"][0], k_Mpc=self.data["k3d"])
+            self.model.linP_Mpc(z=self.data["z"], k_Mpc=self.data["k3d"])
             * self.data["k3d"] ** 3
             / 2
             / np.pi**2
