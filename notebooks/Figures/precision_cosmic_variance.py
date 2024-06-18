@@ -95,7 +95,6 @@ for ii in range(len(central)):
     tar["p1d_Mpc"] = (_cen["mF"]**2 * _cen["p1d_Mpc"] + _seed["mF"]**2 * _seed["p1d_Mpc"]) / tar["mF"]**2 / 2
     tar["p3d_Mpc"] = (_cen["mF"]**2 * _cen["p3d_Mpc"] + _seed["mF"]**2 * _seed["p3d_Mpc"]) / tar["mF"]**2 / 2
 
-    print(cen["mF"], seed["mF"], tar["mF"])
     combo.append(tar)
 
 # %% [markdown]
@@ -140,7 +139,7 @@ for isnap in range(len(combo)):
 for iz in range(len(central)):
 
     # if(central["z"][iz] == 2) | (central["z"][iz] == 3) | (central["z"][iz] == 4.5):
-    if(central["z"][iz] != 0):
+    if(central[iz]["z"] != 0):
         pass
     else:
         continue
@@ -159,17 +158,19 @@ for iz in range(len(central)):
     ax[0].axhline(-0.1, linestyle=":", color="k")
     ax[0].axvline(kmax_3d_fit, linestyle=":", color="k")
     
-    x = data_dict["k1d_Mpc"][k1d_mask]
+    x = k1d_Mpc
     y = (p1d_measured[0, iz, :] - p1d_measured[1, iz, :])/p1d_measured[2, iz, :]/np.sqrt(2)
     ax[1].plot(x, y, "-")
     
     ax[1].axhline(0, linestyle=":", color="k")
     ax[1].axhline(0.01, linestyle=":", color="k")
     ax[1].axhline(-0.01, linestyle=":", color="k")
-    ax[0].axvline(kmax_1d_fit, linestyle=":", color="k")
+    ax[1].axvline(kmax_1d_fit, linestyle=":", color="k")
     
-    ax[0].set_title("z="+str(central["z"][iz]))
+    ax[0].set_title("z="+str(central[iz]["z"]))
     ax[0].set_xscale("log")
+    ax[0].set_ylim(-0.2, 0.2)
+    ax[1].set_ylim(-0.02, 0.02)
 
 # %%
 
