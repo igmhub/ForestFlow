@@ -152,6 +152,7 @@ def main():
                 k3d_max=kmax_3d,
                 k1d_max=kmax_1d,
                 maxiter=maxiter,
+                verbose=True,
             )
 
             chia = fit.get_chi2(params_minimizer)
