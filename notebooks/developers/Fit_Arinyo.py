@@ -75,6 +75,12 @@ Archive3D = GadgetArchive3D(
 )
 print(len(Archive3D.training_data))
 
+# %%
+Archive3D.training_data[0]["Arinyo_min"]
+
+# %%
+list_central = Archive3D.get_testing_data("mpg_central", kmax_3d=3, kmax_1d=3)
+
 # %% [markdown]
 # ### Compute average central and seed
 
@@ -233,7 +239,6 @@ def get_input_data(z_use, list_data, kmax_fit, version=1):
     data_dict["z"] = z_grid[mask_z]
     data_dict["kmu_modes"] = get_p3d_modes(kmax_fit)
     nz = len(list_data)
-    print(mask_z)
 
     data_dict["k3d_Mpc"] = list_data[0]["k3d_Mpc"]
     data_dict["mu3d"] = list_data[0]["mu3d"]
@@ -284,7 +289,8 @@ sim_label = "mpg_seed"
 if(sim_label == "combo"):
     list_sim_use = list_merge
 else:
-    list_sim_use = Archive3D.get_testing_data(sim_label, kmax_3d=3, kmax_1d=3)
+    # list_sim_use = Archive3D.get_testing_data(sim_label, kmax_3d=3, kmax_1d=3)
+    list_sim_use = Archive3D.get_testing_data(sim_label)
 
 # %%
 z_grid = np.array([d["z"] for d in list_sim_use])
@@ -311,7 +317,6 @@ for iz, z_use in enumerate(z_grid):
         data_dict,
         model,
         names=names,
-        priors=priors,
         fit_type=fit_type,
         k3d_max=kmax_3d,
         k1d_max=kmax_1d,
@@ -331,6 +336,8 @@ for iz, z_use in enumerate(z_grid):
     res_params.append(best_fit_params)
     res_chi2.append(chi2)
 
+
+# %%
 
 # %%
 def get_flag_out(ind_sim, kmax_3d, kmax_1d):

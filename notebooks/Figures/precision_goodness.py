@@ -118,11 +118,6 @@ for ii in range(len(list_merge)):
     list_merge[ii]["Arinyo_min"] = data["best_params"][ii]
     # list_merge[ii]["Arinyo_minz"] = params_numpy2dict_minimizerz(best_params[ii])
 
-# %% [markdown]
-# ### Error from cosmic variance
-#
-# Difference across z between best-fitting models to central and seed relative to their average
-
 # %%
 from forestflow.rebin_p3d import p3d_allkmu, get_p3d_modes, p3d_rebin_mu
 from matplotlib.lines import Line2D
@@ -189,92 +184,143 @@ for isnap in range(len(central)):
 
 # %% [markdown]
 # ### Impact of cosmic variance on fit
+#
+# Difference across z between best-fitting models to central and seed relative to their average
 
 # %%
+out = 3
+folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+
 for iz in range(len(central)):
 
-    # if(central["z"][iz] == 2) | (central["z"][iz] == 3) | (central["z"][iz] == 4.5):
-    if(central[iz]["z"] != 0):
+    if(central[iz]["z"] == out):
         pass
     else:
         continue
     
     jj = 0
-    fig, ax = plt.subplots(2, sharex=True)
+    ftsize = 20
+    fig, ax = plt.subplots(2, figsize=(8, 6), sharex=True)
     
     for ii in range(n_mubins):
         col = f"C{ii}"
         x = knew[:, ii] 
         _ = np.isfinite(x)        
         y = (p3d_model[0, iz, :, ii] - p3d_model[1, iz, :, ii])/p3d_model[2, iz, :, ii]/np.sqrt(2)
-        ax[0].plot(x[_], y[_], col+"-")
+        ax[0].plot(x[_], y[_], col+"-", lw=3, alpha=0.8)
 
-    ax[0].axhline(0, linestyle=":", color="k")
-    ax[0].axhline(0.1, linestyle=":", color="k")
-    ax[0].axhline(-0.1, linestyle=":", color="k")
-    ax[0].axvline(kmax_3d_fit, linestyle=":", color="k")
-    
     x = k1d_Mpc
     y = (p1d_model[0, iz, :] - p1d_model[1, iz, :])/p1d_model[2, iz, :]/np.sqrt(2)
-    ax[1].plot(x, y, "-")
+    ax[1].plot(x, y, "C4-", lw=3)
     
+    ax[0].axhline(0, linestyle=":", color="k")
+    ax[0].axhline(0.1, linestyle="--", color="k")
+    ax[0].axhline(-0.1, linestyle="--", color="k")
+    ax[0].axvline(kmax_3d_fit, linestyle="--", color="k")
     ax[1].axhline(0, linestyle=":", color="k")
-    ax[1].axhline(0.01, linestyle=":", color="k")
-    ax[1].axhline(-0.01, linestyle=":", color="k")
-    ax[1].axvline(kmax_1d_fit, linestyle=":", color="k")
+    ax[1].axhline(0.01, linestyle="--", color="k")
+    ax[1].axhline(-0.01, linestyle="--", color="k")
+    ax[1].axvline(kmax_1d_fit, linestyle="--", color="k")
+
+    ax[0].set_ylabel(r"Residual $P_\mathrm{3D}$", fontsize=ftsize)
+    ax[1].set_ylabel(r"Residual $P_\mathrm{1D}$", fontsize=ftsize)
     
-    ax[0].set_title("z="+str(central[iz]["z"]))
+    ax[0].set_xlabel(r"$k\, [\mathrm{Mpc}^{-1}]$", fontsize=ftsize)
+    ax[1].set_xlabel(r"$k_\parallel\, [\mathrm{Mpc}^{-1}]$", fontsize=ftsize)
+
+    ax[0].tick_params(axis="both", which="major", labelsize=ftsize)
+    ax[1].tick_params(axis="both", which="major", labelsize=ftsize)
+
+    if(central[iz]["z"] != out):
+        ax[0].set_title("z="+str(central[iz]["z"]))
     ax[0].set_xscale("log")
-    ax[0].set_ylim(-0.2, 0.2)
-    ax[1].set_ylim(-0.02, 0.02)
+    ax[0].set_ylim(-0.21, 0.21)
+    ax[1].set_ylim(-0.021, 0.021)
+
+    plt.tight_layout()
+    plt.savefig(folder + "cvar_fit_z_"+str(central[iz]["z"])+".png")
+    plt.savefig(folder + "cvar_fit_z_"+str(central[iz]["z"])+".pdf")
 
 # %%
 z_grid = np.array([d["z"] for d in central])
 
+fig, ax = plt.subplots(1, figsize=(8, 6), sharex=True)
+ftsize = 20
+lab = [r"$b_\delta$", r"$\beta$"]
+
 for ii in range(2):
     y = (params[0, :, ii] - params[1, :, ii])/params[2, :, ii]/np.sqrt(2)
     print(np.mean(y)*100, np.std(y)*100)
-    plt.plot(z_grid, y)
+    plt.plot(z_grid, y, label=lab[ii], lw=3, alpha=0.8)
+
+ax.axhline(0, linestyle=":", color="k")
+ax.legend(loc="upper left", fontsize=ftsize)
+ax.tick_params(axis="both", which="major", labelsize=ftsize)
+ax.set_xlabel(r"$z$", fontsize=ftsize)
+ax.set_ylabel(r"Residual parameter", fontsize=ftsize)
+ax.set_ylim(-0.032, 0.032)
+
+plt.tight_layout()
+plt.savefig(folder + "cvar_fit_param.png")
+plt.savefig(folder + "cvar_fit_param.pdf")
 
 # %% [markdown]
 # ### Goodness of model
 
 # %%
+out = 3
+folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+
+
 for iz in range(len(central)):
 
-    # if(central["z"][iz] == 2) | (central["z"][iz] == 3) | (central["z"][iz] == 4.5):
-    if(central[iz]["z"] != 0):
+    if(central[iz]["z"] == out):
         pass
     else:
         continue
     
     jj = 0
-    fig, ax = plt.subplots(2, sharex=True)
+    ftsize = 20
+    fig, ax = plt.subplots(2, figsize=(8, 6), sharex=True)
     
     for ii in range(n_mubins):
         col = f"C{ii}"
         x = knew[:, ii] 
         _ = np.isfinite(x)        
         y = (p3d_measured[2, iz, :, ii] - p3d_model[2, iz, :, ii])/p3d_model[2, iz, :, ii]
-        ax[0].plot(x[_], y[_], col+"-")
-
-    ax[0].axhline(0, linestyle=":", color="k")
-    ax[0].axhline(0.1, linestyle=":", color="k")
-    ax[0].axhline(-0.1, linestyle=":", color="k")
-    ax[0].axvline(kmax_3d_fit, linestyle=":", color="k")
+        ax[0].plot(x[_], y[_], col+"-", lw=3, alpha=0.8)
     
     x = k1d_Mpc
     y = (p1d_measured[2, iz, :] - p1d_model[2, iz, :])/p1d_model[2, iz, :]
-    ax[1].plot(x, y, "-")
+    ax[1].plot(x, y, "C4-", lw=3)
     
+    
+    ax[0].axhline(0, linestyle=":", color="k")
+    ax[0].axhline(0.1, linestyle="--", color="k")
+    ax[0].axhline(-0.1, linestyle="--", color="k")
+    ax[0].axvline(kmax_3d_fit, linestyle="--", color="k")
     ax[1].axhline(0, linestyle=":", color="k")
-    ax[1].axhline(0.01, linestyle=":", color="k")
-    ax[1].axhline(-0.01, linestyle=":", color="k")
-    ax[1].axvline(kmax_1d_fit, linestyle=":", color="k")
+    ax[1].axhline(0.01, linestyle="--", color="k")
+    ax[1].axhline(-0.01, linestyle="--", color="k")
+    ax[1].axvline(kmax_1d_fit, linestyle="--", color="k")
+
+    ax[0].set_ylabel(r"Residual $P_\mathrm{3D}$", fontsize=ftsize)
+    ax[1].set_ylabel(r"Residual $P_\mathrm{1D}$", fontsize=ftsize)
     
-    ax[0].set_title("z="+str(central[iz]["z"]))
+    ax[0].set_xlabel(r"$k\, [\mathrm{Mpc}^{-1}]$", fontsize=ftsize)
+    ax[1].set_xlabel(r"$k_\parallel\, [\mathrm{Mpc}^{-1}]$", fontsize=ftsize)
+
+    ax[0].tick_params(axis="both", which="major", labelsize=ftsize)
+    ax[1].tick_params(axis="both", which="major", labelsize=ftsize)
+
+    if(central[iz]["z"] != out):
+        ax[0].set_title("z="+str(central[iz]["z"]))
     ax[0].set_xscale("log")
-    ax[0].set_ylim(-0.2, 0.2)
-    ax[1].set_ylim(-0.02, 0.02)
+    ax[0].set_ylim(-0.21, 0.21)
+    ax[1].set_ylim(-0.021, 0.021)
+
+    plt.tight_layout()
+    plt.savefig(folder + "goodness_fit_z_"+str(central[iz]["z"])+".png")
+    plt.savefig(folder + "goodness_fit_z_"+str(central[iz]["z"])+".pdf")
 
 # %%

@@ -331,19 +331,18 @@ class GadgetArchive3D(GadgetArchive):
             )
             data = np.load(file, allow_pickle=True)
             best_params = data["best_params"]
-            # ind_snap = data["ind_snap"]
-            # val_scaling = data["val_scaling"]
+            ind_snap = data["ind_snap"]
+            val_scaling = data["val_scaling"]
 
             nelem = len(archive)
             for ii in range(nelem):
-                # ind = np.argwhere(
-                #     (ind_snap == archive[ii]["ind_snap"])
-                #     & (val_scaling == archive[ii]["val_scaling"])
-                # )[0, 0]
-                archive[ii]["Arinyo_min"] = best_params[ii]
-                # params_numpy2dict_minimizer(
-                #     best_params[ind, :, 0]
-                # )
+                ind = np.argwhere(
+                    (ind_snap == archive[ii]["ind_snap"])
+                    & (val_scaling == archive[ii]["val_scaling"])
+                )[0, 0]
+                archive[ii]["Arinyo_min"] = params_numpy2dict_minimizer(
+                    best_params[ind, :, 0]
+                )
 
     def add_Arinyo_minimizer_joint(
         self,
