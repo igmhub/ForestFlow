@@ -1,6 +1,7 @@
 import numpy as np
 import sys, os
 
+import forestflow
 from forestflow.model_p3d_arinyo import ArinyoModel
 from forestflow.fit_p3d import FitPk
 from forestflow.archive import GadgetArchive3D

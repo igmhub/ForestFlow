@@ -102,9 +102,6 @@ def get_input_dataz(list_data, kmax_fit):
     return data_dict, model
 
 
-# /global/homes/j/jjchaves/data/forestflow
-
-
 def main():
     args = sys.argv[1:]
 
