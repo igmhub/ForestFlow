@@ -31,18 +31,18 @@ def plot_motivate_model(
         _ = np.isfinite(knew[:, ii])
         x = knew[_, ii]
         y = rebin_p3d[_, ii] / rebin_plin[_, ii]
-        kaiser = rebin_kaiser_p3d[_, ii] / rebin_plin[_, ii]
         ax[0].plot(x, y, col + "o:", lw=3)
 
-        ax[0].plot(x, kaiser, color=col, ls="--", lw=1.5, alpha=0.5)
+        y = rebin_kaiser_p3d[_, ii] / rebin_plin[_, ii]
+        ax[0].plot(x, y, color=col, ls="--", lw=1.5, alpha=0.5)
 
         y = rebin_model_p3d[_, ii] / rebin_plin[_, ii]
         ax[0].plot(x, y, col + "-", lw=3, alpha=0.8)
 
-        y = rebin_p3d[_, ii] / rebin_model_p3d[_, ii] - 1
-        ax[1].plot(x, y, col + ":o", lw=3)
+        y = rebin_model_p3d[_, ii] / rebin_p3d[_, ii] - 1
+        ax[1].plot(x, y, col + "-", lw=3)
 
-        y = rebin_kaiser_p3d[_, ii] / rebin_model_p3d[_, ii] - 1
+        y = rebin_kaiser_p3d[_, ii] / rebin_p3d[_, ii] - 1
         ax[1].plot(x, y, col + "--", lw=1.5, alpha=0.5)
 
     for ii in range(2):
@@ -66,7 +66,7 @@ def plot_motivate_model(
         col = "C" + str(i)
         hand.append(mpatches.Patch(color=col, label=labs[i]))
     legend1 = ax[0].legend(
-        fontsize=ftsize - 2, loc="upper right", handles=hand, ncols=2
+        fontsize=ftsize - 2, loc="upper right", handles=hand, ncols=1
     )
 
     line1 = Line2D(
@@ -89,7 +89,7 @@ def plot_motivate_model(
         linewidth=2,
     )
     hand = [line2, line3, line1]
-    ax[0].legend(fontsize=ftsize - 2, loc="center left", handles=hand, ncols=1)
+    ax[0].legend(fontsize=ftsize - 2, loc="upper left", handles=hand, ncols=1)
     ax[0].add_artist(legend1)
 
     for ii in range(2):

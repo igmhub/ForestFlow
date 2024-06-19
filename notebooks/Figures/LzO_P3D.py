@@ -83,8 +83,8 @@ print(len(Archive3D.training_data))
 # %%
 z_test = [3.5, 2.5]
 
-model_path = path_program+"/data/emulator_models/joint_z/"
-training_type = "Arinyo_minz"
+model_path = path_program+"/data/emulator_models/"
+training_type = "Arinyo_min"
 for iz, zdrop in enumerate(z_test):
     print(f"Dropping redshift {zdrop}")
 
@@ -111,17 +111,18 @@ for iz, zdrop in enumerate(z_test):
 # ### Evaluate L1Os
 
 # %%
-training_type = "Arinyo_minz"
-model_path = path_program+"/data/emulator_models/joint_z/"
+training_type = "Arinyo_min"
+model_path = path_program+"/data/emulator_models/"
 
 Nsim = 30
 zs = np.flip(np.arange(2, 4.6, 0.25))
 Nz = zs.shape[0]
 
 n_mubins = 4
-kmax_3d_plot = 4
-kmax_1d_plot = 4
-kmax_fit = 3
+kmax_3d_fit = 5
+kmax_1d_fit = 4
+kmax_3d_plot = kmax_3d_fit + 1
+kmax_1d_plot = kmax_1d_fit + 1
 
 sim = Archive3D.training_data[0]
 
@@ -152,8 +153,6 @@ arr_p1d_fit = np.zeros((Nsim, Nz, np.sum(mask_1d)))
 params_sim = np.zeros((Nsim, Nz, 2))
 params_emu = np.zeros((Nsim, Nz, 2))
 
-model_path = path_program+"/data/emulator_models/joint_z/"
-training_type = "Arinyo_minz"
 for iz, zdrop in enumerate(z_test):
     print(f"Dropping redshift {zdrop}")
 
@@ -253,10 +252,10 @@ residual = (arr_p3d_emu / arr_p3d_sim -1)
 # %%
 savename=folder+"l1O/l1O_z_P3D.png"
 plot_p3d_L1O(z_use, knew, munew, residual, mu_bins, 
-             kmax_3d_fit=kmax_fit, legend=False, savename=savename)
+             kmax_3d_fit=kmax_3d_fit, legend=False, savename=savename)
 savename=folder+"l1O/l1O_z_P3D.pdf"
 plot_p3d_L1O(z_use, knew, munew, residual, mu_bins, 
-             kmax_3d_fit=kmax_fit, legend=False, savename=savename)
+             kmax_3d_fit=kmax_3d_fit, legend=False, savename=savename)
 
 # %% [markdown]
 # #### P1D
@@ -267,8 +266,8 @@ residual.shape
 
 # %%
 savename=folder+"l1O/l1O_z_P1D.png"
-plot_p1d_L1O(z_use, k1d_Mpc, residual, kmax_1d_fit=kmax_fit,savename=savename)
+plot_p1d_L1O(z_use, k1d_Mpc, residual, kmax_1d_fit=kmax_1d_fit, savename=savename)
 savename=folder+"l1O/l1O_z_P1D.pdf"
-plot_p1d_L1O(z_use, k1d_Mpc, residual, kmax_1d_fit=kmax_fit,savename=savename)
+plot_p1d_L1O(z_use, k1d_Mpc, residual, kmax_1d_fit=kmax_1d_fit, savename=savename)
 
 # %%

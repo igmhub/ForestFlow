@@ -78,20 +78,23 @@ print(len(Archive3D.training_data))
 # %%
 # training_type = "Arinyo_min_q1"
 # training_type = "Arinyo_min_q1_q2"
-training_type = "Arinyo_min"
 # training_type = "Arinyo_minz"
 
-if (training_type == "Arinyo_min_q1"):
-    nparams = 7
-    model_path = path_program+"/data/emulator_models/mpg_q1/mpg_hypercube.pt"
-elif(training_type == "Arinyo_min"):
-    nparams = 8
-    # model_path = path_program+"/data/emulator_models/mpg_q1_q2/mpg_hypercube.pt"
-    model_path=path_program+"/data/emulator_models/mpg_joint.pt"
-elif(training_type == "Arinyo_minz"):
-    nparams = 8
-    # model_path = path_program+"/data/emulator_models/mpg_q1_q2/mpg_hypercube.pt"
-    model_path=path_program+"/data/emulator_models/mpg_jointz.pt"
+# if (training_type == "Arinyo_min_q1"):
+#     nparams = 7
+#     model_path = path_program+"/data/emulator_models/mpg_q1/mpg_hypercube.pt"
+# elif(training_type == "Arinyo_min"):
+#     nparams = 8
+#     # model_path = path_program+"/data/emulator_models/mpg_q1_q2/mpg_hypercube.pt"
+#     model_path=path_program+"/data/emulator_models/mpg_joint.pt"
+# elif(training_type == "Arinyo_minz"):
+#     nparams = 8
+#     # model_path = path_program+"/data/emulator_models/mpg_q1_q2/mpg_hypercube.pt"
+#     model_path=path_program+"/data/emulator_models/mpg_jointz.pt"
+
+training_type = "Arinyo_min"
+model_path=path_program+"/data/emulator_models/mpg_hypercube.pt"
+
 
 emulator = P3DEmulator(
     Archive3D.training_data,
@@ -120,9 +123,10 @@ zs = np.flip(np.arange(2, 4.6, 0.25))
 Nz = zs.shape[0]
 
 n_mubins = 4
-kmax_3d_plot = 4
-kmax_1d_plot = 4
-kmax_fit = 3
+kmax_3d_fit = 5
+kmax_1d_fit = 4
+kmax_3d_plot = kmax_3d_fit + 1
+kmax_1d_plot = kmax_1d_fit + 1
 
 sim = Archive3D.training_data[0]
 
@@ -136,6 +140,10 @@ mask_3d = k3d_Mpc[:, 0] <= kmax_3d_plot
 mask_1d = (sim['k_Mpc'] <= kmax_1d_plot) & (sim['k_Mpc'] > 0)
 k1d_Mpc = sim['k_Mpc'][mask_1d]
 p1d_Mpc = sim['p1d_Mpc'][mask_1d]
+
+# %%
+# np.sum(k3d_Mpc <= kmax_3d_fit)
+# np.sum((sim['k_Mpc'] <= kmax_1d_fit) & (sim['k_Mpc'] > 0))
 
 # %% [markdown]
 # ### Central simulation
@@ -201,6 +209,7 @@ plot_p3d_snap(
     rebin_p3d_emu/rebin_plin,
     rebin_p3d_std_emu/rebin_plin,
     mu_bins,
+    kmax_3d_fit=kmax_3d_fit
 )
 
 # %%
@@ -210,6 +219,8 @@ plot_p1d_snap(
     p1d_sim,
     p1d_emu,
     p1d_std_emu,
+    kmax_1d=kmax_1d_plot,
+    kmax_1d_fit=kmax_1d_fit,
 )
 
 # %% [markdown]
@@ -290,10 +301,8 @@ for ext in [".png", ".pdf"]:
         mu_bins=mu_bins,
         savename=savename+ext,
         fontsize=20,
+        kmax_3d_fit=kmax_3d_fit
     )
-
-# %%
-rat_p1d.shape
 
 # %%
 savename = folder + "test_cosmo/test_cosmo_P1D"
@@ -304,6 +313,7 @@ for ext in [".png", ".pdf"]:
         rat_p1d,
         savename=savename+ext,
         fontsize=20,
+        kmax_1d_fit=kmax_1d_fit
     );
 
 # %%

@@ -172,20 +172,22 @@ print(len(Archive3D.training_data))
 # %%
 # training_type = "Arinyo_min_q1"
 # training_type = "Arinyo_min_q1_q2"
-# training_type = "Arinyo_min"
-training_type = "Arinyo_minz"
+training_type = "Arinyo_min"
+# training_type = "Arinyo_minz"
 
-if (training_type == "Arinyo_min_q1"):
-    nparams = 7
-    model_path = path_program+"/data/emulator_models/mpg_q1/mpg_hypercube.pt"
-elif(training_type == "Arinyo_min"):
-    nparams = 8
-    # model_path = path_program+"/data/emulator_models/mpg_q1_q2/mpg_hypercube.pt"
-    model_path=path_program+"/data/emulator_models/mpg_last.pt"
-elif(training_type == "Arinyo_minz"):
-    nparams = 8
-    # model_path = path_program+"/data/emulator_models/mpg_q1_q2/mpg_hypercube.pt"
-    model_path=path_program+"/data/emulator_models/mpg_jointz.pt"
+# if (training_type == "Arinyo_min_q1"):
+#     nparams = 7
+#     model_path = path_program+"/data/emulator_models/mpg_q1/mpg_hypercube.pt"
+# elif(training_type == "Arinyo_min"):
+#     nparams = 8
+#     # model_path = path_program+"/data/emulator_models/mpg_q1_q2/mpg_hypercube.pt"
+#     model_path=path_program+"/data/emulator_models/mpg_last.pt"
+# elif(training_type == "Arinyo_minz"):
+#     nparams = 8
+#     # model_path = path_program+"/data/emulator_models/mpg_q1_q2/mpg_hypercube.pt"
+#     model_path=path_program+"/data/emulator_models/mpg_jointz.pt"
+
+model_path=path_program+"/data/emulator_models/mpg_joint.pt"
 
 emulator = P3DEmulator(
     Archive3D.training_data,

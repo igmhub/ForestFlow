@@ -81,9 +81,9 @@ print(len(Archive3D.training_data))
 # ### Train L1Os
 
 # %%
-model_path = path_program+"/data/emulator_models/joint_z/"
-training_type = "Arinyo_minz"
-for s in range(6, 30):
+model_path = path_program+"/data/emulator_models/"
+training_type = "Arinyo_min"
+for s in range(1, 30):
     print(f"Starting simulation {s}")
     print()
 
@@ -112,17 +112,18 @@ for s in range(6, 30):
 # ### Evaluate L1Os
 
 # %%
-training_type = "Arinyo_minz"
-model_path = path_program+"/data/emulator_models/joint_z/"
+training_type = "Arinyo_min"
+model_path = path_program+"/data/emulator_models/"
 
 Nsim = 30
 zs = np.flip(np.arange(2, 4.6, 0.25))
 Nz = zs.shape[0]
 
 n_mubins = 4
-kmax_3d_plot = 4
-kmax_1d_plot = 4
-kmax_fit = 3
+kmax_3d_fit = 5
+kmax_1d_fit = 4
+kmax_3d_plot = kmax_3d_fit + 1
+kmax_1d_plot = kmax_1d_fit + 1
 
 sim = Archive3D.training_data[0]
 
@@ -140,10 +141,8 @@ p1d_Mpc = sim['p1d_Mpc'][mask_1d]
 # %%
 arr_p3d_sim = np.zeros((Nsim, Nz, np.sum(mask_3d), n_mubins))
 arr_p3d_emu = np.zeros((Nsim, Nz, np.sum(mask_3d), n_mubins))
-arr_p3d_fit = np.zeros((Nsim, Nz, np.sum(mask_3d), n_mubins))
 arr_p1d_sim = np.zeros((Nsim, Nz, np.sum(mask_1d)))
 arr_p1d_emu = np.zeros((Nsim, Nz, np.sum(mask_1d)))
-arr_p1d_fit = np.zeros((Nsim, Nz, np.sum(mask_1d)))
 params_sim = np.zeros((Nsim, Nz, 2))
 params_emu = np.zeros((Nsim, Nz, 2))
 
@@ -174,6 +173,7 @@ for isim in range(Nsim):
     )
     
     for iz, z in enumerate(zs):
+        print(z)
         # define test sim
         dict_sim = [
             d
@@ -222,6 +222,18 @@ for isim in range(Nsim):
 
 
 # %%
+folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+np.savez(
+    folder + "temporal_l1O", 
+    arr_p3d_sim=arr_p3d_sim, 
+    arr_p3d_emu=arr_p3d_emu, 
+    arr_p1d_sim=arr_p1d_sim, 
+    arr_p1d_emu=arr_p1d_emu,
+    params_sim=params_sim,
+    params_emu=params_emu
+)
+
+# %%
 for ii in range(2):
     print(ii)
     print(np.mean(params_emu[...,ii]/params_sim[...,ii]-1))
@@ -232,7 +244,7 @@ for ii in range(2):
     # print(rat)
 
 # %% [markdown]
-# 2.6 and 4.1 per cent
+# 3.4 and 3.9 per cent
 
 # %% [markdown]
 # ### L1O of each sim
@@ -249,9 +261,6 @@ for ii in range(len(z_use)):
     mask_z[ii] = np.argwhere(z_use[ii] == zs)[0,0]
 mask_z
 
-# %%
-residual.shape
-
 # %% [markdown]
 # #### P3D
 
@@ -262,7 +271,7 @@ residual = (arr_p3d_emu / arr_p3d_sim -1)
 # savename = folder+"l1O/l1O_P3D.png"
 # plot_p3d_L1O(z_use, knew, munew, residual[:, mask_z, :, :], mu_bins, kmax_3d_fit=kmax_fit, savename=savename)
 savename = folder+"l1O/l1O_P3D.pdf"
-plot_p3d_L1O(z_use, knew, munew, residual[:, mask_z, :, :], mu_bins, kmax_3d_fit=kmax_fit, savename=savename)
+plot_p3d_L1O(z_use, knew, munew, residual[:, mask_z, :, :], mu_bins, kmax_3d_fit=kmax_3d_fit, savename=savename)
 
 
 # %%
@@ -272,12 +281,11 @@ plot_p3d_L1O(z_use, knew, munew, residual[:, mask_z, :, :], mu_bins, kmax_3d_fit
 
 # %%
 residual = (arr_p1d_emu / arr_p1d_sim -1)
-residual.shape
 
 # %%
 # savename=folder+"l1O/l1O_P1D.png"
 # plot_p1d_L1O(z_use, k1d_Mpc, residual[:, mask_z, :], kmax_1d_fit=kmax_fit, savename=savename)
 savename=folder+"l1O/l1O_P1D.pdf"
-plot_p1d_L1O(z_use, k1d_Mpc, residual[:, mask_z, :], kmax_1d_fit=kmax_fit, savename=savename)
+plot_p1d_L1O(z_use, k1d_Mpc, residual[:, mask_z, :], kmax_1d_fit=kmax_1d_fit, savename=savename)
 
 # %%

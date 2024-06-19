@@ -67,11 +67,8 @@ print(len(Archive3D.training_data))
 # ## LOAD EMULATOR
 
 # %%
-# training_type = "Arinyo_min"
-# model_path=path_program + "/data/emulator_models/mpg_last.pt"
-training_type = "Arinyo_minz"
-# model_path=path_program + "/data/emulator_models/mpg_minz.pt"
-model_path=path_program + "/data/emulator_models/mpg_jointz.pt"
+training_type = "Arinyo_min"
+model_path=path_program + "/data/emulator_models/mpg_hypercube.pt"
 
 p3d_emu = P3DEmulator(
     Archive3D.training_data,
@@ -138,12 +135,12 @@ def paramz_to_paramind(z, paramz):
         paramind.append(param)
     return paramind
 
-file = path_program + "/data/best_arinyo/minimizer_z/fit_sim_label_combo_val_scaling_1_kmax3d_3_kmax1d_3.npz"
+file = path_program + "/data/best_arinyo/minimizer/fit_sim_label_combo_kmax3d_5_kmax1d_4.npz"
 data = np.load(file, allow_pickle=True)
-best_params = paramz_to_paramind(zlist, data["best_params"].item())
+# best_params = paramz_to_paramind(zlist, data["best_params"].item())
 
 for ii in range(len(list_merge)):
-    list_merge[ii]["Arinyo_minz"] = params_numpy2dict_minimizerz(best_params[ii])
+    list_merge[ii]["Arinyo_min"] = data["best_params"][ii]
 
 # %% [markdown]
 # ### Plot ratios sims
@@ -336,6 +333,19 @@ from forestflow.plots.params_z import plot_arinyo_z, plot_forestflow_z
 folder_fig = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
 
 # %%
+bias_cen = np.zeros((len(Arinyo_central), 2))
+bias_seed = np.zeros((len(Arinyo_central), 2))
+for ii in range(len(Arinyo_central)):
+    bias_cen[ii, 0] = Arinyo_central[ii]["bias"]
+    bias_cen[ii, 1] = Arinyo_central[ii]["bias_eta"]
+    bias_seed[ii, 0] = Arinyo_seed[ii]["bias"]
+    bias_seed[ii, 1] = Arinyo_seed[ii]["bias_eta"]
+
+# %%
+for ii in range(2):
+    plt.plot(z_central, bias_cen[:, ii]/bias_seed[:, ii]-1)
+
+# %%
 # for ii in range(len(Arinyo_emu)):
 #     print(ii, Arinyo_emu[ii]["kv"])
 #     Arinyo_emu[ii]["kv"] = Arinyo_emu[ii]["kv"]**Arinyo_emu[ii]["av"]
@@ -345,7 +355,7 @@ folder_fig = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
 plot_arinyo_z(z_central, Arinyo_central, Arinyo_seed, Arinyo_merge, folder_fig=folder_fig, ftsize=20)
 
 # %%
-plot_forestflow_z(z_central, Arinyo_central, Arinyo_seed, Arinyo_emu, Arinyo_emu_std, folder_fig=folder_fig, ftsize=20)
+plot_forestflow_z(z_central, Arinyo_central, Arinyo_emu, Arinyo_emu_std, folder_fig=folder_fig, ftsize=20)
 
 # %%
 Arinyo_central[0].keys()
@@ -364,10 +374,13 @@ for iz in range(len(Arinyo_central)):
 
 # %%
 for ii in range(2):
-    y = np.concatenate([kaiser_cen[:,ii]/kaiser_merge[:,ii] - 1, kaiser_seed[:,ii]/kaiser_merge[:,ii] - 1])
+    # y = np.concatenate([kaiser_cen[:,ii]/kaiser_merge[:,ii] - 1, kaiser_seed[:,ii]/kaiser_merge[:,ii] - 1])
+    y = (kaiser_cen[:,ii]/kaiser_seed[:,ii] - 1)
     s_pred = np.percentile(y, [16, 50, 84])
     std = 0.5 * (s_pred[2] - s_pred[0]) * 100
     print(ii, s_pred[1]* 100, std)
 
 
 # %%
+0 1.513956969208241 0.9816090063136884
+1 0.7647390340765448 1.8861762107728053

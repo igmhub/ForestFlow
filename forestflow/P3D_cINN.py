@@ -522,7 +522,6 @@ class P3DEmulator:
                         nk=nd1,
                         nmu=nd2,
                         compute_plin=True,
-                        minimize=False,
                     )
                 else:
                     out_dict["Plin"] = model_Arinyo.linP_Mpc(
@@ -546,7 +545,6 @@ class P3DEmulator:
                             nk=nd1,
                             nmu=nd2,
                             compute_plin=False,
-                            minimize=False,
                         )
                         p3ds_pred[r] = _.reshape(-1)
                     else:

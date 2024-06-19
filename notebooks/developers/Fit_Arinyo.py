@@ -230,7 +230,6 @@ def get_input_data(z_use, list_data, kmax_fit, version=1):
         alpha1d = 500
         alpha3d = 0.25
         k0_p1d = 2
-        k0_p3d = 3
         
     data_dict = {}
 
