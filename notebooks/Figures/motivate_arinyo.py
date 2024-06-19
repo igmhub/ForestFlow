@@ -70,8 +70,8 @@ test_sim_z = [d for d in test_sim if d["z"] == zs][0]
 
 # %%
 n_mubins = 4
-kmax = 4
-kmax_fit = 3
+kmax = 6
+kmax_fit = 5
 
 k3d_Mpc = test_sim_z['k3d_Mpc']
 mu3d = test_sim_z['mu3d']
@@ -106,13 +106,13 @@ kaiser_params["kp"] = 10**5
 # model_p3d = test_sim_z['model'].P3D_Mpc(zs, k3d_Mpc, mu3d, arinyo_params)
 # plin = test_sim_z['model'].linP_Mpc(zs, k3d_Mpc)
 
-_ = p3d_allkmu(test_sim_z['model'], zs, arinyo_params, kmu_modes)
+_ = p3d_allkmu(test_sim_z['model'], zs, arinyo_params, kmu_modes, nk=np.sum(mask_3d))
 model_p3d, plin = _
 
-_ = p3d_allkmu(test_sim_z['model'], zs, kaiser_params, kmu_modes)
+_ = p3d_allkmu(test_sim_z['model'], zs, kaiser_params, kmu_modes, nk=np.sum(mask_3d))
 kaiser_p3d, plin = _
 
-_ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], model_p3d, kmu_modes, n_mubins=n_mubins)
+_ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], model_p3d, kmu_modes, n_mubins=n_mubins,)
 knew, munew, rebin_model_p3d, mu_bins = _
 
 _ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], kaiser_p3d, kmu_modes, n_mubins=n_mubins)
@@ -130,6 +130,6 @@ from forestflow.plots.motivate_model import plot_motivate_model
 
 # %%
 folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
-plot_motivate_model(knew, munew, mu_bins, rebin_p3d, rebin_model_p3d, rebin_kaiser_p3d, rebin_plin, folder=folder, kmax_fit=3)
+plot_motivate_model(knew, munew, mu_bins, rebin_p3d, rebin_model_p3d, rebin_kaiser_p3d, rebin_plin, folder=folder, kmax_fit=kmax_fit)
 
 # %%

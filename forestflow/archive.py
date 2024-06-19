@@ -277,8 +277,8 @@ class GadgetArchive3D(GadgetArchive):
         self,
         archive,
         sim_label=None,
-        kmax_3d=3,
-        kmax_1d=3,
+        kmax_3d=5,
+        kmax_1d=4,
     ):
         def get_flag_out(ind_sim, kmax_3d, kmax_1d):
             flag = (
@@ -302,12 +302,12 @@ class GadgetArchive3D(GadgetArchive):
                     + flag
                     + ".npz"
                 )
-                data = np.load(file)
+                data = np.load(file, allow_pickle=True)
                 best_params = data["best_params"]
                 ind_snap = data["ind_snap"]
                 val_scaling = data["val_scaling"]
 
-                nelem = best_params.shape[0]
+                nelem = len(best_params)
                 for jj in range(nelem):
                     if ind_sim != archive[ii]["sim_label"]:
                         raise ValueError("sim_label does not match")
@@ -317,8 +317,15 @@ class GadgetArchive3D(GadgetArchive):
                         & (val_scaling == archive[ii]["val_scaling"])
                     )[0, 0]
 
-                    archive[ii]["Arinyo_min"] = params_numpy2dict_minimizer(
-                        best_params[ind, :, 0]
+                    # archive[ii]["Arinyo_min"] = params_numpy2dict_minimizer(
+                    #     best_params[ind, :, 0]
+                    # )
+                    archive[ii]["Arinyo_min"] = best_params[ind]
+                    archive[ii]["Arinyo_min"]["q1"] = np.abs(
+                        archive[ii]["Arinyo_min"]["q1"]
+                    )
+                    archive[ii]["Arinyo_min"]["q2"] = np.abs(
+                        archive[ii]["Arinyo_min"]["q2"]
                     )
                     ii += 1
         else:
@@ -334,14 +341,18 @@ class GadgetArchive3D(GadgetArchive):
             ind_snap = data["ind_snap"]
             val_scaling = data["val_scaling"]
 
-            nelem = len(archive)
+            nelem = len(best_params)
             for ii in range(nelem):
                 ind = np.argwhere(
                     (ind_snap == archive[ii]["ind_snap"])
                     & (val_scaling == archive[ii]["val_scaling"])
                 )[0, 0]
-                archive[ii]["Arinyo_min"] = params_numpy2dict_minimizer(
-                    best_params[ind, :, 0]
+                archive[ii]["Arinyo_min"] = best_params[ind]
+                archive[ii]["Arinyo_min"]["q1"] = np.abs(
+                    archive[ii]["Arinyo_min"]["q1"]
+                )
+                archive[ii]["Arinyo_min"]["q2"] = np.abs(
+                    archive[ii]["Arinyo_min"]["q2"]
                 )
 
     def add_Arinyo_minimizer_joint(

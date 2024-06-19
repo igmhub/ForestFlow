@@ -1,3 +1,4 @@
+# /global/u1/j/jjchaves/ForestFlow//data/best_arinyo/minimizer/
 import numpy as np
 import sys, os
 

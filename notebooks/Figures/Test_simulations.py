@@ -78,8 +78,8 @@ print(len(Archive3D.training_data))
 # %%
 # training_type = "Arinyo_min_q1"
 # training_type = "Arinyo_min_q1_q2"
-# training_type = "Arinyo_min"
-training_type = "Arinyo_minz"
+training_type = "Arinyo_min"
+# training_type = "Arinyo_minz"
 
 if (training_type == "Arinyo_min_q1"):
     nparams = 7
@@ -87,7 +87,7 @@ if (training_type == "Arinyo_min_q1"):
 elif(training_type == "Arinyo_min"):
     nparams = 8
     # model_path = path_program+"/data/emulator_models/mpg_q1_q2/mpg_hypercube.pt"
-    model_path=path_program+"/data/emulator_models/mpg_last.pt"
+    model_path=path_program+"/data/emulator_models/mpg_joint.pt"
 elif(training_type == "Arinyo_minz"):
     nparams = 8
     # model_path = path_program+"/data/emulator_models/mpg_q1_q2/mpg_hypercube.pt"
@@ -108,6 +108,7 @@ emulator = P3DEmulator(
     Nrealizations=10000,
     training_type=training_type,
     model_path=model_path,
+    # save_path=model_path,
 )
 
 # %% [markdown]

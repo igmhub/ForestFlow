@@ -71,12 +71,12 @@ print(len(Archive3D.training_data))
 # %%
 sim_label = "mpg_central"
 central = Archive3D.get_testing_data(
-    sim_label, force_recompute_plin=False, kmax_3d=3, kmax_1d=3
+    sim_label, force_recompute_plin=False
 )
 
 sim_label = "mpg_seed"
 seed = Archive3D.get_testing_data(
-    sim_label, force_recompute_plin=False, kmax_3d=3, kmax_1d=3
+    sim_label, force_recompute_plin=False
 )
 
 # get average of both
@@ -198,9 +198,11 @@ for iz in range(len(central)):
 central_0 = []
 central_1 = []
 central_2 = []
+central_t = []
 seed_0 = []
 seed_1 = []
 seed_2 = []
+seed_t = []
 
 for ii in range(len(Archive3D.data)):
     if(Archive3D.data[ii]["sim_label"] == "mpg_central") & (Archive3D.data[ii]["val_scaling"] ==1) & (Archive3D.data[ii]["z"] == 3):
@@ -210,6 +212,7 @@ for ii in range(len(Archive3D.data)):
             central_1.append(Archive3D.data[ii])
         if(Archive3D.data[ii]["ind_axis"] == 2):
             central_2.append(Archive3D.data[ii])
+        central_t.append(Archive3D.data[ii])
     if(Archive3D.data[ii]["sim_label"] == "mpg_seed") & (Archive3D.data[ii]["val_scaling"] ==1) & (Archive3D.data[ii]["z"] == 3):
         if(Archive3D.data[ii]["ind_axis"] == 0):
             seed_0.append(Archive3D.data[ii])
@@ -217,10 +220,9 @@ for ii in range(len(Archive3D.data)):
             seed_1.append(Archive3D.data[ii])
         if(Archive3D.data[ii]["ind_axis"] == 2):
             seed_2.append(Archive3D.data[ii])
+        seed_t.append(Archive3D.data[ii])
 
 # %%
-
-
 av_p3d_cen = []
 av_p3d_seed = []
 av_p1d_cen = []
@@ -235,8 +237,8 @@ for sim in [central_0, central_1, central_2]:
     for ii in range(2):
         p3d += sim[ii]["mF"]**2 * sim[ii]["p3d_Mpc"]
         p1d += sim[ii]["mF"]**2 * sim[ii]["p1d_Mpc"]
-    p3d /= mF/2
-    p1d /= mF/2
+    p3d = p3d/mF**2/2
+    p1d = p1d/mF**2/2
     
     av_p3d_cen.append(p3d)
     av_p1d_cen.append(p1d)
@@ -251,11 +253,36 @@ for sim in [seed_0, seed_1, seed_2]:
     for ii in range(2):
         p3d += sim[ii]["mF"]**2 * sim[ii]["p3d_Mpc"]
         p1d += sim[ii]["mF"]**2 * sim[ii]["p1d_Mpc"]
-    p3d /= mF/2
-    p1d /= mF/2
+    p3d = p3d/mF**2/2
+    p1d = p1d/mF**2/2
     
     av_p3d_seed.append(p3d)
     av_p1d_seed.append(p1d)
+
+# %%
+nsims = len(central_t)
+
+mF = 0
+for ii in range(nsims):
+    mF += central_t[ii]["mF"]/nsims
+av_p3d_cent = 0
+av_p1d_cent = 0
+for ii in range(nsims):
+    av_p3d_cent += central_t[ii]["mF"]**2 * central_t[ii]["p3d_Mpc"]
+    av_p1d_cent += central_t[ii]["mF"]**2 * central_t[ii]["p1d_Mpc"]
+av_p3d_cent = av_p3d_cent/mF**2/nsims
+av_p1d_cent = av_p1d_cent/mF**2/nsims
+
+mF = 0
+for ii in range(nsims):
+    mF += seed_t[ii]["mF"]/nsims
+av_p3d_seedt = 0
+av_p1d_seedt = 0
+for ii in range(nsims):
+    av_p3d_seedt += seed_t[ii]["mF"]**2 * seed_t[ii]["p3d_Mpc"]
+    av_p1d_seedt += seed_t[ii]["mF"]**2 * seed_t[ii]["p1d_Mpc"]
+av_p3d_seedt = av_p3d_seedt/mF**2/nsims
+av_p1d_seedt = av_p1d_seedt/mF**2/nsims
 
 # %%
 from forestflow.rebin_p3d import p3d_allkmu, get_p3d_modes, p3d_rebin_mu
@@ -277,10 +304,16 @@ k1d_Mpc = combo[0]['k_Mpc'][mask_1d]
 _ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], combo[isnap]['p3d_Mpc'][mask_3d], kmu_modes, n_mubins=n_mubins)
 knew, munew, combo_bin, mu_bins = _
 
+_ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], av_p3d_cent[mask_3d], kmu_modes, n_mubins=n_mubins)
+knew, munew, av_p3d_cent_bin, mu_bins = _
+
+_ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], av_p3d_seedt[mask_3d], kmu_modes, n_mubins=n_mubins)
+knew, munew, av_p3d_seedt_bin, mu_bins = _
+
 
 # %%
 
-fig, ax = plt.subplots(4, sharex=True, figsize=(8, 4))
+fig, ax = plt.subplots(4, sharex=True, sharey=True, figsize=(8, 6))
 for ii in range(3):
     _ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], av_p3d_cen[ii], kmu_modes, n_mubins=n_mubins)
     knew, munew, cen_bin, mu_bins = _
@@ -289,39 +322,53 @@ for ii in range(3):
     knew, munew, seed_bin, mu_bins = _
 
     for jj in range(4):
-        _ = knew[:, jj] < kmax_3d
+        _ = np.isfinite(knew[:, jj]) & (knew[:, jj] < 0.5)
         
         y = (cen_bin[:,jj] - seed_bin[:,jj])/combo_bin[:,jj]/np.sqrt(2)
         ax[jj].plot(knew[_, jj], y[_])
+
+        if(ii == 2):
+            y = (av_p3d_cent_bin[:,jj] - av_p3d_seedt_bin[:,jj])/combo_bin[:,jj]/np.sqrt(2)
+            ax[jj].plot(knew[_, jj], y[_], "--", lw=2)
 
 for jj in range(4):
     ax[jj].axhline(0, linestyle=":", color="k")
     ax[jj].axhline(0.1, linestyle="--", color="k")
     ax[jj].axhline(-0.1, linestyle="--", color="k")
+ax[0].set_ylim(-0.21, 0.21)
 
-plt.xscale('log')
+# plt.xscale('log')
+plt.tight_layout()
 plt.savefig("cvar_axes.png")
 
 # %%
 ls = ["-", ":", "--"]
-fig, ax = plt.subplots(16, sharex=True, figsize=(8, 16))
+fig, ax = plt.subplots(16, sharex=True, sharey=True, figsize=(8, 20))
 for ii in range(3):
 
     for jj in range(16):
-        _ = k3d_Mpc[:, jj] < kmax_3d
+        _ = np.isfinite(k3d_Mpc[:, jj]) & (k3d_Mpc[:, jj] < 0.5)
         
         y = (av_p3d_cen[ii][:,jj] - av_p3d_seed[ii][:,jj])/combo[isnap]['p3d_Mpc'][:,jj]/np.sqrt(2)
         ax[jj].plot(k3d_Mpc[_, jj], y[_])
+
+        if(ii == 2):
+            y = (av_p3d_cent[:,jj] - av_p3d_seedt[:,jj])/combo[isnap]['p3d_Mpc'][:,jj]/np.sqrt(2)
+            ax[jj].plot(k3d_Mpc[_, jj], y[_], "--")
 
 for jj in range(16):
     ax[jj].axhline(0, linestyle=":", color="k")
     ax[jj].axhline(0.1, linestyle="--", color="k")
     ax[jj].axhline(-0.1, linestyle="--", color="k")
 
-plt.xscale('log')
+ax[0].set_ylim(-0.21, 0.21)
+# plt.xscale('log')
+plt.tight_layout()
 plt.savefig("cvar_axes_no_rebinning.png")
 
 # %%
 len(av_p3d_seed[ii])
+
+# %%
 
 # %%
