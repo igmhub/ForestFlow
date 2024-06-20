@@ -139,12 +139,15 @@ k1d_Mpc = central[0]['k_Mpc'][mask_1d]
 
 
 # %%
+from forestflow.utils import transform_arinyo_params
+
+# %%
 list_sims = [central, seed, list_merge]
 nsims = len(list_sims)
 
 p3d_measured = np.zeros((nsims, len(central), np.sum(mask_3d), n_mubins))
 p3d_model = np.zeros((nsims, len(central), np.sum(mask_3d), n_mubins))
-params = np.zeros((nsims, len(central), 2))
+params = np.zeros((nsims, len(central), 3))
 
 p1d_measured = np.zeros((nsims, len(central), np.sum(mask_1d)))
 p1d_model = np.zeros((nsims, len(central), np.sum(mask_1d)))
@@ -179,8 +182,13 @@ for isnap in range(len(central)):
         p3d_model[ii, isnap, ...] = rebin_model_p3d
         p1d_model[ii, isnap, :] = sim[isnap]["model"].P1D_Mpc(z, k1d_Mpc, parameters=pp)
 
+        pp2 = transform_arinyo_params(pp, sim[isnap]["f_p"])
+
         params[ii, isnap, 0] = pp["bias"]
-        params[ii, isnap, 1] = pp["beta"]
+        params[ii, isnap, 1] = pp2["bias_eta"]
+        params[ii, isnap, 2] = pp["beta"]
+
+
 
 # %% [markdown]
 # ### Impact of cosmic variance on fit
@@ -200,72 +208,77 @@ for iz in range(len(central)):
     
     jj = 0
     ftsize = 20
-    fig, ax = plt.subplots(2, figsize=(8, 6), sharex=True)
+    fig, ax = plt.subplots(3, figsize=(8, 9))
+
+    z_grid = np.array([d["z"] for d in central])
+
+    lab = [r"$b_\delta$", r"$b_\eta$"]
+    
+    for ii in range(2):
+        y = (params[0, :, ii] - params[1, :, ii])/params[2, :, ii]/np.sqrt(2)
+        print(np.mean(y)*100, np.std(y)*100)
+        ax[0].plot(z_grid, y, label=lab[ii], lw=3, alpha=0.8)
+
+    for ii in range(3):
+        ax[ii].axhline(0, linestyle=":", color="k")
+        ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
+    ax[0].legend(loc="lower left", fontsize=ftsize, ncols=2)
+    ax[0].set_xlabel(r"$z$", fontsize=ftsize)
+    ax[0].set_ylabel(r"Residual parameter", fontsize=ftsize)
+    ax[0].set_ylim(-0.05, 0.05)
+    
     
     for ii in range(n_mubins):
         col = f"C{ii}"
         x = knew[:, ii] 
         _ = np.isfinite(x)        
         y = (p3d_model[0, iz, :, ii] - p3d_model[1, iz, :, ii])/p3d_model[2, iz, :, ii]/np.sqrt(2)
-        ax[0].plot(x[_], y[_], col+"-", lw=3, alpha=0.8)
+        ax[1].plot(x[_], y[_], col+"-", lw=3, alpha=0.8)
 
     x = k1d_Mpc
     y = (p1d_model[0, iz, :] - p1d_model[1, iz, :])/p1d_model[2, iz, :]/np.sqrt(2)
-    ax[1].plot(x, y, "C4-", lw=3)
+    ax[2].plot(x, y, "C4-", lw=3)
     
-    ax[0].axhline(0, linestyle=":", color="k")
-    ax[0].axhline(0.1, linestyle="--", color="k")
-    ax[0].axhline(-0.1, linestyle="--", color="k")
-    ax[0].axvline(kmax_3d_fit, linestyle="--", color="k")
-    ax[1].axhline(0, linestyle=":", color="k")
-    ax[1].axhline(0.01, linestyle="--", color="k")
-    ax[1].axhline(-0.01, linestyle="--", color="k")
-    ax[1].axvline(kmax_1d_fit, linestyle="--", color="k")
+    # ax[0].axhline(0, linestyle=":", color="k")
+    # ax[0].axhline(0.1, linestyle="--", color="k")
+    # ax[0].axhline(-0.1, linestyle="--", color="k")
+    ax[1].axvline(kmax_3d_fit, linestyle="--", color="k")
+    # ax[1].axhline(0, linestyle=":", color="k")
+    # ax[1].axhline(0.01, linestyle="--", color="k")
+    # ax[1].axhline(-0.01, linestyle="--", color="k")
+    ax[2].axvline(kmax_1d_fit, linestyle="--", color="k")
 
-    ax[0].set_ylabel(r"Residual $P_\mathrm{3D}$", fontsize=ftsize)
-    ax[1].set_ylabel(r"Residual $P_\mathrm{1D}$", fontsize=ftsize)
+    ax[1].set_ylabel(r"Residual $P_\mathrm{3D}$", fontsize=ftsize)
+    ax[2].set_ylabel(r"Residual $P_\mathrm{1D}$", fontsize=ftsize)
     
-    ax[0].set_xlabel(r"$k\, [\mathrm{Mpc}^{-1}]$", fontsize=ftsize)
-    ax[1].set_xlabel(r"$k_\parallel\, [\mathrm{Mpc}^{-1}]$", fontsize=ftsize)
+    ax[1].set_xlabel(r"$k\, [\mathrm{Mpc}^{-1}]$", fontsize=ftsize)
+    ax[2].set_xlabel(r"$k_\parallel\, [\mathrm{Mpc}^{-1}]$", fontsize=ftsize)
 
-    ax[0].tick_params(axis="both", which="major", labelsize=ftsize)
-    ax[1].tick_params(axis="both", which="major", labelsize=ftsize)
 
     if(central[iz]["z"] != out):
         ax[0].set_title("z="+str(central[iz]["z"]))
-    ax[0].set_xscale("log")
-    ax[0].set_ylim(-0.21, 0.21)
-    ax[1].set_ylim(-0.021, 0.021)
+    ax[2].set_xscale("log")
+    ax[1].set_ylim(-0.041, 0.041)
+    ax[2].set_ylim(-0.0041, 0.0041)
+    for jj in range(1,3):
+        ax[jj].set_xscale("log")
+        ax[jj].set_xlim(right=7)
 
     plt.tight_layout()
     plt.savefig(folder + "cvar_fit_z_"+str(central[iz]["z"])+".png")
     plt.savefig(folder + "cvar_fit_z_"+str(central[iz]["z"])+".pdf")
 
 # %%
-z_grid = np.array([d["z"] for d in central])
-
-fig, ax = plt.subplots(1, figsize=(8, 6), sharex=True)
-ftsize = 20
-lab = [r"$b_\delta$", r"$\beta$"]
+kaiser = np.zeros((params.shape[0], params.shape[1], 2))
+kaiser[:, :, 0] = params[:, :, 0]**2
+kaiser[:, :, 1] = params[:, :, 0]**2*(1+params[:, :, 2])**2
 
 for ii in range(2):
-    y = (params[0, :, ii] - params[1, :, ii])/params[2, :, ii]/np.sqrt(2)
-    print(np.mean(y)*100, np.std(y)*100)
-    plt.plot(z_grid, y, label=lab[ii], lw=3, alpha=0.8)
-
-ax.axhline(0, linestyle=":", color="k")
-ax.legend(loc="upper left", fontsize=ftsize)
-ax.tick_params(axis="both", which="major", labelsize=ftsize)
-ax.set_xlabel(r"$z$", fontsize=ftsize)
-ax.set_ylabel(r"Residual parameter", fontsize=ftsize)
-ax.set_ylim(-0.032, 0.032)
-
-plt.tight_layout()
-plt.savefig(folder + "cvar_fit_param.png")
-plt.savefig(folder + "cvar_fit_param.pdf")
+    y = (kaiser[0, :, ii] - kaiser[1, :, ii])/kaiser[2, :, ii]/np.sqrt(2)
+    print(np.std(y)*100)
 
 # %% [markdown]
-# ### Goodness of model
+# ### Goodness of model to average of central and seed
 
 # %%
 out = 3
@@ -322,5 +335,134 @@ for iz in range(len(central)):
     plt.tight_layout()
     plt.savefig(folder + "goodness_fit_z_"+str(central[iz]["z"])+".png")
     plt.savefig(folder + "goodness_fit_z_"+str(central[iz]["z"])+".pdf")
+
+# %% [markdown]
+# ## Goodness of model all sims
+
+# %%
+list_sims = Archive3D.training_data
+nsims = len(list_sims)
+
+p3d_measured = np.zeros((nsims, np.sum(mask_3d), n_mubins))
+p3d_model = np.zeros((nsims, np.sum(mask_3d), n_mubins))
+
+p1d_measured = np.zeros((nsims, np.sum(mask_1d)))
+p1d_model = np.zeros((nsims, np.sum(mask_1d)))
+
+for isnap in range(nsims):
+    if(isnap % 25 == 0):
+        print(isnap)
+
+    _ = p3d_rebin_mu(k3d_Mpc[mask_3d], 
+                     mu3d[mask_3d], 
+                     list_sims[isnap]['p3d_Mpc'][mask_3d], 
+                     kmu_modes, 
+                     n_mubins=n_mubins)
+    knew, munew, p3d_measured[isnap, ...], mu_bins = _
+    p1d_measured[isnap, :] = list_sims[isnap]['p1d_Mpc'][mask_1d]
+
+    pp = list_sims[isnap]["Arinyo_min"]
+    model_p3d = p3d_allkmu(
+        list_sims[isnap]['model'],
+        list_sims[isnap]["z"],
+        pp,
+        kmu_modes,
+        nk=nk,
+        nmu=16,
+        compute_plin=False,
+    )        
+    _ = p3d_rebin_mu(k3d_Mpc[:nk], 
+                     mu3d[:nk], 
+                     model_p3d[:nk], 
+                     kmu_modes, 
+                     n_mubins=n_mubins)
+    knew, munew, rebin_model_p3d, mu_bins = _
+    
+    p3d_model[isnap, ...] = rebin_model_p3d
+    p1d_model[isnap, :] = list_sims[isnap]["model"].P1D_Mpc(list_sims[isnap]["z"], k1d_Mpc, parameters=pp)
+
+
+
+# %%
+folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+np.savez(
+    folder + "temporal_model_goodness", 
+    p3d_model=p3d_model, 
+    p1d_model=p1d_model, 
+    p1d_measured=p1d_measured, 
+    p3d_measured=p3d_measured,
+)
+
+# %%
+out = 3
+folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+
+jj = 0
+ftsize = 20
+fig, ax = plt.subplots(2, figsize=(8, 6), sharex=True)
+
+for ii in range(n_mubins):
+    col = f"C{ii}"
+    x = knew[:, ii] 
+    _ = np.isfinite(x)
+    y = np.percentile(p3d_model[:, _, ii]/p3d_measured[:, _, ii], [50, 16, 84], axis=0) - 1
+    ax[0].plot(x[_], y[0], col+"-", lw=3, alpha=0.8)
+    # ax[0].errorbar(x[_], y,  col+"-", lw=3, alpha=0.2)
+    ax[0].fill_between(
+            x[_],
+            y[1],
+            y[2],
+            color=col,
+            alpha=0.2,
+    )
+    
+
+x = k1d_Mpc
+y = np.percentile(p1d_model/p1d_measured, [50, 16, 84], axis=0) - 1
+ax[1].plot(x, y[0], "C4-", lw=3, alpha=0.8)
+ax[1].fill_between(
+        x,
+        y[1],
+        y[2],
+        color="C4",
+        alpha=0.2,
+)
+
+
+ax[0].axhline(0, linestyle=":", color="k")
+ax[0].axhline(0.1, linestyle="--", color="k")
+ax[0].axhline(-0.1, linestyle="--", color="k")
+ax[0].axvline(kmax_3d_fit, linestyle="--", color="k")
+ax[1].axhline(0, linestyle=":", color="k")
+ax[1].axhline(0.01, linestyle="--", color="k")
+ax[1].axhline(-0.01, linestyle="--", color="k")
+ax[1].axvline(kmax_1d_fit, linestyle="--", color="k")
+
+ax[0].set_ylabel(r"Residual $P_\mathrm{3D}$", fontsize=ftsize)
+ax[1].set_ylabel(r"Residual $P_\mathrm{1D}$", fontsize=ftsize)
+
+ax[0].set_xlabel(r"$k\, [\mathrm{Mpc}^{-1}]$", fontsize=ftsize)
+ax[1].set_xlabel(r"$k_\parallel\, [\mathrm{Mpc}^{-1}]$", fontsize=ftsize)
+
+ax[0].tick_params(axis="both", which="major", labelsize=ftsize)
+ax[1].tick_params(axis="both", which="major", labelsize=ftsize)
+
+ax[0].set_xscale("log")
+ax[0].set_ylim(-0.21, 0.21)
+ax[1].set_ylim(-0.021, 0.021)
+
+plt.tight_layout()
+plt.savefig(folder + "goodness_fit_all.png")
+plt.savefig(folder + "goodness_fit_all.pdf")
+
+# %%
+_ = np.isfinite(knew) & (knew > 0.3) & (knew < 5)
+y = np.percentile(p3d_model[:, _]/p3d_measured[:, _], [50, 16, 84]) - 1
+print(y[0]*100, 0.5*(y[2]-y[1])*100)
+
+# %%
+_ = np.isfinite(k1d_Mpc) & (k1d_Mpc < 4)
+y = np.percentile(p1d_model[:, _]/p1d_measured[:, _], [50, 16, 84]) - 1
+print(y[0]*100, 0.5*(y[2]-y[1])*100)
 
 # %%

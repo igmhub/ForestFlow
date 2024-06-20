@@ -237,11 +237,20 @@ sim_labels = [
     "mpg_reio",
 ]
 
+sim_labels = [
+    "mpg_central"
+]
+
+# %%
+from forestflow.utils import transform_arinyo_params
+
 # %%
 arr_p3d_sim = np.zeros((len(sim_labels), Nz, np.sum(mask_3d), n_mubins))
 arr_p3d_emu = np.zeros((len(sim_labels), Nz, np.sum(mask_3d), n_mubins))
 arr_p1d_sim = np.zeros((len(sim_labels), Nz, np.sum(mask_1d)))
 arr_p1d_emu = np.zeros((len(sim_labels), Nz, np.sum(mask_1d)))
+params_sim = np.zeros((len(sim_labels), Nz, 3))
+params_emu = np.zeros((len(sim_labels), Nz, 3))
 
 for isim, sim_label in enumerate(sim_labels):    
     test_sim = Archive3D.get_testing_data(
@@ -282,6 +291,68 @@ for isim, sim_label in enumerate(sim_labels):
         
         arr_p1d_emu[isim, iz] = out["p1d"]
         arr_p1d_sim[isim, iz] = test_sim_z[0]["p1d_Mpc"][mask_1d]
+
+        params_sim[isim, iz, 0] = test_sim_z[0]["Arinyo_min"]["bias"]
+        params_sim[isim, iz, 2] = test_sim_z[0]["Arinyo_min"]["beta"]
+        _ = new_params = transform_arinyo_params(
+            test_sim_z[0]["Arinyo_min"], 
+            test_sim_z[0]["f_p"]
+        )
+        params_sim[isim, iz, 1] = _["bias_eta"]
+
+        params_emu[isim, iz, 0] = out["coeffs_Arinyo"]["bias"]        
+        params_emu[isim, iz, 2] = out["coeffs_Arinyo"]["beta"]        
+        _ = new_params = transform_arinyo_params(
+            out["coeffs_Arinyo"], 
+            test_sim_z[0]["f_p"]
+        )
+        params_emu[isim, iz, 1] = _["bias_eta"]
+
+# %%
+folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+np.savez(
+    folder + "temporal_central", 
+    arr_p3d_sim=arr_p3d_sim, 
+    arr_p3d_emu=arr_p3d_emu, 
+    arr_p1d_sim=arr_p1d_sim, 
+    arr_p1d_emu=arr_p1d_emu,
+    params_sim=params_sim,
+    params_emu=params_emu
+)
+
+# %% [markdown]
+# #### The following only for the central simulation
+
+# %%
+for ii in range(2):
+    y = np.percentile(params_emu[:, ii] / params_sim[:, ii] - 1, [50, 16, 84])
+    print(y[0]*100)
+    print(0.5*(y[2] - y[1])*100)
+
+# %%
+kaiser_emu = np.zeros((params_emu.shape[1], 2))
+kaiser_sim = np.zeros((params_emu.shape[1], 2))
+kaiser_emu[:, 0] = params_emu[0, :, 0]**2
+kaiser_emu[:, 1] = params_emu[0, :, 0]**2*(1+params_emu[0, :, 2])**2
+kaiser_sim[:, 0] = params_sim[0, :, 0]**2
+kaiser_sim[:, 1] = params_sim[0, :, 0]**2*(1+params_sim[0, :, 2])**2
+
+for ii in range(2):
+    y = np.percentile(kaiser_emu[:, ii] / kaiser_sim[:, ii] - 1, [50, 16, 84])
+    print(y[0]*100)
+    print(0.5*(y[2] - y[1])*100)
+
+# %%
+_ = np.isfinite(knew) & (knew > 0.3) & (knew < 5)
+y = np.percentile(arr_p3d_emu[0, :, _]/arr_p3d_sim[0, :, _], [50, 16, 84]) - 1
+print(y[0]*100, 0.5*(y[2]-y[1])*100)
+
+# %%
+_ = np.isfinite(k1d_Mpc) & (k1d_Mpc < 4)
+y = np.percentile(arr_p1d_emu[0, :, _]/arr_p1d_sim[0, :, _], [50, 16, 84]) - 1
+print(y[0]*100, 0.5*(y[2]-y[1])*100)
+
+# %%
 
 # %%
 rat_p3d = arr_p3d_emu/arr_p3d_sim - 1

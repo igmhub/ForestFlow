@@ -146,10 +146,8 @@ Nz = len(z_test)
 
 arr_p3d_sim = np.zeros((Nsim, Nz, np.sum(mask_3d), n_mubins))
 arr_p3d_emu = np.zeros((Nsim, Nz, np.sum(mask_3d), n_mubins))
-arr_p3d_fit = np.zeros((Nsim, Nz, np.sum(mask_3d), n_mubins))
 arr_p1d_sim = np.zeros((Nsim, Nz, np.sum(mask_1d)))
 arr_p1d_emu = np.zeros((Nsim, Nz, np.sum(mask_1d)))
-arr_p1d_fit = np.zeros((Nsim, Nz, np.sum(mask_1d)))
 params_sim = np.zeros((Nsim, Nz, 2))
 params_emu = np.zeros((Nsim, Nz, 2))
 
@@ -224,6 +222,18 @@ for iz, zdrop in enumerate(z_test):
         params_sim[isim, iz, 1] = _["bias_eta"]
         
     p3d_emu = 0
+
+# %%
+folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+np.savez(
+    folder + "temporal_l1Oz", 
+    arr_p3d_sim=arr_p3d_sim, 
+    arr_p3d_emu=arr_p3d_emu, 
+    arr_p1d_sim=arr_p1d_sim, 
+    arr_p1d_emu=arr_p1d_emu,
+    params_sim=params_sim,
+    params_emu=params_emu
+)
 
 # %%
 for ii in range(2):
