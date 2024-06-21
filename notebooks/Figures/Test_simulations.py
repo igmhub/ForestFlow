@@ -194,6 +194,18 @@ _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["Plin"], kmu_modes, n_mubins=n_mub
 knew, munew, rebin_plin, mu_bins = _
 
 # %%
+_ = np.isfinite(knew) & (knew > 0.5) & (knew < 5)
+rat = rebin_p3d_sim[_]/rebin_p3d_emu[_]- 1
+y = np.percentile(rat, [50, 16, 84])
+print(y[0]*100, 0.5*(y[2]-y[1])*100, np.std(rat)*100)
+
+# %%
+_ = np.isfinite(k1d_Mpc) & (k1d_Mpc < 4) & (k1d_Mpc > 0)
+rat = p1d_sim[_]/p1d_emu[_] - 1
+y = np.percentile(rat, [50, 16, 84])
+print(y[0]*100, 0.5*(y[2]-y[1])*100, np.std(rat)*100)
+
+# %%
 norm_p1d = out["k1d_Mpc"]/np.pi
 p1d_emu = norm_p1d * out["p1d"]
 p1d_std_emu = norm_p1d * out["p1d_std"]
@@ -308,6 +320,27 @@ for isim, sim_label in enumerate(sim_labels):
         )
         params_emu[isim, iz, 1] = _["bias_eta"]
 
+ # %%
+ info_power = {
+    "sim_label": test_sim_z[0]["sim_label"],
+    "z": test_sim_z[0]["z"],
+}
+
+emu_params = test_sim_z[0]
+
+out = emulator.evaluate(
+    emu_params=emu_params,
+    info_power=info_power,
+    Nrealizations=100,
+    return_all_realizations=True
+)
+
+# %%
+out.keys()
+
+# %%
+len(out["coeffs_Arinyo_all"])
+
 # %%
 folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
 np.savez(
@@ -319,6 +352,11 @@ np.savez(
     params_sim=params_sim,
     params_emu=params_emu
 )
+
+# %%
+folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+np.load(folder + "temporal_central")
+check again!
 
 # %% [markdown]
 # #### The following only for the central simulation

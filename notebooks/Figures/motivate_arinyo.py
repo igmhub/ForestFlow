@@ -133,3 +133,11 @@ folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
 plot_motivate_model(knew, munew, mu_bins, rebin_p3d, rebin_model_p3d, rebin_kaiser_p3d, rebin_plin, folder=folder, kmax_fit=kmax_fit)
 
 # %%
+_ = np.isfinite(knew) & (knew > 0.5) & (knew < 5)
+y = np.percentile(rebin_model_p3d[_]/rebin_p3d[_]- 1, [50, 16, 84])
+print(y[0]*100, 0.5*(y[2]-y[1])*100)
+
+# %%
+np.std(rebin_model_p3d[_]/rebin_p3d[_]- 1)
+
+# %%

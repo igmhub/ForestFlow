@@ -30,8 +30,7 @@ from forestflow.archive import GadgetArchive3D
 from forestflow.P3D_cINN import P3DEmulator
 from forestflow.plots.test_sims import (
     plot_p1d_test_sims, 
-    plot_p3d_test_sims, 
-    get_modes, 
+    plot_p3d_test_sims,
     plot_p1d_snap,
     plot_p3d_snap
 )
@@ -67,9 +66,9 @@ from lace.cosmo import camb_cosmo, fit_linP
 # target 
 # DESI KP6 Table 5
 bias = -0.1078
-err_bias = 0.0036
-beta = 1.745
-err_beta = 0.5*(0.076 + 0.088)
+err_bias = 0.5*(0.0045+0.0054)
+beta = 1.743
+err_beta = 0.5*(0.074 + 0.1)
 
 # input emu
 # DESI KP6 
@@ -108,22 +107,22 @@ dkms_dMpc_zs = camb_cosmo.dkms_dMpc(sim_cosmo, z=np.array([z]))
 
 
 # Table 3 https://arxiv.org/pdf/1808.04367
-T0 = 0.5*(0.789+0.831)*1e4
-sigma_T_kms = thermal_broadening_kms(T0)
-sigT_Mpc = sigma_T_kms / dkms_dMpc_zs[0]
-gamma = 0.5*(2.13 + 2.07)
-mF = 0.5*(0.796+0.772)
-lambdap = 0.5*(91.0+87.2) # [kpc]
-kF_Mpc = 1/(lambdap/1000)
-
-# Table 4 https://arxiv.org/pdf/1808.04367
-# T0 = 0.5*(1.014+1.165)*1e4
+# T0 = 0.5*(0.789+0.831)*1e4
 # sigma_T_kms = thermal_broadening_kms(T0)
 # sigT_Mpc = sigma_T_kms / dkms_dMpc_zs[0]
-# gamma = 0.5*(1.74 + 1.63)
-# mF = 0.5*(0.825+0.799)
-# lambdap = 0.5*(79.4+81.1) # [kpc]
+# gamma = 0.5*(2.13 + 2.07)
+# mF = 0.5*(0.796+0.772)
+# lambdap = 0.5*(91.0+87.2) # [kpc]
 # kF_Mpc = 1/(lambdap/1000)
+
+# Table 4 https://arxiv.org/pdf/1808.04367
+T0 = 0.5*(1.014+1.165)*1e4
+sigma_T_kms = thermal_broadening_kms(T0)
+sigT_Mpc = sigma_T_kms / dkms_dMpc_zs[0]
+gamma = 0.5*(1.74 + 1.63)
+mF = 0.5*(0.825+0.799)
+lambdap = 0.5*(79.4+81.1) # [kpc]
+kF_Mpc = 1/(lambdap/1000)
 
 emu_params = {
     "mF": mF,
@@ -133,21 +132,6 @@ emu_params = {
 }
 
 print(emu_params)
-
-# %%
-dkms_dMpc_zs
-
-# %%
-Archive3D.data[0].keys()
-
-# %%
-test = Archive3D.get_testing_data("mpg_central")
-print(test[-2]["Delta2_p"], test[-2]["n_p"])
-for key in emu_params:
-    print(key, test[-2][key])
-
-# %% [markdown]
-# Comprare predictions of emu and values from observations
 
 # %% [markdown]
 # ## LOAD P3D ARCHIVE
@@ -170,24 +154,8 @@ print(len(Archive3D.training_data))
 # ## Load emulator
 
 # %%
-# training_type = "Arinyo_min_q1"
-# training_type = "Arinyo_min_q1_q2"
 training_type = "Arinyo_min"
-# training_type = "Arinyo_minz"
-
-# if (training_type == "Arinyo_min_q1"):
-#     nparams = 7
-#     model_path = path_program+"/data/emulator_models/mpg_q1/mpg_hypercube.pt"
-# elif(training_type == "Arinyo_min"):
-#     nparams = 8
-#     # model_path = path_program+"/data/emulator_models/mpg_q1_q2/mpg_hypercube.pt"
-#     model_path=path_program+"/data/emulator_models/mpg_last.pt"
-# elif(training_type == "Arinyo_minz"):
-#     nparams = 8
-#     # model_path = path_program+"/data/emulator_models/mpg_q1_q2/mpg_hypercube.pt"
-#     model_path=path_program+"/data/emulator_models/mpg_jointz.pt"
-
-model_path=path_program+"/data/emulator_models/mpg_joint.pt"
+model_path=path_program+"/data/emulator_models/mpg_hypercube.pt"
 
 emulator = P3DEmulator(
     Archive3D.training_data,
@@ -236,34 +204,5 @@ print(emu_beta, emu_err_beta)
 
 diff = np.abs(beta-emu_beta)/np.sqrt(err_beta**2+emu_err_beta**2)
 print("sigma diff", diff)
-
-# %% [markdown]
-# - Table 3
-#
-# -0.1078 0.0036
-#
-# -0.11649664863944054 0.008865836427629606
-#
-# sigma diff 0.9088491085393751
-#
-# 1.745 0.08199999999999999
-#
-# 1.940719187259674 0.22034360778028178
-#
-# sigma diff 0.8324685360543379
-#
-# - Table 4
-#   
-# -0.1078 0.0036
-#
-# -0.10775738209486008 0.006852913429005032
-#
-# sigma diff 0.005505508244426056
-#
-# 1.745 0.08199999999999999
-#
-# 2.04947566986084 0.16760074650807494
-#
-# sigma diff 1.631832462094521
 
 # %%

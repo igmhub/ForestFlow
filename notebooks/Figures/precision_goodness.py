@@ -216,7 +216,7 @@ for iz in range(len(central)):
     
     for ii in range(2):
         y = (params[0, :, ii] - params[1, :, ii])/params[2, :, ii]/np.sqrt(2)
-        print(np.mean(y)*100, np.std(y)*100)
+        print("param", ii, np.mean(y)*100, np.std(y)*100)
         ax[0].plot(z_grid, y, label=lab[ii], lw=3, alpha=0.8)
 
     for ii in range(3):
@@ -235,9 +235,17 @@ for iz in range(len(central)):
         y = (p3d_model[0, iz, :, ii] - p3d_model[1, iz, :, ii])/p3d_model[2, iz, :, ii]/np.sqrt(2)
         ax[1].plot(x[_], y[_], col+"-", lw=3, alpha=0.8)
 
+    _ = np.isfinite(knew)
+    y = (p3d_model[0, iz, _] - p3d_model[1, iz, _])/p3d_model[2, iz, _]/np.sqrt(2)
+    res = np.percentile(y, [50, 16, 84])
+    print("p3d", res[0]*100, 0.5*(res[2]-res[1])*100, np.std(y)*100)
+
     x = k1d_Mpc
     y = (p1d_model[0, iz, :] - p1d_model[1, iz, :])/p1d_model[2, iz, :]/np.sqrt(2)
     ax[2].plot(x, y, "C4-", lw=3)
+    
+    res = np.percentile(y, [50, 16, 84])
+    print("p1d", res[0]*100, 0.5*(res[2]-res[1])*100, np.std(y)*100)
     
     # ax[0].axhline(0, linestyle=":", color="k")
     # ax[0].axhline(0.1, linestyle="--", color="k")
@@ -276,6 +284,8 @@ kaiser[:, :, 1] = params[:, :, 0]**2*(1+params[:, :, 2])**2
 for ii in range(2):
     y = (kaiser[0, :, ii] - kaiser[1, :, ii])/kaiser[2, :, ii]/np.sqrt(2)
     print(np.std(y)*100)
+
+# %%
 
 # %% [markdown]
 # ### Goodness of model to average of central and seed
@@ -394,6 +404,14 @@ np.savez(
 )
 
 # %%
+folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+fil = np.load(folder + "temporal_model_goodness.npz")
+p3d_model=fil["p3d_model"]
+p1d_model=fil["p1d_model"]
+p1d_measured=fil["p1d_measured"]
+p3d_measured=fil["p3d_measured"]
+
+# %%
 out = 3
 folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
 
@@ -456,13 +474,15 @@ plt.savefig(folder + "goodness_fit_all.png")
 plt.savefig(folder + "goodness_fit_all.pdf")
 
 # %%
-_ = np.isfinite(knew) & (knew > 0.3) & (knew < 5)
-y = np.percentile(p3d_model[:, _]/p3d_measured[:, _], [50, 16, 84]) - 1
-print(y[0]*100, 0.5*(y[2]-y[1])*100)
+_ = np.isfinite(knew) & (knew > 0.5) & (knew < 5)
+rat = p3d_model[:, _]/p3d_measured[:, _]- 1
+y = np.percentile(rat, [50, 16, 84])
+print(y[0]*100, 0.5*(y[2]-y[1])*100, np.std(rat)*100)
 
 # %%
 _ = np.isfinite(k1d_Mpc) & (k1d_Mpc < 4)
-y = np.percentile(p1d_model[:, _]/p1d_measured[:, _], [50, 16, 84]) - 1
-print(y[0]*100, 0.5*(y[2]-y[1])*100)
+rat = p1d_model[:, _]/p1d_measured[:, _] - 1
+y = np.percentile(rat, [50, 16, 84])
+print(y[0]*100, 0.5*(y[2]-y[1])*100, np.std(rat)*100)
 
 # %%

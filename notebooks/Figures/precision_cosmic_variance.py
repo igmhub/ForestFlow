@@ -117,7 +117,7 @@ k3d_Mpc = central[0]['k3d_Mpc']
 mu3d = central[0]['mu3d']
 kmu_modes = get_p3d_modes(kmax_3d)
 mask_3d = k3d_Mpc[:, 0] <= kmax_3d
-mask_1d = central[0]['k_Mpc'] < kmax_1d
+mask_1d = (central[0]['k_Mpc'] < kmax_1d) & (central[0]['k_Mpc'] > 0)
 k1d_Mpc = central[0]['k_Mpc'][mask_1d]
 
 
@@ -134,6 +134,16 @@ for isnap in range(len(combo)):
         _ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], sim[isnap]['p3d_Mpc'][mask_3d], kmu_modes, n_mubins=n_mubins)
         knew, munew, p3d_measured[ii, isnap, ...], mu_bins = _
         p1d_measured[ii, isnap, :] = sim[isnap]['p1d_Mpc'][mask_1d]
+
+# %%
+_ = np.isfinite(knew) & (knew > 0.5) & (knew < 5)
+y = (p3d_measured[0, :, _] - p3d_measured[1, :, _])/p3d_measured[2, :, _]/np.sqrt(2)
+res = np.percentile(y, [50, 16, 84])
+print(res[0]*100, 0.5*(res[2]-res[1])*100, np.std(y)*100)
+
+y = (p1d_measured[0, :, :] - p1d_measured[1, :, :])/p1d_measured[2, :, :]/np.sqrt(2)
+res = np.percentile(y, [50, 16, 84])
+print(res[0]*100, 0.5*(res[2]-res[1])*100, np.std(y)*100)
 
 # %%
 out = 3
@@ -154,13 +164,23 @@ for iz in range(len(central)):
     for ii in range(n_mubins):
         col = f"C{ii}"
         x = knew[:, ii] 
-        _ = np.isfinite(x)        
+        _ = np.isfinite(x)
         y = (p3d_measured[0, iz, :, ii] - p3d_measured[1, iz, :, ii])/p3d_measured[2, iz, :, ii]/np.sqrt(2)
+        print(np.nanmax(np.abs(y)))
         ax[0].plot(x[_], y[_], col+"-", lw=3)
+        
+    _ = np.isfinite(knew) & (knew > 0.5) & (knew < 5)
+    y = (p3d_measured[0, iz, _] - p3d_measured[1, iz, _])/p3d_measured[2, iz, _]/np.sqrt(2)
+    res = np.percentile(y, [50, 16, 84])
+    print(res[0]*100, 0.5*(res[2]-res[1])*100, np.std(y)*100)
 
     x = k1d_Mpc
     y = (p1d_measured[0, iz, :] - p1d_measured[1, iz, :])/p1d_measured[2, iz, :]/np.sqrt(2)
+    print(np.nanmax(np.abs(y)))
     ax[1].plot(x, y, "C4-", lw=3)
+
+    res = np.percentile(y, [50, 16, 84])
+    print(res[0]*100, 0.5*(res[2]-res[1])*100, np.std(y)*100)
     
     
     ax[0].axhline(0, linestyle=":", color="k")

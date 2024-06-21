@@ -274,9 +274,6 @@ for ii in range(2):
     print(0.5*(y[2] - y[1])*100)
 
 # %%
-arr_p3d_emu.shape
-
-# %%
 _ = np.isfinite(knew) & (knew > 0.3) & (knew < 5)
 y = np.percentile(arr_p3d_emu[:, :, _]/arr_p3d_sim[:, :, _], [50, 16, 84]) - 1
 print(y[0]*100, 0.5*(y[2]-y[1])*100)

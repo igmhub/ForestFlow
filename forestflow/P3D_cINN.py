@@ -328,6 +328,7 @@ class P3DEmulator:
         info_power=None,
         natural_params=False,
         Nrealizations=None,
+        return_all_realizations=False,
         verbose=True,
     ):
         """
@@ -487,12 +488,13 @@ class P3DEmulator:
             arinyo_pred = transform_arinyo_params(
                 arinyo_pred, emu_params["f_p"]
             )
-
+            coeff_dict_natural = []
             coeffs_all_natural = np.zeros_like(coeffs_all)
             for ii in range(coeffs_all.shape[0]):
                 _par = transform_arinyo_params(
                     params_numpy2dict(coeffs_all[ii]), emu_params["f_p"]
                 )
+                coeff_dict_natural.append(_par)
                 coeffs_all_natural[ii] = np.array(list(_par.values()))
             std_coeffs = np.std(coeffs_all_natural, axis=0)
         else:
@@ -507,6 +509,12 @@ class P3DEmulator:
 
         out_dict["coeffs_Arinyo"] = arinyo_pred
         out_dict["coeffs_Arinyo_std"] = arinyo_pred_std
+
+        if return_all_realizations:
+            if natural_params:
+                out_dict["coeffs_Arinyo_all"] = coeff_dict_natural
+            else:
+                out_dict["coeffs_Arinyo_all"] = coeff_dict
 
         if return_p3d | return_p1d:
             # Initialize Arinyo model with the loaded matter power spectrum
