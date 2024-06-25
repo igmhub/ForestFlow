@@ -14,7 +14,11 @@
 # ---
 
 # %% [markdown]
-# # Tutorial for ForestFlow
+# # ForestFlow tutorial
+#
+# In this tutorial we explain how to:
+# - Access best-fitting P3D model parameters to simulation measurements
+# - Use ForestFlow
 
 # %%
 # %load_ext autoreload
@@ -36,7 +40,7 @@ path_program = os.path.dirname(forestflow.__path__[0]) + '/'
 path_program
 
 # %% [markdown]
-# ## LOAD P3D ARCHIVE
+# ### LOAD P3D ARCHIVE
 
 # %%
 # %%time
@@ -51,19 +55,39 @@ Archive3D = GadgetArchive3D(
 print(len(Archive3D.training_data))
 
 
-# %%
-Archive3D.training_data[0].keys()
+# %% [markdown]
+# ### Extract best-fitting parameters at z=3
 
 # %%
-# all_training_type = {
-#     'Arinyo': "MCMC minimum, q1 and q2, k=kpar=5", 
-#     'Arinyo_min': "Minimizer, q1 and q2, k=kpar=3",
-# }
+params = "Arinyo_min"
+ztarget = 3
+val_params = []
+for sim in Archive3D.training_data:
+    if(sim["z"] == ztarget):
+        val_params.append(sim[params])
+
+# %%
+nsims = len(val_params)
+name_params = val_params[0].keys()
+nparams = len(name_params)
+arr_val_params = np.zeros((nsims, nparams))
+
+for ii in range(nsims):
+    for jj, pname in enumerate(name_params):
+        arr_val_params[ii, jj] = val_params[ii][pname]
+
+# %%
+fig, ax = plt.subplots(4, 2)
+ax = ax.reshape(-1)
+for jj, pname in enumerate(name_params): 
+    ax[jj].hist(arr_val_params[:,jj], bins=20);
+    ax[jj].set_xlabel(pname)
+plt.tight_layout()
 
 # %% [markdown]
-# ## TRAIN EMULATOR
+# ## Load Emulator
 #
-# Not necessary, we have pre-trained emulators
+# We have pre-trained emulators, no need for training
 
 # %%
 train_emu = False
@@ -81,8 +105,8 @@ if train_emu:
         adamw=True,
         nLayers_inn=12,  # 15
         Archive=Archive3D,
-        training_type='Arinyo_minz',
-        save_path=path_program+"/data/emulator_models/mpg_jointz.pt",
+        training_type='Arinyo_min',
+        save_path=path_program+"/data/emulator_models/new_emu.pt",
     )
 else:
     p3d_emu = P3DEmulator(
@@ -97,264 +121,151 @@ else:
         adamw=True,
         nLayers_inn=12,  # 15
         Archive=Archive3D,
-        training_type='Arinyo_minz',
-        model_path=path_program+"/data/emulator_models/mpg_jointz.pt",
+        training_type='Arinyo_min',
+        model_path=path_program+"/data/emulator_models/mpg_hypercube.pt",
     )
 
 # %% [markdown]
 # ### Evaluate emulator
 
-# %%
-from forestflow.rebin_p3d import get_p3d_modes
+# %% [markdown]
+# Only get value of P3D model parameters
 
 # %%
-kmax_3d_plot = 4
-kmax_1d_plot = 4
-kmax_fit = 3
+# target redshift
+z_test = 3
 
-sim = Archive3D.training_data[0]
-
-k3d_Mpc = sim['k3d_Mpc']
-mu3d = sim['mu3d']
-kmu_modes = get_p3d_modes(kmax_3d_plot)
-
-mask_3d = k3d_Mpc[:, 0] <= kmax_3d_plot
-
-mask_1d = (sim['k_Mpc'] <= kmax_1d_plot) & (sim['k_Mpc'] > 0)
-k1d_Mpc = sim['k_Mpc']
-
-zcen = 3
-
-info_power = {
-    "sim_label": "mpg_central",
-    "k3d_Mpc": k3d_Mpc[mask_3d, :],
-    "mu": mu3d[mask_3d, :],
-    "kmu_modes": kmu_modes,
-    "k1d_Mpc": k1d_Mpc[mask_1d],
-    "return_p3d": True,
-    "return_p1d": True,
-    "return_cov": True,
-    "z": zcen,
+# target cosmology
+cosmo = {
+    'H0': 67.0,
+    'omch2': 0.12,
+    'ombh2': 0.022,
+    'mnu': 0.0,
+    'omk': 0,
+    'As': 2.2e-09,
+    'ns': 0.94,
+    'nrun': 0.0,
+    'w': -1.0
 }
 
-sim_label = info_power["sim_label"]
-test_sim = Archive3D.get_testing_data(
-    sim_label, force_recompute_plin=False
-)
-test_sim_z = [d for d in test_sim if d["z"] == info_power["z"]]
-emu_params = test_sim_z[0]
+# Cosmological and IGM input parameters. No need to specify 
+# cosmological parameters when target cosmology is provided
+# IGM parameters from random simulation, access via sim.keys()
+input_params = {
+    'Delta2_p': 0., # not used if you provide cosmology
+    'n_p': 0., # not used if you provide cosmology
+    'mF': 0.66,
+    'sigT_Mpc': 0.13,
+    'gamma': 1.5,
+    'kF_Mpc': 10.5
+}
+
+info_power = {
+    "cosmo": cosmo,
+    "z": z_test,
+}
 
 out = p3d_emu.evaluate(
-    emu_params=emu_params,
+    emu_params=input_params,
+    info_power=info_power,
+    # natural_params=True,
+    Nrealizations=100
+)
+out.keys()
+
+# %%
+# value of parameters
+print(out["coeffs_Arinyo"])
+# and emulation error
+print(out["coeffs_Arinyo_std"])
+
+# for the target cosmology:
+# small-scale amplitude, slope, and running of linear power spectrum
+# f_p provides the logarithmic growth factor
+print(out["linP_zs"])
+
+# %% [markdown]
+# Return b_eta instead of beta
+
+# %%
+out = p3d_emu.evaluate(
+    emu_params=input_params,
     info_power=info_power,
     natural_params=True,
     Nrealizations=100
 )
 
-
-# %%
-out.keys()
-
-# %% [markdown]
-# ### STOP HERE
+# value of parameters
+print(out["coeffs_Arinyo"])
+# and emulation error
+print(out["coeffs_Arinyo_std"])
 
 # %% [markdown]
-# ## LOAD TRAINED EMULATOR
-
-# %% [markdown] jp-MarkdownHeadingCollapsed=true
-# To load a trained model, one needs to specify the path to the model in the argument 'model_path'.
-
-# %% [markdown]
-# The folder '/data/emulator_models/' contains the models trained with all the Latinhypercube simulations: 'mpg_hypercube.pt'
+# Also return P3D 
 
 # %%
-p3d_emu = P3DEmulator(
-    Archive3D.training_data,
-    Archive3D.emu_params,
-    nepochs=300,
-    lr=0.001,  # 0.005
-    batch_size=20,
-    step_size=200,
-    gamma=0.1,
-    weight_decay=0,
-    adamw=True,
-    nLayers_inn=12,  # 15
-    Archive=Archive3D,
-    chain_samp=100_000,
-    training_type='Arinyo_min',
-    model_path=path_program+"/data/emulator_models/mpg_jointz.pt",
-)
+# ks at which compute P3D
+k = np.logspace(-2, 1, 100)
+# mu's at which compute P3D
+mu = np.zeros_like(k)
 
-# %%
-sim_label = "mpg_central"
-ind_book = 6
-plot_test_p3d(ind_book, Archive3D, p3d_emu, sim_label)
+k3d_Mpc = np.concatenate([k, k])
+mu3d = np.concatenate([mu, mu+1])
 
-# %%
-sim_label = "mpg_central"
-ind_book = 6
-plot_test_p3d(ind_book, Archive3D, p3d_emu, sim_label, training_type='Arinyo_min_q1_q2')
-
-# %%
-sim_label = "mpg_central"
-ind_book = 6
-plot_test_p3d(ind_book, Archive3D, p3d_emu, sim_label, training_type='Arinyo_min_q1')
-
-# %% [markdown]
-# ## PREDICT P1D AND P3D
-
-# %% [markdown]
-# ### P3D predictions
-
-# %% [markdown]
-# #### Test simulations
-
-# %% [markdown]
-# The available test simulations are:
-# sim_labels = ['mpg_central', 'mpg_seed', 'mpg_growth', 'mpg_neutrinos', 'mpg_curved','mpg_running', 'mpg_reio']
-
-# %%
-sim_label = "mpg_central"
-z_test = 3
-
-# %%
-test_sim = central = Archive3D.get_testing_data(
-    "mpg_central", force_recompute_plin=False
-)
-dict_sim = [d for d in test_sim if d["z"] == z_test and d["val_scaling"] == 1][0]
-
-input_params = {}
-for key in Archive3D.emu_params:
-    input_params[key] = dict_sim[key]
-
-# %%
-input_params
-
-# %% [markdown]
-# If we do not specify the k numbers and mu modes where the P3D is computed, it will use ones that are in the training data.
-# You can find them in p3d_emu.k_Mpc_masked and p3d_emu.mu_masked.
-#
-#
-
-# %%
-out = p3d_emu.predict_P3D_Mpc(
-    sim_label="mpg_central",
-    z=z_test, 
-    emu_params=input_params
-)
-out.keys()
-
-# %% [markdown]
-# You can also specify concrete values for the k number where the P3D is computed.
-
-# %%
-out = p3d_emu.predict_P3D_Mpc(
-    sim_label="mpg_central", 
-    z=z_test, 
-    emu_params=input_params, 
-    k_Mpc=p3d_emu.k_Mpc_masked,
-    mu = p3d_emu.mu_masked,
-)
-out.keys()
-
-# %% [markdown]
-# Now for a random set of k's and mu's. We can provide as input 2D arrays
-
-# %%
-nk = 30
-nmu = 10
-_k_Mpc = np.geomspace(1e-2, 4, nk)
-_mu = np.linspace(0, 1, nmu)
-k_Mpc = np.repeat(_k_Mpc[:, np.newaxis], nmu, axis=1)
-mu = np.repeat(_mu[np.newaxis, :], nk, axis=0)
-
-out = p3d_emu.predict_P3D_Mpc(
-    sim_label="mpg_central", 
-    z=z_test, 
-    emu_params=input_params, 
-    k_Mpc=k_Mpc,
-    mu = mu,
-)
-
-# %% [markdown]
-# #### Random cosmology
-
-# %%
-cosmo = {'H0': 67.0,
- 'omch2': 0.12,
- 'ombh2': 0.022,
- 'mnu': 0.0,
- 'omk': 0,
- 'As': 2.2e-09,
- 'ns': 0.94,
- 'nrun': 0.0,
- 'w': -1.0}
-
-z_test = 3
-
-input_params = {
-    'Delta2_p': 0., # any value if you provide cosmology
-     'n_p': 0., # any value if you provide cosmology
-     'mF': 0.66,
-     'sigT_Mpc': 0.13,
-     'gamma': 1.5,
-     'kF_Mpc': 10.6
+info_power = {
+    "cosmo": cosmo,
+    "z": z_test,
+    "k3d_Mpc": k3d_Mpc,
+    "mu": mu3d,
+    "return_p3d": True,
 }
 
-nk = 100
-nmu = 10
-_k_Mpc = np.geomspace(1e-4, 100, nk)
-_mu = np.linspace(0, 1, nmu)
-k_Mpc = np.repeat(_k_Mpc[:, np.newaxis], nmu, axis=1)
-mu = np.repeat(_mu[np.newaxis, :], nk, axis=0)
-
-# %%
-# %%time
-out = p3d_emu.predict_P3D_Mpc(
-    z=z_test, 
-    emu_params=input_params, 
-    cosmo=cosmo,
-    k_Mpc=k_Mpc,
-    mu = mu,
-    return_cov=False,
+out = p3d_emu.evaluate(
+    emu_params=input_params,
+    info_power=info_power,
+    # natural_params=True,
+    Nrealizations=100
 )
 out.keys()
 
 # %%
-for ii in range(nmu):
-    plt.plot(k_Mpc[:,ii], out['p3d'][:,ii], label=r'$\mu=$'+str(np.round(mu[0, ii], 2)))
-plt.xscale('log')
-plt.yscale('log')
-plt.xlabel(r'$k$')
-plt.ylabel(r'$P(k, \mu)$')
-plt.ylim(1e-4, 1e4)
+_ = out["mu"] == 0
+plt.plot(out["k_Mpc"][_], out["p3d"][_]/out["Plin"][_], label="mu=0")
+_ = out["mu"] == 1
+plt.plot(out["k_Mpc"][_], out["p3d"][_]/out["Plin"][_], label="mu=1")
+plt.ylabel("P3D/Plin")
+plt.xlabel("k")
 plt.legend()
+plt.xscale("log")
 
 # %% [markdown]
-# ### P1D predictions
-
-# %% [markdown]
-# So far, this is not implemented for the predict_P1D_Mpc, which always computes the p1d default values in the simulations. This is currenly under internal discussion. You can access the kpar values of the emulated p1d as: p1d_k = dict_sim[0]['k_Mpc'][p3d_emu.k1d_mask] 
+# Now get P1D
 
 # %%
-nkpar = 50
-kpar_Mpc = np.geomspace(1e-2, 4, nkpar)
+# ks at which compute P3D
+k1d_Mpc = np.logspace(-1, 1, 100)
 
-# %%
-out = p3d_emu.predict_P3D_Mpc(
-    z=z_test, 
-    emu_params=input_params, 
-    cosmo=cosmo,
-    k_Mpc=k_Mpc,
-    mu = mu,
-    kpar_Mpc = kpar_Mpc,
-    return_cov=False,
+info_power = {
+    "cosmo": cosmo,
+    "z": z_test,
+    "k1d_Mpc": k1d_Mpc,
+    "return_p1d": True,
+}
+
+out = p3d_emu.evaluate(
+    emu_params=input_params,
+    info_power=info_power,
+    # natural_params=True,
+    Nrealizations=100
 )
 out.keys()
 
 # %%
-plt.loglog(kpar_Mpc, out['p1d'])
-plt.xlabel(r'$k_{\rm par}$')
-plt.ylabel(r'$P(k_{\rm par})$')
+plt.plot(out["k1d_Mpc"], out["k1d_Mpc"]/np.pi*out["p1d"])
+plt.ylabel("kpar*P1D/pi")
+plt.xlabel("kpar")
+plt.xscale("log")
+
+# %%
 
 # %%

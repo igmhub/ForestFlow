@@ -320,27 +320,6 @@ for isim, sim_label in enumerate(sim_labels):
         )
         params_emu[isim, iz, 1] = _["bias_eta"]
 
- # %%
- info_power = {
-    "sim_label": test_sim_z[0]["sim_label"],
-    "z": test_sim_z[0]["z"],
-}
-
-emu_params = test_sim_z[0]
-
-out = emulator.evaluate(
-    emu_params=emu_params,
-    info_power=info_power,
-    Nrealizations=100,
-    return_all_realizations=True
-)
-
-# %%
-out.keys()
-
-# %%
-len(out["coeffs_Arinyo_all"])
-
 # %%
 folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
 np.savez(
@@ -355,17 +334,22 @@ np.savez(
 
 # %%
 folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
-np.load(folder + "temporal_central")
-check again!
+fil = np.load(folder + "temporal_central.npz")
+arr_p3d_sim=fil["arr_p3d_sim"]
+arr_p3d_emu=fil["arr_p3d_emu"]
+arr_p1d_sim=fil["arr_p1d_sim"]
+arr_p1d_emu=fil["arr_p1d_emu"]
+params_sim=fil["params_sim"]
+params_emu=fil["params_emu"]
 
 # %% [markdown]
 # #### The following only for the central simulation
 
 # %%
 for ii in range(2):
-    y = np.percentile(params_emu[:, ii] / params_sim[:, ii] - 1, [50, 16, 84])
-    print(y[0]*100)
-    print(0.5*(y[2] - y[1])*100)
+    rat = params_emu[:, ii] / params_sim[:, ii] - 1
+    y = np.percentile(rat, [50, 16, 84])
+    print(y[0]*100, 0.5*(y[2] - y[1])*100, np.std(rat)*100)
 
 # %%
 kaiser_emu = np.zeros((params_emu.shape[1], 2))
@@ -376,19 +360,21 @@ kaiser_sim[:, 0] = params_sim[0, :, 0]**2
 kaiser_sim[:, 1] = params_sim[0, :, 0]**2*(1+params_sim[0, :, 2])**2
 
 for ii in range(2):
-    y = np.percentile(kaiser_emu[:, ii] / kaiser_sim[:, ii] - 1, [50, 16, 84])
-    print(y[0]*100)
-    print(0.5*(y[2] - y[1])*100)
+    rat = kaiser_emu[:, ii] / kaiser_sim[:, ii] - 1
+    y = np.percentile(rat, [50, 16, 84])
+    print(y[0]*100, 0.5*(y[2] - y[1])*100, np.std(rat)*100)
 
 # %%
 _ = np.isfinite(knew) & (knew > 0.3) & (knew < 5)
-y = np.percentile(arr_p3d_emu[0, :, _]/arr_p3d_sim[0, :, _], [50, 16, 84]) - 1
-print(y[0]*100, 0.5*(y[2]-y[1])*100)
+rat = arr_p3d_emu[0, :, _]/arr_p3d_sim[0, :, _] - 1
+y = np.percentile(rat, [50, 16, 84])
+print(y[0]*100, 0.5*(y[2]-y[1])*100, np.std(rat)*100)
 
 # %%
-_ = np.isfinite(k1d_Mpc) & (k1d_Mpc < 4)
-y = np.percentile(arr_p1d_emu[0, :, _]/arr_p1d_sim[0, :, _], [50, 16, 84]) - 1
-print(y[0]*100, 0.5*(y[2]-y[1])*100)
+_ = np.isfinite(k1d_Mpc) & (k1d_Mpc < 4) & (k1d_Mpc > 0)
+rat = arr_p1d_emu[0, :, _]/arr_p1d_sim[0, :, _] - 1
+y = np.percentile(rat, [50, 16, 84])
+print(y[0]*100, 0.5*(y[2]-y[1])*100, np.std(rat)*100)
 
 # %%
 
