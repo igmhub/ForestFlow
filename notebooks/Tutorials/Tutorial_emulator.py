@@ -64,6 +64,7 @@ ztarget = 3
 val_params = []
 for sim in Archive3D.training_data:
     if(sim["z"] == ztarget):
+    # if(sim["z"] >= 2) & (sim["z"] < 3):
         val_params.append(sim[params])
 
 # %%
@@ -83,6 +84,12 @@ for jj, pname in enumerate(name_params):
     ax[jj].hist(arr_val_params[:,jj], bins=20);
     ax[jj].set_xlabel(pname)
 plt.tight_layout()
+
+# %%
+# plt.hist(arr_val_params[:,2], bins=30);
+# plt.xlabel("q1")
+# plt.tight_layout()
+# plt.savefig("prior_q1_z2_z275.png")
 
 # %% [markdown]
 # ## Load Emulator
