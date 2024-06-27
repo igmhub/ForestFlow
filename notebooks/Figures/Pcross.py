@@ -12,15 +12,15 @@
 #     name: pcross
 # ---
 
-# import numpy as np
-# print("this far.")
-# import matplotlib.pyplot as plt
-# import os
-# print("#2")
-# from forestflow import pcross
-# from lace.cosmo import camb_cosmo
-# from forestflow.model_p3d_arinyo import ArinyoModel
-print("Importing GadgetArchive3d; will take several minutes.")
+import numpy as np
+print("this far.")
+import matplotlib.pyplot as plt
+import os
+print("#2")
+from forestflow import pcross
+from lace.cosmo import camb_cosmo
+from forestflow.model_p3d_arinyo import ArinyoModel
+print("Importing GadgetArchive3d; may take several minutes.")
 from forestflow.archive import GadgetArchive3D
 print("Done importing GadgetArchive3d.")
 from forestflow.P3D_cINN import P3DEmulator
@@ -32,9 +32,8 @@ from forestflow.rebin_p3d import get_p3d_modes
 path_program = os.path.dirname(forestflow.__path__[0]) + '/'
 path_program
 
-# +
 folder_lya_data = path_program + "/data/best_arinyo/"
-
+print("Loading GadgetArchive3d; may take several minutes.")
 Archive3D = GadgetArchive3D(
     base_folder=path_program[:-1],
     folder_data=folder_lya_data,
@@ -101,11 +100,6 @@ def weighted_Px(kpar_est, z, p3d_func, sep_bin, ndiv=10, **pp):
     return Px_pred_smooth, Px_pred_same_kpar
 
 
-test_sim = central = Archive3D.get_testing_data(
-    "mpg_central", force_recompute_plin=False
-)
-cosmo = camb_cosmo.get_cosmology() # set default cosmo
-
 # +
 Px_pred = [[],[],[],[],[],[],[]]
 Px_pred_plus = [[],[],[],[],[],[],[]]
@@ -121,31 +115,9 @@ Px_pred_samekpar_all = [[],[],[],[],[],[],[]]
 
 snapnum = 6
 z_test = np.array([central[snapnum]['z']]) 
-print("z = ", z_test)
-kmax_3d_plot = 4
-kmax_1d_plot = 4
-kmax_fit = 3
-
-sim = Archive3D.training_data[snapnum]
-
-k3d_Mpc = sim['k3d_Mpc']
-mu3d = sim['mu3d']
-kmu_modes = get_p3d_modes(kmax_3d_plot)
-
-mask_3d = k3d_Mpc[:, 0] <= kmax_3d_plot
-
-mask_1d = (sim['k_Mpc'] <= kmax_1d_plot) & (sim['k_Mpc'] > 0)
-k1d_Mpc = sim['k_Mpc']
 
 info_power = {
     "sim_label": "mpg_central",
-    "k3d_Mpc": k3d_Mpc[mask_3d, :],
-    "mu": mu3d[mask_3d, :],
-    "kmu_modes": kmu_modes,
-    "k1d_Mpc": k1d_Mpc[mask_1d],
-    "return_p3d": False,
-    "return_p1d": True,
-    "return_cov": False,
     "z": z_test,
 }
 
@@ -165,6 +137,7 @@ out = emulator.evaluate(
 
 )
 print("Done.")
+cosmo = camb_cosmo.get_cosmology_from_dictionary(test_sim[0]["cosmo_params"])
 camb_results = camb_cosmo.get_camb_results(cosmo, zs=z_test, camb_kmax_Mpc=1000) # set default cosmo
 arinyo = ArinyoModel(cosmo=cosmo, camb_results=camb_results, zs=z_test, camb_kmax_Mpc=1000) # set model
 
@@ -182,8 +155,7 @@ k2d = np.sqrt(kperp2d**2 + kpar2d**2)
 mu2d = kpar2d / k2d
 
 # get the best-fit parameters
-arinyo_params = Archive3D.training_data[snapnum]['Arinyo_min'] # best-fitting Arinyo params
-print(Archive3D.training_data[snapnum]['z'])
+arinyo_bestfit = test_sim_z[0]['Arinyo_min'] # best-fitting Arinyo params
 coeffs_arinyo_plus = out['coeffs_Arinyo'].copy()
 for key in coeffs_arinyo_plus.keys():
     coeffs_arinyo_plus[key] = coeffs_arinyo_plus[key] + out['coeffs_Arinyo_std'][key]
@@ -192,28 +164,19 @@ for key in coeffs_arinyo_minus.keys():
     coeffs_arinyo_minus[key] = coeffs_arinyo_minus[key] - out['coeffs_Arinyo_std'][key]
 
 for s in range(1, len(separation_bins)-1):
-    # note to Jonas: I am not sure which of the two following lines is the right thing to do to call the Arinyo model.
-    # the commented lines are what I was perviously using to make the plots.
-    # they use the default camb_cosmo in Lace, which I'm not sure applies to the central sim.
-    # then I saw that you can call a P3D model for a specific training simulation, so the uncommented lines do that -- but
-    # I can't currently test it due to inability to load the Gadget Archive...
-    
-    # mean_Px_smth, mean_Px_exact = weighted_Px(kpar_est, z_test[0], arinyo.P3D_Mpc, [separation_bins[s], separation_bins[s+1]], **out['coeffs_Arinyo'], ndiv=30)
-    mean_Px_smth, mean_Px_exact = weighted_Px(kpar_est, z_test[0], Archive3D.training_data[snapnum]['model'].P3D_Mpc, [separation_bins[s], separation_bins[s+1]], **out['coeffs_Arinyo'], ndiv=30)
-    # mean_Px_smth_plus, mean_Px_exact_plus = weighted_Px(kpar_est, z_test[0], arinyo.P3D_Mpc, [separation_bins[s], separation_bins[s+1]], **coeffs_arinyo_plus, ndiv=30)
-    mean_Px_smth_plus, mean_Px_exact_plus = weighted_Px(kpar_est, z_test[0], Archive3D.training_data[snapnum]['model'].P3D_Mpc, [separation_bins[s], separation_bins[s+1]], **coeffs_arinyo_plus, ndiv=30)
-    # mean_Px_smth_minus, mean_Px_exact_minus = weighted_Px(kpar_est, z_test[0], arinyo.P3D_Mpc, [separation_bins[s], separation_bins[s+1]], **coeffs_arinyo_minus, ndiv=30)
-    mean_Px_smth_minus, mean_Px_exact_minus = weighted_Px(kpar_est, z_test[0], Archive3D.training_data[snapnum]['model'].P3D_Mpc, [separation_bins[s], separation_bins[s+1]], **coeffs_arinyo_minus, ndiv=30)
+    mean_Px_smth, mean_Px_exact = weighted_Px(kpar_est, z_test[0], arinyo.P3D_Mpc, [separation_bins[s], separation_bins[s+1]], **out['coeffs_Arinyo'], ndiv=30)
+    mean_Px_smth_plus, mean_Px_exact_plus = weighted_Px(kpar_est, z_test[0], arinyo.P3D_Mpc, [separation_bins[s], separation_bins[s+1]], **coeffs_arinyo_plus, ndiv=30)
+    mean_Px_smth_minus, mean_Px_exact_minus = weighted_Px(kpar_est, z_test[0], arinyo.P3D_Mpc, [separation_bins[s], separation_bins[s+1]], **coeffs_arinyo_minus, ndiv=30)
     print("Now running all realizations.")
     for i in range(len(out['coeffs_Arinyo_all'])):
         if i%10==0:
             print(f"{i/10} pct done.")
         coeffs_i = out['coeffs_Arinyo_all'][i]
         mean_Px_smth_i, mean_Px_exact_i = weighted_Px(kpar_est, z_test[0], arinyo.P3D_Mpc, [separation_bins[s], separation_bins[s+1]], **coeffs_i, ndiv=30)
-        Px_pred_all_s6[s-1].append(mean_Px_smth_i)
+        Px_pred_all[s-1].append(mean_Px_smth_i)
         Px_pred_samekpar_all[s-1].append(mean_Px_exact_i)
     print(len(Px_pred_samekpar_all[s-1]))
-    mean_Px_smth_bestfit, mean_Px_exact_bestfit = weighted_Px(kpar_est, z_test[0], arinyo.P3D_Mpc, [separation_bins[s], separation_bins[s+1]], **arinyo_params, ndiv=30)
+    mean_Px_smth_bestfit, mean_Px_exact_bestfit = weighted_Px(kpar_est, z_test[0], arinyo.P3D_Mpc, [separation_bins[s], separation_bins[s+1]], **arinyo_bestfit, ndiv=30)
     
     Px_pred[s-1].extend(mean_Px_smth)
     Px_pred_plus[s-1].extend(mean_Px_smth_plus)
@@ -237,14 +200,14 @@ Px_pred_bestfit = np.asarray(Px_pred_bestfit)
 Px_pred_same_kpar_bestfit = np.asarray(Px_pred_same_kpar_bestfit)
 # -
 
-Px_pred_all_s6_stds = []
-for sbin in Px_pred_all_s6:
-    Px_pred_all_s6_stds.append(np.std(np.asarray(sbin), axis=0))
-Px_pred_all_s6_stds_samek = []
-for sbin in Px_pred_samekpar_all_s6:
-    Px_pred_all_s6_stds_samek.append(np.std(np.asarray(sbin), axis=0))
-Px_pred_all_s6_stds = np.asarray(Px_pred_all_s6_stds)
-Px_pred_all_s6_stds_samek = np.asarray(Px_pred_all_s6_stds_samek)
+Px_pred_all_stds = []
+for sbin in Px_pred_all:
+    Px_pred_all_stds.append(np.std(np.asarray(sbin), axis=0))
+Px_pred_all_stds_samek = []
+for sbin in Px_pred_samekpar_all:
+    Px_pred_all_stds_samek.append(np.std(np.asarray(sbin), axis=0))
+Px_pred_all_stds = np.asarray(Px_pred_all_stds)
+Px_pred_all_stds_samek = np.asarray(Px_pred_all_stds_samek)
 
 # +
 fs = 13
@@ -253,7 +216,7 @@ colors = ['C0', 'C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C9']
 fig, ax = plt.subplots(nrows=3, ncols=1, sharex=True, figsize=[7,9], gridspec_kw={'height_ratios': [4, 1,1]})
 for s in range(1,len(separation_bins)-1):
     print("{:.2f}_{:.2f}".format(separation_bins[s],separation_bins[s+1]))
-    Px_info = np.load(scratch_path+"snap_{:d}/Px_skewers_{:.2f}_{:.2f}_allax_allphase.npz".format(snapnum,separation_bins[s],separation_bins[s+1]))
+    Px_info = np.load(meas_path+"Px_skewers_{:.2f}_{:.2f}_allax_allphase.npz".format(separation_bins[s],separation_bins[s+1]))
     Px_thisbin_avg = Px_info['Px']
     Px_std = Px_info['std']
     # pick a snapnum 
@@ -268,15 +231,15 @@ for s in range(1,len(separation_bins)-1):
         
         ax[0].scatter(kpar[1:65], kpar[1:65]*Px_thisbin_avg.T[1:], label=r"$r_\perp={:.2f}-{:.2f}$ Mpc".format(separation_bins[s],separation_bins[s+1]), marker='o', s=10, color=colors[s])
         ax[0].plot(kpar_est, kpar_est*(Px_pred[s-1]), label=label, color=colors[s])
-        ax[0].fill_between(kpar_est, kpar_est*(Px_pred[s-1])-(Px_pred_all_s6_stds[s-1]),kpar_est*(Px_pred[s-1])+(Px_pred_all_s6_stds[s-1]), alpha=.2, color=colors[s])
+        ax[0].fill_between(kpar_est, kpar_est*(Px_pred[s-1])-(Px_pred_all_stds[s-1]),kpar_est*(Px_pred[s-1])+(Px_pred_all_stds[s-1]), alpha=.2, color=colors[s])
         ax[0].plot(kpar_est, kpar_est*(Px_pred_bestfit[s-1]), color=colors[s], linestyle='dashed')
         cond = (Px_pred_same_kpar[s-1][:64]) > (np.amax((Px_pred_same_kpar[s-1][:64]))/100.)
         cond2 = Px_pred[s-1]>np.amax(Px_pred[s-1])/100.
         fracerr = ((Px_thisbin_avg[1:])[cond]-(Px_pred_same_kpar[s-1][:64])[cond])/(Px_pred_same_kpar[s-1][:64])[cond]
         fracerr_bestfit = (Px_thisbin_avg.T[1:][cond]-(Px_pred_same_kpar_bestfit[s-1][:64])[cond])/(Px_pred_same_kpar_bestfit[s-1][:64])[cond]
         fracerr_emubest = ((Px_pred[s-1][cond2])-(Px_pred_bestfit[s-1][cond2]))/(Px_pred_bestfit[s-1][cond2])
-        fracerr_emubest_plus = (((Px_pred[s-1][cond2])+(Px_pred_all_s6_stds[s-1][cond2]))-(Px_pred_bestfit[s-1][cond2]))/(Px_pred_bestfit[s-1][cond2])
-        fracerr_emubest_minus = (((Px_pred[s-1][cond2])-(Px_pred_all_s6_stds[s-1][cond2]))-(Px_pred_bestfit[s-1][cond2]))/(Px_pred_bestfit[s-1][cond2])
+        fracerr_emubest_plus = (((Px_pred[s-1][cond2])+(Px_pred_all_stds[s-1][cond2]))-(Px_pred_bestfit[s-1][cond2]))/(Px_pred_bestfit[s-1][cond2])
+        fracerr_emubest_minus = (((Px_pred[s-1][cond2])-(Px_pred_all_stds[s-1][cond2]))-(Px_pred_bestfit[s-1][cond2]))/(Px_pred_bestfit[s-1][cond2])
         print("best-fit first crosses 10% at: ", kpar[np.where(np.abs(fracerr_bestfit)>0.1)[0]])
         print("Emulator first crosses 5% at: ", kpar_est[np.where(np.abs(fracerr_emubest)>0.05)[0]])
         print("Emu performance", np.average(fracerr_emubest))
@@ -289,8 +252,8 @@ ax[1].axhline(y=0.1, color="black", ls="--", alpha=0.8)
 ax[1].axhline(y=-0.1, color="black", ls="--", alpha=0.8)
 ax[2].axhline(y=0.1, color="black", ls="--", alpha=0.8)
 ax[2].axhline(y=-0.1, color="black", ls="--", alpha=0.8)
-ax[1].axhline(y=0, color='black', ls="..")
-ax[2].axhline(y=0, color='black', ls="..")
+ax[1].axhline(y=0, color='black', ls="dotted")
+ax[2].axhline(y=0, color='black', ls="dotted")
 import matplotlib.lines as mlines
 black_line = mlines.Line2D([], [], color='black', label='emulator prediction')
 dashed_line = mlines.Line2D([], [], color='black', label='best-fit', linestyle='dashed')
@@ -312,12 +275,15 @@ ax[1].set_ylim([-.22,.22])
 ax[2].set_ylim([-.22,.22])
 plt.subplots_adjust(hspace=.1)
 ax[1].set_ylabel(r"$P_{\times}^{\mathrm{sim}}/P_{\times}^{\mathrm{fit}}-1$")
-ax[2].set_ylabel(r"$P_{\times}^{mathrm{emu}}/P_{\times}^{\mathrm{fit}}-1$")
+ax[2].set_ylabel(r"$P_{\times}^{\mathrm{emu}}/P_{\times}^{\mathrm{fit}}-1$")
 
 plt.tight_layout()
 plt.savefig("Pcross_central_snap6_kPx_allbin_emupred_first4_withfracerr.pdf")
 # -
 
+pwd
 
+
+separation_bins[s]
 
 
