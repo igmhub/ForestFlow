@@ -9,23 +9,21 @@
 #   kernelspec:
 #     display_name: pcross
 #     language: python
-#     name: pcross
+#     name: python3
 # ---
 
 import numpy as np
-print("this far.")
 import matplotlib.pyplot as plt
 import os
-print("#2")
 from forestflow import pcross
 from lace.cosmo import camb_cosmo
 from forestflow.model_p3d_arinyo import ArinyoModel
-print("Importing GadgetArchive3d; may take several minutes.")
 from forestflow.archive import GadgetArchive3D
-print("Done importing GadgetArchive3d.")
 from forestflow.P3D_cINN import P3DEmulator
 import forestflow
 from forestflow.rebin_p3d import get_p3d_modes
+import matplotlib.lines as mlines
+import matplotlib.patches as mpatches
 
 # # Compare $P_\times$ measurements to emulator
 
@@ -113,8 +111,7 @@ Px_pred_same_kpar_bestfit = [[],[],[],[],[],[],[]]
 Px_pred_all = [[],[],[],[],[],[],[]]
 Px_pred_samekpar_all = [[],[],[],[],[],[],[]]
 
-snapnum = 6
-z_test = np.array([central[snapnum]['z']]) 
+z_test = np.array([3]) 
 
 info_power = {
     "sim_label": "mpg_central",
@@ -186,7 +183,7 @@ for s in range(1, len(separation_bins)-1):
     Px_pred_same_kpar_minus[s-1].extend(mean_Px_exact_minus)
     Px_pred_bestfit[s-1].extend(mean_Px_smth_bestfit)
     Px_pred_same_kpar_bestfit[s-1].extend(mean_Px_exact_bestfit)
- 
+
 
 # +
 Px_pred = np.asarray(Px_pred)
@@ -219,8 +216,7 @@ for s in range(1,len(separation_bins)-1):
     Px_info = np.load(meas_path+"Px_skewers_{:.2f}_{:.2f}_allax_allphase.npz".format(separation_bins[s],separation_bins[s+1]))
     Px_thisbin_avg = Px_info['Px']
     Px_std = Px_info['std']
-    # pick a snapnum 
-    snap = 0
+
     if s==4:
         label = ''
         
@@ -229,7 +225,8 @@ for s in range(1,len(separation_bins)-1):
         
     if s<=4:
         
-        ax[0].scatter(kpar[1:65], kpar[1:65]*Px_thisbin_avg.T[1:], label=r"$r_\perp={:.2f}-{:.2f}$ Mpc".format(separation_bins[s],separation_bins[s+1]), marker='o', s=10, color=colors[s])
+        # ax[0].scatter(kpar[1:65], kpar[1:65]*Px_thisbin_avg.T[1:], label=r"$r_\perp={:.2f}-{:.2f}$ Mpc".format(separation_bins[s],separation_bins[s+1]), marker='o', s=10, color=colors[s])
+        ax[0].scatter(kpar[1:65], kpar[1:65]*Px_thisbin_avg.T[1:], marker='o', s=20, color=colors[s])
         ax[0].plot(kpar_est, kpar_est*(Px_pred[s-1]), label=label, color=colors[s])
         ax[0].fill_between(kpar_est, kpar_est*(Px_pred[s-1])-(Px_pred_all_stds[s-1]),kpar_est*(Px_pred[s-1])+(Px_pred_all_stds[s-1]), alpha=.2, color=colors[s])
         ax[0].plot(kpar_est, kpar_est*(Px_pred_bestfit[s-1]), color=colors[s], linestyle='dashed')
@@ -254,36 +251,42 @@ ax[2].axhline(y=0.1, color="black", ls="--", alpha=0.8)
 ax[2].axhline(y=-0.1, color="black", ls="--", alpha=0.8)
 ax[1].axhline(y=0, color='black', ls="dotted")
 ax[2].axhline(y=0, color='black', ls="dotted")
-import matplotlib.lines as mlines
-black_line = mlines.Line2D([], [], color='black', label='emulator prediction')
-dashed_line = mlines.Line2D([], [], color='black', label='best-fit', linestyle='dashed')
+
+black_line = mlines.Line2D([], [], color='black', label='ForestFlow')
+dashed_line = mlines.Line2D([], [], color='black', label='Fit', linestyle='dashed')
+scatter_point = mlines.Line2D([], [], color='black', marker='o', label='Simulation', linestyle='None')
 # get existing legend handles
 handles, labels = ax[0].get_legend_handles_labels()
 # add black line to handles
 handles.append(black_line)
 handles.append(dashed_line)
+handles.append(scatter_point)
 # add legend
-ax[0].legend(handles=handles)
+leg1 = ax[0].legend(handles=handles, loc='upper right')
+ax[0].add_artist(leg1)
+# add another legend with patches of colors
+
+ax[0].tick_params(axis="both", which="major", labelsize=18)
+ax[1].tick_params(axis="both", which="major", labelsize=18)
+patch_handles = []
+for i in range(1, len(separation_bins)-4):
+    patch_handles.append(mpatches.Patch(color=colors[i], label=r"$r_\perp={:.2f}-{:.2f}$ Mpc".format(separation_bins[i],separation_bins[i+1])))
+ax[0].legend(handles=patch_handles, loc='upper left')
 
 ax[0].set_xscale('log')
-ax[0].set_ylabel(r"$k_\parallel P_\times$")
+ax[0].set_ylabel(r"$k_\parallel P_\times$", fontsize=20)
 ax[0].set_xlim([0.09,6])
 ax[0].set_ylim([-.01,0.28])
-ax[2].set_xlabel(r"$k_\parallel$ [Mpc$^{-1}]$")
-ax[0].set_title(fr"$P_\times$, central simulation, $z={z_test[0]}$", fontsize=20)
+ax[2].set_xlabel(r"$k_\parallel$ [Mpc$^{-1}]$", fontsize=20)
+# ax[0].set_title(fr"$P_\times$, central simulation, $z={z_test[0]}$", fontsize=20)
 ax[1].set_ylim([-.22,.22])
 ax[2].set_ylim([-.22,.22])
 plt.subplots_adjust(hspace=.1)
-ax[1].set_ylabel(r"$P_{\times}^{\mathrm{sim}}/P_{\times}^{\mathrm{fit}}-1$")
-ax[2].set_ylabel(r"$P_{\times}^{\mathrm{emu}}/P_{\times}^{\mathrm{fit}}-1$")
+ax[1].set_ylabel(r"$P_{\times}^{\mathrm{sim}}/P_{\times}^{\mathrm{fit}}-1$", fontsize=20)
+ax[2].set_ylabel(r"$P_{\times}^{\mathrm{emu}}/P_{\times}^{\mathrm{fit}}-1$", fontsize=20)
 
 plt.tight_layout()
 plt.savefig("Pcross_central_snap6_kPx_allbin_emupred_first4_withfracerr.pdf")
 # -
-
-pwd
-
-
-separation_bins[s]
 
 
