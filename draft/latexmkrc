@@ -1,0 +1,1 @@
+$pdflatex = "latexdiff forestflow_cwr.tex forestflow.tex > forestflow_diff.tex; pdflatex %O  forestflow_diff"

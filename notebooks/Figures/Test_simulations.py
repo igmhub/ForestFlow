@@ -342,6 +342,9 @@ arr_p1d_emu=fil["arr_p1d_emu"]
 params_sim=fil["params_sim"]
 params_emu=fil["params_emu"]
 
+# %%
+arr_p3d_sim.shape
+
 # %% [markdown]
 # #### The following only for the central simulation
 

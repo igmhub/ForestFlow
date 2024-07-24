@@ -308,7 +308,7 @@ residual = (arr_p3d_emu / arr_p3d_sim -1)
 # savename = folder+"l1O/l1O_P3D.png"
 # plot_p3d_L1O(z_use, knew, munew, residual[:, mask_z, :, :], mu_bins, kmax_3d_fit=kmax_fit, savename=savename)
 savename = folder+"l1O/l1O_P3D.pdf"
-plot_p3d_L1O(z_use, knew, munew, residual[:, mask_z, :, :], mu_bins, kmax_3d_fit=kmax_3d_fit, savename=savename)
+plot_p3d_L1O(z_use, knew, munew, residual[:, mask_z, :, :], mu_bins, kmax_3d_fit=kmax_3d_fit, savename=savename, legend=True)
 
 
 # %%

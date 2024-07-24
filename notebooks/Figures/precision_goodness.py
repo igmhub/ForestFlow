@@ -229,11 +229,15 @@ for iz in range(len(central)):
     
     
     for ii in range(n_mubins):
+        if ii == 0:
+            lab = str(mu_bins[ii]) + r"$\leq\mu<$" + str(mu_bins[ii + 1])
+        else:
+            lab = str(mu_bins[ii]) + r"$\leq\mu\leq$" + str(mu_bins[ii + 1])
         col = f"C{ii}"
         x = knew[:, ii] 
         _ = np.isfinite(x)        
         y = (p3d_model[0, iz, :, ii] - p3d_model[1, iz, :, ii])/p3d_model[2, iz, :, ii]/np.sqrt(2)
-        ax[1].plot(x[_], y[_], col+"-", lw=3, alpha=0.8)
+        ax[1].plot(x[_], y[_], col+"-", lw=3, alpha=0.8, label=lab)
 
     _ = np.isfinite(knew)
     y = (p3d_model[0, iz, _] - p3d_model[1, iz, _])/p3d_model[2, iz, _]/np.sqrt(2)
@@ -261,12 +265,14 @@ for iz in range(len(central)):
     
     ax[1].set_xlabel(r"$k\, [\mathrm{Mpc}^{-1}]$", fontsize=ftsize)
     ax[2].set_xlabel(r"$k_\parallel\, [\mathrm{Mpc}^{-1}]$", fontsize=ftsize)
+    
+    ax[1].legend(fontsize=16, ncol=2, loc="lower left")
 
 
     if(central[iz]["z"] != out):
         ax[0].set_title("z="+str(central[iz]["z"]))
     ax[2].set_xscale("log")
-    ax[1].set_ylim(-0.041, 0.041)
+    ax[1].set_ylim(-0.04, 0.03)
     ax[2].set_ylim(-0.0041, 0.0041)
     for jj in range(1,3):
         ax[jj].set_xscale("log")
@@ -419,12 +425,22 @@ jj = 0
 ftsize = 20
 fig, ax = plt.subplots(2, figsize=(8, 6), sharex=True)
 
+labs = []
+
 for ii in range(n_mubins):
+
+    if ii == 0:
+        lab = str(mu_bins[ii]) + r"$\leq\mu<$" + str(mu_bins[ii + 1])
+    else:
+        lab = str(mu_bins[ii]) + r"$\leq\mu\leq$" + str(mu_bins[ii + 1])
+    labs.append(lab)
+    
     col = f"C{ii}"
     x = knew[:, ii] 
     _ = np.isfinite(x)
     y = np.percentile(p3d_model[:, _, ii]/p3d_measured[:, _, ii], [50, 16, 84], axis=0) - 1
-    ax[0].plot(x[_], y[0], col+"-", lw=3, alpha=0.8)
+    ax[0].plot(x[_], y[0], col+"-", lw=3, alpha=0.8, 
+            label=lab,)
     # ax[0].errorbar(x[_], y,  col+"-", lw=3, alpha=0.2)
     ax[0].fill_between(
             x[_],
@@ -433,6 +449,7 @@ for ii in range(n_mubins):
             color=col,
             alpha=0.2,
     )
+    
     
 
 x = k1d_Mpc
@@ -445,6 +462,8 @@ ax[1].fill_between(
         color="C4",
         alpha=0.2,
 )
+
+ax[0].legend(fontsize=16, ncol=2, loc="upper left")
 
 
 ax[0].axhline(0, linestyle=":", color="k")
@@ -466,7 +485,7 @@ ax[0].tick_params(axis="both", which="major", labelsize=ftsize)
 ax[1].tick_params(axis="both", which="major", labelsize=ftsize)
 
 ax[0].set_xscale("log")
-ax[0].set_ylim(-0.21, 0.21)
+ax[0].set_ylim(-0.21, 0.31)
 ax[1].set_ylim(-0.021, 0.021)
 
 plt.tight_layout()

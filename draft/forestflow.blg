@@ -1,0 +1,52 @@
+This is BibTeX, Version 0.99d (TeX Live 2022/dev/Debian)
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: forestflow.aux
+The style file: mnras.bst
+Database file #1: forestflow.bib
+Warning--entry type for "freia" isn't style-file defined
+--line 480 of file forestflow.bib
+Reallocated str_pool (elt_size=1) to 130000 items from 65000.
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+You've used 113 entries,
+            2881 wiz_defined-function locations,
+            1656 strings with 81961 characters,
+and the built_in function-call counts, 58072 in all, are:
+= -- 4956
+> -- 4131
+< -- 229
++ -- 1789
+- -- 652
+* -- 7015
+:= -- 8818
+add.period$ -- 0
+call.type$ -- 113
+change.case$ -- 226
+chr.to.int$ -- 109
+cite$ -- 113
+duplicate$ -- 2871
+empty$ -- 2709
+format.name$ -- 992
+if$ -- 10354
+int.to.chr$ -- 5
+int.to.str$ -- 0
+missing$ -- 110
+newline$ -- 353
+num.names$ -- 778
+pop$ -- 580
+preamble$ -- 1
+purify$ -- 452
+quote$ -- 0
+skip$ -- 1931
+stack$ -- 0
+substring$ -- 3626
+swap$ -- 1713
+text.length$ -- 462
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 1014
+warning$ -- 0
+while$ -- 827
+width$ -- 0
+write$ -- 1143
+(There was 1 warning)

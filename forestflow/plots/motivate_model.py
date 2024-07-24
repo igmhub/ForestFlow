@@ -75,7 +75,7 @@ def plot_motivate_model(
     line2 = Line2D(
         [0],
         [0],
-        label=r"Fit w/ $D_\mathrm{NL}$",
+        label=r"Fit",
         color="k",
         ls="-",
         linewidth=2,
@@ -83,12 +83,12 @@ def plot_motivate_model(
     line3 = Line2D(
         [0],
         [0],
-        label=r"Fit w/o $D_\mathrm{NL}$",
+        label=r"Fit (linear part only)",
         color="k",
         ls="--",
         linewidth=2,
     )
-    hand = [line2, line3, line1]
+    hand = [line1, line2, line3]
     ax[0].legend(fontsize=ftsize - 2, loc="upper left", handles=hand, ncols=1)
     ax[0].add_artist(legend1)
 

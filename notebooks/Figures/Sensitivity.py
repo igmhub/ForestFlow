@@ -15,8 +15,6 @@
 
 # %% [markdown]
 # # Sensitivity plots for ForestFlow
-#
-# Need to be updated
 
 # %%
 # %load_ext autoreload
@@ -59,15 +57,15 @@ print(path_program)
 sys.path.append(path_program)
 
 # %% [markdown]
-# ## Load stuff
+# ## Load data and emulator
 
 # %%
-path_fig = '/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/'
-
-folder_lya_data = os.path.dirname(forestflow.__path__[0]) + "/data/best_arinyo/"
+# %%time
+folder_lya_data = path_program + "/data/best_arinyo/"
+folder_interp = path_program + "/data/plin_interp/"
 
 Archive3D = GadgetArchive3D(
-    base_folder=os.path.dirname(forestflow.__path__[0]),
+    base_folder=path_program[:-1],
     folder_data=folder_lya_data,
     force_recompute_plin=False,
     average="both",
@@ -75,8 +73,9 @@ Archive3D = GadgetArchive3D(
 print(len(Archive3D.training_data))
 
 # %%
-training_type = "Arinyo_minz"
-model_path=path_program+"/data/emulator_models/mpg_jointz.pt"
+training_type = "Arinyo_min"
+model_path=path_program+"/data/emulator_models/mpg_hypercube.pt"
+
 
 emulator = P3DEmulator(
     Archive3D.training_data,
@@ -96,7 +95,401 @@ emulator = P3DEmulator(
 )
 
 # %% [markdown]
-# ## Pk sensitivity
+# ### Power spectra
+
+# %%
+k_Mpc = np.zeros((1000, 2))
+k_Mpc[:, 0] = np.geomspace(0.03, 6, 1000)
+k_Mpc[:, 1] = np.geomspace(0.03, 6, 1000)
+mu = np.zeros((1000, 2))
+mu[:,0] = 0
+mu[:,1] = 1
+
+kpar_Mpc = np.geomspace(0.03, 5, 1000)
+
+# %%
+# target redshift
+z_test = 3
+
+# target cosmology
+cosmo = {
+    'H0': 67.0,
+    'omch2': 0.12,
+    'ombh2': 0.022,
+    'mnu': 0.0,
+    'omk': 0,
+    'As': 2.006055e-09,
+    'ns': 0.967565,
+    'nrun': 0.0,
+    'w': -1.0
+}
+
+# random (approx central)
+input_params = {
+    'Delta2_p': 0., # not used if you provide cosmology
+    'n_p': 0., # not used if you provide cosmology
+    'mF': 0.66,
+    'sigT_Mpc': 0.13,
+    'gamma': 1.5,
+    'kF_Mpc': 10.5
+}
+
+var_input = {
+    "As": cosmo["As"] + 0.05 * cosmo["As"],
+    "omch2": cosmo["omch2"] + 0.05 * cosmo["omch2"],
+    "mF": input_params["mF"] + 0.01 * input_params["mF"],
+    "sigT_Mpc": input_params["sigT_Mpc"] + 0.05 * input_params["sigT_Mpc"], 
+}
+
+info_power = {
+    "cosmo": cosmo,
+    "k3d_Mpc": k_Mpc,
+    "mu": mu,
+    "k1d_Mpc": kpar_Mpc,
+    "return_p3d": True,
+    "return_p1d": True,
+    "z": z_test,
+}
+
+out = emulator.evaluate(
+    emu_params=input_params,
+    info_power=info_power,
+    Nrealizations=1000
+)
+
+orig_p1d = out['p1d']
+orig_p3d = out['p3d']
+
+
+# %%
+var_p1d = np.zeros((4, orig_p1d.shape[0]))
+var_p3d = np.zeros((4, orig_p3d.shape[0], orig_p3d.shape[1]))
+
+# %%
+for ii in range(4):
+    cosmo = {
+        'H0': 67.0,
+        'omch2': 0.12,
+        'ombh2': 0.022,
+        'mnu': 0.0,
+        'omk': 0,
+        'As': 2.006055e-09,
+        'ns': 0.967565,
+        'nrun': 0.0,
+        'w': -1.0
+    }
+
+    input_params = {
+        'Delta2_p': 0., # not used if you provide cosmology
+        'n_p': 0., # not used if you provide cosmology
+        'mF': 0.66,
+        'sigT_Mpc': 0.13,
+        'gamma': 1.5,
+        'kF_Mpc': 10.5
+    }
+    
+    if(ii == 0):
+        cosmo["As"] = var_input["As"]
+    elif(ii == 1):
+        cosmo["omch2"] = var_input["omch2"]
+    elif(ii == 2):
+        input_params["mF"] = var_input["mF"]
+    elif(ii == 3):
+        input_params["sigT_Mpc"] = var_input["sigT_Mpc"]
+
+
+    info_power = {
+        "cosmo": cosmo,
+        "k3d_Mpc": k_Mpc,
+        "mu": mu,
+        "k1d_Mpc": kpar_Mpc,
+        "return_p3d": True,
+        "return_p1d": True,
+        "z": z_test,
+    }
+    
+    out = emulator.evaluate(
+        emu_params=input_params,
+        info_power=info_power,
+        Nrealizations=1000
+    )
+
+    var_p1d[ii] = out["p1d"]
+    var_p3d[ii] = out["p3d"]
+
+# %%
+path_fig = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+
+fig, ax = plt.subplots(3, 1, sharex=True, figsize=(8, 4*3))
+ls = ["-", "--", ":", "-."]
+labs = [r"$P_\mathrm{3D}(k, \mu=0)$", r"$P_\mathrm{3D}(k, \mu=1)$", r"$P_\mathrm{1D}$"]
+labsleg = [r'$\Delta A_\mathrm{s}=+5\%$', r'$\Delta \Omega_\mathrm{M} h^2=+5\%$', r'$\Delta \bar_{F}=+1\%$', r'$\Delta \sigma_\mathrm{T}=+5\%$']
+lw = 2.5
+fontsize=20
+
+for ii in range(4):
+    ax[0].plot(k_Mpc[:,0], var_p3d[ii, :,0]/orig_p3d[:,0], ls[ii], label=labsleg[ii], lw=lw)
+    ax[1].plot(k_Mpc[:,0], var_p3d[ii, :,1]/orig_p3d[:,1], ls[ii], lw=lw)
+    
+    ax[2].plot(kpar_Mpc, var_p1d[ii]/orig_p1d, ls[ii], lw=lw)
+
+# ax[0].legend(loc="lower right", fontsize=fontsize-2)
+
+for ii in range(3):
+    ax[ii].axhline(1, linestyle=":", color="k", alpha=0.5, lw=2)
+    ax[ii].tick_params(axis="both", which="major", labelsize=fontsize)
+    
+ax[0].axvline(5, linestyle="--", color="k", alpha=0.5, lw=2)
+ax[1].axvline(5, linestyle="--", color="k", alpha=0.5, lw=2)
+ax[2].axvline(4, linestyle="--", color="k", alpha=0.5, lw=2)
+
+ax[0].set_xscale("log")
+
+            
+ax[0].set_xlabel(r'$k\, [\mathrm{Mpc}^{-1}]$', fontsize=fontsize)
+ax[1].set_xlabel(r'$k\, [\mathrm{Mpc}^{-1}]$', fontsize=fontsize)
+ax[2].set_xlabel(r'$k_\parallel\, [\mathrm{Mpc}^{-1}]$', fontsize=fontsize)
+
+ax[0].set_ylabel(r"$\left(P_{\rm 3D}/P_{\rm 3D}^{\rm fid}\right)(k, \mu=0)$", fontsize=fontsize)
+ax[1].set_ylabel(r"$\left(P_{\rm 3D}/P_{\rm 3D}^{\rm fid}\right)(k, \mu=1)$", fontsize=fontsize)
+ax[2].set_ylabel(r"$\left(P_{\rm 1D}/P_{\rm 1D}^{\rm fid}\right)(k_\parallel)$", fontsize=fontsize)
+
+plt.tight_layout()
+
+plt.savefig(path_fig+'/sensitivity_power.png')
+plt.savefig(path_fig+'/sensitivity_power.pdf')
+
+# %% [markdown]
+# ### Linear biases
+
+# %%
+# target redshift
+nz = 10
+z_test = np.linspace(2, 4.5, 10)
+nrel = 2000
+
+# target cosmology
+cosmo = {
+    'H0': 67.0,
+    'omch2': 0.12,
+    'ombh2': 0.022,
+    'mnu': 0.0,
+    'omk': 0,
+    'As': 2.006055e-09,
+    'ns': 0.967565,
+    'nrun': 0.0,
+    'w': -1.0
+}
+
+# random (approx central)
+input_params = {
+    'Delta2_p': 0., # not used if you provide cosmology
+    'n_p': 0., # not used if you provide cosmology
+    'mF': 0.66,
+    'sigT_Mpc': 0.13,
+    'gamma': 1.5,
+    'kF_Mpc': 10.5
+}
+
+var_input = {
+    "As": cosmo["As"] + 0.05 * cosmo["As"],
+    "omch2": cosmo["omch2"] + 0.05 * cosmo["omch2"],
+    "mF": input_params["mF"] + 0.01 * input_params["mF"],
+    "sigT_Mpc": input_params["sigT_Mpc"] + 0.05 * input_params["sigT_Mpc"], 
+}
+
+lybias = np.zeros((nz, 3))
+
+for ii, z in enumerate(z_test):
+
+    info_power = {
+        "cosmo": cosmo,
+        "z": z,
+    }
+    
+    out = emulator.evaluate(
+        emu_params=input_params,
+        info_power=info_power,
+        Nrealizations=nrel
+    )
+
+    lybias[ii, 0] = out["coeffs_Arinyo"]["beta"]
+    lybias[ii, 1] = out["coeffs_Arinyo"]["bias"]
+    
+    out = emulator.evaluate(
+        emu_params=input_params,
+        info_power=info_power,
+        Nrealizations=nrel,
+        natural_params=True
+    )
+    lybias[ii, 2] = out["coeffs_Arinyo"]["bias_eta"]
+
+
+# %%
+lybias_var = np.zeros((4, nz, 3))
+
+
+for ii in range(4):
+    print(ii)
+    cosmo = {
+        'H0': 67.0,
+        'omch2': 0.12,
+        'ombh2': 0.022,
+        'mnu': 0.0,
+        'omk': 0,
+        'As': 2.006055e-09,
+        'ns': 0.967565,
+        'nrun': 0.0,
+        'w': -1.0
+    }
+
+    input_params = {
+        'Delta2_p': 0., # not used if you provide cosmology
+        'n_p': 0., # not used if you provide cosmology
+        'mF': 0.66,
+        'sigT_Mpc': 0.13,
+        'gamma': 1.5,
+        'kF_Mpc': 10.5
+    }
+    
+    if(ii == 0):
+        cosmo["As"] = var_input["As"]
+    elif(ii == 1):
+        cosmo["omch2"] = var_input["omch2"]
+    elif(ii == 2):
+        input_params["mF"] = var_input["mF"]
+    elif(ii == 3):
+        input_params["sigT_Mpc"] = var_input["sigT_Mpc"]
+
+
+    for jj, z in enumerate(z_test):
+
+        info_power = {
+            "cosmo": cosmo,
+            "z": z,
+        }
+        
+        out = emulator.evaluate(
+            emu_params=input_params,
+            info_power=info_power,
+            Nrealizations=nrel
+        )
+    
+        lybias_var[ii, jj, 0] = out["coeffs_Arinyo"]["beta"]
+        lybias_var[ii, jj, 1] = out["coeffs_Arinyo"]["bias"]
+        
+        out = emulator.evaluate(
+            emu_params=input_params,
+            info_power=info_power,
+            Nrealizations=nrel,
+            natural_params=True
+        )
+        lybias_var[ii, jj, 2] = out["coeffs_Arinyo"]["bias_eta"]
+
+# %%
+path_fig = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+
+fig, ax = plt.subplots(3, 1, sharex=True, figsize=(8, 4*3))
+ls = ["-", "--", ":", "-."]
+labsleg = [r'$\Delta A_\mathrm{s}=+5\%$', r'$\Delta \Omega_\mathrm{M} h^2=+5\%$', r'$\Delta m_\mathrm{F}=+1\%$', r'$\Delta \sigma_\mathrm{T}=+5\%$']
+lw = 2.5
+fontsize=20
+
+for jj in range(3):
+    for ii in range(4):
+        ax[jj].plot(z_test, lybias_var[ii, :, jj]/lybias[:, jj], ls[ii], lw=3, label=labsleg[ii])
+
+ax[0].legend(loc="upper right", fontsize=fontsize-2)
+
+for ii in range(3):
+    ax[ii].axhline(1, linestyle=":", color="k", alpha=0.5, lw=2)
+    ax[ii].tick_params(axis="both", which="major", labelsize=fontsize)
+
+ax[2].set_xlabel(r'$z$', fontsize=fontsize)
+
+ax[0].set_ylabel(r"$\left(\beta/\beta^{\rm fid}\right)(z)$", fontsize=fontsize)
+ax[1].set_ylabel(r"$\left(b_\delta/b_\delta^{\rm fid}\right)(z)$", fontsize=fontsize)
+ax[2].set_ylabel(r"$\left(b_\eta/b_\eta^{\rm fid}\right)(z)$", fontsize=fontsize)
+
+plt.tight_layout()
+
+plt.savefig(path_fig+'/sensitivity_lbias.png')
+plt.savefig(path_fig+'/sensitivity_lbias.pdf')
+
+# %%
+
+# %%
+
+# %%
+
+# %%
+labs = [r"$P_\mathrm{3D}(k, \mu=0)$", r"$P_\mathrm{3D}(k, \mu=1)$", r"$P_\mathrm{1D}$"]
+lab_par = [r'$\Delta^2_\mathrm{p}$', r'$n_\mathrm{p}$', r'$m_\mathrm{F}$', r'$\gamma$', r'$\sigma_\mathrm{T}$', r'$k_\mathrm{F}$']
+fontsize = 22
+
+fig, ax = plt.subplots(3, 2, sharex=True, figsize=(8, 4*2))
+ax = ax.reshape(-1)
+for jj in range(2):
+    for kk, par in enumerate(emu_params0):       
+        ii0 = 0
+        for ii in range(0, nn, 2):
+            if(ii == 2):
+                continue
+            leg = par + '= ' + str(np.round(all_dp_vals[kk][ii], 2))
+                
+            if(jj == 0):
+                k = k_Mpc[:,0]
+                dat = var_p3d[kk, ii, :, 0] / orig_p3d[:, 0] - 1
+                lss = "-"
+                col = "C"+str(ii0)
+            elif(jj == 1):
+                k = k_Mpc[:,0]
+                dat = var_p3d[kk, ii, :, 1] / orig_p3d[:, 1] - 1
+                lss = "--"
+                col = "C"+str(ii0)
+                    
+            ax[kk].plot(k, dat, ls=lss, c=col, label=leg, lw=2, alpha=0.75)
+            ii0 += 1
+            
+        # ax[kk].legend(ncol=4)            
+        ax[kk].axhline(color='k', ls=":")
+        ax[kk].set_title(lab_par[kk],
+            fontsize=fontsize)
+        # ax[kk].set_ylabel('var/orig-1')
+        if(jj == 0):
+            ymax = np.max(np.abs(dp3d_range[kk, :]))*1.1
+            ax[kk].set_ylim(-ymax, ymax)
+            ax[kk].tick_params(axis="both", which="major", labelsize=fontsize-4)
+
+ax[-2].set_xlabel(r'$k\, [\mathrm{Mpc}^{-1}]$',
+    fontsize=fontsize)
+ax[-1].set_xlabel(r'$k\, [\mathrm{Mpc}^{-1}]$',
+    fontsize=fontsize)
+ax[-1].set_xscale('log')
+ax[-2].set_ylabel("\n ")
+
+
+# create manual symbols for legend
+patch1 = mpatches.Patch(color='C0', label='Min')
+patch2 = mpatches.Patch(color='C1', label='Max')
+ax[0].legend(handles=[patch1, patch2], ncol=2, fontsize=fontsize-6, loc="lower left")
+
+line1 = Line2D([0], [0], label=r'$\mu=0$', color='gray', ls="-", lw=2)
+line2 = Line2D([0], [0], label=r'$\mu=1$', color='gray', ls="--", lw=2)
+ax[1].legend(handles=[line1, line2], ncol=2, fontsize=fontsize-6, loc="lower left")
+
+# plt.suptitle(labs[jj], fontsize=20)
+plt.tight_layout()
+fig.text(
+    0.005,
+    0.5,
+    r"$P_{\rm 3D}^\mathrm{var}/P_{\rm 3D}^\mathrm{central}-1$",
+    va="center",
+    rotation="vertical",
+    fontsize=fontsize,
+)
+# plt.savefig(path_fig+'/sensitivity_P3D.png')
+# plt.savefig(path_fig+'/sensitivity_P3D.pdf')
 
 # %% [markdown]
 # #### Compute Dp derivative
@@ -105,26 +498,6 @@ emulator = P3DEmulator(
 # Get cosmo params from mpg_central at z=3
 
 # %%
-# Nsim = 30
-# Nz = 11
-# zs = np.flip(np.arange(2, 4.6, 0.25))
-
-# k_Mpc = Archive3D.training_data[0]["k3d_Mpc"]
-# mu = Archive3D.training_data[0]["mu3d"]
-
-# k_mask = (k_Mpc < 5) & (k_Mpc > 0)
-
-# k_Mpc = k_Mpc[k_mask]
-# mu = mu[k_mask]
-
-
-# k_p1d_Mpc_all = Archive3D.training_data[0]["k_Mpc"]
-# k_p1d_Mpc = Archive3D.training_data[0]["k_Mpc"]
-# k1d_mask = (k_p1d_Mpc < 5) & (k_p1d_Mpc > 0)
-# k_p1d_Mpc = k_p1d_Mpc[k1d_mask]
-# norm = k_p1d_Mpc / np.pi
-# norm_all = k_p1d_Mpc_all / np.pi
-
 zcen = 3
 k_Mpc = np.zeros((100, 2))
 k_Mpc[:, 0] = np.geomspace(0.03, 5, 100)

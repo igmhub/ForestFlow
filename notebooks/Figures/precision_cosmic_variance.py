@@ -162,12 +162,17 @@ for iz in range(len(central)):
     fig, ax = plt.subplots(2, figsize=(8, 6), sharex=True)
     
     for ii in range(n_mubins):
+        
+        if ii == 0:
+            lab = str(mu_bins[ii]) + r"$\leq\mu<$" + str(mu_bins[ii + 1])
+        else:
+            lab = str(mu_bins[ii]) + r"$\leq\mu\leq$" + str(mu_bins[ii + 1])
         col = f"C{ii}"
         x = knew[:, ii] 
         _ = np.isfinite(x)
         y = (p3d_measured[0, iz, :, ii] - p3d_measured[1, iz, :, ii])/p3d_measured[2, iz, :, ii]/np.sqrt(2)
         print(np.nanmax(np.abs(y)))
-        ax[0].plot(x[_], y[_], col+"-", lw=3)
+        ax[0].plot(x[_], y[_], col+"-", lw=3, label=lab)
         
     _ = np.isfinite(knew) & (knew > 0.5) & (knew < 5)
     y = (p3d_measured[0, iz, _] - p3d_measured[1, iz, _])/p3d_measured[2, iz, _]/np.sqrt(2)
@@ -181,7 +186,8 @@ for iz in range(len(central)):
 
     res = np.percentile(y, [50, 16, 84])
     print(res[0]*100, 0.5*(res[2]-res[1])*100, np.std(y)*100)
-    
+
+    ax[0].legend(fontsize=16, ncol=2, loc="upper left")
     
     ax[0].axhline(0, linestyle=":", color="k")
     ax[0].axhline(0.1, linestyle="--", color="k")
@@ -204,7 +210,7 @@ for iz in range(len(central)):
     if(central[iz]["z"] != out):
         ax[0].set_title("z="+str(central[iz]["z"]))
     ax[0].set_xscale("log")
-    ax[0].set_ylim(-0.21, 0.21)
+    ax[0].set_ylim(-0.21, 0.31)
     ax[1].set_ylim(-0.021, 0.021)
 
     plt.tight_layout()
