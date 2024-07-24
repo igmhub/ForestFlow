@@ -1,0 +1,33 @@
+\title{ForestFlow: cosmological emulation of Lyman-$\alpha$ forest clustering from linear to nonlinear scales}
+\titlerunning{ForestFlow: emulating Lyman-$\alpha$ forest clustering}
+
+\author{
+J.~Chaves-Montero\inst{1}\thanks{jchaves@ifae.es}
+\and
+L.~Cabayol-Garcia\inst{1,2}\thanks{lcabayol@pic.es}
+\and
+M.~Lokken\inst{1}
+\and
+A.~Font-Ribera\inst{1}\thanks{afont@ifae.es}
+\and
+others
+}
+
+\institute{
+Institut de F\'{\i}sica d'Altes Energies (IFAE), The Barcelona Institute of Science and Technology, 08193 Bellaterra (Barcelona), Spain
+\and
+Port d'Informaci\'{o} Cient\'{i}fica, Campus UAB, C. Albareda s/n, 08193 Bellaterra (Barcelona), Spain
+}
+
+
+\date{Received 2024; accepted XXX}
+
+\abstract{
+    On large scales, measurements of the Lyman-$\alpha$ forest offer insights into the expansion history of the Universe, while on small scales, these impose strict constraints on the growth history, the nature of dark matter, and the sum of neutrino masses. This work introduces \textsc{forestflow}, a cosmological emulator designed to bridge the gap between large- and small-scale analyses. Using conditional normalizing flows, \textsc{forestflow} emulates the 2 Lyman-$\alpha$ linear biases ($b_\delta$ and $b_\eta$) and 6 parameters describing small-scale deviations of the three-dimensional flux power spectrum ($P_\mathrm{3D}$) from linear theory. These 8 parameters are modeled as a function of cosmology --- the small-scale amplitude and slope of the linear power spectrum ---- and the physics of the intergalactic medium. Thus, in combination with a Boltzmann solver, \textsc{forestflow} can predict $P_\mathrm{3D}$ on arbitrarily large (linear) scales and the one-dimensional flux power spectrum ($P_\mathrm{1D}$) --- the primary observable for small-scale analyses --- without the need for interpolation or extrapolation. Trained on a suite of 30 fixed-and-paired cosmological hydrodynamical simulations spanning redshifts from $z=2$ to 4.5, \textsc{forestflow} achieves 3 and 1.5\% precision in describing $P_\mathrm{3D}$ and $P_\mathrm{1D}$ from linear scales to $k=5\iMpc$ and $k_\parallel=4\iMpc$, respectively. Thanks to its parameterization, the precision of the emulator is similar for two extensions to the $\Lambda$CDM model --- massive neutrinos and curvature --- and ionization histories not included in the training set. \textsc{forestflow} will be crucial for the cosmological analysis of Lyman-$\alpha$ forest measurements from the DESI survey and facilitate novel multiscale analyses.
+}
+
+\keywords{
+    quasars: absorption lines -- 
+    cosmology: large-scale structure of Universe -- 
+    methods: statistical
+}

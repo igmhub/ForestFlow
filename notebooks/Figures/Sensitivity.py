@@ -213,9 +213,92 @@ for ii in range(4):
         info_power=info_power,
         Nrealizations=1000
     )
+    print(ii, out["linP_zs"])
 
     var_p1d[ii] = out["p1d"]
     var_p3d[ii] = out["p3d"]
+
+# %%
+fid_dp = 0.3501265780565268
+fid_np = -2.3000471164022493
+
+ratio_Ap = 0.37831021916336866/fid_dp
+delta_np = -2.2891612818319254-fid_np
+
+kp = 0.7
+ks = 0.05
+ln_kp_ks = np.log(kp/ks)
+
+delta_ns = delta_np
+ratio_As = np.exp(np.log(ratio_Ap) - delta_np * ln_kp_ks)
+
+# %%
+# deltapar = As_sam[ii]/cosmo_params0['As']
+# cosmo_params['As'] = cosmo_params0['As'] * deltapar
+
+
+# deltapar = cosmo_params0['ns'] - ns_sam[ii]
+# cosmo_params['ns'] = ns_sam[ii]
+# kp = 0.7
+# ks = 0.05
+# cosmo_params['As'] = cosmo_params0['As'] * (kp/ks)**deltapar
+
+# %%
+input_params = {
+    'Delta2_p': 0.,
+    'n_p': 0., 
+    'mF': 0.66,
+    'sigT_Mpc': 0.13,
+    'gamma': 1.5,
+    'kF_Mpc': 10.5
+}
+
+cosmo = {
+    'H0': 67.0,
+    'omch2': 0.12,
+    'ombh2': 0.022,
+    'mnu': 0.0,
+    'omk': 0,
+    'As': 2.006055e-09,
+    'ns': 0.967565,
+    'nrun': 0.0,
+    'w': -1.0
+}
+
+cosmo["As"] *= ratio_As
+cosmo["ns"] += delta_ns
+
+info_power = {
+    "cosmo":cosmo,
+    "k3d_Mpc": k_Mpc,
+    "mu": mu,
+    "k1d_Mpc": kpar_Mpc,
+    "return_p3d": True,
+    "return_p1d": True,
+    "z": z_test,
+}
+
+out = emulator.evaluate(
+    emu_params=input_params,
+    info_power=info_power,
+    Nrealizations=1000
+)
+
+omh2_p1d = out['p1d']
+omh2_p3d = out['p3d']
+
+print(out["linP_zs"])
+
+# %%
+ii = 1
+plt.plot(k_Mpc[:,0], var_p3d[ii, :,0]/omh2_p3d[:,0])
+plt.plot(k_Mpc[:,0], var_p3d[ii, :,1]/omh2_p3d[:,1])
+plt.plot(kpar_Mpc, orig_p1d/omh2_p1d)
+
+plt.xscale("log")
+
+# %%
+1 {'Delta2_p': 0.37831021916336866, 'n_p': -2.2891612818319254, 'alpha_p': -0.22072016609048092, 'f_p': 0.9824077977871849}
 
 # %%
 path_fig = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
@@ -232,6 +315,12 @@ for ii in range(4):
     ax[1].plot(k_Mpc[:,0], var_p3d[ii, :,1]/orig_p3d[:,1], ls[ii], lw=lw)
     
     ax[2].plot(kpar_Mpc, var_p1d[ii]/orig_p1d, ls[ii], lw=lw)
+
+ax[0].plot(k_Mpc[:,0], omh2_p3d[:,0]/orig_p3d[:,0], ls[ii], label="Compensated Omh2", lw=lw)
+ax[1].plot(k_Mpc[:,0], omh2_p3d[:,1]/orig_p3d[:,1], ls[ii], lw=lw)
+
+ax[2].plot(kpar_Mpc, omh2_p1d/orig_p1d, ls[ii], lw=lw)
+
 
 # ax[0].legend(loc="lower right", fontsize=fontsize-2)
 

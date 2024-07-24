@@ -1,23 +1,36 @@
-\documentclass[fleqn,usenatbib]{mnras}
+%\documentclass[fleqn,usenatbib]{aa}
+\documentclass{aa}
 
 \usepackage{newtxtext,newtxmath}
 \usepackage[T1]{fontenc}
 
-\DeclareRobustCommand{\VAN}[3]{#2}
-\let\VANthebibliography\thebibliography
-\def\thebibliography{\DeclareRobustCommand{\VAN}[3]{##3}\VANthebibliography}
-
+% \DeclareRobustCommand{\VAN}[3]{#2}
+% \let\VANthebibliography\thebibliography
+% \def\thebibliography{\DeclareRobustCommand{\VAN}[3]{##3}\VANthebibliography}
+\usepackage{color}
+\usepackage{natbib,twoopt}
+\usepackage[hyphenbreaks]{breakurl}
+\usepackage[breaklinks]{hyperref}
 
 \usepackage{graphicx}
-\usepackage{amsmath}
-\usepackage{subfigure}
-\usepackage{xspace}
-\usepackage[table]{xcolor}
-\usepackage[noabbrev]{cleveref}
-\usepackage[normalem]{ulem}
+\usepackage{upgreek}
 
-\usepackage{lineno}
-\linenumbers
+% \usepackage{txfonts}
+% \usepackage{amsmath}
+\usepackage{xspace}
+% \usepackage[table]{xcolor}
+% \usepackage[normalem]{ulem}
+
+
+\bibpunct{(}{)}{;}{a}{}{,}
+\definecolor{cobalt}{rgb}{0.06, 0.2, 0.65}
+\hypersetup{
+  colorlinks,
+  citecolor=cobalt,
+  linkcolor=[rgb]{0.8, 0.2, 1.0},
+  urlcolor=cobalt,
+}
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -52,31 +65,24 @@
 \newcommand{\afr}[1]{ {\color{red} [AFR: #1]}}
 
 
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%% TITLE PAGE %%%%%%%%%%%%%%%%%%%
 
-\title[ForestFlow: emulating Lyman-$\alpha$ forest clustering]{ForestFlow: cosmological emulation of Lyman-$\alpha$ forest clustering from linear to nonlinear scales}
-\input{authors.tex}
-
-\date{Accepted XXX. Received YYY; in original form ZZZ}
-
-\pubyear{2024}
 
 \begin{document}
-\label{firstpage}
-\pagerange{\pageref{firstpage}--\pageref{lastpage}}
+
+
+\input{first_page.tex}
+
+
+% \pubyear{2024}
+
+% \label{firstpage}
+% \pagerange{\pageref{firstpage}--\pageref{lastpage}}
 \maketitle
-
-
-\begin{abstract}
-On large scales, measurements of the Lyman-$\alpha$ forest offer insights into the expansion history of the Universe, while on small scales, these impose strict constraints on the growth history, the nature of dark matter, and the sum of neutrino masses. This work introduces \textsc{forestflow}, a cosmological emulator designed to bridge the gap between large- and small-scale analyses. Using conditional normalizing flows, \textsc{forestflow} emulates the 2 Lyman-$\alpha$ linear biases ($b_\delta$ and $b_\eta$) and 6 parameters describing small-scale deviations of the three-dimensional flux power spectrum ($P_\mathrm{3D}$) from linear theory. These 8 parameters are modeled as a function of cosmology --- the small-scale amplitude and slope of the linear power spectrum ---- and the physics of the intergalactic medium. Thus, in combination with a Boltzmann solver, \textsc{forestflow} can predict $P_\mathrm{3D}$ on arbitrarily large (linear) scales and the one-dimensional flux power spectrum ($P_\mathrm{1D}$) --- the primary observable for small-scale analyses --- without the need for interpolation or extrapolation. Trained on a suite of 30 fixed-and-paired cosmological hydrodynamical simulations spanning redshifts from $z=2$ to 4.5, \textsc{forestflow} achieves 3 and 1.5\% precision in describing $P_\mathrm{3D}$ and $P_\mathrm{1D}$ from linear scales to $k=5\iMpc$ and $k_\parallel=4\iMpc$, respectively. Thanks to its parameterization, the precision of the emulator is similar for two extensions to the $\Lambda$CDM model --- massive neutrinos and curvature --- and ionization histories not included in the training set. \textsc{forestflow} will be crucial for the cosmological analysis of Lyman-$\alpha$ forest measurements from the DESI survey and facilitate novel multiscale analyses.
-\end{abstract}
-
-
-\begin{keywords}
-quasars: absorption lines -- cosmology: large-scale structure of Universe -- methods: statistical
-\end{keywords}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -86,7 +92,7 @@ quasars: absorption lines -- cosmology: large-scale structure of Universe -- met
 
 The \lyaf refers to absorption lines in the spectra of high-redshift quasars resulting from \lya absorption by neutral hydrogen in the intergalactic medium \citep[IGM; for a review, see][]{mcquinn2016EvolutionIntergalacticMedium}. Even though quasars can be observed at very high redshifts with relatively short exposure times, the scarcity of these sources limits their direct use for precision cosmology. Conversely, \lyaf measurements from a single quasar spectrum provide information about density fluctuations over hundreds of megaparsecs along the line of sight, making this observable an excellent tracer of large-scale structure at high redshifts.
 
-Cosmological analyses of the \lyaf rely on either three-dimensional correlations of the \lya transmission field \citep[\xithreed; e.g.;][]{slosar2011LymanaForestThree} or correlations along the line-of-sight of each quasar; i.e., the one-dimensional flux power spectrum \citep[\poned; e.g.;][]{emuparam_croft, p1d_mcDonald2000}. The first analyses set constraints on the expansion history of the Universe by measuring baryonic acoustic oscillations \citep[BAO; e.g.;][]{busca2013LyaBAODR9, slosar2013MeasurementBaryonAcoustica, dumasdesbourboux2020CompletedSDSSIVExtended}, for which linear or perturbation theory is accurate enough. On the other hand, \poned analyses measure the small-scale amplitude and slope of the linear power spectrum \citep[e.g.;][]{emuparam_croft, p1d_mcDonald2000,zaldarriaga2001ConstraintsLyaForest, viel2004ConstraintsPrimordialPower, mcdonald2005LinearTheoryPower}, the nature of dark matter \citep[e.g.;][]{2006PhRvL..97s1303S, 2013PhRvD..88d3502V, irsic2017FirstConstraintsFuzzy, palanque-delabrouille2020HintsNeutrinoBounds, gpemucosmo_rogers, irsic2024}, the thermal history of the IGM \citep[e.g.;][]{viel2006CosmologicalAstrophysicalParameters, bolton2008PossibleEvidenceInverted, lee2015IGMConstraintsSDSSIII, emugp_Walther2019, Boera2019, Gaikwad2020, Gaikwad2021} and the reionization history of the Universe \citep[see the reviews][]{, meiksin2009PhysicsIntergalacticMedium, mcquinn2016EvolutionIntergalacticMedium}. In combination with cosmic microwave background constraints, \poned analyses also set tight constraints on the sum of neutrino masses and the running of the spectral index \citep[e.g.;][]{spergel2003FirstYearWilkinsonMicrowave, verde2003FirstYearWilkinsonMicrowave, viel2004ConstraintsPrimordialPower, seljak2005CosmologicalParameterAnalysis, seljak2006CosmologicalParametersCombining, palanque-delabrouille2015ConstraintNeutrinoMasses, palanque-delabrouille2020HintsNeutrinoBounds}.
+Cosmological analyses of the \lyaf rely on either three-dimensional correlations of the \lya transmission field \citep[\xithreed; e.g.;][]{slosar2011LymanaForestThree} or correlations along the line-of-sight of each quasar; i.e., the one-dimensional flux power spectrum \citep[\poned; e.g.;][]{emuparam_croft, mcdonald2000ObservedProbabilityDistribution}. The first analyses set constraints on the expansion history of the Universe by measuring baryonic acoustic oscillations \citep[BAO; e.g.;][]{busca2013LyaBAODR9, slosar2013MeasurementBaryonAcoustica, dumasdesbourboux2020CompletedSDSSIVExtended}, for which linear or perturbation theory is accurate enough. On the other hand, \poned analyses measure the small-scale amplitude and slope of the linear power spectrum \citep[e.g.;][]{emuparam_croft, mcdonald2000ObservedProbabilityDistribution,zaldarriaga2001ConstraintsLyaForest, viel2004ConstraintsPrimordialPower, mcdonald2005LinearTheoryPower}, the nature of dark matter \citep[e.g.;][]{2006PhRvL..97s1303S, 2013PhRvD..88d3502V, irsic2017FirstConstraintsFuzzy, palanque-delabrouille2020HintsNeutrinoBounds, gpemucosmo_rogers, irsic2024}, the thermal history of the IGM \citep[e.g.;][]{viel2006CosmologicalAstrophysicalParameters, bolton2008PossibleEvidenceInverted, lee2015IGMConstraintsSDSSIII, emugp_Walther2019, Boera2019, Gaikwad2020, Gaikwad2021} and the reionization history of the Universe \citep[see the reviews][]{, meiksin2009PhysicsIntergalacticMedium, mcquinn2016EvolutionIntergalacticMedium}. In combination with cosmic microwave background constraints, \poned analyses also set tight constraints on the sum of neutrino masses and the running of the spectral index \citep[e.g.;][]{spergel2003FirstYearWilkinsonMicrowave, verde2003FirstYearWilkinsonMicrowave, viel2004ConstraintsPrimordialPower, seljak2005CosmologicalParameterAnalysis, seljak2006CosmologicalParametersCombining, palanque-delabrouille2015ConstraintNeutrinoMasses, palanque-delabrouille2020HintsNeutrinoBounds}.
 
 Unlike \xithreed studies, \poned analyses go deep into the nonlinear regime and require time-demanding hydrodynamical simulations \citep[e.g.;][]{hydro_Cen1994, hydro_Miralda1996, hydro_Meiksin2001, hydro_Lukic2015, bolton2017SherwoodSimulationSuite, hydro_Walther2021, hydro_Chabanier2023, Puchwein2023, bird2023PRIYANewSuite}. Naive analyses would demand running millions of hydrodynamical simulations, which is currently unfeasible. Rather, the preferred solution is constructing fast surrogate models that make precise predictions across the input parameter space using simulation measurements as the training set. The main advantage of these surrogate models, known as emulators, is reducing the number of simulations required for Bayesian inference from millions to dozens or hundreds. In the context of \lyaf studies, the first \poned emulators involved simple linear interpolation \citep{mcdonald2006LyaForestPowera} and progressively moved towards using Gaussian processes \citep[GPs;][]{sacks1989DesignAnalysisComputer, mackay1998introduction} and neural networks \citep[NNs;][]{mcculloch1943logical}; for instance, \citet[][]{emugp_bird2019, emugp_rogers2019, emugp_Walther2019, Pedersen2021, emugp_Takhtaganov2021, emugp_rogers2021, gpemu:P1DFernandez2022, bird2023PRIYANewSuite, ennemu:P1DMolaro2023, cabayol-garcia2023NeuralNetworkEmulator}.
 
@@ -96,7 +102,7 @@ Instead, we follow the third approach of emulating the best-fitting parameters o
 %
 \begin{equation}
     \label{eq:p1d}
-    \poned(k_\parallel)=(2\upi)^{-1}\int_0^\infty \mathrm{d} k_\perp\, k_\perp\, \pthreed(k_\parallel,\, k_\perp),
+    \poned(k_\parallel)=(2\uppi)^{-1}\int_0^\infty \mathrm{d} k_\perp\, k_\perp\, \pthreed(k_\parallel,\, k_\perp),
 \end{equation}
 %
 where $k_\parallel$ and $k_\perp$ indicate parallel and perpendicular modes, respectively.
@@ -160,7 +166,7 @@ Making predictions for \pthreed on small scales is more challenging than on larg
     D_\mathrm{NL} = \exp \left\{\left(q_1 \Delta^2 + q_2 \Delta^4\right) \left[1-\left(\frac{k}{k_\mathrm{v}}\right)^{a_\mathrm{v}} \mu^{b_\mathrm{v}}\right] - \left(\frac{k}{k_\mathrm{p}}\right)^2 \right\},
 \end{equation}
 %
-where $\Delta^2(k)\equiv(2\upi^2)^{-1} k^3 P_\mathrm{lin}(k)$ is the dimensionless linear matter power spectrum, $\mu$ is the cosine of the angle between the Fourier mode and the line of sight, and the free parameters $k_\mathrm{v}$ and $k_\mathrm{p}$ are in $\iMpc$ units throughout this work. The terms involving $\{q_1,\,q_2\}$, $\{k_\mathrm{v},\, a_\mathrm{v},\, b_\mathrm{v}\}$, and $\{k_\mathrm{p}\}$ account for nonlinear growth, peculiar velocities and thermal broadening, and gas pressure, respectively. In \citep{givans2022NonlinearitiesLymanAlpha}, the authors used the previous expression to describe both \pthreed and \poned measurements down to highly nonlinear scales without the need for a shot-noise term. We will follow the same approach throughout this work; however, some authors advocate for such term \citep[e.g.;][]{irsicmcquinn2018}.
+where $\Delta^2(k)\equiv(2\uppi^2)^{-1} k^3 P_\mathrm{lin}(k)$ is the dimensionless linear matter power spectrum, $\mu$ is the cosine of the angle between the Fourier mode and the line of sight, and the free parameters $k_\mathrm{v}$ and $k_\mathrm{p}$ are in $\iMpc$ units throughout this work. The terms involving $\{q_1,\,q_2\}$, $\{k_\mathrm{v},\, a_\mathrm{v},\, b_\mathrm{v}\}$, and $\{k_\mathrm{p}\}$ account for nonlinear growth, peculiar velocities and thermal broadening, and gas pressure, respectively. In \citep{givans2022NonlinearitiesLymanAlpha}, the authors used the previous expression to describe both \pthreed and \poned measurements down to highly nonlinear scales without the need for a shot-noise term. We will follow the same approach throughout this work; however, some authors advocate for such term \citep[e.g.;][]{irsicmcquinn2018}.
 
 In the top panel of Fig.~\ref{fig:arinyo}, dotted lines show the ratio of measurements from the \simcentral simulation at $z=3$ and the linear power spectrum, while solid lines do so for the best-fitting model to these measurements (Eqs.~\ref{eq:p3d_model} and \ref{eq:dnl}) and the linear power spectrum. See \S\ref{sec:input} for details about this simulation and the fitting procedure. The dashed lines depict the results for the best-fitting model when setting $D_\mathrm{NL}=1$ after carrying out the fit; i.e., the behavior of the best-fitting model on linear scales. We can readily see that nonlinear growth isotropically increases the power with growing $k$, while peculiar velocities and thermal broadening suppress the power of parallel modes as $k$ increases. On even smaller scales, pressure takes over and causes an isotropic suppression. Nonlinear growth modifies the perpendicular power relative to linear theory by 10\% for scales as large as $k=0.5\iMpc$, indicating that small-scale corrections are important for most of the scales sampled by our simulations. Nevertheless, our simulations are large enough to measure the 2 \lya linear biases with percent precision (see Appendix~\ref{sec:cosmic_variance}). Deviations from linear theory are less pronounced down to smaller scales for modes with $\mu\simeq0.5$ because nonlinear growth and the combination of peculiar velocities and thermal broadening tend to cancel each other out.
 
@@ -186,7 +192,7 @@ In addition to the density and velocity fields, the \lyaf depends upon the ioniz
         & n_\mathrm{p}(z) = \left(\mathrm{d}\log P_{\rm lin} / \mathrm{d}\log k\right)\mid_{k = k_\mathrm{p}},
     \end{align}
     %
-    where we use $k_\mathrm{p} = 0.7\,\mathrm{Mpc}^{-1}$ as the pivot scale because it is at the center of the range of interest for DESI small-scale studies. These parameters capture multiple physical effects modifying the linear power spectrum on small scales \citep[see][for a detailed discussion]{Pedersen2021}, including cosmological parameters such as the amplitude ($A_\mathrm{s}$) and slope ($n_\mathrm{s}$) of the primordial power spectrum, the Hubble parameter, and the matter density ($\Omega_\mathrm{m}$), or $\Lambda$CDM extensions such as curvature and massive neutrinos. The advantage of using this parameterization rather than $\Lambda$CDM parameters is twofold. First, we reduce the dimensionality of the emulator input, which decreases the number of simulations required for precise training. Second, the resulting emulator has the potential for making precise predictions for variations in cosmological parameters and $\Lambda$CDM extensions not considered in the training set \citep[][]{Pedersen2021, pedersen2023CompressingCosmologicalInformation, cabayol-garcia2023NeuralNetworkEmulator}. Note that we do not consider cosmological parameters capturing changes in the growth rate or expansion history because the \lyaf probes cosmic times during which the universe is practically Einstein de-Sitter, and both vary very little with cosmology in this regime.
+    where we use $k_\mathrm{p} = 0.7\,\mathrm{Mpc}^{-1}$ as the pivot scale because it is at the center of the range of interest for DESI small-scale studies. These parameters capture multiple physical effects modifying the linear power spectrum on small scales \citep[see][for a detailed discussion]{Pedersen2021}, including cosmological parameters such as the amplitude ($A_\mathrm{s}$) and slope ($n_\mathrm{s}$) of the primordial power spectrum, the Hubble parameter, and the matter density ($\Omega_\mathrm{M}$), or $\Lambda$CDM extensions such as curvature and massive neutrinos. The advantage of using this parameterization rather than $\Lambda$CDM parameters is twofold. First, we reduce the dimensionality of the emulator input, which decreases the number of simulations required for precise training. Second, the resulting emulator has the potential for making precise predictions for variations in cosmological parameters and $\Lambda$CDM extensions not considered in the training set \citep[][]{Pedersen2021, pedersen2023CompressingCosmologicalInformation, cabayol-garcia2023NeuralNetworkEmulator}. Note that we do not consider cosmological parameters capturing changes in the growth rate or expansion history because the \lyaf probes cosmic times during which the universe is practically Einstein de-Sitter, and both vary very little with cosmology in this regime.
 
     \item Mean transmitted flux fraction (\mflux). It depends on the intensity of the cosmic ionizing background and evolves strongly with redshift. One of the advantages of using this parameter is that it encodes the majority of the redshift dependence of the signal, serving as a proxy for cosmic time.
 
@@ -227,7 +233,7 @@ We evaluate different aspects of the emulation strategy using 6 fixed-and-paired
     
     \item The \simseed simulation uses the same parameters as the \simcentral simulation while considering a different distribution of initial Fourier phases. Given that all \lacehc simulations use the same initial Fourier phases, \simseed is useful to evaluate the impact of cosmic variance in the training set on \forestflow predictions.
     
-    \item The \simh, \simnu, and \simcurved simulations adopt the same values of $\Delta^2_\mathrm{p}(z=3)$, $n_\mathrm{p}(z=3)$, physical cold dark matter and baryonic densities, and astrophysical parameters as the \simcentral simulation. However, the \simh simulation uses 10\% larger Hubble parameter ($h=0.74$) and 18\% smaller matter density ($\Omega_\mathrm{m}=0.259$) while using the same value of $\Omega_\mathrm{m} h^2$ as the \lacehc simulations, the \simnu simulation includes massive neutrinos ($\sum m_\nu=0.3$ eV), and the \simcurved simulation considers an open universe ($\Omega_k=0.03$). The \simnu and \simcurved simulations also modify the value of the cosmological constant while holding fixed $h$ to compensate for the increase in the matter density and the addition of curvature, respectively. The testing simulations address the precision of the emulation strategy for cosmologies not included in the training set.
+    \item The \simh, \simnu, and \simcurved simulations adopt the same values of $\Delta^2_\mathrm{p}(z=3)$, $n_\mathrm{p}(z=3)$, physical cold dark matter and baryonic densities, and astrophysical parameters as the \simcentral simulation. However, the \simh simulation uses 10\% larger Hubble parameter ($h=0.74$) and 18\% smaller matter density ($\Omega_\mathrm{M}=0.259$) while using the same value of $\Omega_\mathrm{M} h^2$ as the \lacehc simulations, the \simnu simulation includes massive neutrinos ($\sum m_\nu=0.3$ eV), and the \simcurved simulation considers an open universe ($\Omega_k=0.03$). The \simnu and \simcurved simulations also modify the value of the cosmological constant while holding fixed $h$ to compensate for the increase in the matter density and the addition of curvature, respectively. The testing simulations address the precision of the emulation strategy for cosmologies not included in the training set.
 
     \item The \simigm simulation uses the same cosmological parameters as the \simcentral simulation while implementing a distinct helium ionization history relative to the \simcentral and \lacehc simulations \citep{puchwein2019ConsistentModellingMetagalactic}. The main difference between the ionization histories of these simulations is that the one implemented in the \simigm simulation peaks at a later time than the others, leading to a significantly different thermal history. The \simigm simulation therefore tests the emulator's performance for thermal histories not considered in the \lacehc simulations.
 \end{itemize}
@@ -240,7 +246,7 @@ We evaluate different aspects of the emulation strategy using 6 fixed-and-paired
 
 To extract \lyaf measurements from each simulation, we first select one of the simulation axes as the line of sight and displace the simulation particles from real to redshift space along this axis. Then, we compute the transmitted flux fraction along $768^2$ uniformly-distributed line of sights along this axis using \textsc{FSFE}\footnote{\url{https://github.com/sbird/fake_spectra}.} \citep{bird2017FSFEFakeSpectra}; these lines of sight are commonly known as skewers. The resolution of the skewers is set to 0.05 Mpc, which is enough to resolve the thermal broadening and pressure scales, and are spaced by 0.09 Mpc in the transverse direction. We checked that \pthreed and \poned measurements within the range of interest (see \S\ref{sec:input_fitting}) do not vary by increasing the line-of-sight resolution or the transverse sampling. After that, we repeat the previous steps for the three simulation axes to extract further cosmological information, as each simulation axis samples the velocity field in a different direction. Finally, we scale the effective optical depth of the skewers to 0.90, 0.95, 1.05, and 1.10 times its original value \citep[see][for more details about this approach]{hydro_Lukic2015}, which is equivalent to running simulations with different values of the UV background.
 
-Using this data as input, we measure \pthreed by first computing the three-dimensional Fourier transform of the skewers. Then, we take the average of the square norm of all modes within 20 logarithmically-spaced bins in wavenumber $k$ from the fundamental mode of the box, $k_\mathrm{min}=2\upi L^{-1} \simeq 0.09\iMpc$, to $k_\mathrm{max}=40\iMpc$ and 16 linearly-spaced bins in the cosine of the angle between Fourier modes and the line of sight from $\mu=0$ to 1. We measure \poned by first computing the one-dimensional Fourier transform of each skewer without applying any binning, and then by taking the average of the square norm of all these Fourier transforms.
+Using this data as input, we measure \pthreed by first computing the three-dimensional Fourier transform of the skewers. Then, we take the average of the square norm of all modes within 20 logarithmically-spaced bins in wavenumber $k$ from the fundamental mode of the box, $k_\mathrm{min}=2\uppi L^{-1} \simeq 0.09\iMpc$, to $k_\mathrm{max}=40\iMpc$ and 16 linearly-spaced bins in the cosine of the angle between Fourier modes and the line of sight from $\mu=0$ to 1. We measure \poned by first computing the one-dimensional Fourier transform of each skewer without applying any binning, and then by taking the average of the square norm of all these Fourier transforms.
 
 We carry out these measurements for the 30 \lacehc and 6 test fix-and-paired simulations, ending up with 2 (opposite Fourier phases) $\times$ 3 (simulation axes) $\times$ 11 (snapshots) $\times$ 5 (mean flux rescalings) $=330$ measurements per simulation. To reduce cosmic variance, we compute the average of measurements from different axes and phases of fixed-and-paired simulations, decreasing the number of measurements per simulation to 55. The training and testing sets of \forestflow are thus comprised of 1650 and 330 \lya power spectrum measurements, respectively. All these measurements are publicly available at \url{https://github.com/igmhub/LaCE}.
 
@@ -355,7 +361,7 @@ In Fig.~\ref{fig:net_architecture}, we show the architecture of \forestflow. The
 
 In the emulation direction, the input to the first ACB, $\mathbf{v}_1=\mathbf{w}_1$, is a 14-dimensional vector containing random draws from an 8-dimensional Normal distribution and the 6 parameters describing the cosmology and IGM physics for which we want to obtain predictions. As in the training direction, the input to each subsequent ACB relies on the output from the previous ACB, each conditioned on cosmology and IGM physics. The ACBs apply the transformations $f^{-1}_{i,\phi_i}=g_{i,\tilde{\phi}_i}$, which are the inverse of the corresponding transformations in the training direction, $f_{i,\phi_i}$. \forestflow makes predictions for \pthreed model parameters by applying the composition of the inverse of all ACBs to random samples from the base distribution, $\mathbf{\tilde{y}}=f_\phi^{-1}(p_{Z}(\mathbf{z}), \mathbf{x})$, where $f_\phi^{-1} = \prod_{i=1}^{N_\mathrm{ACB}} f_{i,\phi_i}^{-1}$.
 
-We implement the emulator within the \texttt{FreIA} framework \citep{freia}, which uses \texttt{PyTorch} \citep{paszke2017automatic} in the backend.  \forestflow is trained by minimizing Eq.~\ref{eq:loss} using an \texttt{Adam} optimizer \citep{adam_Diederik2015} for 300 epochs with an initial learning rate of $10^{-3}$. We use the \texttt{Optuna} framework \citep{optuna_2019} to select the number of ACBs and epochs, as well as the value of the learning rate. First, \texttt{Optuna} trains \forestflow for a particular combination of these hyperparameters. Then, it computes the average value of Eq.~\ref{eq:chi2} for all simulations in the training set. After that, depending on the goodness of the fit to \pthreed and \poned measurements, \texttt{Optuna} selects a new value of the hyperparameters. We iterate with \texttt{Optuna} 50 times through a hyperparameter grid, selecting the hyperparameters that yield the highest precision. We checked that the precision of the emulator depends weakly on small variations in the value of the hyperparameters. \forestflow is publicly available at \url{https://github.com/igmhub/ForestFlow}.
+We implement the emulator within the \texttt{FreIA} framework \citep{freia}, which uses \texttt{PyTorch} \citep{Ansel_PyTorch_2_Faster_2024} in the backend.  \forestflow is trained by minimizing Eq.~\ref{eq:loss} using an \texttt{Adam} optimizer \citep{adam_Diederik2015} for 300 epochs with an initial learning rate of $10^{-3}$. We use the \texttt{Optuna} framework \citep{optuna_2019} to select the number of ACBs and epochs, as well as the value of the learning rate. First, \texttt{Optuna} trains \forestflow for a particular combination of these hyperparameters. Then, it computes the average value of Eq.~\ref{eq:chi2} for all simulations in the training set. After that, depending on the goodness of the fit to \pthreed and \poned measurements, \texttt{Optuna} selects a new value of the hyperparameters. We iterate with \texttt{Optuna} 50 times through a hyperparameter grid, selecting the hyperparameters that yield the highest precision. We checked that the precision of the emulator depends weakly on small variations in the value of the hyperparameters. \forestflow is publicly available at \url{https://github.com/igmhub/ForestFlow}.
 
 %%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%
@@ -364,12 +370,13 @@ We implement the emulator within the \texttt{FreIA} framework \citep{freia}, whi
 \section{Emulator performance}
 \label{sec:results}
 
-We evaluate the performance of \forestflow in recovering \pthreed and \poned for cosmologies and IGM models included and not included in the training set in \S\ref{sec:results_statistics} and \ref{sec:results_other}, respectively.
+
+In this section, we evaluate the performance of \forestflow. In \S\ref{sec:results_statistics}, we assess its performance throughout the parameter space of the training set. Then, in \S\ref{sec:results_other}, we examine the precision of the emulator using simulations with cosmologies and IGM models not included in the training set.
 
 %%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%
 
-\subsection{Cosmologies included in the training set}
+\subsection{Throughout the parameter space of the training set}
 \label{sec:results_statistics}
 
 %%%%%%%%%%%%%%%%%%%
@@ -412,19 +419,19 @@ In the top panels of Fig.~\ref{fig:leave_sim_out}, lines and shaded areas displa
     \centering
     \begin{tabular}{c|cc|cc|cc}
          Type & \pthreed & \poned & $b_\delta$ & $b_\eta$ & $P_\mathrm{3D, \perp}^\mathrm{lin}$ & $P_\mathrm{3D, \parallel}^\mathrm{lin}$\\ \hline
-         Cosmic var. fit$^{\mathrm{a}}$   & 0.8 & 0.1 & 0.6 & 1.8 & 1.2 & 1.8 \\
-         Cosmic var. data$^{\mathrm{b}}$  & 1.3 & 0.5 &  -- &  -- &   -- &  -- \\
-         Cosmic var. \& model$^{\mathrm{c}}$ & 2.4 & 0.6 &  -- &   -- &   -- &   -- \\
-         Emulator center$^{\mathrm{d}}$  & 2.6 & 0.8 & 1.2 & 0.3 & 1.1 & 1.2 \\
-         Emulator overall$^{\mathrm{e}}$ & 3.4 & 1.8 & 1.0 & 3.1 & 2.0 & 2.9 \\
+         Cvar. fit\tablefootmark{a}   & 0.8 & 0.1 & 0.6 & 1.8 & 1.2 & 1.8 \\
+         Cvar. data\tablefootmark{b}  & 1.3 & 0.5 &  -- &  -- &   -- &  -- \\
+         Cvar. \& model\tablefootmark{c} & 2.4 & 0.6 &  -- &   -- &   -- &   -- \\
+         Emu. center\tablefootmark{d}  & 2.6 & 0.8 & 1.2 & 0.3 & 1.1 & 1.2 \\
+         Emu. overall\tablefootmark{e} & 3.4 & 1.8 & 1.0 & 3.1 & 2.0 & 2.9 \\
     \end{tabular}
-    \\\vspace{8pt}
-    \parbox[t]{\columnwidth}{
-    $^{\mathrm{a}}$ Impact of cosmic variance on the best-fitting fitting \pthreed model to simulation measurements (see Appendix~\ref{sec:cosmic_variance}).\\
-    $^{\mathrm{b}}$ Impact of cosmic variance on simulation measurements (see Appendix~\ref{sec:cosmic_variance}).\\
-    $^{\mathrm{c}}$ Combined impact of cosmic variance and the limited flexibility of the \pthreed model (see \S\ref{sec:input_precision}).\\ 
-    $^{\mathrm{d}}$ Precision of \forestflow at the center of the parameter space, estimated using the \simcentral simulation (see \S\ref{sec:results_statistics}).\\
-    $^{\mathrm{e}}$ Precision of \forestflow across the parameter space, estimated via leave-simulation-out tests (see \S\ref{sec:results_statistics}).}
+    \tablefoot{
+        \tablefoottext{a}{Impact of cosmic variance on the best-fitting fitting \pthreed model to simulation measurements (see Appendix~\ref{sec:cosmic_variance}).}
+        \tablefoottext{b}{Impact of cosmic variance on simulation measurements (see Appendix~\ref{sec:cosmic_variance}).}
+        \tablefoottext{c}{Joint impact of cosmic variance and the limited flexibility of the \pthreed model (see \S\ref{sec:input_precision}).}
+        \tablefoottext{d}{Precision of \forestflow at the center of the parameter space, estimated using the \simcentral simulation (see \S\ref{sec:results_statistics}).}
+        \tablefoottext{e}{Precision of \forestflow across the parameter space, estimated via leave-simulation-out tests (see \S\ref{sec:results_statistics}).}
+    }
     \label{tab:precision}
 \end{table}
 %%%%%%%%%%%%%%%%%%%
@@ -433,7 +440,7 @@ In Table~\ref{tab:precision}, we gather the precision of \forestflow at the cent
 
 The efficiency of \forestflow across the parameter space is 1.2 and 1.0\% worse than at the center for \pthreed and \poned, respectively. Consequently, the precision of the emulator would likely improve by increasing the number of training simulations. However, leave-one-out tests significantly underestimate the precision at the edges of the training set, especially for a small number of simulations, because it often requires extrapolating the emulator's predictions. We can thus conclude that the quality of the training data, the precision of the model, and the number of training simulations have a similar impact on the performance of \forestflow. Given that leave-simulation-out tests tend provide a lower bound for the emulator's performance, we conclude that the overall precision of \forestflow in predicting \pthreed from linear scales to $k=5\iMpc$ is approximately 3\%, and $\simeq1.5\%$ for \poned down to $k_\parallel=4\iMpc$.
 
-As discussed in \cref{sec:strategy_params}, \forestflow uses as input parameters measured from each snapshot of the training simulations rather than "traditional" cosmological parameters such as $\Omega_m$, $A_s$, or $H_0$. This strategy enables training \forestflow without specifying the input redshift and making predictions for redshifts not present in the training set. To test this assumption, we carry out two leave-redshift-out tests. The first involves optimizing one emulator with all \lacehc measurements but the ones at $z=2.5$, and then validating it with data from this redshift. For the second, we follow the same approach but using measurements at $z=3.5$. We display the results of these tests in the bottom panels of Fig.~\ref{fig:leave_sim_out}. The precision of the emulator is similar for leave-redshift-out and leave-simulation-out tests, validating the approach mentioned above. We find similar results for leave-redshift-out tests at other redshifts.
+As discussed in \S\ref{sec:strategy_params}, \forestflow uses as input parameters measured from each snapshot of the training simulations rather than "traditional" cosmological parameters such as $\Omega_m$, $A_s$, or $H_0$. This strategy enables training \forestflow without specifying the input redshift and making predictions for redshifts not present in the training set. To test this assumption, we carry out two leave-redshift-out tests. The first involves optimizing one emulator with all \lacehc measurements but the ones at $z=2.5$, and then validating it with data from this redshift. For the second, we follow the same approach but using measurements at $z=3.5$. We display the results of these tests in the bottom panels of Fig.~\ref{fig:leave_sim_out}. The precision of the emulator is similar for leave-redshift-out and leave-simulation-out tests, validating the approach mentioned above. We find similar results for leave-redshift-out tests at other redshifts.
 
 %%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%
@@ -449,10 +456,10 @@ As discussed in \cref{sec:strategy_params}, \forestflow uses as input parameters
 %%%%%%%%%%%%%%%%%%%
 
 
-\subsection{Test simulations}
+\subsection{Cosmologies and IGM histories outside the training set}
 \label{sec:results_other}
 
-In Fig.~\ref{fig:other_cosmo}, we examine the precision of \forestflow reproducing \pthreed and \poned measurements from simulations outside the training set. Lines indicate the redshift average of the relative difference between model predictions and simulation measurements. The first two rows show the results for the \simcentral and \simseed simulations, whose only difference is their initial distribution of phases. Consequently, the predictions of \forestflow are the same for both. As we can see, these simulations present a different large-scale pattern of fluctuations, signaling that are caused by cosmic variance. Once we ignore these, we find that the precision of \forestflow is practically the same for both simulations. We can thus conclude that \forestflow predictions are largely insensitive to the impact of cosmic variance on the training set.
+In Fig.~\ref{fig:other_cosmo}, we examine the precision of \forestflow reproducing \pthreed and \poned measurements from simulations not included in the training set. Lines indicate the redshift average of the relative difference between model predictions and simulation measurements. The first two rows show the results for the \simcentral and \simseed simulations, whose only difference is their initial distribution of phases. Consequently, the predictions of \forestflow are the same for both. As we can see, these simulations present a different large-scale pattern of fluctuations, signaling that are caused by cosmic variance. Once we ignore these, we find that the precision of \forestflow is practically the same for both simulations. We can thus conclude that \forestflow predictions are largely insensitive to the impact of cosmic variance on the training set.
 
 In the third, fourth, and fifth rows of Fig.~\ref{fig:other_cosmo}, we use the \simh, \simnu, and \simcurved simulations to evaluate the precision of \forestflow for three different scenarios not contemplated in the training set: different growth history, massive neutrinos, and curvature. As we can see, the precision of \forestflow for all these simulations is approximately the same as for the \simcentral simulation. These results support that using the small-scale amplitude and slope of the linear power spectrum to capture cosmological information enables setting precise constraints on growth histories and $\Lambda$CDM extensions not included in the training set \citep[see also][]{Pedersen2021, pedersen2023CompressingCosmologicalInformation, cabayol-garcia2023NeuralNetworkEmulator}.
 
@@ -491,8 +498,11 @@ We could use \forestflow to set constraints on $b_\delta$ and $b_\eta$ by fittin
 
 In the left panels of Fig.~\ref{fig:sensitivity}, we display \forestflow predictions for the response of the \lya linear biases and $\beta$ to variations in cosmology and IGM physics. The response of $b_\eta$ to cosmology and IGM variations is quite weak, but the response of $b_\delta$ and $\beta$ to these changes is strong and redshift dependent. Therefore, we could analyze \pthreed measurements from different redshfits using \forestflow to further break degeneracies between $b_\delta$ and $\sigma_8$. Note that the response of the \lya linear biases and $\beta$ to $A_\mathrm{s}$ variations broadly agrees with measurements from simulations run varying only one cosmological parameter at a time \citep{arinyo-i-prats2015NonlinearPowerSpectrum}.
 
-Similarly, we could use measurements of linear bias parameters from three-dimensional analyses \citep{dumasdesbourboux2020CompletedSDSSIVExtended, 2024arXiv240403001D} to make predictions for IGM parameters, which could be used in \poned studies to break degeneracies between cosmology and IGM physics. In the right panels of Fig.~\ref{fig:sensitivity}, we display \forestflow predictions for the response of \pthreed and \poned to variations in cosmology and IGM physics. As we can see, the response of \poned to $A_\mathrm{s}$ and $\bar{F}$ variations is largely scale-independent down to $k_\parallel=1\iMpc$ where many other effects are at play, and thus these two parameters are largely degenerated. On the other hand, this is not the case for \pthreed, and thus we could use information from \pthreed analyses to break degeneracies in \poned studies. Note that the response of \pthreed and \poned to $A_\mathrm{s}$, $\bar{F}$, and $\sigma_\mathrm{T}$ variations broadly agrees with measurements from simulations run varying only one cosmological parameter at a time \citep{mcdonald2003MeasurementCosmologicalGeometry, mcdonald2005LinearTheoryPower}.
+Similarly, we could use measurements of linear bias parameters from three-dimensional analyses \citep{dumasdesbourboux2020CompletedSDSSIVExtended, desicollaboration2024DESI2024IV} to make predictions for IGM parameters, which could be used in \poned studies to break degeneracies between cosmology and IGM physics. In the right panels of Fig.~\ref{fig:sensitivity}, we display \forestflow predictions for the response of \pthreed and \poned to variations in cosmology and IGM physics. As we can see, the response of \poned to $A_\mathrm{s}$ and $\bar{F}$ variations is largely scale-independent down to $k_\parallel=1\iMpc$ where many other effects are at play, and thus these two parameters are largely degenerated. On the other hand, this is not the case for \pthreed, and thus we could use information from \pthreed analyses to break degeneracies in \poned studies. Note that the response of \pthreed and \poned to $A_\mathrm{s}$, $\bar{F}$, and $\sigma_\mathrm{T}$ variations broadly agrees with measurements from simulations run varying only one cosmological parameter at a time \citep{mcdonald2003MeasurementCosmologicalGeometry, mcdonald2005LinearTheoryPower}.
+
+We can also see \pthreed and \poned response strongly to variations in $\Omega_\mathrm{M}h^2$. However, these variations can be largely absorbed by changes in the value of $A_\mathrm{s}$ and $n_\mathrm{s}$. Specifically, we check that changes in $A_\mathrm{s}$ and $n_\mathrm{s}$ completely absorb $\Omega_\mathrm{M}h^2$ variations for \pthreed near the pivot scale we consider in our work $k_\mathrm{p}=0.7\iMpc$, and progressively grow to 2\% towards larger and smaller scales. For \poned, we check that the same changes also absorb $\Omega_\mathrm{M}h^2$ variations up to the 2\% level. Nonetheless, it is important to note that {\it Planck} measured $\Omega_\mathrm{M}h^2$ with 0.8\% precision \citet{planckcollaboration2020Planck2018Resultsa}, and thus the precision of using the $\Delta^2_\mathrm{p}$ $n_p$ parametrization is actually much better for both \pthreed and \poned.
  
+
 
 %%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%
@@ -568,12 +578,11 @@ The release of \forestflow is timely for \lyaf analyses with the ongoing Dark En
 %%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%
 
-\section*{Acknowledgements}
-
+\begin{acknowledgements}
 JCM, LCG, ML, and AFR acknowledge support from the European Union’s Horizon Europe research and innovation programme (COSMO-LYA, grant agreement 101044612). AFR acknowledges financial support from the Spanish Ministry of Science and Innovation under the Ramon y Cajal program (RYC-2018-025210) and the PGC2021-123012NB-C41 project. IFAE is partially funded by the CERCA program of the Generalitat de Catalunya. The analysis has been performed at Port d’Informaci\'o Cient\'ifica (PIC); we acknowledge the support provided by PIC in granting us access to their computing resources.
 
 This material is based upon work supported by the U.S. Department of Energy (DOE), Office of Science, Office of High-Energy Physics, under Contract No. DE–AC02–05CH11231, and by the National Energy Research Scientific Computing Center, a DOE Office of Science User Facility under the same contract. Additional support for DESI was provided by the U.S. National Science Foundation (NSF), Division of Astronomical Sciences under Contract No. AST-0950945 to the NSF’s National Optical-Infrared Astronomy Research Laboratory; the Science and Technology Facilities Council of the United Kingdom; the Gordon and Betty Moore Foundation; the Heising-Simons Foundation; the French Alternative Energies and Atomic Energy Commission (CEA); the National Council of Humanities, Science and Technology of Mexico (CONAHCYT); the Ministry of Science and Innovation of Spain (MICINN), and by the DESI Member Institutions: \url{https://www.desi.lbl.gov/collaborating-institutions}. Any opinions, findings, and conclusions or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of the U. S. National Science Foundation, the U. S. Department of Energy, or any of the listed funding agencies. The authors are honored to be permitted to conduct scientific research on Iolkam Du’ag (Kitt Peak), a mountain with particular significance to the Tohono O’odham Nation.
-
+\end{acknowledgements}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section*{Data Availability}
@@ -585,11 +594,10 @@ This material is based upon work supported by the U.S. Department of Energy (DOE
 
 % The best way to enter references is to use BibTeX:
 
-\bibliographystyle{mnras}
+\bibliographystyle{aa_url}
 \bibliography{forestflow} % if your bibtex file is called example.bib
 
-\appendix
-
+\begin{appendix}
 
 %%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%
@@ -655,10 +663,7 @@ where $p$ is in our case the distribution of \forestflow predictions for \pthree
 
 In Fig.~\ref{fig:PIT}, we display a PIT test produced using all the \lacehc simulations via a leave-simulation-out approach (see \S\ref{sec:results_statistics}). This process validates average predictions and uncertainties against simulations excluded in the training process. The red and blue lines display the results for \pthreed and \poned, respectively, which were generated by combining results from different scales and redshifts. As we can see, the PIT distribution is approximately uniform for both statistics but it presents peaks at the low and high ends, indicating underestimated uncertainties for some samples. The cause behind this feature is unclear and it demands further investigation beyond the scope of this project.
 
-
-% Don't change these lines
-\bsp	% typesetting comment
-\label{lastpage}
+\end{appendix}
 \end{document}
 
 
