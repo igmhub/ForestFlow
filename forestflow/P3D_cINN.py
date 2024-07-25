@@ -31,6 +31,10 @@ import random
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
 import corner
+import gc
+import psutil
+from functools import lru_cache
+
 
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
@@ -43,6 +47,15 @@ def init_xavier(m):
     if type(m) == torch.nn.Linear:
         torch.nn.init.xavier_uniform_(m.weight)
         m.bias.data.fill_(0.01)
+        
+def print_memory_usage(step_description):
+    process = psutil.Process()
+    memory_info = process.memory_info()
+    print(f"{step_description} - RSS: {memory_info.rss / (1024 ** 2):.2f} MB, VMS: {memory_info.vms / (1024 ** 2):.2f} MB")
+    if torch.cuda.is_available():
+        print(f"GPU memory allocated: {torch.cuda.memory_allocated() / (1024 ** 2):.2f} MB")
+        print(f"GPU memory cached: {torch.cuda.memory_reserved() / (1024 ** 2):.2f} MB")
+
 
 
 class P3DEmulator:
@@ -321,7 +334,7 @@ class P3DEmulator:
         Plin = np.array(Plin)
 
         return Plin
-
+    
     def evaluate(
         self,
         emu_params,
@@ -347,7 +360,6 @@ class P3DEmulator:
         Returns:
             Dict: Dictionary containing the predicted Arinyo parameters and (if needed) power spectrum
         """
-
         return_p1d = False
         return_p3d = False
         if Nrealizations is None:
@@ -435,8 +447,7 @@ class P3DEmulator:
                     k1d_Mpc = info_power["k1d_Mpc"]
                 except:
                     msg = "info_power must contain 'k1d_Mpc'."
-                    raise ValueError(msg)
-
+                    raise ValueError(msg)                    
             # set cosmology
             if sim_label is not None:
                 # Load the pre-interpolated matter power spectrum
@@ -458,6 +469,7 @@ class P3DEmulator:
                 pk_interp = get_camb_interp("a", {"cosmo_params": cosmo})
                 # Adjusting linP values to this cosmo
                 sim_cosmo = camb_cosmo.get_cosmology(**cosmo)
+
                 linP_zs = fit_linP.get_linP_Mpc_zs(sim_cosmo, [z], kp_Mpc)[0]
                 out_dict["linP_zs"] = linP_zs
                 emu_params["Delta2_p"] = linP_zs["Delta2_p"]
@@ -482,8 +494,7 @@ class P3DEmulator:
             _par = params_numpy2dict(coeffs_all[ii])
             if self.training_type == "Arinyo_minz":
                 _par["q2"] = _par["q1"]
-            coeff_dict.append(_par)
-
+            coeff_dict.append(_par)    
         if natural_params:
             arinyo_pred = transform_arinyo_params(
                 arinyo_pred, emu_params["f_p"]
@@ -499,7 +510,7 @@ class P3DEmulator:
             std_coeffs = np.std(coeffs_all_natural, axis=0)
         else:
             std_coeffs = np.std(coeffs_all, axis=0)
-
+            
         arinyo_pred_std = {}
         for ii, key in enumerate(arinyo_pred.keys()):
             if (self.training_type == "Arinyo_minz") and (key == "q2"):
@@ -509,7 +520,7 @@ class P3DEmulator:
 
         out_dict["coeffs_Arinyo"] = arinyo_pred
         out_dict["coeffs_Arinyo_std"] = arinyo_pred_std
-
+        
         if return_all_realizations:
             if natural_params:
                 out_dict["coeffs_Arinyo_all"] = coeff_dict_natural
@@ -582,6 +593,8 @@ class P3DEmulator:
                 out_dict["p3d"] = p3d_arinyo
                 out_dict["k_Mpc"] = k_Mpc
                 out_dict["mu"] = mu
+                
+                del p3ds_pred, p3d_arinyo
 
             if return_p1d:
                 p1d_arinyo = np.nanmedian(p1ds_pred, 0)
@@ -590,6 +603,17 @@ class P3DEmulator:
                 if return_cov:
                     p1d_cov = get_covariance(p1ds_pred, p1d_arinyo)
                     out_dict["p1d_std"] = np.sqrt(np.diag(p1d_cov))
+                    del p1d_cov
+                    
+                del p1ds_pred
+        
+        # Explicitly delete large objects and collect garbage
+        del coeffs_all, coeffs_mean, coeff_dict, arinyo_pred, arinyo_pred_std
+        gc.collect()
+
+        # Clear GPU memory if using PyTorch
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()   
 
         return out_dict
 
@@ -773,25 +797,34 @@ class P3DEmulator:
         Arinyo_preds = np.zeros(
             shape=(Niter, self.batch_size, self.dim_inputSpace)
         )
+        
+        
         condition = torch.tile(test_data, (self.batch_size, 1))
+        
 
         # Generate predictions
-        for ii in range(Niter):
-            z_test = torch.randn(self.batch_size, self.dim_inputSpace)
-            Arinyo_pred, _ = self.emulator(z_test, condition, rev=True)
+        with torch.no_grad():
+            for ii in range(Niter):
+                z_test = torch.randn(self.batch_size, self.dim_inputSpace)
+                Arinyo_pred, _ = self.emulator(z_test, condition, rev=True)
 
-            # Transform the predictions back to original space
-            Arinyo_pred[:, 2] = torch.log(Arinyo_pred[:, 2])
-            Arinyo_pred[:, 4] = torch.log(Arinyo_pred[:, 4])
-            Arinyo_pred[:, 6] = torch.exp(Arinyo_pred[:, 6])
-            if "q2" in self.Arinyo_params:
-                Arinyo_pred[:, 7] = torch.log(Arinyo_pred[:, 7])
+                # Transform the predictions back to original space
+                Arinyo_pred[:, 2] = torch.log(Arinyo_pred[:, 2])
+                Arinyo_pred[:, 4] = torch.log(Arinyo_pred[:, 4])
+                Arinyo_pred[:, 6] = torch.exp(Arinyo_pred[:, 6])
+                if "q2" in self.Arinyo_params:
+                    Arinyo_pred[:, 7] = torch.log(Arinyo_pred[:, 7])
 
-            Arinyo_preds[ii, :] = Arinyo_pred.detach().cpu().numpy()
+                Arinyo_preds[ii, :] = Arinyo_pred.detach().cpu().numpy()
+                # Explicitly delete variables and call garbage collection
+                del z_test, Arinyo_pred
+                gc.collect()
 
-        Arinyo_preds = Arinyo_preds.reshape(
-            Niter * int(self.batch_size), self.dim_inputSpace
-        )
+                
+            Arinyo_preds = Arinyo_preds.reshape(
+                Niter * int(self.batch_size), self.dim_inputSpace
+            )
+
 
         # Generate corner plot if plot is True
         if plot == True:
