@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.22 (TeX Live 2022/dev/Debian) (preloaded format=pdflatex 2024.3.15)  25 JUL 2024 12:12
+This is pdfTeX, Version 3.141592653-2.6-1.40.22 (TeX Live 2022/dev/Debian) (preloaded format=pdflatex 2024.3.15)  25 JUL 2024 12:25
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1028,7 +1028,7 @@ LaTeX Font Info:    Font shape `T1/qhv/m/it' will be
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 (hyperref)                removing `subscript' on input line 130.
 
-<figures/motivate.pdf, id=329, 578.16pt x 578.16pt>
+<figures/motivate.pdf, id=326, 578.16pt x 578.16pt>
 File: figures/motivate.pdf Graphic file (type pdf)
 <use figures/motivate.pdf>
 Package pdftex.def Info: figures/motivate.pdf  used on input line 135.
@@ -1041,27 +1041,32 @@ LaTeX Font Info:    Font shape `OT1/ntxtlf/b/n' will be
 (Font)              scaled to size 7.3pt on input line 143.
 LaTeX Font Info:    Font shape `OT1/ntxtlf/b/n' will be
 (Font)              scaled to size 5.5pt on input line 143.
-LaTeX Font Info:    Font shape `T1/ntxtlf/m/sl' will be
-(Font)              scaled to size 9.0pt on input line 145.
 
-Package hyperref Warning: Suppressing link with empty target on input line 145.
-
-
-[2 <./figures/motivate.pdf>]
 Underfull \hbox (badness 4872) in paragraph at lines 147--150
 \T1/ntxtlf/m/n/10 where $\OML/ntxmi/m/it/10 ^^N$ \T1/ntxtlf/m/n/10 refers to ma
 t-ter den-sity fluc-tu-a-tions, $\OML/ntxmi/m/it/10 ^^Q \U/ntxmia/m/it/10 =
  []
 
+LaTeX Font Info:    Font shape `T1/ntxtlf/m/sl' will be
+(Font)              scaled to size 9.0pt on input line 161.
+
+Package hyperref Warning: Suppressing link with empty target on input line 161.
+
+
+[2]
 LaTeX Font Info:    Font shape `T1/ntxtlf/b/n' will be
 (Font)              scaled to size 10.0pt on input line 186.
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
 LaTeX Font Info:    Font shape `OT1/ntxtlf/b/n' will be
-(Font)              scaled to size 9.0pt on input line 196.
-
-Package hyperref Warning: Suppressing link with empty target on input line 196.
+(Font)              scaled to size 9.0pt on input line 193.
 
 
-[3]
+Package hyperref Warning: Suppressing link with empty target on input line 193.
+
+
+[3 <./figures/motivate.pdf>]
 Underfull \hbox (badness 6332) in paragraph at lines 204--205
 []\T1/ntxtlf/m/n/10 Our em-u-la-tor pre-dicts the 8 free pa-ram-e-ters of
  []
@@ -1097,12 +1102,12 @@ Package hyperref Warning: Suppressing link with empty target on input line 271.
 
 
 [5]
-<figures/goodness_fit_all.pdf, id=627, 578.16pt x 433.62pt>
+<figures/goodness_fit_all.pdf, id=626, 578.16pt x 433.62pt>
 File: figures/goodness_fit_all.pdf Graphic file (type pdf)
 <use figures/goodness_fit_all.pdf>
 Package pdftex.def Info: figures/goodness_fit_all.pdf  used on input line 283.
 (pdftex.def)             Requested size: 256.0748pt x 192.05052pt.
-<figures/network_architecture.png, id=635, 1504.62125pt x 565.11125pt>
+<figures/network_architecture.png, id=634, 1504.62125pt x 565.11125pt>
 File: figures/network_architecture.png Graphic file (type png)
 <use figures/network_architecture.png>
 Package pdftex.def Info: figures/network_architecture.png  used on input line 3
@@ -1116,6 +1121,9 @@ Package hyperref Warning: Suppressing link with empty target on input line 331.
 [6 <./figures/goodness_fit_all.pdf>]
 LaTeX Font Info:    Font shape `T1/ntxtlf/m/n' will be
 (Font)              scaled to size 5.5pt on input line 337.
+
+Underfull \vbox (badness 3460) has occurred while \output is active []
+
 
 
 Package hyperref Warning: Suppressing link with empty target on input line 361.
@@ -1163,9 +1171,6 @@ Package hyperref Warning: Suppressing link with empty target on input line 413.
 LaTeX Font Info:    Font shape `T1/ntxtlf/m/it' will be
 (Font)              scaled to size 7.3pt on input line 422.
 
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
-
 
 Package hyperref Warning: Suppressing link with empty target on input line 440.
 
@@ -1182,6 +1187,9 @@ File: figures/test_cosmo_P1D.pdf Graphic file (type pdf)
 <use figures/test_cosmo_P1D.pdf>
 Package pdftex.def Info: figures/test_cosmo_P1D.pdf  used on input line 451.
 (pdftex.def)             Requested size: 245.83351pt x 336.77461pt.
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
 <figures/sensitivity_lbias.pdf, id=1018, 578.16pt x 867.24pt>
 File: figures/sensitivity_lbias.pdf Graphic file (type pdf)
 <use figures/sensitivity_lbias.pdf>
@@ -1202,16 +1210,15 @@ Package hyperref Warning: Suppressing link with empty target on input line 498.
 
 
 [10]
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
-
 
 Package hyperref Warning: Suppressing link with empty target on input line 504.
 
 
 [11 <./figures/test_cosmo_P3D.pdf> <./figures/test_cosmo_P1D.pdf>]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
 <figures/Pcross_central_snap6_kPx_allbin_emupred_first4_withfracerr.pdf, id=116
-7, 505.89pt x 650.43pt>
+5, 505.89pt x 650.43pt>
 File: figures/Pcross_central_snap6_kPx_allbin_emupred_first4_withfracerr.pdf Gr
 aphic file (type pdf)
 <use figures/Pcross_central_snap6_kPx_allbin_emupred_first4_withfracerr.pdf>
@@ -1219,11 +1226,11 @@ Package pdftex.def Info: figures/Pcross_central_snap6_kPx_allbin_emupred_first4
 _withfracerr.pdf  used on input line 523.
 (pdftex.def)             Requested size: 230.46574pt x 296.31332pt.
 
-Underfull \vbox (badness 1824) has occurred while \output is active []
+Underfull \vbox (badness 10000) has occurred while \output is active []
 
 
 
-Package hyperref Warning: Suppressing link with empty target on input line 538.
+Package hyperref Warning: Suppressing link with empty target on input line 535.
 
 
 [12 <./figures/sensitivity_lbias.pdf> <./figures/sensitivity_power.pdf>]
@@ -1247,7 +1254,7 @@ Underfull \hbox (badness 3039) in paragraph at lines 456--459
  []
 
 
-Package hyperref Warning: Suppressing link with empty target on input line 632.
+Package hyperref Warning: Suppressing link with empty target on input line 580.
 
 
 [14])
@@ -1688,11 +1695,11 @@ Package natbib Warning: Citation `zaldarriaga2001ConstraintsLyaForest' multiply
 Here is how much of TeX's memory you used:
  17810 strings out of 480247
  278586 string characters out of 5896151
- 671017 words of memory out of 5000000
+ 664945 words of memory out of 5000000
  35172 multiletter control sequences out of 15000+600000
  660796 words of font info for 305 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
- 85i,13n,90p,3774b,693s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 85i,14n,90p,3774b,675s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/usr/share/texlive/texmf-dist/fonts/enc/dvips/newtx/ntx-ec-tlf.enc}{/usr/sh
 are/texlive/texmf-dist/fonts/enc/dvips/newtx/ntx-ot1-tlf.enc}{/usr/share/texmf/
 fonts/enc/dvips/tex-gyre/q-ec.enc}{/usr/share/texlive/texmf-dist/fonts/enc/dvip
@@ -1714,7 +1721,7 @@ type1/public/newtx/txmiaX.pfb></usr/share/texlive/texmf-dist/fonts/type1/public
 /newtx/txsys.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/newtx/ztmb.p
 fb></usr/share/texlive/texmf-dist/fonts/type1/public/newtx/ztmr.pfb></usr/share
 /texlive/texmf-dist/fonts/type1/public/newtx/ztmri.pfb>
-Output written on forestflow.pdf (17 pages, 817178 bytes).
+Output written on forestflow.pdf (17 pages, 817159 bytes).
 PDF statistics:
  1927 PDF objects out of 2073 (max. 8388607)
  1307 compressed objects within 14 object streams
