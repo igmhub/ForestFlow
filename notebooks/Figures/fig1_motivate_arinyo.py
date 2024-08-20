@@ -14,7 +14,7 @@
 # ---
 
 # %% [markdown]
-# # MotivateArinyo model
+# # MotivateArinyo model (Fig. 1)
 
 # %% [markdown]
 # In this notebook we explain how to compute P3D and P1D from a particular Arinyo model
@@ -92,19 +92,14 @@ knew, munew, rebin_p3d, mu_bins = _
 # ### Model, also rebin
 
 # %%
-# arinyo_params = test_sim_z['Arinyo_min_q1'] # best-fitting Arinyo params
-# arinyo_params = test_sim_z['Arinyo_min_q1_q2'] # best-fitting Arinyo params
+
 arinyo_params = test_sim_z['Arinyo_min'] # best-fitting Arinyo params
-# arinyo_params = test_sim_z['Arinyo_minz'] # best-fitting Arinyo params
 
 kaiser_params = arinyo_params.copy()
 kaiser_params["q1"] = 0
 kaiser_params["q2"] = 0
 kaiser_params["kp"] = 10**5
 
-# old
-# model_p3d = test_sim_z['model'].P3D_Mpc(zs, k3d_Mpc, mu3d, arinyo_params)
-# plin = test_sim_z['model'].linP_Mpc(zs, k3d_Mpc)
 
 _ = p3d_allkmu(test_sim_z['model'], zs, arinyo_params, kmu_modes, nk=np.sum(mask_3d))
 model_p3d, plin = _
@@ -132,12 +127,53 @@ from forestflow.plots.motivate_model import plot_motivate_model
 folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
 plot_motivate_model(knew, munew, mu_bins, rebin_p3d, rebin_model_p3d, rebin_kaiser_p3d, rebin_plin, folder=folder, kmax_fit=kmax_fit)
 
+# %% [markdown]
+# Precision
+
 # %%
 _ = np.isfinite(knew) & (knew > 0.5) & (knew < 5)
 y = np.percentile(rebin_model_p3d[_]/rebin_p3d[_]- 1, [50, 16, 84])
 print(y[0]*100, 0.5*(y[2]-y[1])*100)
 
 # %%
-np.std(rebin_model_p3d[_]/rebin_p3d[_]- 1)
+np.std(rebin_model_p3d[_]/rebin_p3d[_]- 1) * 100
+
+# %% [markdown]
+# ### Save data for zenodo
+
+# %%
+conv = {}
+conv["blue"] = 0
+conv["orange"] = 1
+conv["green"] = 2
+conv["red"] = 3
+out = {}
+
+for key in conv.keys():
+    ii = conv[key]
+    
+    out["top_" + key + "_dotted_x"] = knew[:, ii]
+    out["top_" + key + "_dotted_y"] = rebin_p3d[:, ii]/rebin_plin[:, ii]
+    
+    out["top_" + key + "_solid_x"] = knew[:, ii]
+    out["top_" + key + "_solid_y"] = rebin_model_p3d[:, ii]/rebin_plin[:, ii]
+    
+    out["top_" + key + "_dashed_x"] = knew[:, ii]
+    out["top_" + key + "_dashed_y"] = rebin_kaiser_p3d[:, ii]/rebin_plin[:, ii]
+
+    out["bottom_" + key + "_solid_x"] = knew[:, ii]
+    out["bottom_" + key + "_solid_y"] = rebin_model_p3d[:, ii]/rebin_p3d[:, ii]
+    
+    out["bottom_" + key + "_dashed_x"] = knew[:, ii]
+    out["bottom_" + key + "_dashed_y"] = rebin_kaiser_p3d[:, ii]/rebin_p3d[:, ii]
+
+
+# %%
+folder = path_forestflow + "data/figures_machine_readable/"
+np.save(folder + "fig1", out)
+
+# %%
+res = np.load(folder + "fig1.npy", allow_pickle=True).item()
+res.keys()
 
 # %%

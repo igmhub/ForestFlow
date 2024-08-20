@@ -16,7 +16,7 @@
 # %% [markdown]
 # # Goodness of fit
 # - Cosmic variance in fit
-# - Goodness of model
+# - Goodness of model (fig 2)
 
 # %%
 # %load_ext autoreload
@@ -282,6 +282,9 @@ for iz in range(len(central)):
     plt.savefig(folder + "cvar_fit_z_"+str(central[iz]["z"])+".png")
     plt.savefig(folder + "cvar_fit_z_"+str(central[iz]["z"])+".pdf")
 
+# %% [markdown]
+# Precision
+
 # %%
 kaiser = np.zeros((params.shape[0], params.shape[1], 2))
 kaiser[:, :, 0] = params[:, :, 0]**2
@@ -291,7 +294,49 @@ for ii in range(2):
     y = (kaiser[0, :, ii] - kaiser[1, :, ii])/kaiser[2, :, ii]/np.sqrt(2)
     print(np.std(y)*100)
 
+# %% [markdown]
+# ### Save data for zenodo
+
 # %%
+for ii in range(len(central)):
+    if(central[ii]["z"] == 3):
+        iz = ii
+        
+out = {}
+
+col = ["blue", "orange"]
+for ii in range(len(col)):
+    y = (params[0, :, ii] - params[1, :, ii])/params[2, :, ii]/np.sqrt(2)
+    out["top_" + col[ii] + "_x"] = z_grid
+    out["top_" + col[ii] + "_y"] = y
+
+conv = {}
+conv["blue"] = 0
+conv["orange"] = 1
+conv["green"] = 2
+conv["red"] = 3
+for key in conv.keys():
+    ii = conv[key]
+    
+    out["center_" + key + "_x"] = knew[:, ii]
+    y = (p3d_model[0, iz, :, ii] - p3d_model[1, iz, :, ii])/p3d_model[2, iz, :, ii]/np.sqrt(2)
+    out["center_" + key + "_y"] = y
+    
+x = k1d_Mpc
+y = (p1d_model[0, iz, :] - p1d_model[1, iz, :])/p1d_model[2, iz, :]/np.sqrt(2)
+out["bottom_x"] = k1d_Mpc
+out["bottom_y"] = y
+
+
+# %%
+import forestflow
+path_forestflow = os.path.dirname(forestflow.__path__[0]) + "/"
+folder = path_forestflow + "data/figures_machine_readable/"
+np.save(folder + "figa2", out)
+
+# %%
+res = np.load(folder + "figa2.npy", allow_pickle=True).item()
+res.keys()
 
 # %% [markdown]
 # ### Goodness of model to average of central and seed
@@ -449,8 +494,6 @@ for ii in range(n_mubins):
             color=col,
             alpha=0.2,
     )
-    
-    
 
 x = k1d_Mpc
 y = np.percentile(p1d_model/p1d_measured, [50, 16, 84], axis=0) - 1
@@ -492,6 +535,9 @@ plt.tight_layout()
 plt.savefig(folder + "goodness_fit_all.png")
 plt.savefig(folder + "goodness_fit_all.pdf")
 
+# %% [markdown]
+# Precision
+
 # %%
 _ = np.isfinite(knew) & (knew > 0.5) & (knew < 5)
 rat = p3d_model[:, _]/p3d_measured[:, _]- 1
@@ -503,5 +549,40 @@ _ = np.isfinite(k1d_Mpc) & (k1d_Mpc < 4)
 rat = p1d_model[:, _]/p1d_measured[:, _] - 1
 y = np.percentile(rat, [50, 16, 84])
 print(y[0]*100, 0.5*(y[2]-y[1])*100, np.std(rat)*100)
+
+# %% [markdown]
+# ### Save data for zenodo
+
+# %%
+
+out = {}
+
+conv = {}
+conv["blue"] = 0
+conv["orange"] = 1
+conv["green"] = 2
+conv["red"] = 3
+for key in conv.keys():
+    ii = conv[key]
+    
+    out["top_" + key + "_x"] = knew[:, ii]
+    y = np.percentile(p3d_model[:, :, ii]/p3d_measured[:, :, ii], [50, 16, 84], axis=0) - 1
+    out["top_" + key + "_y"] = y[0]
+    
+x = k1d_Mpc
+y = np.percentile(p1d_model/p1d_measured, [50, 16, 84], axis=0) - 1
+out["bottom_x"] = k1d_Mpc
+out["bottom_y"] = y[0]
+
+
+# %%
+import forestflow
+path_forestflow = os.path.dirname(forestflow.__path__[0]) + "/"
+folder = path_forestflow + "data/figures_machine_readable/"
+np.save(folder + "fig2", out)
+
+# %%
+res = np.load(folder + "fig2.npy", allow_pickle=True).item()
+res.keys()
 
 # %%

@@ -1,0 +1,5 @@
+To read the files in python
+
+import numpy as np
+res = np.load("fig1.npy", allow_pickle=True).item()
+res.keys()
