@@ -221,7 +221,8 @@ for iz, zdrop in enumerate(z_test):
         params_sim[isim, iz, 0] = _["bias"]
         params_sim[isim, iz, 1] = _["bias_eta"]
         
-    p3d_emu = 0
+        break
+    break
 
 # %%
 folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
@@ -234,6 +235,16 @@ np.savez(
     params_sim=params_sim,
     params_emu=params_emu
 )
+
+# %%
+folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+fil = np.load(folder + "temporal_l1Oz.npz")
+params_emu = fil["params_emu"]
+params_sim = fil["params_sim"]
+arr_p3d_sim = fil["arr_p3d_sim"]
+arr_p3d_emu = fil["arr_p3d_emu"]
+arr_p1d_sim = fil["arr_p1d_sim"]
+arr_p1d_emu = fil["arr_p1d_emu"]
 
 # %%
 for ii in range(2):
@@ -257,27 +268,62 @@ z_use
 # #### P3D
 
 # %%
-residual = (arr_p3d_emu / arr_p3d_sim -1)
+residual3d = (arr_p3d_emu / arr_p3d_sim -1)
 
 # %%
 savename=folder+"l1O/l1O_z_P3D.png"
-plot_p3d_L1O(z_use, knew, munew, residual, mu_bins, 
+plot_p3d_L1O(z_use, knew, munew, residual3d, mu_bins, 
              kmax_3d_fit=kmax_3d_fit, legend=False, savename=savename)
 savename=folder+"l1O/l1O_z_P3D.pdf"
-plot_p3d_L1O(z_use, knew, munew, residual, mu_bins, 
+plot_p3d_L1O(z_use, knew, munew, residual3d, mu_bins, 
              kmax_3d_fit=kmax_3d_fit, legend=False, savename=savename)
 
 # %% [markdown]
 # #### P1D
 
 # %%
-residual = (arr_p1d_emu / arr_p1d_sim -1)
-residual.shape
+residual1d = (arr_p1d_emu / arr_p1d_sim -1)
+residual1d.shape
 
 # %%
 savename=folder+"l1O/l1O_z_P1D.png"
-plot_p1d_L1O(z_use, k1d_Mpc, residual, kmax_1d_fit=kmax_1d_fit, savename=savename)
+plot_p1d_L1O(z_use, k1d_Mpc, residual1d, kmax_1d_fit=kmax_1d_fit, savename=savename)
 savename=folder+"l1O/l1O_z_P1D.pdf"
-plot_p1d_L1O(z_use, k1d_Mpc, residual, kmax_1d_fit=kmax_1d_fit, savename=savename)
+plot_p1d_L1O(z_use, k1d_Mpc, residual1d, kmax_1d_fit=kmax_1d_fit, savename=savename)
+
+# %% [markdown]
+# ### Save data for zenodo
+
+# %%
+conv = {}
+conv["blue"] = 0
+conv["orange"] = 1
+conv["green"] = 2
+conv["red"] = 3
+outs = {}
+
+med_rat_p3d = np.median(residual3d, axis=0)
+med_rat_p1d = np.median(residual1d, axis=0)
+
+for jj in range(med_rat_p3d.shape[0]):
+    for key in conv.keys():
+        ii = conv[key]
+        
+        outs["p3d_panel" + str(jj) + "_" + key + "_x"] = knew[:, ii]
+        outs["p3d_panel" + str(jj) + "_" + key + "_y"] = med_rat_p3d[jj, :, ii]
+    
+    outs["p1d_panel" + str(jj) + "_x"] = k1d_Mpc
+    outs["p1d_panel" + str(jj) + "_y"] = med_rat_p1d[jj]
+
+
+# %%
+import forestflow
+path_forestflow= os.path.dirname(forestflow.__path__[0]) + "/"
+folder = path_forestflow + "data/figures_machine_readable/"
+np.save(folder + "fig5b", outs)
+
+# %%
+res = np.load(folder + "fig5b.npy", allow_pickle=True).item()
+res.keys()
 
 # %%

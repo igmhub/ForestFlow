@@ -193,15 +193,12 @@ knew, munew, rebin_p3d_std_emu, mu_bins = _
 _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["Plin"], kmu_modes, n_mubins=n_mubins)
 knew, munew, rebin_plin, mu_bins = _
 
+# %% [markdown]
+# Precision
+
 # %%
 _ = np.isfinite(knew) & (knew > 0.5) & (knew < 5)
 rat = rebin_p3d_sim[_]/rebin_p3d_emu[_]- 1
-y = np.percentile(rat, [50, 16, 84])
-print(y[0]*100, 0.5*(y[2]-y[1])*100, np.std(rat)*100)
-
-# %%
-_ = np.isfinite(k1d_Mpc) & (k1d_Mpc < 4) & (k1d_Mpc > 0)
-rat = p1d_sim[_]/p1d_emu[_] - 1
 y = np.percentile(rat, [50, 16, 84])
 print(y[0]*100, 0.5*(y[2]-y[1])*100, np.std(rat)*100)
 
@@ -210,6 +207,14 @@ norm_p1d = out["k1d_Mpc"]/np.pi
 p1d_emu = norm_p1d * out["p1d"]
 p1d_std_emu = norm_p1d * out["p1d_std"]
 p1d_sim = norm_p1d * test_sim_z[0]["p1d_Mpc"][mask_1d]
+
+# %%
+_ = np.isfinite(k1d_Mpc) & (k1d_Mpc < 4) & (k1d_Mpc > 0)
+rat = p1d_sim[_]/p1d_emu[_] - 1
+y = np.percentile(rat, [50, 16, 84])
+print(y[0]*100, 0.5*(y[2]-y[1])*100, np.std(rat)*100)
+
+# %%
 
 # %%
 folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
@@ -236,6 +241,53 @@ plot_p1d_snap(
 )
 
 # %% [markdown]
+# ### Save data for zenodo
+
+# %%
+conv = {}
+conv["blue"] = 0
+conv["orange"] = 1
+conv["green"] = 2
+conv["red"] = 3
+outs = {}
+
+for key in conv.keys():
+    ii = conv[key]
+    
+    outs["p3d_top_" + key + "_dotted_x"] = knew[:, ii]
+    outs["p3d_top_" + key + "_dotted_y"] = rebin_p3d_sim[:, ii]/rebin_plin[:, ii]
+    
+    outs["p3d_top_" + key + "_solid_x"] = knew[:, ii]
+    outs["p3d_top_" + key + "_solid_y"] = rebin_p3d_emu[:, ii]/rebin_plin[:, ii]
+
+    outs["p3d_bottom_" + key + "_x"] = knew[:, ii]
+    outs["p3d_bottom_" + key + "_y"] = rebin_p3d_emu[:, ii]/rebin_p3d_sim[:, ii]
+
+outs["p1d_top_blue_x"] = out["k1d_Mpc"]
+outs["p1d_top_blue_y"] = p1d_sim
+
+outs["p1d_top_orange_x"] = out["k1d_Mpc"]
+outs["p1d_top_orange_y"] = p1d_emu
+
+outs["p1d_bottom_x"] = out["k1d_Mpc"]
+outs["p1d_bottom_y"] = p1d_emu/p1d_sim
+
+
+# %%
+import forestflow
+path_forestflow= os.path.dirname(forestflow.__path__[0]) + "/"
+folder = path_forestflow + "data/figures_machine_readable/"
+np.save(folder + "fig4", outs)
+
+# %%
+res = np.load(folder + "fig4.npy", allow_pickle=True).item()
+res.keys()
+
+# %%
+
+# %%
+
+# %% [markdown]
 # ## TEST SIMULATIONS
 
 # %%
@@ -249,9 +301,9 @@ sim_labels = [
     "mpg_reio",
 ]
 
-sim_labels = [
-    "mpg_central"
-]
+# sim_labels = [
+#     "mpg_central"
+# ]
 
 # %%
 from forestflow.utils import transform_arinyo_params
@@ -323,7 +375,8 @@ for isim, sim_label in enumerate(sim_labels):
 # %%
 folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
 np.savez(
-    folder + "temporal_central", 
+    # folder + "temporal_central", 
+    folder + "temporal_all", 
     arr_p3d_sim=arr_p3d_sim, 
     arr_p3d_emu=arr_p3d_emu, 
     arr_p1d_sim=arr_p1d_sim, 
@@ -332,21 +385,19 @@ np.savez(
     params_emu=params_emu
 )
 
+# %% [markdown]
+# #### The following only for the central simulation!!!
+
 # %%
 folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
 fil = np.load(folder + "temporal_central.npz")
+# fil = np.load(folder + "temporal_all.npz")
 arr_p3d_sim=fil["arr_p3d_sim"]
 arr_p3d_emu=fil["arr_p3d_emu"]
 arr_p1d_sim=fil["arr_p1d_sim"]
 arr_p1d_emu=fil["arr_p1d_emu"]
 params_sim=fil["params_sim"]
 params_emu=fil["params_emu"]
-
-# %%
-arr_p3d_sim.shape
-
-# %% [markdown]
-# #### The following only for the central simulation
 
 # %%
 for ii in range(2):
@@ -379,7 +430,19 @@ rat = arr_p1d_emu[0, :, _]/arr_p1d_sim[0, :, _] - 1
 y = np.percentile(rat, [50, 16, 84])
 print(y[0]*100, 0.5*(y[2]-y[1])*100, np.std(rat)*100)
 
+# %% [markdown]
+# ### Now plot all
+
 # %%
+folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+# fil = np.load(folder + "temporal_central.npz")
+fil = np.load(folder + "temporal_all.npz")
+arr_p3d_sim=fil["arr_p3d_sim"]
+arr_p3d_emu=fil["arr_p3d_emu"]
+arr_p1d_sim=fil["arr_p1d_sim"]
+arr_p1d_emu=fil["arr_p1d_emu"]
+params_sim=fil["params_sim"]
+params_emu=fil["params_emu"]
 
 # %%
 rat_p3d = arr_p3d_emu/arr_p3d_sim - 1
@@ -414,6 +477,39 @@ for ext in [".png", ".pdf"]:
         kmax_1d_fit=kmax_1d_fit
     );
 
+# %% [markdown]
+# ### Save data for zenodo
+
 # %%
+conv = {}
+conv["blue"] = 0
+conv["orange"] = 1
+conv["green"] = 2
+conv["red"] = 3
+outs = {}
+
+med_rat_p3d = np.median(rat_p3d, axis=1)
+med_rat_p1d = np.median(rat_p1d, axis=1)
+
+for jj in range(med_rat_p3d.shape[0]):
+    for key in conv.keys():
+        ii = conv[key]
+        
+        outs["p3d_panel" + str(jj) + "_" + key + "_x"] = knew[:, ii]
+        outs["p3d_panel" + str(jj) + "_" + key + "_y"] = med_rat_p3d[jj, :, ii]
+    
+    outs["p1d_panel" + str(jj) + "_x"] = out["k1d_Mpc"]
+    outs["p1d_panel" + str(jj) + "_y"] = med_rat_p1d[jj]
+
+
+# %%
+import forestflow
+path_forestflow= os.path.dirname(forestflow.__path__[0]) + "/"
+folder = path_forestflow + "data/figures_machine_readable/"
+np.save(folder + "fig6", outs)
+
+# %%
+res = np.load(folder + "fig6.npy", allow_pickle=True).item()
+res.keys()
 
 # %%

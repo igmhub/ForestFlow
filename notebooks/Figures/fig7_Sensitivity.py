@@ -243,6 +243,9 @@ ratio_As = np.exp(np.log(ratio_Ap) - delta_np * ln_kp_ks)
 # ks = 0.05
 # cosmo_params['As'] = cosmo_params0['As'] * (kp/ks)**deltapar
 
+# %% [markdown]
+# compensated omh2 by changes on As and ns, test
+
 # %%
 input_params = {
     'Delta2_p': 0.,
@@ -316,10 +319,9 @@ for ii in range(4):
     
     ax[2].plot(kpar_Mpc, var_p1d[ii]/orig_p1d, ls[ii], lw=lw)
 
-ax[0].plot(k_Mpc[:,0], omh2_p3d[:,0]/orig_p3d[:,0], ls[ii], label="Compensated Omh2", lw=lw)
-ax[1].plot(k_Mpc[:,0], omh2_p3d[:,1]/orig_p3d[:,1], ls[ii], lw=lw)
-
-ax[2].plot(kpar_Mpc, omh2_p1d/orig_p1d, ls[ii], lw=lw)
+# ax[0].plot(k_Mpc[:,0], omh2_p3d[:,0]/orig_p3d[:,0], ls[ii], label="Compensated Omh2", lw=lw)
+# ax[1].plot(k_Mpc[:,0], omh2_p3d[:,1]/orig_p3d[:,1], ls[ii], lw=lw)
+# ax[2].plot(kpar_Mpc, omh2_p1d/orig_p1d, ls[ii], lw=lw)
 
 
 # ax[0].legend(loc="lower right", fontsize=fontsize-2)
@@ -347,6 +349,43 @@ plt.tight_layout()
 
 plt.savefig(path_fig+'/sensitivity_power.png')
 plt.savefig(path_fig+'/sensitivity_power.pdf')
+
+# %% [markdown]
+# ### Save data for zenodo
+
+# %%
+conv = {}
+conv["blue"] = 0
+conv["orange"] = 1
+conv["green"] = 2
+conv["red"] = 3
+outs = {}
+
+med_rat_p3d = np.median(rat_p3d, axis=1)
+med_rat_p1d = np.median(rat_p1d, axis=1)
+
+for jj in range(med_rat_p3d.shape[0]):
+    for key in conv.keys():
+        ii = conv[key]
+        
+        outs["p3d_panel" + str(jj) + "_" + key + "_x"] = knew[:, ii]
+        outs["p3d_panel" + str(jj) + "_" + key + "_y"] = med_rat_p3d[jj, :, ii]
+    
+    outs["p1d_panel" + str(jj) + "_x"] = out["k1d_Mpc"]
+    outs["p1d_panel" + str(jj) + "_y"] = med_rat_p1d[jj]
+
+
+# %%
+import forestflow
+path_forestflow= os.path.dirname(forestflow.__path__[0]) + "/"
+folder = path_forestflow + "data/figures_machine_readable/"
+np.save(folder + "fig7a", outs)
+
+# %%
+res = np.load(folder + "fig7a.npy", allow_pickle=True).item()
+res.keys()
+
+# %%
 
 # %% [markdown]
 # ### Linear biases
