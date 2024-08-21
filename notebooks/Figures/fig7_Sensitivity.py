@@ -361,31 +361,28 @@ conv["green"] = 2
 conv["red"] = 3
 outs = {}
 
-med_rat_p3d = np.median(rat_p3d, axis=1)
-med_rat_p1d = np.median(rat_p1d, axis=1)
-
-for jj in range(med_rat_p3d.shape[0]):
-    for key in conv.keys():
-        ii = conv[key]
-        
-        outs["p3d_panel" + str(jj) + "_" + key + "_x"] = knew[:, ii]
-        outs["p3d_panel" + str(jj) + "_" + key + "_y"] = med_rat_p3d[jj, :, ii]
+for key in conv.keys():
+    ii = conv[key]
     
-    outs["p1d_panel" + str(jj) + "_x"] = out["k1d_Mpc"]
-    outs["p1d_panel" + str(jj) + "_y"] = med_rat_p1d[jj]
+    outs["top_" + key + "_x"] = k_Mpc[:,0]
+    outs["top_" + key + "_y"] = var_p3d[ii, :,0]/orig_p3d[:,0]
+    
+    outs["central_" + key + "_x"] = k_Mpc[:,0]
+    outs["central_" + key + "_y"] = var_p3d[ii, :,1]/orig_p3d[:,1]
+
+    outs["bottom_" + key + "_x"] = kpar_Mpc
+    outs["bottom_" + key + "_y"] = var_p1d[ii]/orig_p1d
 
 
 # %%
 import forestflow
 path_forestflow= os.path.dirname(forestflow.__path__[0]) + "/"
 folder = path_forestflow + "data/figures_machine_readable/"
-np.save(folder + "fig7a", outs)
+np.save(folder + "fig7b", outs)
 
 # %%
-res = np.load(folder + "fig7a.npy", allow_pickle=True).item()
+res = np.load(folder + "fig7b.npy", allow_pickle=True).item()
 res.keys()
-
-# %%
 
 # %% [markdown]
 # ### Linear biases
@@ -394,7 +391,7 @@ res.keys()
 # target redshift
 nz = 10
 z_test = np.linspace(2, 4.5, 10)
-nrel = 2000
+nrel = 5000
 
 # target cosmology
 cosmo = {
@@ -544,9 +541,45 @@ plt.tight_layout()
 plt.savefig(path_fig+'/sensitivity_lbias.png')
 plt.savefig(path_fig+'/sensitivity_lbias.pdf')
 
-# %%
+# %% [markdown]
+# ### Save data for zenodo
 
 # %%
+conv = {}
+conv["blue"] = 0
+conv["orange"] = 1
+conv["green"] = 2
+conv["red"] = 3
+outs = {}
+
+for key in conv.keys():
+    ii = conv[key]
+
+    jj = 0
+    outs["top_" + key + "_x"] = z_test
+    outs["top_" + key + "_y"] = lybias_var[ii, :, jj]/lybias[:, jj]
+
+    jj = 1
+    outs["central_" + key + "_x"] = z_test
+    outs["central_" + key + "_y"] = lybias_var[ii, :, jj]/lybias[:, jj]
+
+    jj = 2
+    outs["bottom_" + key + "_x"] = z_test
+    outs["bottom_" + key + "_y"] = lybias_var[ii, :, jj]/lybias[:, jj]
+
+
+# %%
+import forestflow
+path_forestflow= os.path.dirname(forestflow.__path__[0]) + "/"
+folder = path_forestflow + "data/figures_machine_readable/"
+np.save(folder + "fig7a", outs)
+
+# %%
+res = np.load(folder + "fig7a.npy", allow_pickle=True).item()
+res.keys()
+
+# %%
+plt.plot(res['bottom_blue_x'], res['bottom_blue_y'])
 
 # %%
 

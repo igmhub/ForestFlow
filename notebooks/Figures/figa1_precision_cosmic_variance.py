@@ -218,6 +218,41 @@ for iz in range(len(central)):
     plt.savefig(folder + "cvariance_z_"+str(central[iz]["z"])+".pdf")
 
 # %% [markdown]
+# ### Save data for zenodo
+
+# %%
+conv = {}
+conv["blue"] = 0
+conv["orange"] = 1
+conv["green"] = 2
+conv["red"] = 3
+outs = {}
+
+for jj in range(len(central)):
+    if(central[jj]["z"] == 3):
+        iz = jj
+
+for key in conv.keys():
+    ii = conv[key]
+
+    outs["top_" + key + "_x"] = knew[:, ii]
+    outs["top_" + key + "_y"] = (p3d_measured[0, iz, :, ii] - p3d_measured[1, iz, :, ii])/p3d_measured[2, iz, :, ii]/np.sqrt(2)
+
+outs["bottom_x"] = k1d_Mpc
+outs["bottom_y"] = (p1d_measured[0, iz, :] - p1d_measured[1, iz, :])/p1d_measured[2, iz, :]/np.sqrt(2)
+
+
+# %%
+import forestflow
+path_forestflow= os.path.dirname(forestflow.__path__[0]) + "/"
+folder = path_forestflow + "data/figures_machine_readable/"
+np.save(folder + "figa1", outs)
+
+# %%
+res = np.load(folder + "figa1.npy", allow_pickle=True).item()
+res.keys()
+
+# %% [markdown]
 # ## From different axes
 
 # %%
