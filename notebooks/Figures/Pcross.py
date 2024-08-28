@@ -287,6 +287,41 @@ ax[2].set_ylabel(r"$P_{\times}^{\mathrm{emu}}/P_{\times}^{\mathrm{fit}}-1$", fon
 
 plt.tight_layout()
 plt.savefig("Pcross_central_snap6_kPx_allbin_emupred_first4_withfracerr.pdf")
+
+# +
+out = {}
+
+s = 1
+for key in ["orange", "green", "red", "purple"]:
+
+    Px_info = np.load(meas_path+"Px_skewers_{:.2f}_{:.2f}_allax_allphase.npz".format(separation_bins[s],separation_bins[s+1]))
+    Px_thisbin_avg = Px_info['Px']
+    
+    out["top_" + key + "_dashed_x"] = kpar_est
+    out["top_" + key + "_dashed_y"] = kpar_est*(Px_pred_bestfit[s-1])
+    
+    out["top_" + key + "_solid_x"] = kpar_est
+    out["top_" + key + "_solid_y"] = kpar_est*(Px_pred[s-1])
+    
+    out["top_" + key + "_points_x"] = kpar[1:65]
+    out["top_" + key + "_points_y"] = kpar[1:65]*Px_thisbin_avg.T[1:]
+    
+    cond = (Px_pred_same_kpar[s-1][:64]) > (np.amax((Px_pred_same_kpar[s-1][:64]))/100.)
+    cond2 = Px_pred[s-1]>np.amax(Px_pred[s-1])/100.
+        
+    fracerr_bestfit = (Px_thisbin_avg.T[1:][cond]-(Px_pred_same_kpar_bestfit[s-1][:64])[cond])/(Px_pred_same_kpar_bestfit[s-1][:64])[cond]
+    out["middle_" + key + "_solid_x"] = kpar[1:65][cond]
+    out["middle_" + key + "_solid_y"] = fracerr_bestfit
+
+    fracerr_emubest = ((Px_pred[s-1][cond2])-(Px_pred_bestfit[s-1][cond2]))/(Px_pred_bestfit[s-1][cond2])    
+    out["bottom_" + key + "_solid_x"] = kpar_est[cond2]
+    out["bottom_" + key + "_solid_y"] = fracerr_emubest
+    
+    s+=1
+import forestflow
+path_forestflow= os.path.dirname(forestflow.__path__[0]) + "/"
+folder = path_forestflow + "data/figures_machine_readable/"
+np.save(folder + "fig8", out)
 # -
 
 
