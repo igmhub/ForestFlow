@@ -1,0 +1,56 @@
+This is BibTeX, Version 0.99d (TeX Live 2022/dev/Debian)
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: forestflow_cwr_fordiff.aux
+The style file: aa_url.bst
+if is an unknown function---line 728 of file aa_url.bst
+format.in.editors is an unknown function---line 889 of file aa_url.bst
+format.in.editors is an unknown function---line 984 of file aa_url.bst
+Database file #1: forestflow.bib
+Warning--entry type for "freia" isn't style-file defined
+--line 495 of file forestflow.bib
+Reallocated str_pool (elt_size=1) to 130000 items from 65000.
+Warning--I didn't find a database entry for "p1d_mcDonald2000"
+Warning--I didn't find a database entry for "paszke2017automatic"
+Warning--I didn't find a database entry for "2024arXiv240403001D"
+You've used 100 entries,
+            2998 wiz_defined-function locations,
+            1523 strings with 72615 characters,
+and the built_in function-call counts, 131146 in all, are:
+= -- 9276
+> -- 18981
+< -- 23
++ -- 6356
+- -- 6225
+* -- 13482
+:= -- 24257
+add.period$ -- 100
+call.type$ -- 100
+change.case$ -- 2474
+chr.to.int$ -- 99
+cite$ -- 100
+duplicate$ -- 1842
+empty$ -- 3094
+format.name$ -- 6496
+if$ -- 25536
+int.to.chr$ -- 2
+int.to.str$ -- 1
+missing$ -- 99
+newline$ -- 304
+num.names$ -- 400
+pop$ -- 2493
+preamble$ -- 1
+purify$ -- 2474
+quote$ -- 0
+skip$ -- 1770
+stack$ -- 0
+substring$ -- 2700
+swap$ -- 180
+text.length$ -- 0
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 897
+warning$ -- 0
+while$ -- 397
+width$ -- 0
+write$ -- 987
+(There were 3 error messages)

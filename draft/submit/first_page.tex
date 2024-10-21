@@ -1,0 +1,150 @@
+\title{ForestFlow: cosmological emulation of Lyman-$\alpha$ forest clustering from linear to nonlinear scales}
+\titlerunning{ForestFlow: emulating Lyman-$\alpha$ forest clustering}
+
+\author{
+J.~Chaves-Montero\inst{\ref{inst0}}\thanks{jchaves@ifae.es}
+\and
+L.~Cabayol-Garcia\inst{\ref{inst0},\ref{inst1}}\thanks{lcabayol@pic.es}
+\and
+M.~Lokken\inst{\ref{inst0}}
+\and
+A.~Font-Ribera\inst{\ref{inst0}}\thanks{afont@ifae.es}
+\and
+J.~Aguilar\inst{\ref{inst2}}
+\and
+S.~Ahlen\inst{\ref{inst3}}
+\and
+D.~Bianchi\inst{\ref{inst19}}
+\and
+D.~Brooks\inst{\ref{inst23}}
+\and
+T.~Claybaugh\inst{\ref{inst2}}
+\and
+S.~Cole\inst{\ref{inst6}}
+\and
+A.~de la Macorra\inst{\ref{inst37}}
+\and
+S.~Ferraro\inst{\ref{inst2},\ref{inst43}}
+\and
+J.~E.~Forero-Romero\inst{\ref{inst52},\ref{inst53}}
+\and
+E.~Gaztañaga\inst{\ref{inst55},\ref{inst27}}
+\and
+S.~Gontcho A Gontcho\inst{\ref{inst2}}
+\and
+G.~Gutierrez\inst{\ref{inst25}}
+\and
+K.~Honscheid\inst{\ref{inst33},\ref{inst46},\ref{inst47}}
+\and
+R.~Kehoe\inst{\ref{inst66}}
+\and
+D.~Kirkby\inst{\ref{inst14}}
+\and
+A.~Kremin\inst{\ref{inst2}}
+\and
+A.~Lambert\inst{\ref{inst2}}
+\and
+M.~Landriau\inst{\ref{inst2}}
+\and
+M.~Manera\inst{\ref{inst75},\ref{inst0}}
+\and
+P.~Martini\inst{\ref{inst33},\ref{inst65},\ref{inst47}}
+\and
+R.~Miquel\inst{\ref{inst77},\ref{inst0}}
+\and
+A.~Muñoz-Gutiérrez\inst{\ref{inst37}}
+\and
+G.~Niz\inst{\ref{inst36},\ref{inst11}}
+\and
+I.~P\'erez-R\`afols\inst{\ref{inst84}}
+\and
+G.~Rossi\inst{\ref{inst88}}
+\and
+E.~Sanchez\inst{\ref{inst38}}
+\and
+M.~Schubnell\inst{\ref{inst7}}
+\and
+D.~Sprayberry\inst{\ref{inst21}}
+\and
+G.~Tarl\'{e}\inst{\ref{inst7}}
+\and
+B.~A.~Weaver\inst{\ref{inst21}}
+}
+
+
+\institute{
+Institut de F\'{\i}sica d'Altes Energies (IFAE), The Barcelona Institute of Science and Technology, 08193 Bellaterra (Barcelona), Spain \label{inst0}
+\and
+Port d'Informaci\'{o} Cient\'{i}fica, Campus UAB, C. Albareda s/n, 08193 Bellaterra (Barcelona), Spain \label{inst1}
+\and
+Lawrence Berkeley National Laboratory, 1 Cyclotron Road, Berkeley, CA 94720, USA \label{inst2}
+\and
+Physics Dept., Boston University, 590 Commonwealth Avenue, Boston, MA 02215, USA \label{inst3}
+\and
+Dipartimento di Fisica ``Aldo Pontremoli'', Universit\`a degli Studi di Milano, Via Celoria 16, I-20133 Milano, Italy \label{inst19}
+\and
+Department of Physics \& Astronomy, University College London, Gower Street, London, WC1E 6BT, UK \label{inst23}
+\and
+Institute for Computational Cosmology, Department of Physics, Durham University, South Road, Durham DH1 3LE, UK \label{inst6}
+\and
+Instituto de F\'{\i}sica, Universidad Nacional Aut\'{o}noma de M\'{e}xico,  Cd. de M\'{e}xico  C.P. 04510,  M\'{e}xico \label{inst37}
+\and
+University of California, Berkeley, 110 Sproul Hall \#5800 Berkeley, CA 94720, USA \label{inst43}
+\and
+Departamento de F\'isica, Universidad de los Andes, Cra. 1 No. 18A-10, Edificio Ip, CP 111711, Bogot\'a, Colombia \label{inst52}
+\and
+Observatorio Astron\'omico, Universidad de los Andes, Cra. 1 No. 18A-10, Edificio H, CP 111711 Bogot\'a, Colombia \label{inst53}
+\and
+Institut d'Estudis Espacials de Catalunya (IEEC), 08034 Barcelona, Spain \label{inst55}
+\and
+Institute of Cosmology and Gravitation, University of Portsmouth, Dennis Sciama Building, Portsmouth, PO1 3FX, UK \label{inst27}
+\and
+Institute of Space Sciences, ICE-CSIC, Campus UAB, Carrer de Can Magrans s/n, 08913 Bellaterra, Barcelona, Spain \label{inst56}
+\and
+Fermi National Accelerator Laboratory, PO Box 500, Batavia, IL 60510, USA \label{inst25}
+\and
+Center for Cosmology and AstroParticle Physics, The Ohio State University, 191 West Woodruff Avenue, Columbus, OH 43210, USA \label{inst33}
+\and
+Department of Physics, The Ohio State University, 191 West Woodruff Avenue, Columbus, OH 43210, USA \label{inst46}
+\and
+The Ohio State University, Columbus, 43210 OH, USA \label{inst47}
+\and
+Department of Physics, Southern Methodist University, 3215 Daniel Avenue, Dallas, TX 75275, USA \label{inst66}
+\and
+Department of Physics and Astronomy, University of California, Irvine, 92697, USA \label{inst14}
+\and
+Departament de F\'{i}sica, Serra H\'{u}nter, Universitat Aut\`{o}noma de Barcelona, 08193 Bellaterra (Barcelona), Spain \label{inst75}
+\and
+Department of Astronomy, The Ohio State University, 4055 McPherson Laboratory, 140 W 18th Avenue, Columbus, OH 43210, USA \label{inst65}
+\and
+Instituci\'{o} Catalana de Recerca i Estudis Avan\c{c}ats, Passeig de Llu\'{\i}s Companys, 23, 08010 Barcelona, Spain \label{inst77}
+\and
+Departamento de F\'{i}sica, Universidad de Guanajuato - DCI, C.P. 37150, Leon, Guanajuato, M\'{e}xico \label{inst36}
+\and
+Instituto Avanzado de Cosmolog\'{\i}a A.~C., San Marcos 11 - Atenas 202. Magdalena Contreras, 10720. Ciudad de M\'{e}xico, M\'{e}xico \label{inst11}
+\and
+Departament de F\'isica, EEBE, Universitat Polit\`ecnica de Catalunya, c/Eduard Maristany 10, 08930 Barcelona, Spain \label{inst84}
+\and
+Department of Physics and Astronomy, Sejong University, Seoul, 143-747, Korea \label{inst88}
+\and
+CIEMAT, Avenida Complutense 40, E-28040 Madrid, Spain \label{inst38}
+\and
+Department of Physics, University of Michigan, Ann Arbor, MI 48109, USA \label{inst7}
+\and
+NSF NOIRLab, 950 N. Cherry Ave., Tucson, AZ 85719, USA \label{inst21}
+}
+
+
+
+\date{Received 2024; accepted XXX}
+
+\abstract{
+On large scales, measurements of the Lyman-$\alpha$ forest offer insights into the expansion history of the Universe, while on small scales, these impose strict constraints on the growth history, the nature of dark matter, and the sum of neutrino masses. This work introduces ForestFlow, a cosmological emulator designed to bridge the gap between large- and small-scale Lyman-$\alpha$ forest analyses. Using conditional normalizing flows, ForestFlow emulates the 2 Lyman-$\alpha$ linear biases ($b_\delta$ and $b_\eta$) and 6 parameters describing small-scale deviations of the 3D flux power spectrum ($P_\mathrm{3D}$) from linear theory. These 8 parameters are modeled as a function of cosmology --- the small-scale amplitude and slope of the linear power spectrum --- and the physics of the intergalactic medium. Thus, in combination with a Boltzmann solver, ForestFlow can predict $P_\mathrm{3D}$ on arbitrarily large (linear) scales and the 1D flux power spectrum ($P_\mathrm{1D}$) --- the primary observable for small-scale analyses --- without the need for interpolation or extrapolation. Consequently, ForestFlow enables for the first time multiscale analyses. Trained on a suite of 30 fixed-and-paired cosmological hydrodynamical simulations spanning redshifts from $z=2$ to $4.5$, ForestFlow achieves $3$ and $1.5\%$ precision in describing $P_\mathrm{3D}$ and $P_\mathrm{1D}$ from linear scales to $k=5\,\mathrm{Mpc}^{-1}$ and $k_\parallel=4\,\mathrm{Mpc}^{-1}$, respectively. Thanks to its parameterization, the precision of the emulator is also similar for both ionization histories and two extensions to the $\Lambda$CDM model --- massive neutrinos and curvature --- not included in the training set. ForestFlow will be crucial for the cosmological analysis of Lyman-$\alpha$ forest measurements from the DESI survey.
+}
+
+\keywords{    
+    large-scale structure of Universe -- 
+    Cosmology: theory --
+    cosmological parameters --
+    intergalactic medium
+}
