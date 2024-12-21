@@ -14,7 +14,7 @@
 # ---
 
 # %% [markdown]
-# # Central simulation at z=3, l10 test simulations
+# # Central simulation at z=3, l10 test simulations, referee
 
 # %%
 # %load_ext autoreload
@@ -398,6 +398,71 @@ arr_p1d_sim=fil["arr_p1d_sim"]
 arr_p1d_emu=fil["arr_p1d_emu"]
 params_sim=fil["params_sim"]
 params_emu=fil["params_emu"]
+
+# %%
+import matplotlib.cm as cm
+# Generate a colormap from 'rainbow'
+cmap = cm.get_cmap('rainbow', arr_p3d_sim.shape[1])
+
+# %%
+fig, ax = plt.subplots(5, 1, sharex=True, figsize=(8, 10))
+mu_use = [0, 1, 2, 3]
+for i0 in mu_use:
+    for iz in range(arr_p3d_sim.shape[1]):
+        y = arr_p3d_emu[0, iz, :, i0]/arr_p3d_sim[0, iz, :, i0]-1
+        if (i0 == 0) and (iz < 4):
+            label = "z="+str(zs[iz])
+        elif (i0 == 1) and (iz >= 4) and (iz < 8):
+            label = "z="+str(zs[iz])
+        elif (i0 == 2) and (iz >= 8) and (iz < 12):
+            label = "z="+str(zs[iz])
+        else:
+            label = ""
+        ax[i0].plot(knew[:, i0], y, color=cmap(iz), label=label)
+
+i0 = 4
+for iz in range(arr_p3d_sim.shape[1]):
+    y = arr_p1d_emu[0, iz, :]/arr_p1d_sim[0, iz, :]-1
+    ax[i0].plot(out["k1d_Mpc"], y, color=cmap(iz))
+
+
+ftsize=20
+
+ax[0].set_xscale("log")
+for ii in range(len(mu_use)):
+    ax[ii].axhline(color="k", linestyle=":")
+    ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
+    ax[ii].set_ylim(-0.25, 0.25)
+    ax[ii].axhline(0.1, color="k", linestyle="--")
+    ax[ii].axhline(-0.1, color="k", linestyle="--")
+    ax[ii].axvline(5, color="k", linestyle="--")
+    ax[ii].set_ylabel(r"$P_\mathrm{3D}^\mathrm{emu}/P_\mathrm{3D}^\mathrm{sim}-1$", fontsize=ftsize)
+    if ii < 3:
+        ax[ii].legend(loc="lower right", ncols=4, fontsize=ftsize-4)
+
+_x = 1.6
+_y = 0.15
+ax[0].text(_x, _y, r"$0.0\leq\mu<0.25$", fontsize=ftsize)
+ax[1].text(_x, _y, r"$0.25\leq\mu<0.5$", fontsize=ftsize)
+ax[2].text(_x, _y, r"$0.5\leq\mu<0.75$", fontsize=ftsize)
+ax[3].text(_x, _y, r"$0.75\leq\mu<1.0$", fontsize=ftsize)
+ax[3].set_xlabel(r"$k[\mathrm{Mpc}^{-1}]$", fontsize=ftsize)
+
+ii = 4
+ax[ii].set_ylim(-0.06, 0.06)
+ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
+ax[ii].axhline(0.01, color="k", linestyle="--")
+ax[ii].axhline(-0.01, color="k", linestyle="--")
+ax[ii].axvline(4, color="k", linestyle="--")
+ax[ii].set_ylabel(r"$P_\mathrm{1D}^\mathrm{emu}/P_\mathrm{1D}^\mathrm{sim}-1$", fontsize=ftsize)
+ax[ii].set_xlabel(r"$k_\parallel[\mathrm{Mpc}^{-1}]$", fontsize=ftsize)
+
+
+folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+plt.tight_layout()
+plt.savefig(folder + "central_z.pdf")
+
+# %%
 
 # %%
 for ii in range(2):
