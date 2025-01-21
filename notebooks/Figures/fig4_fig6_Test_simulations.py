@@ -418,7 +418,8 @@ for i0 in mu_use:
             label = "z="+str(zs[iz])
         else:
             label = ""
-        ax[i0].plot(knew[:, i0], y, color=cmap(iz), label=label)
+        _ = np.isfinite(knew[:, i0])
+        ax[i0].plot(knew[_, i0], y[_], color=cmap(iz), label=label)
 
 i0 = 4
 for iz in range(arr_p3d_sim.shape[1]):
