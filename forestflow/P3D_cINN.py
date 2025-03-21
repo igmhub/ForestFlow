@@ -9,6 +9,7 @@ import FrEIA.modules as Fm
 
 # lace models
 from lace.cosmo import camb_cosmo, fit_linP
+import lace
 
 # forestflow models
 import forestflow
@@ -47,15 +48,21 @@ def init_xavier(m):
     if type(m) == torch.nn.Linear:
         torch.nn.init.xavier_uniform_(m.weight)
         m.bias.data.fill_(0.01)
-        
+
+
 def print_memory_usage(step_description):
     process = psutil.Process()
     memory_info = process.memory_info()
-    print(f"{step_description} - RSS: {memory_info.rss / (1024 ** 2):.2f} MB, VMS: {memory_info.vms / (1024 ** 2):.2f} MB")
+    print(
+        f"{step_description} - RSS: {memory_info.rss / (1024 ** 2):.2f} MB, VMS: {memory_info.vms / (1024 ** 2):.2f} MB"
+    )
     if torch.cuda.is_available():
-        print(f"GPU memory allocated: {torch.cuda.memory_allocated() / (1024 ** 2):.2f} MB")
-        print(f"GPU memory cached: {torch.cuda.memory_reserved() / (1024 ** 2):.2f} MB")
-
+        print(
+            f"GPU memory allocated: {torch.cuda.memory_allocated() / (1024 ** 2):.2f} MB"
+        )
+        print(
+            f"GPU memory cached: {torch.cuda.memory_reserved() / (1024 ** 2):.2f} MB"
+        )
 
 
 class P3DEmulator:
@@ -112,7 +119,7 @@ class P3DEmulator:
         Archive=None,
         use_chains=False,
         chain_samp=100_000,
-        Nrealizations=100,
+        Nrealizations=100000,
         training_type="Arinyo_min_q1",
     ):
         # Initialize class attributes with provided arguments
@@ -334,7 +341,7 @@ class P3DEmulator:
         Plin = np.array(Plin)
 
         return Plin
-    
+
     def evaluate(
         self,
         emu_params,
@@ -343,6 +350,7 @@ class P3DEmulator:
         Nrealizations=None,
         return_all_realizations=False,
         verbose=True,
+        return_p_all=False,
     ):
         """
         Predict the power spectrum using the emulator for a given simulation label and redshift.
@@ -447,7 +455,8 @@ class P3DEmulator:
                     k1d_Mpc = info_power["k1d_Mpc"]
                 except:
                     msg = "info_power must contain 'k1d_Mpc'."
-                    raise ValueError(msg)                    
+                    raise ValueError(msg)
+
             # set cosmology
             if sim_label is not None:
                 # Load the pre-interpolated matter power spectrum
@@ -459,6 +468,12 @@ class P3DEmulator:
                 # Load pre-interpolated matter power spectrum for the specified simulation
                 file_plin_inter = self.folder_interp + flag
                 pk_interp = np.load(file_plin_inter, allow_pickle=True).all()
+
+                # Extract cosmology
+                repo = os.path.dirname(lace.__path__[0]) + "/"
+                fname = repo + ("data/sim_suites/Australia20/mpg_emu_cosmo.npy")
+                data_cosmo = np.load(fname, allow_pickle=True).item()
+                cosmo = data_cosmo[sim_label]["cosmo_params"]
             else:
                 # Compute the matter power spectrum using CAMB
                 for key in self.cosmo_fields:
@@ -467,16 +482,57 @@ class P3DEmulator:
                             "cosmo must contain:", self.cosmo_fields
                         )
                 pk_interp = get_camb_interp("a", {"cosmo_params": cosmo})
-                # Adjusting linP values to this cosmo
-                sim_cosmo = camb_cosmo.get_cosmology(**cosmo)
 
-                linP_zs = fit_linP.get_linP_Mpc_zs(sim_cosmo, [z], kp_Mpc)[0]
-                out_dict["linP_zs"] = linP_zs
-                emu_params["Delta2_p"] = linP_zs["Delta2_p"]
-                emu_params["n_p"] = linP_zs["n_p"]
-                emu_params["alpha_p"] = linP_zs["alpha_p"]
-                if natural_params:
-                    emu_params["f_p"] = linP_zs["f_p"]
+            # Get Delta2p and np from cosmology (to scale Plin later)
+            sim_cosmo = camb_cosmo.get_cosmology(**cosmo)
+
+            linP_zs = fit_linP.get_linP_Mpc_zs(sim_cosmo, [z], kp_Mpc)[0]
+            orig_params = {}
+            orig_params["Delta2_p"] = linP_zs["Delta2_p"]
+            orig_params["n_p"] = linP_zs["n_p"]
+            # out_dict["linP_zs"] = linP_zs
+            # emu_params["Delta2_p"] = linP_zs["Delta2_p"]
+            # emu_params["n_p"] = linP_zs["n_p"]
+            # emu_params["alpha_p"] = linP_zs["alpha_p"]
+            # if natural_params:
+            #     emu_params["f_p"] = linP_zs["f_p"]
+
+            # rescale cosmology if Delta2_p and n_p present
+            if ("Delta2_p" in emu_params.keys()) & ("n_p" in emu_params.keys()):
+                fid_Ap = orig_params["Delta2_p"]
+                ratio_Ap = emu_params["Delta2_p"] / fid_Ap
+
+                fid_np = orig_params["n_p"]
+                delta_np = emu_params["n_p"] - fid_np
+
+                # pivot scale in primordial power
+                ks_Mpc = 0.05
+                # logarithm of ratio of pivot points
+                ln_kp_ks = np.log(kp_Mpc / ks_Mpc)
+
+                # compute scalings
+                delta_ns = delta_np
+                ln_ratio_As = np.log(ratio_Ap) - delta_np * ln_kp_ks
+
+                rescaled_cosmo = cosmo.copy()
+                rescaled_cosmo["As"] = np.exp(ln_ratio_As) * cosmo["As"]
+                rescaled_cosmo["ns"] = delta_ns + cosmo["ns"]
+                # print(fid_np, emu_params["n_p"], delta_np)
+
+                # Compute the matter power spectrum using CAMB
+                for key in self.cosmo_fields:
+                    if key not in rescaled_cosmo.keys():
+                        raise ValueError(
+                            "cosmo must contain:", self.cosmo_fields
+                        )
+                pk_interp = get_camb_interp(
+                    "a", {"cosmo_params": rescaled_cosmo}
+                )
+                # print(cosmo)
+                # print(rescaled_cosmo)
+            else:
+                emu_params["Delta2_p"] = orig_params["Delta2_p"]
+                emu_params["n_p"] = orig_params["n_p"]
 
         # Predict Arinyo coefficients for the given test conditions
         coeffs_all, coeffs_mean = self.predict_Arinyos(
@@ -489,12 +545,18 @@ class P3DEmulator:
         if self.training_type == "Arinyo_minz":
             arinyo_pred["q2"] = arinyo_pred["q1"]
 
+        # mean of coeff
+        coeff_dict_mean = params_numpy2dict(coeffs_mean)
+        if self.training_type == "Arinyo_minz":
+            coeff_dict_mean["q2"] = coeff_dict_mean["q1"]
+
+        # coeff of each realization
         coeff_dict = []
         for ii in range(coeffs_all.shape[0]):
             _par = params_numpy2dict(coeffs_all[ii])
             if self.training_type == "Arinyo_minz":
                 _par["q2"] = _par["q1"]
-            coeff_dict.append(_par)    
+            coeff_dict.append(_par)
         if natural_params:
             arinyo_pred = transform_arinyo_params(
                 arinyo_pred, emu_params["f_p"]
@@ -510,7 +572,7 @@ class P3DEmulator:
             std_coeffs = np.std(coeffs_all_natural, axis=0)
         else:
             std_coeffs = np.std(coeffs_all, axis=0)
-            
+
         arinyo_pred_std = {}
         for ii, key in enumerate(arinyo_pred.keys()):
             if (self.training_type == "Arinyo_minz") and (key == "q2"):
@@ -520,7 +582,7 @@ class P3DEmulator:
 
         out_dict["coeffs_Arinyo"] = arinyo_pred
         out_dict["coeffs_Arinyo_std"] = arinyo_pred_std
-        
+
         if return_all_realizations:
             if natural_params:
                 out_dict["coeffs_Arinyo_all"] = coeff_dict_natural
@@ -549,43 +611,72 @@ class P3DEmulator:
 
             # Predict power spectrum using Arinyo model with predicted coefficients
             # Predict multiple realizations and calculate the covariance matrix
-            if return_p3d:
-                p3ds_pred = np.zeros(shape=(Nrealizations, len(k_Mpc)))
-            if return_p1d:
-                p1ds_pred = np.zeros(shape=(Nrealizations, len(k1d_Mpc)))
-            for r in range(len(coeff_dict)):
+            if return_p_all:
+                if return_p3d:
+                    p3ds_pred = np.zeros(shape=(Nrealizations, len(k_Mpc)))
+                if return_p1d:
+                    p1ds_pred = np.zeros(shape=(Nrealizations, len(k1d_Mpc)))
+                for r in range(len(coeff_dict)):
+                    if return_p3d:
+                        if "kmu_modes" in info_power:
+                            _ = p3d_allkmu(
+                                model_Arinyo,
+                                info_power["z"],
+                                coeff_dict[r],
+                                info_power["kmu_modes"],
+                                nk=nd1,
+                                nmu=nd2,
+                                compute_plin=False,
+                            )
+                            p3ds_pred[r] = _.reshape(-1)
+                        else:
+                            p3ds_pred[r] = model_Arinyo.P3D_Mpc(
+                                info_power["z"], k_Mpc, mu, coeff_dict[r]
+                            )
+                    if return_p1d:
+                        p1ds_pred[r] = model_Arinyo.P1D_Mpc(
+                            info_power["z"], k1d_Mpc, parameters=coeff_dict[r]
+                        )
+
+                if return_p3d:
+                    # Set the median power spectrum and its covariance matrix
+                    p3d_arinyo = np.nanmedian(p3ds_pred, 0)
+
+                    if return_cov:
+                        p3d_cov = get_covariance(p3ds_pred, p3d_arinyo)
+                        diag = np.diag(p3d_cov)
+                        if nd2 != 0:
+                            diag = diag.reshape(nd1, nd2)
+                        out_dict["p3d_std"] = np.sqrt(diag)
+
+                if return_p1d:
+                    p1d_arinyo = np.nanmedian(p1ds_pred, 0)
+                    if return_cov:
+                        p1d_cov = get_covariance(p1ds_pred, p1d_arinyo)
+                        out_dict["p1d_std"] = np.sqrt(np.diag(p1d_cov))
+            else:
                 if return_p3d:
                     if "kmu_modes" in info_power:
-                        _ = p3d_allkmu(
+                        p3d_arinyo = p3d_allkmu(
                             model_Arinyo,
                             info_power["z"],
-                            coeff_dict[r],
+                            coeff_dict_mean,
                             info_power["kmu_modes"],
                             nk=nd1,
                             nmu=nd2,
                             compute_plin=False,
-                        )
-                        p3ds_pred[r] = _.reshape(-1)
+                        ).reshape(-1)
                     else:
-                        p3ds_pred[r] = model_Arinyo.P3D_Mpc(
-                            info_power["z"], k_Mpc, mu, coeff_dict[r]
+                        p3d_arinyo = model_Arinyo.P3D_Mpc(
+                            info_power["z"], k_Mpc, mu, coeff_dict_mean
                         )
+
                 if return_p1d:
-                    p1ds_pred[r] = model_Arinyo.P1D_Mpc(
-                        info_power["z"], k1d_Mpc, parameters=coeff_dict[r]
+                    p1d_arinyo = model_Arinyo.P1D_Mpc(
+                        info_power["z"], k1d_Mpc, parameters=coeff_dict_mean
                     )
 
             if return_p3d:
-                # Set the median power spectrum and its covariance matrix
-                p3d_arinyo = np.nanmedian(p3ds_pred, 0)
-
-                if return_cov:
-                    p3d_cov = get_covariance(p3ds_pred, p3d_arinyo)
-                    diag = np.diag(p3d_cov)
-                    if nd2 != 0:
-                        diag = diag.reshape(nd1, nd2)
-                    out_dict["p3d_std"] = np.sqrt(diag)
-
                 if nd2 != 0:
                     p3d_arinyo = p3d_arinyo.reshape(nd1, nd2)
                     k_Mpc = k_Mpc.reshape(nd1, nd2)
@@ -593,27 +684,18 @@ class P3DEmulator:
                 out_dict["p3d"] = p3d_arinyo
                 out_dict["k_Mpc"] = k_Mpc
                 out_dict["mu"] = mu
-                
-                del p3ds_pred, p3d_arinyo
 
             if return_p1d:
-                p1d_arinyo = np.nanmedian(p1ds_pred, 0)
                 out_dict["p1d"] = p1d_arinyo
                 out_dict["k1d_Mpc"] = k1d_Mpc
-                if return_cov:
-                    p1d_cov = get_covariance(p1ds_pred, p1d_arinyo)
-                    out_dict["p1d_std"] = np.sqrt(np.diag(p1d_cov))
-                    del p1d_cov
-                    
-                del p1ds_pred
-        
+
         # Explicitly delete large objects and collect garbage
-        del coeffs_all, coeffs_mean, coeff_dict, arinyo_pred, arinyo_pred_std
-        gc.collect()
+        # del coeffs_all, coeffs_mean, coeff_dict, arinyo_pred, arinyo_pred_std
+        # gc.collect()
 
         # Clear GPU memory if using PyTorch
         if torch.cuda.is_available():
-            torch.cuda.empty_cache()   
+            torch.cuda.empty_cache()
 
         return out_dict
 
@@ -754,7 +836,7 @@ class P3DEmulator:
         if self.save_path != None:
             torch.save(self.emulator.state_dict(), self.save_path)
 
-    def predict_Arinyos(
+    def predict_Arinyos_old(
         self,
         emu_params,
         plot=False,
@@ -797,10 +879,8 @@ class P3DEmulator:
         Arinyo_preds = np.zeros(
             shape=(Niter, self.batch_size, self.dim_inputSpace)
         )
-        
-        
+
         condition = torch.tile(test_data, (self.batch_size, 1))
-        
 
         # Generate predictions
         with torch.no_grad():
@@ -820,11 +900,9 @@ class P3DEmulator:
                 del z_test, Arinyo_pred
                 gc.collect()
 
-                
             Arinyo_preds = Arinyo_preds.reshape(
                 Niter * int(self.batch_size), self.dim_inputSpace
             )
-
 
         # Generate corner plot if plot is True
         if plot == True:
@@ -870,6 +948,113 @@ class P3DEmulator:
 
         # Calculate the mean of the predictions
         Arinyo_mean = np.median(Arinyo_preds, 0)
+
+        if return_all_realizations == True:
+            return Arinyo_preds, Arinyo_mean
+        else:
+            return Arinyo_mean
+
+    def predict_Arinyos(
+        self,
+        emu_params,
+        plot=False,
+        true_coeffs=None,
+        Nrealizations=None,
+        return_all_realizations=False,
+    ):
+        """
+        Predict Arinyo coefficients using the trained emulator.
+
+        Args:
+            input_emu (list): List of cosmo+astro input parameters.
+            plot (bool): Whether to generate a corner plot. Default is False.
+            true_coeffs (list): True Arinyo coefficients for plotting comparison. Default is None.
+            return_all_realizations (bool): Whether to return all realizations or just the mean. Default is False.
+
+        Returns:
+            Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]: Arinyo coefficient predictions. If return_all_realizations is True, returns a tuple with all realizations and the mean.
+        """
+
+        if Nrealizations is None:
+            Nrealizations = self.Nrealizations
+
+        self.emulator = self.emulator.eval()
+
+        # Extract and sort emulator parameters from the test data
+        input_emu = self._get_test_condition(emu_params)[0]
+
+        # Normalize the input data
+        test_data = np.array(input_emu)
+        test_data = (test_data - self.param_lims_max) / (
+            self.param_lims_max - self.param_lims_min
+        )
+        condition = np.zeros((Nrealizations, test_data.shape[0]))
+        for ii in range(test_data.shape[0]):
+            condition[:, ii] = test_data[ii]
+        condition = torch.Tensor(condition)
+
+        self.emulator.conditions = []
+        for ii in range(self.nLayers_inn):
+            self.emulator.conditions.append(np.arange(Nrealizations))
+
+        # Generate predictions
+        with torch.no_grad():
+            z_test = torch.randn(Nrealizations, self.dim_inputSpace)
+            Arinyo_preds, _ = self.emulator(z_test, condition, rev=True)
+
+            # Transform the predictions back to original space
+            Arinyo_preds[:, 2] = torch.log(Arinyo_preds[:, 2])
+            Arinyo_preds[:, 4] = torch.log(Arinyo_preds[:, 4])
+            Arinyo_preds[:, 6] = torch.exp(Arinyo_preds[:, 6])
+            if "q2" in self.Arinyo_params:
+                Arinyo_preds[:, 7] = torch.log(Arinyo_preds[:, 7])
+
+            Arinyo_preds = Arinyo_preds.detach().cpu().numpy()
+
+        # Generate corner plot if plot is True
+        if plot == True:
+            if true_coeffs is None:
+                corner_plot = corner.corner(
+                    Arinyo_preds,
+                    labels=[
+                        r"$b$",
+                        r"$\beta$",
+                        "$q_1$",
+                        "$k_{vav}$",
+                        "$a_v$",
+                        "$b_v$",
+                        "$k_p$",
+                        "$q_2$",
+                    ],
+                    truth_color="crimson",
+                )
+            else:
+                corner_plot = corner.corner(
+                    Arinyo_preds,
+                    labels=[
+                        r"$b$",
+                        r"$\beta$",
+                        "$q_1$",
+                        "$k_{vav}$",
+                        "$a_v$",
+                        "$b_v$",
+                        "$k_p$",
+                        "$q_2$",
+                    ],
+                    truths=true_coeffs,
+                    truth_color="crimson",
+                )
+
+            # Increase the label font size for this plot
+            for ax in corner_plot.get_axes():
+                ax.xaxis.label.set_fontsize(16)
+                ax.yaxis.label.set_fontsize(16)
+                ax.xaxis.set_tick_params(labelsize=12)
+                ax.yaxis.set_tick_params(labelsize=12)
+            plt.show()
+
+        # Calculate the mean of the predictions
+        Arinyo_mean = np.median(Arinyo_preds, axis=0)
 
         if return_all_realizations == True:
             return Arinyo_preds, Arinyo_mean
