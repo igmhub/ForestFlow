@@ -456,11 +456,11 @@ class P3DEmulator:
         sim_cosmo = camb_cosmo.get_cosmology(**cosmo)
         linP_zs = fit_linP.get_linP_Mpc_zs(sim_cosmo, [z], kp_Mpc)[0]
 
-        fid_Ap = target_params["Delta2_p"]
-        ratio_Ap = linP_zs["Delta2_p"] / fid_Ap
+        fid_Ap = linP_zs["Delta2_p"]
+        ratio_Ap = target_params["Delta2_p"] / fid_Ap
 
-        fid_np = target_params["n_p"]
-        delta_np = linP_zs["n_p"] - fid_np
+        fid_np = linP_zs["n_p"]
+        delta_np = target_params["n_p"] - fid_np
 
         # logarithm of ratio of pivot points
         ln_kp_ks = np.log(kp_Mpc / ks_Mpc)
@@ -691,7 +691,7 @@ class P3DEmulator:
                 repo = os.path.dirname(lace.__path__[0]) + "/"
                 fname = repo + ("data/sim_suites/Australia20/mpg_emu_cosmo.npy")
                 data_cosmo = np.load(fname, allow_pickle=True).item()
-                cosmo = data_cosmo[sim_label]["cosmo_params"]
+                cosmo = data_cosmo[info_power["sim_label"]]["cosmo_params"]
 
         # Check if enough cosmology parameters are provided
         for key in self.cosmo_fields:
