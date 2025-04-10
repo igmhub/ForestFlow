@@ -23,7 +23,7 @@ def main():
     use_w0wa = False
 
     # number of samples
-    nn = 100
+    nn = 100000
     emu_params = {
         "Delta2_p": np.zeros(nn),
         "n_p": np.zeros(nn),
@@ -106,7 +106,9 @@ def main():
     ind_use = np.array_split(ind, size)[rank]
 
     for ii in ind_use:
-        print(ii)
+        if rank == 0:
+            if ii % 10 == 0:
+                print(ii)
         _H0 = H0 + err_H0_use[ii]
         _Om = Om + err_Om_use[ii]
         _ombh2 = ombh2 + err_ombh2_use[ii]
