@@ -149,6 +149,9 @@ def main():
         kF_Mpc = 1 / ((lambdap + err_lambdap_use[ii]) / 1000)
         emu_params["kF_Mpc"][ii] = kF_Mpc
 
+        if ii % 500 == 0:
+            np.save("out/input_priors" + str(rank) + ".npy", emu_params)
+
     np.save("out/input_priors" + str(rank) + ".npy", emu_params)
 
 
