@@ -1,53 +1,53 @@
-This is BibTeX, Version 0.99d (TeX Live 2022/dev/Debian)
+This is BibTeX, Version 0.99d (TeX Live 2025/dev/Debian)
 Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
-The top-level auxiliary file: forestflow.aux
+The top-level auxiliary file: forestflow_R1.aux
 The style file: aa_url.bst
 if is an unknown function---line 728 of file aa_url.bst
 format.in.editors is an unknown function---line 889 of file aa_url.bst
 format.in.editors is an unknown function---line 984 of file aa_url.bst
 Database file #1: forestflow.bib
 Warning--entry type for "freia" isn't style-file defined
---line 495 of file forestflow.bib
+--line 512 of file forestflow.bib
 Reallocated str_pool (elt_size=1) to 130000 items from 65000.
-You've used 111 entries,
+You've used 112 entries,
             2998 wiz_defined-function locations,
-            1607 strings with 76981 characters,
-and the built_in function-call counts, 138412 in all, are:
-= -- 9832
-> -- 19726
+            1619 strings with 77392 characters,
+and the built_in function-call counts, 138595 in all, are:
+= -- 9846
+> -- 19757
 < -- 24
-+ -- 6604
-- -- 6462
-* -- 14220
-:= -- 25567
-add.period$ -- 111
-call.type$ -- 111
-change.case$ -- 2597
-chr.to.int$ -- 110
-cite$ -- 111
-duplicate$ -- 2048
-empty$ -- 3428
-format.name$ -- 6763
-if$ -- 26959
++ -- 6614
+- -- 6471
+* -- 14242
+:= -- 25624
+add.period$ -- 112
+call.type$ -- 112
+change.case$ -- 2604
+chr.to.int$ -- 111
+cite$ -- 112
+duplicate$ -- 2067
+empty$ -- 3431
+format.name$ -- 6775
+if$ -- 26974
 int.to.chr$ -- 2
 int.to.str$ -- 1
-missing$ -- 109
-newline$ -- 337
-num.names$ -- 444
-pop$ -- 2620
+missing$ -- 110
+newline$ -- 340
+num.names$ -- 448
+pop$ -- 2625
 preamble$ -- 1
-purify$ -- 2597
+purify$ -- 2604
 quote$ -- 0
-skip$ -- 1951
+skip$ -- 1941
 stack$ -- 0
-substring$ -- 2942
-swap$ -- 202
+substring$ -- 2885
+swap$ -- 204
 text.length$ -- 0
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 996
+type$ -- 1005
 warning$ -- 0
-while$ -- 440
+while$ -- 444
 width$ -- 0
-write$ -- 1097
+write$ -- 1109
 (There were 3 error messages)
