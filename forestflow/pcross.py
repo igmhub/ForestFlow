@@ -47,21 +47,49 @@ def P1D_Mpc(P3D_Mpc, z, ln_k_perp, kpars, P3D_mode="pol", P3D_params={}):
 
 
 def Px_Mpc(z, kpars, rperp_Mpc, P3D_Mpc, P3D_mode="pol", P3D_params={}):
-    """Calls Px_Mpc_detailed to calculate P_cross, the cross-correlation of k_parallel modes from pairs of lines-of-sight separated by perpendicular distance rperp, given a 3D power spectrum
-    Calculation is done with the Hankel transform.
-    Required Parameters:
-        kpars (array-like): array of k parallel (usually log-spaced)
-        P3D (function): Function that takes arguments
-        z (float): single redshift to evaluate
-    Optional Parameters:
-        rperp_choice: a list of rperp values [Mpc] at which to evaluate Px. The function will return rperp and Px values close, but not exactly equal to, the requested values. If not set, the function will return a finely-log-spaced grid of values from rperp=0.01 to 100.
-        P3D_mode: 'pol' or 'cart' for polar or cartesian. 'pol' assumes that the function takes parameters z and an array of k and mu. 'cart' assumes that the parameters are z, kpar and kperp, both arrays.
-        **P3D_params: optional named arguments to be passed to the P3D function.
-    Returns:
-        tuple of (rperp, Px_per_kpar)
-        rperp (array-like): array of r-perpendicular (float) (separation in Mpc)
-        Px_per_kpar (array-like): P-cross in Mpc at each rperp (float), has shape (len(kpars), len(rperp)).
     """
+    Compute the cross-power spectrum P_cross(k_parallel, r_perp) for a given 3D
+    power spectrum model, as a function of parallel wavenumber and transverse
+    separation.
+
+    This is the user-friendly interface to `Px_Mpc_detailed`. It computes the
+    cross-correlation of line-of-sight modes separated by r_perp using a Hankel
+    transform of the 3D power spectrum.
+
+    Parameters
+    ----------
+    z : float or array-like of shape (Nz,)
+        Redshift(s) at which to evaluate the cross-power spectrum.
+    kpars : array-like
+        Parallel wavenumbers k_parallel in units of Mpc⁻¹.
+        - Shape can be (Nk,) for a single redshift or (Nz, Nk) for multiple redshifts.
+    rperp_Mpc : array-like
+        Transverse separations r_perp (in Mpc) at which to evaluate the cross-power spectrum.
+        - Shape can be (Nr,) for a single redshift or (Nz, Nr) for multiple redshifts.
+    P3D_Mpc : callable
+        Function returning the 3D power spectrum in Mpc units.
+        - If `P3D_mode='pol'`, called as: `P3D_Mpc(z, k, mu, params)`
+        - If `P3D_mode='cart'`, called as: `P3D_Mpc(z, kpar, kperp, params)`
+    P3D_mode : {'pol', 'cart'}, optional
+        Determines how `P3D_Mpc` is evaluated. Default is 'pol'.
+    P3D_params : dict or list of dicts, optional
+        Extra keyword parameters for `P3D_Mpc`.
+        - Dict is broadcast to all z values (with a warning if multi-z).
+        - List of dicts must have length Nz.
+
+    Returns
+    -------
+    Px_per_kpar : ndarray
+        Cross-power spectrum P_cross in Mpc units evaluated at each input r_perp and k_parallel.
+        - Shape is (Nz, Nr, Nk) for multi-z input, or (Nr, Nk) for single z.
+
+    Notes
+    -----
+    - This function is a thin wrapper around `Px_Mpc_detailed`, which provides
+      additional control over the k_perp grid, interpolation, and P1D transition.
+    - The Hankel transform is performed internally using `hankl.FFTLog`.
+    """
+
     return Px_Mpc_detailed(
         z, kpars, rperp_Mpc, P3D_Mpc, P3D_mode, P3D_params=P3D_params
     )
@@ -81,27 +109,53 @@ def Px_Mpc_detailed(
     fast_transition=False,
     P3D_params={},  # list of dictionaries with keyword parameters to be passed to the P3D function
 ):
-    """Calculates P_cross, the power for a given k_parallel mode from pairs of lines-of-sight separated by perpendicular distance rperp, given a 3D power spectrum
-    Calculation is done with the Hankel transform.
-    See Px_Mpc for a more user-friendly version.
-    Required Parameters:
-        kpars (array): array of k parallel (usually log-spaced)
-        P3D_Mpc (function): Function that takes arguments
-        z (float): single redshift to evaluate
-    Optional Parameters:
-        rperp_choice: a list of rperp values [Mpc] at which to evaluate Px. The function will return rperp and Px values close, but not exactly equal to, the requested values. If not set, the function will return a finely-log-spaced grid of values from rperp=0.01 to 100.
-        P3D_mode: 'pol' or 'cart' for polar or cartesian. 'pol' assumes that the function takes parameters z and an array of k and mu. 'cart' assumes that the parameters are z, kpar and kperp, both arrays.
-        **P3D_params: optional named arguments to be passed to the P3D_Mpc function.
-        min_kperp, max_kperp (float): range of kperp values to use in the calculation. Decreasing this range can cause unwanted artifacts
-        nkperp (int): number of kperps for the hankl transform (and number of output rperp). Decreasing this speeds up calculation but decreases accuracy
-        interpmin (float): value of r-perp to start the interpolation to P1D at
-        interpmax (float): value of r-perp to end the interpolation to P1D at
-        fast_transition (bool): if true, the transition to P1D is done faster, without interpolation, but there will be a discontinuity
-    Returns:
-        rperp: array of log-space r-perpendicular (separation in Mpc)
-        Px_per_kpar: P-cross as an array with shape (len(kpar_iMpc), len(rperp)).
     """
+    Compute the cross-power spectrum P_cross(k_parallel, r_perp) using a Hankel transform
+    for pairs of lines-of-sight separated by transverse distance r_perp, given a 3D power
+    spectrum model P3D_Mpc.
 
+    This is the low-level implementation called by `Px_Mpc`. It allows explicit control
+    over the k_perp grid, interpolation, and the transition to the 1D power spectrum at
+    very small r_perp.
+
+    Parameters
+    ----------
+    z : float or array-like of shape (Nz,)
+        Redshift(s) at which to evaluate the cross-power spectrum.
+    kpar_iMpc : array-like
+        Parallel wavenumbers k_parallel in units of Mpc⁻¹.
+        - Shape can be (Nk,) for a single redshift or (Nz, Nk) for multiple redshifts.
+    rperp_Mpc : array-like
+        Perpendicular separations r_perp (in Mpc) at which to evaluate the cross-power spectrum.
+        - Shape can be (Nr,) for a single redshift or (Nz, Nr) for multiple redshifts.
+    P3D_Mpc : callable
+        Function returning the 3D power spectrum in Mpc units.
+        - If `P3D_mode='pol'`, called as: `P3D_Mpc(z, k, mu, params)`
+        - If `P3D_mode='cart'`, called as: `P3D_Mpc(z, kpar, kperp, params)`
+    P3D_mode : {'pol', 'cart'}, optional
+        Determines how P3D_Mpc is evaluated. Default is 'pol'.
+    min_kperp, max_kperp : float, optional
+        Minimum and maximum k_perp (Mpc⁻¹) used for the Hankel transform. Default: 1e-7, 1e3.
+    nkperp : int, optional
+        Number of k_perp points for the Hankel transform. Controls the output r_perp sampling.
+        Default is 2**11 (~2048).
+    interpmin, interpmax : float, optional
+        r_perp range (in Mpc) over which to smoothly interpolate between the 3D cross-power
+        and the 1D power spectrum to avoid divergences. Default: 0.005–0.2 Mpc.
+    fast_transition : bool, optional
+        If True, directly replaces small-r_perp values with P1D without interpolation.
+        This is faster but introduces a discontinuity. Default is False.
+    P3D_params : dict or list of dicts, optional
+        Extra keyword parameters for P3D_Mpc.
+        - Dict is broadcast to all z values (with a warning if multi-z).
+        - List of dicts must have length Nz.
+
+    Returns
+    -------
+    Px_pertheta_perz : ndarray
+        Cross-power spectrum P_cross in Mpc units evaluated at each input r_perp and k_parallel.
+        - Shape is (Nz, Nr, Nk) for multi-z input, or (Nr, Nk) for single z.
+    """
     import hankl
 
     # make everything numpy arrays
@@ -236,4 +290,3 @@ def Px_Mpc_detailed(
         Px_pertheta_perz = np.asarray(Px_pertheta_perz[0])
 
     return Px_pertheta_perz
-
