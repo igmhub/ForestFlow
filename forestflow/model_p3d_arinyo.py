@@ -254,7 +254,7 @@ class ArinyoModel(object):
 
         return linP * lowk_bias**2 * D_NL
 
-    def Px_Mpc(self, z, k_par, pp):
+    def Px_Mpc(self, z, kpar_iMpc, rperp_Mpc, parameters):
         """
         Compute P-cross for the P3D model.
 
@@ -265,11 +265,12 @@ class ArinyoModel(object):
             rperp (array-like): values (float) of separation in Mpc
             Px_per_kpar (array-like): values (float) of Px for each k parallel and rperp. Shape: (len(k_par), len(rperp)).
         """
-
-        rperp, Px_per_kpar = pcross.Px_Mpc(
-            k_par, self.P3D_Mpc, z, P3D_mode="pol", **{"pp": pp}
+        list_check = ["bias", "beta", "q1", "q2", "kvav", "av", "bv", "kp"]
+        pp = self.check_params(list_check, parameters) # set default values if not provided
+        Px_Mpc = pcross.Px_Mpc(
+            z, kpar_iMpc, rperp_Mpc, self.P3D_Mpc, P3D_mode="pol", P3D_params=pp
         )
-        return rperp, Px_per_kpar
+        return Px_Mpc
 
     def lowk_biasing(self, mu, parameters={}):
         """
