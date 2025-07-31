@@ -3,7 +3,7 @@ from scipy.integrate import simpson
 from scipy.interpolate import CubicSpline
 
 
-def P1D_Mpc(P3D_Mpc, z, ln_k_perp, kpars, P3D_mode="pol", P3D_kwargs={}):
+def P1D_Mpc(P3D_Mpc, z, ln_k_perp, kpars, P3D_mode="pol", P3D_params={}):
     """
     Compute P1D by integrating P3D in terms of ln(k_perp) using a fast method.
     Replicates the function in model_p3d_arinyo.py, but with flexibility for the style of P3D input.
@@ -33,12 +33,12 @@ def P1D_Mpc(P3D_Mpc, z, ln_k_perp, kpars, P3D_mode="pol", P3D_kwargs={}):
     fact = (1 / (2 * np.pi)) * k_perp[:, np.newaxis] ** 2
     fact = fact.swapaxes(0, 1)
     if P3D_mode == "pol":
-        p3d_fix_k_par = P3D_Mpc(z, k, mu, P3D_kwargs) * fact
+        p3d_fix_k_par = P3D_Mpc(z, k, mu, P3D_params) * fact
     elif P3D_mode == "cart":
         # tile
         kperp2d = np.tile(k_perp[:, np.newaxis], len(kpars)).T  # mu grid for P3D
         kpar2d = np.tile(kpars[:, np.newaxis], len(k_perp))
-        p3d_fix_k_par = P3D_Mpc(z, kpar2d, kperp2d, P3D_kwargs) * fact
+        p3d_fix_k_par = P3D_Mpc(z, kpar2d, kperp2d, P3D_params) * fact
 
     # perform numerical integration
     p1d = simpson(p3d_fix_k_par, ln_k_perp, dx=dlnk, axis=1)
@@ -46,7 +46,7 @@ def P1D_Mpc(P3D_Mpc, z, ln_k_perp, kpars, P3D_mode="pol", P3D_kwargs={}):
     return p1d
 
 
-def Px_Mpc(z, kpars, rperp_Mpc, P3D_Mpc, P3D_mode="pol", P3D_params=[]):
+def Px_Mpc(z, kpars, rperp_Mpc, P3D_Mpc, P3D_mode="pol", P3D_params={}):
     """Calls Px_Mpc_detailed to calculate P_cross, the cross-correlation of k_parallel modes from pairs of lines-of-sight separated by perpendicular distance rperp, given a 3D power spectrum
     Calculation is done with the Hankel transform.
     Required Parameters:
@@ -56,7 +56,7 @@ def Px_Mpc(z, kpars, rperp_Mpc, P3D_Mpc, P3D_mode="pol", P3D_params=[]):
     Optional Parameters:
         rperp_choice: a list of rperp values [Mpc] at which to evaluate Px. The function will return rperp and Px values close, but not exactly equal to, the requested values. If not set, the function will return a finely-log-spaced grid of values from rperp=0.01 to 100.
         P3D_mode: 'pol' or 'cart' for polar or cartesian. 'pol' assumes that the function takes parameters z and an array of k and mu. 'cart' assumes that the parameters are z, kpar and kperp, both arrays.
-        **P3D_kwargs: optional named arguments to be passed to the P3D function.
+        **P3D_params: optional named arguments to be passed to the P3D function.
     Returns:
         tuple of (rperp, Px_per_kpar)
         rperp (array-like): array of r-perpendicular (float) (separation in Mpc)
@@ -91,7 +91,7 @@ def Px_Mpc_detailed(
     Optional Parameters:
         rperp_choice: a list of rperp values [Mpc] at which to evaluate Px. The function will return rperp and Px values close, but not exactly equal to, the requested values. If not set, the function will return a finely-log-spaced grid of values from rperp=0.01 to 100.
         P3D_mode: 'pol' or 'cart' for polar or cartesian. 'pol' assumes that the function takes parameters z and an array of k and mu. 'cart' assumes that the parameters are z, kpar and kperp, both arrays.
-        **P3D_kwargs: optional named arguments to be passed to the P3D_Mpc function.
+        **P3D_params: optional named arguments to be passed to the P3D_Mpc function.
         min_kperp, max_kperp (float): range of kperp values to use in the calculation. Decreasing this range can cause unwanted artifacts
         nkperp (int): number of kperps for the hankl transform (and number of output rperp). Decreasing this speeds up calculation but decreases accuracy
         interpmin (float): value of r-perp to start the interpolation to P1D at
@@ -236,20 +236,4 @@ def Px_Mpc_detailed(
         Px_pertheta_perz = np.asarray(Px_pertheta_perz[0])
 
     return Px_pertheta_perz
-
-
-def kaiser(bias1, bias2, beta_rsd1, beta_rsd2, mu):
-    """Returns the Kaiser factor for multiplying linear power for a given bias, beta and mu.
-    Parameters:
-        bias (float): Bias factor.
-        beta_rsd (float): Redshift space distortion parameter.
-        mu (float): 2D array, Cosine of the angle between the line of sight and the wavevector.
-    Returns:
-        float: Kaiser factor.
-    """
-    return (
-        bias1
-        * bias2
-        * (1 + beta_rsd1 * mu**2 + beta_rsd2 * mu**2 + beta_rsd1 * beta_rsd2 * mu**4)
-    )
 
