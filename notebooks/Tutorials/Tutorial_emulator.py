@@ -128,9 +128,13 @@ else:
         adamw=True,
         nLayers_inn=12,  # 15
         Archive=Archive3D,
+        Nrealizations=50000,
         training_type='Arinyo_min',
         model_path=path_program+"/data/emulator_models/mpg_hypercube.pt",
     )
+
+# %%
+Archive3D.emu_params
 
 # %% [markdown]
 # ### Evaluate emulator
@@ -159,8 +163,8 @@ cosmo = {
 # cosmological parameters when target cosmology is provided
 # IGM parameters from random simulation, access via sim.keys()
 input_params = {
-    'Delta2_p': 0., # not used if you provide cosmology
-    'n_p': 0., # not used if you provide cosmology
+    # 'Delta2_p': 0., # not used if you provide cosmology
+    # 'n_p': 0., # not used if you provide cosmology
     'mF': 0.66,
     'sigT_Mpc': 0.13,
     'gamma': 1.5,
@@ -176,9 +180,41 @@ out = p3d_emu.evaluate(
     emu_params=input_params,
     info_power=info_power,
     # natural_params=True,
-    Nrealizations=100
+    # Nrealizations=100
 )
 out.keys()
+
+# %%
+for par in input_params:
+    print(par, Archive3D.training_data[0][par])
+
+# %%
+# %%time
+out = p3d_emu.evaluate(
+    emu_params=input_params,
+    info_power=info_power,
+    # natural_params=True,
+    # Nrealizations=100
+)
+
+# %%
+# %%time
+coeffs_mean = p3d_emu.predict_Arinyos(
+    Archive3D.training_data[0],
+    # return_all_realizations=False,
+    Nrealizations=10000,
+)
+# coeffs_mean/coeffs_mean2-1
+
+# %%
+# %%time
+coeffs_mean = p3d_emu.predict_Arinyos(
+    Archive3D.training_data[0],
+    return_all_realizations=False,
+    # Nrealizations=100000,
+    plot=True
+)
+# coeffs_mean/coeffs_mean2-1
 
 # %%
 # value of parameters
@@ -198,14 +234,14 @@ print(out["linP_zs"])
 out = p3d_emu.evaluate(
     emu_params=input_params,
     info_power=info_power,
-    natural_params=True,
-    Nrealizations=100
+    # natural_params=True,
+    Nrealizations=10000
 )
 
 # value of parameters
 print(out["coeffs_Arinyo"])
 # and emulation error
-print(out["coeffs_Arinyo_std"])
+# print(out["coeffs_Arinyo_std"])
 
 # %% [markdown]
 # Also return P3D 
@@ -231,7 +267,7 @@ out = p3d_emu.evaluate(
     emu_params=input_params,
     info_power=info_power,
     # natural_params=True,
-    Nrealizations=100
+    Nrealizations=10000
 )
 out.keys()
 

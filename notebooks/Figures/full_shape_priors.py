@@ -14,7 +14,13 @@
 # ---
 
 # %% [markdown]
-# # Compare bias-beta with observations
+# # Priors on Arinyo parameters
+#
+# In this notebook, we compute priors for the Arinyo parameters using two methods:
+#
+# - We generate priors using Forestflow. To do so, we use as input the DESI DR2 + CMB LCDM cosmology and IGM parameters from Table 4 of Walther+18
+#
+# - From the best-fitting of the Arinyo model to the LaCE suite of simulations (Pedersen+21)
 
 # %%
 # %load_ext autoreload
@@ -42,6 +48,8 @@ from matplotlib import rcParams
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
+from corner import corner
+
 
 # %%
 def ls_level(folder, nlevels):
@@ -55,18 +63,17 @@ path_program = ls_level(os.getcwd(), 2)
 print(path_program)
 sys.path.append(path_program)
 
+# %% [markdown]
+# ## Using forestflow
+
 # %%
 from lace.cosmo.thermal_broadening import thermal_broadening_kms
 from lace.cosmo import camb_cosmo, fit_linP
 
 # %% [markdown]
-# #### Given:
-# - a range of possible values for the cosmology parameters (or even at fixed Planck cosmo)
-# - a range of possible values for IGM parameters based on the literature (mean flux, T0, gamma, maybe also kF)
-# #### One can compute:
-# - what range of bias/beta parameters are predicted by ForestFlow (this could be a useful sanity check, but I wouldn’t use any such prior!)
-# - what range of values are predicted for the other D_NL parameters (q1, bv, av, etc.)
-# - We could then inflate these a bit, if needed, and use these as priors
+# #### Compute input parameters of forestflow
+#
+# Example here, computed using script
 
 # %%
 # %%time
@@ -195,12 +202,10 @@ for ii in range(nn):
     
     kF_Mpc = 1/((lambdap + err_lambdap_use[ii])/1000)
     emu_params["kF_Mpc"][ii] = kF_Mpc
-    
 
-# %%
-# plt.scatter(emu_params["Delta2_p"], emu_params["n_p"])
-# plt.scatter(emu_params["mF"], emu_params["gamma"])
-100000/100 * 18/3600
+
+# %% [markdown]
+# ### Load result from previous computation
 
 # %%
 folder_data = "/home/jchaves/Proyectos/projects/lya/ForestFlow/scripts/out/"
@@ -225,7 +230,10 @@ for key in data.keys():
     data[key] = data[key][ind] 
 
 # %%
-data
+# corner(np.array([data['Delta2_p'], data['n_p']]).T);
+
+# %% [markdown]
+# #### Load emulator
 
 # %%
 # %%time
@@ -261,15 +269,20 @@ emulator = P3DEmulator(
     model_path=model_path,
 )
 
+# %% [markdown]
+# #### Evaluate emulator
+
 # %%
+# %%time
 nelem = data["n_p"].shape[0]
 
 out_arinyo = {}
 for key in emulator.Arinyo_params:
     out_arinyo[key] = np.zeros(nelem)
 
-
 for ii in range(nelem):
+    if ii % 1000 == 0:
+        print(ii, nelem, ii/nelem)
 
     emu_params = {}
     for key in data:
@@ -277,7 +290,7 @@ for ii in range(nelem):
     
     out = emulator.predict_Arinyos(
         emu_params,
-        Nrealizations=10000
+        Nrealizations=500
     )
 
     for jj, key in enumerate(emulator.Arinyo_params):
@@ -288,7 +301,19 @@ for ii in range(nelem):
 
 
 # %%
-out_arinyo
+folder_data = "/home/jchaves/Proyectos/projects/lya/ForestFlow/scripts/out/"
+np.save("forestflow_pred.npy", out_arinyo)
+
+# %% [markdown]
+# #### Load results from emulator
+
+# %%
+folder_data = "/home/jchaves/Proyectos/projects/lya/ForestFlow/scripts/out/"
+file_name = "forestflow_pred.npy"
+
+file = "/pscratch/sd/j/jjchaves/forestflow_pred.npy" # in nersc
+out_arinyo = np.load(file_name, allow_pickle=True).item()
+out_arinyo.keys()
 
 # %%
 arr_all = np.zeros((out_arinyo["bias"].shape[0], len(out_arinyo.keys())))
@@ -296,11 +321,70 @@ for jj, key in enumerate(out_arinyo):
     arr_all[:, jj] = out_arinyo[key]
 
 # %%
-from corner import corner
+figure = corner(
+    arr_all, 
+    show_titles=True, 
+    labels=emulator.Arinyo_params, 
+    label_kwargs={"fontsize":20}, 
+    title_kwargs={"fontsize":20},
+    title_fmt='.3f'
+)
+for ax in figure.get_axes():
+    ax.tick_params(axis='both', labelsize=16)
+plt.savefig("arinyo_from_DR2cosmo_waltherIGM_z233.pdf")
+
+# %% [markdown]
+# ## From the best-fit of the Arinyo model
 
 # %%
-corner(arr_all);
+# %%time
+folder_lya_data = path_program + "/data/best_arinyo/"
+folder_interp = path_program + "/data/plin_interp/"
+
+Archive3D = GadgetArchive3D(
+    base_folder=path_program[:-1],
+    folder_data=folder_lya_data,
+    force_recompute_plin=False,
+    average="both",
+)
+print(len(Archive3D.training_data))
 
 # %%
+Archive3D.training_data[0].keys()
+
+# %%
+dict_arinyo = Archive3D.training_data[0]["Arinyo_min"].copy()
+nsims = len(Archive3D.training_data)
+zz = np.zeros((nsims))
+for key in dict_arinyo:
+    dict_arinyo[key] = np.zeros((nsims))
+    for ii in range(nsims):
+        dict_arinyo[key][ii] = Archive3D.training_data[ii]["Arinyo_min"][key]
+for ii in range(nsims):
+    zz[ii] = Archive3D.training_data[ii]["z"]
+
+# %%
+ind = np.argwhere(zz < 3)[:,0]
+
+# %%
+dict_arinyo["bias"] = -dict_arinyo["bias"]
+
+# %%
+arr_arinyo = np.zeros((len(ind), len(dict_arinyo)))
+for ii, key in enumerate(dict_arinyo):
+    arr_arinyo[:, ii] = dict_arinyo[key][ind]
+
+# %%
+figure = corner(
+    arr_arinyo, 
+    show_titles=True, 
+    labels=emulator.Arinyo_params, 
+    label_kwargs={"fontsize":20}, 
+    title_kwargs={"fontsize":20},
+    title_fmt='.3f'
+)
+for ax in figure.get_axes():
+    ax.tick_params(axis='both', labelsize=16)
+plt.savefig("arinyo_from_fits_LaCE_z200_275.pdf")
 
 # %%
