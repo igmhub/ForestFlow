@@ -160,6 +160,7 @@ def Px_Mpc_detailed(
 
     # make everything numpy arrays
     kpar_iMpc = np.atleast_1d(kpar_iMpc)
+    z_input_type = type(z)
     z = np.atleast_1d(z)
     rperp_Mpc = np.atleast_1d(rperp_Mpc)
     if 0 in kpar_iMpc:
@@ -173,14 +174,19 @@ def Px_Mpc_detailed(
         rperp_Mpc = np.tile(
             rperp_Mpc, (Nz, 1)
         )  # assume rperp_Mpc is the same for all z
-    elif Nz == 1 and kpar_iMpc.ndim > 1:
-        raise ValueError("kpar_iMpc must be a 1D array or list if z is a single value.")
-    if Nz == 1:
-        # now convert to 2d (first dimension is z, second is kpar)
+    
+    if Nz == 1 and kpar_iMpc.ndim == 1:
+        # convert to 2d (first dimension is z, second is kpar)
         kpar_iMpc = np.array([kpar_iMpc])
         rperp_Mpc = np.array([rperp_Mpc])
+    # ensure that all arrays now have the same first axis
+    assert (len(z) == kpar_iMpc.shape[0]
+    ), f"Number of redshifts ({len(z)}) does not match number of kpar values ({kpar_iMpc.shape[0]})."
+    assert (len(z) == rperp_Mpc.shape[0]
+    ), f"Number of redshifts ({len(z)}) does not match number of rperp values ({rperp_Mpc.shape[0]})."
+    
     nkpar = kpar_iMpc.shape[1]
-
+    
     # understand what is passed to P3D_params. Turn P3D_params into a list of dictionaries if it is not already
     if P3D_params:
         if isinstance(P3D_params, dict):
@@ -197,7 +203,7 @@ def Px_Mpc_detailed(
                             assert (
                                 len(P3D_params[key]) == Nz
                             ), f"Parameter {key} must be a list of length {Nz} if z is an array."
-                            P3Dsubdictz[key] = P3D_params[key]
+                            P3Dsubdictz[key] = P3D_params[key][iz]
                         else:
                             P3Dsubdictz[key] = P3D_params[key]
                             if iz == 0:
@@ -205,7 +211,6 @@ def Px_Mpc_detailed(
                                     f"Warning: Number of input z values ({Nz}) does not match the number of values input for parameter {key}. Calculating model with {key} = {P3D_params[key]} for all z."
                                 )
                             # assume the parameter is the same for all z, with a warning
-
                     P3D_params_byz.append(P3Dsubdictz)
         elif isinstance(P3D_params, list):
             # make sure each element is a dictionary
@@ -221,9 +226,9 @@ def Px_Mpc_detailed(
         raise Warning(
             "P3D_params is empty. Assuming no parameters are needed for P3D_Mpc."
         )
-
     kperps = np.logspace(np.log10(min_kperp), np.log10(max_kperp), nkperp)
     Px_pertheta_perz = []
+    
     for iz in range(Nz):
         # tile
 
@@ -284,9 +289,14 @@ def Px_Mpc_detailed(
             Px_func = CubicSpline(rperp, Px)
             Px_per_kpar.append(Px_func(rperp_Mpc[iz]))
         Px_pertheta_perz.append(np.asarray(Px_per_kpar).T)
-    if Nz > 1:
-        Px_pertheta_perz = np.asarray(Px_pertheta_perz)
-    else:
-        Px_pertheta_perz = np.asarray(Px_pertheta_perz[0])
-
+    Px_pertheta_perz = np.asarray(Px_pertheta_perz)
+    # return the cross-power spectrum in the same shape as z was input.
+    # if 1 z was input as a float, return a 2D array (Nr, Nk)
+    # if 1 or more z was input as an array, return a 3D array (Nz, Nr, Nk)
+    
+    if Nz == 1:
+        # check the input type
+        if z_input_type == float:
+            # return a 2D array (Nr, Nk)
+            Px_pertheta_perz = Px_pertheta_perz.squeeze()
     return Px_pertheta_perz
