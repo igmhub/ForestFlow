@@ -163,8 +163,6 @@ def Px_Mpc_detailed(
     z_input_type = type(z)
     z = np.atleast_1d(z)
     rperp_Mpc = np.atleast_1d(rperp_Mpc)
-    if 0 in kpar_iMpc:
-        raise ValueError("kpar list must not contain zero.")
     Nz = len(z)
     if Nz > 1 and kpar_iMpc.ndim == 1:
         kpar_iMpc = np.tile(
