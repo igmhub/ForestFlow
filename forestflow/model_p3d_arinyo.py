@@ -265,10 +265,8 @@ class ArinyoModel(object):
             rperp (array-like): values (float) of separation in Mpc
             Px_per_kpar (array-like): values (float) of Px for each k parallel and rperp. Shape: (len(k_par), len(rperp)).
         """
-        list_check = ["bias", "beta", "q1", "q2", "kvav", "av", "bv", "kp"]
-        pp = self.check_params(list_check, parameters) # set default values if not provided
         Px_Mpc = pcross.Px_Mpc(
-            z, kpar_iMpc, rperp_Mpc, self.P3D_Mpc, P3D_mode="pol", P3D_params=pp
+            z, kpar_iMpc, rperp_Mpc, self.P3D_Mpc, P3D_mode="pol", P3D_params=parameters
         )
         return Px_Mpc
 

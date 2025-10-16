@@ -154,7 +154,8 @@ def Px_Mpc_detailed(
     -------
     Px_pertheta_perz : ndarray
         Cross-power spectrum P_cross in Mpc units evaluated at each input r_perp and k_parallel.
-        - Shape is (Nz, Nr, Nk) for multi-z input, or (Nr, Nk) for single z.
+        - Shape is (Nz, Nr, Nk) for multi-z input, [1, Nr, Nk] for the case where a single z is 
+        input within a list or array (e.g., [my_z]), or (Nr, Nk) for single z input as float.
     """
     import hankl
 
@@ -172,19 +173,21 @@ def Px_Mpc_detailed(
         rperp_Mpc = np.tile(
             rperp_Mpc, (Nz, 1)
         )  # assume rperp_Mpc is the same for all z
-    
+
     if Nz == 1 and kpar_iMpc.ndim == 1:
         # convert to 2d (first dimension is z, second is kpar)
         kpar_iMpc = np.array([kpar_iMpc])
         rperp_Mpc = np.array([rperp_Mpc])
     # ensure that all arrays now have the same first axis
-    assert (len(z) == kpar_iMpc.shape[0]
-    ), f"Number of redshifts ({len(z)}) does not match number of kpar values ({kpar_iMpc.shape[0]})."
-    assert (len(z) == rperp_Mpc.shape[0]
-    ), f"Number of redshifts ({len(z)}) does not match number of rperp values ({rperp_Mpc.shape[0]})."
-    
+    assert len(z) == kpar_iMpc.shape[0], (
+        f"Number of redshifts ({len(z)}) does not match number of kpar values ({kpar_iMpc.shape[0]})."
+    )
+    assert len(z) == rperp_Mpc.shape[0], (
+        f"Number of redshifts ({len(z)}) does not match number of rperp values ({rperp_Mpc.shape[0]})."
+    )
+
     nkpar = kpar_iMpc.shape[1]
-    
+
     # understand what is passed to P3D_params. Turn P3D_params into a list of dictionaries if it is not already
     if P3D_params:
         if isinstance(P3D_params, dict):
@@ -198,9 +201,9 @@ def Px_Mpc_detailed(
                         if isinstance(P3D_params[key], list) or isinstance(
                             P3D_params[key], np.ndarray
                         ):
-                            assert (
-                                len(P3D_params[key]) == Nz
-                            ), f"Parameter {key} must be a list of length {Nz} if z is an array."
+                            assert len(P3D_params[key]) == Nz, (
+                                f"Parameter {key} must be a list of length {Nz} if z is an array."
+                            )
                             P3Dsubdictz[key] = P3D_params[key][iz]
                         else:
                             P3Dsubdictz[key] = P3D_params[key]
@@ -216,9 +219,9 @@ def Px_Mpc_detailed(
                 if not isinstance(P3D_par, dict):
                     raise ValueError("P3D_params must be a list of dictionaries.")
             # make sure the length of the list matches the number of z values
-            assert (
-                len(P3D_params) == Nz
-            ), f"Number of z values ({Nz}) does not match the number of P3D_params dictionaries ({len(P3D_params)})."
+            assert len(P3D_params) == Nz, (
+                f"Number of z values ({Nz}) does not match the number of P3D_params dictionaries ({len(P3D_params)})."
+            )
             P3D_params_byz = P3D_params
     else:
         raise Warning(
@@ -226,7 +229,7 @@ def Px_Mpc_detailed(
         )
     kperps = np.logspace(np.log10(min_kperp), np.log10(max_kperp), nkperp)
     Px_pertheta_perz = []
-    
+
     for iz in range(Nz):
         # tile
 
@@ -291,10 +294,10 @@ def Px_Mpc_detailed(
     # return the cross-power spectrum in the same shape as z was input.
     # if 1 z was input as a float, return a 2D array (Nr, Nk)
     # if 1 or more z was input as an array, return a 3D array (Nz, Nr, Nk)
-    
+
     if Nz == 1:
-        # check the input type
-        if z_input_type == float:
+        # check if input is a single number
+        if z_input_type in [float, int, np.float64, np.int64, np.float32, np.int32]:
             # return a 2D array (Nr, Nk)
             Px_pertheta_perz = Px_pertheta_perz.squeeze()
     return Px_pertheta_perz

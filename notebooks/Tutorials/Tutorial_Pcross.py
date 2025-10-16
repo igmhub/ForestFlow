@@ -1,6 +1,7 @@
 # ---
 # jupyter:
 #   jupytext:
+#     formats: ipynb,py
 #     text_representation:
 #       extension: .py
 #       format_name: light
@@ -89,20 +90,16 @@ arinyo.default_params
 if arinyo.default_params:
     print("true")
 
+# +
 # we can compute Px from within the Arinyo class using default parameters,
-Px_Mpc_1 = arinyo.Px_Mpc(z=zs[0], kpar_iMpc = kpar, rperp_Mpc = rperp, parameters={})
-# or inputting just some of the parameters and allowing the others to be default values
-Px_Mpc_2 = arinyo.Px_Mpc(zs[0], kpar, rperp, parameters={"bias": arinyo.default_params["bias"]})
-# or inputting all parameters
-Px_Mpc_3 = arinyo.Px_Mpc(zs[0], kpar, rperp, arinyo.default_params)
-# we have used all the same parameters for all three methods, so they should be equal
-print("All three methods should be equal:", np.allclose(Px_Mpc_1, Px_Mpc_2, atol=1e-15) and np.allclose(Px_Mpc_2, Px_Mpc_3, atol=1e-15))
+Px_Mpc_1 = arinyo.Px_Mpc(z=zs[0], kpar_iMpc = kpar, rperp_Mpc = rperp, parameters=arinyo.default_params)
 
 # we could have also done it outside of the class with the function Px_Mpc:
-Px_Mpc_4 = Px_Mpc(
+Px_Mpc_2 = Px_Mpc(
     zs[0], kpar, rperp, arinyo.P3D_Mpc, P3D_mode="pol", P3D_params=arinyo.default_params
 )
-print("Detailed method is equal to previous methods:", np.allclose(Px_Mpc_3, Px_Mpc_4, atol=1e-15))
+print("Detailed method is equal to previous method:", np.allclose(Px_Mpc_1, Px_Mpc_2, atol=1e-15))
+# -
 
 # # Calculate $P_\times$ for a series of $k_\parallel$.
 #
@@ -134,6 +131,8 @@ print("Detailed method is equal to previous methods:", np.allclose(Px_Mpc_3, Px_
 # the same kpar and rperp for both redshifts. It is also possible to input a list of different kpar and rperp
 # for each redshift, e.g. [kpar1, kpar2] and [rperp1, rperp2].
 kpars_Px = np.logspace(-3, np.log10(20), 100)
+# add a 0 to kpars_Px to make sure that kpar=0 works fine
+kpars_Px = np.append(0, kpars_Px)
 Px_per_theta_perz = Px_Mpc(
     zs,
     kpars_Px,
@@ -202,10 +201,15 @@ plt.suptitle(r"$P_\times$ vs P1D, default settings")
 
 # # Now let us look at $P_\times$ in a different way, as a function of $k_\parallel$ for different $r_\perp$ values
 
+# +
 # series of rperp we're interested in
 rperp = (
     np.array([0, 0.2, 0.972, 2.204, 3.444, 5.941]) / cosmo.h
 )  
+# the following will give a warning because we are inputting the same Arinyo parameter values for each redshift.
+# If you want to input different values for the different redshifts, these should be input in format:
+# {'bias': [b1,b2], 'beta': [beta1,beta2], ...} for each redshift.
+
 Px_sel = Px_Mpc(
     zs,
     kpars_Px,
@@ -264,6 +268,57 @@ ax[1].set_xlabel(r"$k_{\parallel}$ [$h$ Mpc$^{-1}$]")
 
 # -
 
+# Do the same in linear plot
+
+# +
+
+# check that the first one has no fractional difference
+fig, ax = plt.subplots(
+    nrows=2,
+    ncols=1,
+    figsize=[8, 5],
+    gridspec_kw={"height_ratios": [3, 1]},
+    sharex=True,
+)
+delta = 0
+ax[0].plot(kpars_Px, p1d_comparison[0], label="arinyo model 1D, z=0", color="k")
+ax[0].plot(kpars_Px, p1d_comparison[1], label="arinyo model 1D, z=1", color="grey")
+ax[0].plot(
+    kpars_Px,
+    Px_sel[0][0],
+    linestyle="dashed",
+    color="yellow",
+    label=f"first Px, z={zs[0]}"
+)
+ax[0].plot(
+    kpars_Px,
+    Px_sel[1][0],
+    linestyle="dotted",
+    color="green",
+    label=f"first Px, z={zs[1]}"
+)
+
+
+pctdiff_z0 = (Px_sel[0][0] - p1d_comparison[0]) / p1d_comparison[0] * 100
+pctdiff_z1 = (Px_sel[1][0] - p1d_comparison[1]) / p1d_comparison[1] * 100
+if np.allclose(pctdiff_z0, 0, atol=1e-15):
+    print("First Px matches P1D at z=0")
+if np.allclose(pctdiff_z1, 0, atol=1e-15):
+    print("First Px matches P1D at z=1")
+ax[1].plot(kpars_Px, pctdiff_z0, color="yellow")
+ax[1].plot(kpars_Px, pctdiff_z1, color="green", linestyle="--")
+
+ax[0].legend()
+ax[1].set_xlim([-0.05, 5])
+ax[1].set_ylim([-.005, .005])
+ax[0].set_ylim([10**-7, 1.1])
+# ax[0].set_yscale("log")
+# ax[0].set_xscale("log")
+ax[0].set_ylabel(r"$P_\times$ [Mpc/$h$]")
+ax[1].set_xlabel(r"$k_{\parallel}$ [$h$ Mpc$^{-1}$]")
+
+# -
+
 # These match perfectly as they should, since our first rperp is very close to 0, where the code transitions to using the P1D result.
 
 # Now, let's try to reproduce the plot from Abdul-Karim et al 2023
@@ -306,14 +361,6 @@ for iz, z in enumerate(zs):
 rperp = np.logspace(-4,3, 1000)
 
 # +
-rperp.ndim
-
-
-# -
-
-
-
-# +
 # change the value of nkerp to a very high value to get a 'perfect' integration via Hankel transform:
 
 Px_Mpc_full = Px_Mpc_detailed(
@@ -332,7 +379,7 @@ Px_Mpc_full = Px_Mpc_detailed(
 )
 
 # compare with a lower value of nkperp to see the difference:
-Px_Mpc_alt = Px_Mpc_detailed(
+Px_Mpc_lownkperp = Px_Mpc_detailed(
     zs[0],
     kpars_Px,
     rperp,
@@ -343,8 +390,6 @@ Px_Mpc_alt = Px_Mpc_detailed(
     nkperp=2**14,
     P3D_params =arinyo.default_params,
 )
-
-
 
 # +
 # check accuracy with respect to fiducial
@@ -369,14 +414,14 @@ for ik, Px in enumerate(Px_Mpc_full.T[kpars_to_plot]):
         c=cmap(ik / len(kpars_to_plot)),
     )
     ax[0].plot(
-        rperp, Px_Mpc_alt.T[kpars_to_plot[ik]], c="k", linestyle="dotted"
+        rperp, Px_Mpc_lownkperp.T[kpars_to_plot[ik]], c="k", linestyle="dotted"
     )
     pctdiff = (
-        (Px_Mpc_alt.T[kpars_to_plot[ik]] - Px)
+        (Px_Mpc_lownkperp.T[kpars_to_plot[ik]] - Px)
         / Px
         * 100
     )
-    absdiff = Px_Mpc_alt.T[kpars_to_plot[ik]] - Px
+    absdiff = Px_Mpc_lownkperp.T[kpars_to_plot[ik]] - Px
     ax[1].plot(rperp, pctdiff, c=cmap(ik / len(kpars_to_plot)))
     ax[2].plot(rperp, absdiff, c=cmap(ik / len(kpars_to_plot)))
     # add a tolerance
@@ -389,8 +434,18 @@ for ik, Px in enumerate(Px_Mpc_full.T[kpars_to_plot]):
             np.amax(rperp[rperp < 80][pctdiff[rperp < 80] > 0.1]),
             "tolerance exceeded.",
         )
+# import mline
+import matplotlib.lines as mlines
+black_dotted = mlines.Line2D([], [], color="k", linestyle="dotted")
+solid_line = mlines.Line2D([], [], color="k", linestyle="solid")
+# add to existing legend
+handles, labels = ax[0].get_legend_handles_labels()
+handles.append(black_dotted)
+handles.append(solid_line)
+labels.append(r"$N_\mathrm{kperp}=2^{14}$")
+labels.append(r"$N_\mathrm{kperp}=2^{16}$")
+ax[0].legend(handles, labels)
 
-ax[0].legend()
 ax[1].set_xlabel(r"$r_\perp$ [Mpc]")
 ax[0].set_ylabel(r"$P_\times$ [Mpc]")
 ax[1].set_ylabel("% diff")
@@ -419,7 +474,7 @@ for ik, Px in enumerate(Px_Mpc_full.T[kpars_to_plot][:3]):
         c=cmap(ik / len(kpars_to_plot)),
     )
     plt.plot(
-        rperp, Px_Mpc_alt.T[kpars_to_plot[ik]], c="k", linestyle="dotted"
+        rperp, Px_Mpc_lownkperp.T[kpars_to_plot[ik]], c="k", linestyle="dotted"
     )
 plt.xlim([5, 10])
 plt.ylim([0.125, 0.23])
@@ -434,7 +489,7 @@ for ik, Px in enumerate(Px_Mpc_full.T[kpars_to_plot][3:7]):
     )
     plt.plot(
         rperp,
-        Px_Mpc_alt.T[kpars_to_plot[ik + 3]],
+        Px_Mpc_lownkperp.T[kpars_to_plot[ik + 3]],
         c="k",
         linestyle="dotted",
     )
@@ -451,7 +506,7 @@ for ik, Px in enumerate(Px_Mpc_full.T[kpars_to_plot][7:9]):
     )
     plt.plot(
         rperp,
-        Px_Mpc_alt.T[kpars_to_plot[ik + 7]],
+        Px_Mpc_lownkperp.T[kpars_to_plot[ik + 7]],
         c="k",
         linestyle="dotted",
     )
@@ -459,5 +514,3 @@ plt.xlim([5, 10])
 plt.ylim([10**-13, 0.01])
 plt.legend()
 plt.yscale("log")
-
-
