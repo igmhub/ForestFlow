@@ -42,18 +42,11 @@ from matplotlib import rcParams
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
-
 # %%
-def ls_level(folder, nlevels):
-    for ii in range(nlevels):
-        folder = os.path.dirname(folder)
-    folder += "/"
-    return folder
+import forestflow
 
-
-path_program = ls_level(os.getcwd(), 2)
-print(path_program)
-sys.path.append(path_program)
+# path of the repo
+path_repo = os.path.dirname(forestflow.__path__[0])
 
 # %% [markdown]
 # ### DESI predictions
@@ -173,11 +166,13 @@ pip = Pipeline(args, out_folder=args.out_folder)
 
 # %%
 # local
-base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
+base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1"
+folder = os.path.join(base, "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/")
 # nersc
-# base = "/pscratch/sd/j/jjchaves/data/out_DESI_DR1/"
-folder = base + "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/"
-chain = np.array(np.load(folder + "chain.npy"))
+# base = "/global/cfs/cdirs/desi/users/jjchaves/p1d"
+
+fname = os.path.join(folder, "chain.npy")
+chain = np.array(np.load(fname))
 chain = chain.reshape(-1, 53)
 chain.shape
 
@@ -310,11 +305,11 @@ for ii in range(ind.shape[0]):
 
 # %%
 # %%time
-folder_lya_data = path_program + "/data/best_arinyo/"
-folder_interp = path_program + "/data/plin_interp/"
+folder_lya_data = path_repo + "/data/best_arinyo/"
+folder_interp = path_repo + "/data/plin_interp/"
 
 Archive3D = GadgetArchive3D(
-    base_folder=path_program[:-1],
+    base_folder=path_repo,
     folder_data=folder_lya_data,
     force_recompute_plin=False,
     average="both",
@@ -327,7 +322,7 @@ print(len(Archive3D.training_data))
 
 # %%
 training_type = "Arinyo_min"
-model_path=path_program+"/data/emulator_models/mpg_hypercube.pt"
+model_path=path_repo + "/data/emulator_models/mpg_hypercube.pt"
 
 emulator = P3DEmulator(
     Archive3D.training_data,
@@ -395,7 +390,7 @@ out_ari['bias'] = -out_ari['bias']
 # #### Store output for future use
 
 # %%
-save = False
+save = True
 if save:
     dict_out_all = {}
     dict_out_all["emu_params"] = pars_chain
