@@ -393,6 +393,7 @@ class P3DEmulator:
         out_dict,
         return_all_realizations=False,
         Nrealizations=None,
+        seed=0,
     ):
         # if natural_params:
         # linP_zs = fit_linP.get_linP_Mpc_zs(sim_cosmo, [z], kp_Mpc)[0]
@@ -420,6 +421,7 @@ class P3DEmulator:
             emu_params,
             return_all_realizations=return_all_realizations,
             Nrealizations=Nrealizations,
+            seed=seed,
         )
 
         if return_all_realizations:
@@ -622,6 +624,7 @@ class P3DEmulator:
         Nrealizations=None,
         return_all_realizations=False,
         verbose=True,
+        seed=0,
     ):
         """
         Predict the power spectrum using the emulator for a given simulation label and redshift.
@@ -660,6 +663,7 @@ class P3DEmulator:
             out_dict,
             return_all_realizations=return_all_realizations,
             Nrealizations=Nrealizations,
+            seed=seed,
         )
 
         # Check if we can exit now
@@ -860,123 +864,123 @@ class P3DEmulator:
         if self.save_path != None:
             torch.save(self.emulator.state_dict(), self.save_path)
 
-    def predict_Arinyos_old(
-        self,
-        emu_params,
-        plot=False,
-        true_coeffs=None,
-        Nrealizations=None,
-        return_all_realizations=False,
-    ):
-        """
-        Predict Arinyo coefficients using the trained emulator.
+    # def predict_Arinyos_old(
+    #     self,
+    #     emu_params,
+    #     plot=False,
+    #     true_coeffs=None,
+    #     Nrealizations=None,
+    #     return_all_realizations=False,
+    # ):
+    #     """
+    #     Predict Arinyo coefficients using the trained emulator.
 
-        Args:
-            input_emu (list): List of cosmo+astro input parameters.
-            plot (bool): Whether to generate a corner plot. Default is False.
-            true_coeffs (list): True Arinyo coefficients for plotting comparison. Default is None.
-            return_all_realizations (bool): Whether to return all realizations or just the mean. Default is False.
+    #     Args:
+    #         input_emu (list): List of cosmo+astro input parameters.
+    #         plot (bool): Whether to generate a corner plot. Default is False.
+    #         true_coeffs (list): True Arinyo coefficients for plotting comparison. Default is None.
+    #         return_all_realizations (bool): Whether to return all realizations or just the mean. Default is False.
 
-        Returns:
-            Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]: Arinyo coefficient predictions. If return_all_realizations is True, returns a tuple with all realizations and the mean.
-        """
+    #     Returns:
+    #         Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]: Arinyo coefficient predictions. If return_all_realizations is True, returns a tuple with all realizations and the mean.
+    #     """
 
-        if Nrealizations is None:
-            Nrealizations = self.Nrealizations
+    #     if Nrealizations is None:
+    #         Nrealizations = self.Nrealizations
 
-        self.emulator = self.emulator.eval()
+    #     self.emulator = self.emulator.eval()
 
-        # Extract and sort emulator parameters from the test data
-        input_emu = self._get_test_condition(emu_params)
+    #     # Extract and sort emulator parameters from the test data
+    #     input_emu = self._get_test_condition(emu_params)
 
-        # Normalize the input data
-        test_data = np.array(input_emu)
-        test_data = (test_data - self.param_lims_max) / (
-            self.param_lims_max - self.param_lims_min
-        )
-        test_data = torch.Tensor(test_data)
+    #     # Normalize the input data
+    #     test_data = np.array(input_emu)
+    #     test_data = (test_data - self.param_lims_max) / (
+    #         self.param_lims_max - self.param_lims_min
+    #     )
+    #     test_data = torch.Tensor(test_data)
 
-        # Number of iterations for batch processing
-        Niter = int(Nrealizations / self.batch_size)
+    #     # Number of iterations for batch processing
+    #     Niter = int(Nrealizations / self.batch_size)
 
-        # Initialize array for Arinyo predictions
-        Arinyo_preds = np.zeros(
-            shape=(Niter, self.batch_size, self.dim_inputSpace)
-        )
+    #     # Initialize array for Arinyo predictions
+    #     Arinyo_preds = np.zeros(
+    #         shape=(Niter, self.batch_size, self.dim_inputSpace)
+    #     )
 
-        condition = torch.tile(test_data, (self.batch_size, 1))
+    #     condition = torch.tile(test_data, (self.batch_size, 1))
 
-        # Generate predictions
-        with torch.no_grad():
-            for ii in range(Niter):
-                z_test = torch.randn(self.batch_size, self.dim_inputSpace)
-                Arinyo_pred, _ = self.emulator(z_test, condition, rev=True)
+    #     # Generate predictions
+    #     with torch.no_grad():
+    #         for ii in range(Niter):
+    #             z_test = torch.randn(self.batch_size, self.dim_inputSpace)
+    #             Arinyo_pred, _ = self.emulator(z_test, condition, rev=True)
 
-                # Transform the predictions back to original space
-                Arinyo_pred[:, 2] = torch.log(Arinyo_pred[:, 2])
-                Arinyo_pred[:, 4] = torch.log(Arinyo_pred[:, 4])
-                Arinyo_pred[:, 6] = torch.exp(Arinyo_pred[:, 6])
-                if "q2" in self.Arinyo_params:
-                    Arinyo_pred[:, 7] = torch.log(Arinyo_pred[:, 7])
+    #             # Transform the predictions back to original space
+    #             Arinyo_pred[:, 2] = torch.log(Arinyo_pred[:, 2])
+    #             Arinyo_pred[:, 4] = torch.log(Arinyo_pred[:, 4])
+    #             Arinyo_pred[:, 6] = torch.exp(Arinyo_pred[:, 6])
+    #             if "q2" in self.Arinyo_params:
+    #                 Arinyo_pred[:, 7] = torch.log(Arinyo_pred[:, 7])
 
-                Arinyo_preds[ii, :] = Arinyo_pred.detach().cpu().numpy()
-                # Explicitly delete variables and call garbage collection
-                del z_test, Arinyo_pred
-                gc.collect()
+    #             Arinyo_preds[ii, :] = Arinyo_pred.detach().cpu().numpy()
+    #             # Explicitly delete variables and call garbage collection
+    #             del z_test, Arinyo_pred
+    #             gc.collect()
 
-            Arinyo_preds = Arinyo_preds.reshape(
-                Niter * int(self.batch_size), self.dim_inputSpace
-            )
+    #         Arinyo_preds = Arinyo_preds.reshape(
+    #             Niter * int(self.batch_size), self.dim_inputSpace
+    #         )
 
-        # Generate corner plot if plot is True
-        if plot == True:
-            if true_coeffs is None:
-                corner_plot = corner.corner(
-                    Arinyo_preds,
-                    labels=[
-                        r"$b$",
-                        r"$\beta$",
-                        "$q_1$",
-                        "$k_{vav}$",
-                        "$a_v$",
-                        "$b_v$",
-                        "$k_p$",
-                        "$q_2$",
-                    ],
-                    truth_color="crimson",
-                )
-            else:
-                corner_plot = corner.corner(
-                    Arinyo_preds,
-                    labels=[
-                        r"$b$",
-                        r"$\beta$",
-                        "$q_1$",
-                        "$k_{vav}$",
-                        "$a_v$",
-                        "$b_v$",
-                        "$k_p$",
-                        "$q_2$",
-                    ],
-                    truths=true_coeffs,
-                    truth_color="crimson",
-                )
+    #     # Generate corner plot if plot is True
+    #     if plot == True:
+    #         if true_coeffs is None:
+    #             corner_plot = corner.corner(
+    #                 Arinyo_preds,
+    #                 labels=[
+    #                     r"$b$",
+    #                     r"$\beta$",
+    #                     "$q_1$",
+    #                     "$k_{vav}$",
+    #                     "$a_v$",
+    #                     "$b_v$",
+    #                     "$k_p$",
+    #                     "$q_2$",
+    #                 ],
+    #                 truth_color="crimson",
+    #             )
+    #         else:
+    #             corner_plot = corner.corner(
+    #                 Arinyo_preds,
+    #                 labels=[
+    #                     r"$b$",
+    #                     r"$\beta$",
+    #                     "$q_1$",
+    #                     "$k_{vav}$",
+    #                     "$a_v$",
+    #                     "$b_v$",
+    #                     "$k_p$",
+    #                     "$q_2$",
+    #                 ],
+    #                 truths=true_coeffs,
+    #                 truth_color="crimson",
+    #             )
 
-            # Increase the label font size for this plot
-            for ax in corner_plot.get_axes():
-                ax.xaxis.label.set_fontsize(16)
-                ax.yaxis.label.set_fontsize(16)
-                ax.xaxis.set_tick_params(labelsize=12)
-                ax.yaxis.set_tick_params(labelsize=12)
-            plt.show()
+    #         # Increase the label font size for this plot
+    #         for ax in corner_plot.get_axes():
+    #             ax.xaxis.label.set_fontsize(16)
+    #             ax.yaxis.label.set_fontsize(16)
+    #             ax.xaxis.set_tick_params(labelsize=12)
+    #             ax.yaxis.set_tick_params(labelsize=12)
+    #         plt.show()
 
-        # Calculate the mean of the predictions
-        Arinyo_mean = np.median(Arinyo_preds, 0)
+    #     # Calculate the mean of the predictions
+    #     Arinyo_mean = np.median(Arinyo_preds, 0)
 
-        if return_all_realizations == True:
-            return Arinyo_preds, Arinyo_mean
-        else:
-            return Arinyo_mean
+    #     if return_all_realizations == True:
+    #         return Arinyo_preds, Arinyo_mean
+    #     else:
+    #         return Arinyo_mean
 
     def predict_Arinyos(
         self,
@@ -985,6 +989,7 @@ class P3DEmulator:
         true_coeffs=None,
         Nrealizations=None,
         return_all_realizations=False,
+        seed=0,
     ):
         """
         Predict Arinyo coefficients using the trained emulator.
@@ -1002,7 +1007,9 @@ class P3DEmulator:
         if Nrealizations is None:
             Nrealizations = self.Nrealizations
 
-        self.emulator = self.emulator.eval()
+        g = torch.Generator().manual_seed(seed)
+
+        # self.emulator = self.emulator.eval()
 
         # Extract and sort emulator parameters from the test data
         input_emu = self._get_test_condition(emu_params)[0]
@@ -1023,7 +1030,10 @@ class P3DEmulator:
 
         # Generate predictions
         with torch.no_grad():
-            z_test = torch.randn(Nrealizations, self.dim_inputSpace)
+            z_test = torch.randn(
+                Nrealizations, self.dim_inputSpace, generator=g
+            )
+            # print(z_test)
             Arinyo_preds, _ = self.emulator(z_test, condition, rev=True)
 
             # Transform the predictions back to original space
