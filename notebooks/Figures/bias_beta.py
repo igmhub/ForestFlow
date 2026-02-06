@@ -166,7 +166,6 @@ pip = Pipeline(args, out_folder=args.out_folder)
 
 # %%
 # local
-<<<<<<< HEAD
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1"
 folder = os.path.join(base, "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/")
 # nersc
@@ -174,13 +173,6 @@ folder = os.path.join(base, "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/")
 
 fname = os.path.join(folder, "chain.npy")
 chain = np.array(np.load(fname))
-=======
-base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
-# nersc
-# base = "/pscratch/sd/j/jjchaves/data/out_DESI_DR1/"
-folder = base + "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/"
-chain = np.array(np.load(folder + "chain.npy"))
->>>>>>> 732e4ca (updating notebook)
 chain = chain.reshape(-1, 53)
 chain.shape
 
@@ -398,11 +390,7 @@ out_ari['bias'] = -out_ari['bias']
 # #### Store output for future use
 
 # %%
-<<<<<<< HEAD
 save = True
-=======
-save = False
->>>>>>> 732e4ca (updating notebook)
 if save:
     dict_out_all = {}
     dict_out_all["emu_params"] = pars_chain

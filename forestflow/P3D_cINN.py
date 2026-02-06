@@ -18,7 +18,6 @@ from forestflow.archive import GadgetArchive3D, get_camb_interp
 from forestflow.likelihood import Likelihood
 from forestflow.utils import (
     get_covariance,
-    sort_dict,
     params_numpy2dict,
     transform_arinyo_params,
 )
@@ -77,18 +76,11 @@ class P3DEmulator:
         batch_size (int): Size of batches during training. Default is 100.
         lr (float): Learning rate for the optimizer. Default is 1e-3.
         weight_decay (float): L2 regularization term for the optimizer. Default is 1e-4.
-        gamma (float): Learning rate decay factor. Default is 0.1.
-        amsgrad (bool): Whether to use AMSGrad variant of Adam optimizer. Default is False.
         step_size (int): Step size for learning rate scheduler. Default is 75.
         adamw (bool): Whether to use the AdamW optimizer. Default is False.
-        Nsim (int): Number of simulations to use for training. Default is 30.
         train (bool): Whether to train the emulator. Default is True.
-        drop_sim (float): Simulation to drop during training. Default is None.
-        drop_z (float): Drop all snapshots at redshift z from training. Default is None.
-        pick_z (float): Pick only snapshots at redshift z. Default is None.
         save_path (str): Path to save the trained model. Default is None.
         model_path (str): Path to a pretrained model. Default is None.
-        drop_rescalings (bool): Whether to drop the optical-depth rescalings. Default is False.
         Archive: Archive3D object
         chain_samp (int): Chain sampling size. Default is 100000.
         Nrealizations (int): Number of realizations. Default is 100.
@@ -96,54 +88,25 @@ class P3DEmulator:
 
     def __init__(
         self,
-        training_data,
-        paramList,
-        kmax_Mpc=4,
-        nLayers_inn=8,
-        nepochs=100,
-        batch_size=100,
-        lr=1e-3,
-        weight_decay=1e-4,
-        gamma=0.1,
-        amsgrad=False,
-        step_size=75,
-        adamw=False,
-        Nsim=30,
-        train=True,
-        drop_sim=None,
-        drop_z=None,
-        pick_z=None,
+        training_data=None,
+        emu_input_names=None,
+        train=False,
         save_path=None,
         model_path=None,
-        drop_rescalings=False,
-        Archive=None,
+        kmax_Mpc=4,
+        nLayers_inn=12,
+        nepochs=300,
+        batch_size=100,
+        lr=0.001,
+        weight_decay=0,
+        step_size=200,
+        adamw=True,
         use_chains=False,
-        chain_samp=100_000,
-        Nrealizations=100000,
-        training_type="Arinyo_min_q1",
+        Nrealizations=10000,
+        training_type="Arinyo_min",
     ):
         # Initialize class attributes with provided arguments
-        self.training_data = training_data
-        self.emuparams = paramList
-        self.kmax_Mpc = kmax_Mpc
-        self.nepochs = nepochs
-        self.step_size = step_size
-        self.drop_sim = drop_sim
-        self.drop_z = drop_z
-        self.pick_z = pick_z
-        self.adamw = adamw
-        self.drop_rescalings = drop_rescalings
-        self.nLayers_inn = nLayers_inn
-        self.train = train
         self.Nrealizations = Nrealizations
-        self.use_chains = use_chains
-        self.training_type = training_type
-
-        self.batch_size = batch_size
-        self.lr = lr
-        self.weight_decay = weight_decay
-        self.archive = Archive
-        self.chain_samp = chain_samp
 
         self.Arinyo_params = [
             "bias",
@@ -156,7 +119,7 @@ class P3DEmulator:
         ]
         if training_type == "Arinyo_min":
             self.Arinyo_params.append("q2")
-        self.dim_inputSpace = len(self.Arinyo_params)
+        dim_inputSpace = len(self.Arinyo_params)
 
         self.cosmo_fields = [
             "H0",
@@ -169,161 +132,76 @@ class P3DEmulator:
             "nrun",
             "w",
         ]
-        self.folder_interp = (
-            os.path.dirname(forestflow.__path__[0]) + "/data/plin_interp/"
-        )
-        self.model_path = model_path
-        self.save_path = save_path
 
-        # Set random seeds for reproducibility
-        torch.manual_seed(32)
-        np.random.seed(32)
-        random.seed(32)
+        if train:
+            self._train_emu(
+                training_data,
+                emu_input_names,
+                adamw=adamw,
+                lr=lr,
+                nepochs=nepochs,
+                step_size=step_size,
+                use_chains=use_chains,
+                train_seed=32,
+                weight_decay=weight_decay,
+                nLayers_inn=nLayers_inn,
+                batch_size=batch_size,
+                dim_inputSpace=dim_inputSpace,
+                training_type=training_type,
+                save_path=save_path,
+                kmax_Mpc=kmax_Mpc,
+            )
+        elif model_path is not None:
+            self._load_emu(model_path=model_path)
+        else:
+            raise ValueError("Either train or model_path must be provided.")
 
-        # Extract k_Mpc and mu from the training data
-        k_Mpc = self.archive.training_data[0]["k3d_Mpc"]
-        mu = self.archive.training_data[0]["mu3d"]
-
-        # Create a mask for k values within the specified kmax_Mpc range
-        k_mask = (k_Mpc < self.kmax_Mpc) & (k_Mpc > 0)
-
-        self.k_mask = k_mask
-
-        self.k_Mpc_masked = k_Mpc[self.k_mask]
-        self.mu_masked = mu[self.k_mask]
-
-        self.pk_fid = self.archive.pk_fid
-        self.pk_fid_p1d = self.archive.pk_fid_p1d
-
-        self._train_Arinyo()
-
-    def _get_training_data(self):
+    def _get_training_data(self, training_data, emu_input_names, training_type):
         """
         Retrieve and preprocess training data for the emulator.
 
-        This function obtains the training data from the provided archive based on self.emuparams.
-        It sorts the training data according to self.emuparams and scales the data based on self.paramLims.
-        The scaled training data is returned as a torch.Tensor object.
+        This function obtains the training data from the provided archive
 
         Returns:
             torch.Tensor: Preprocessed training data.
         """
         # Extract relevant parameters from the training data
-        training_data = [
-            {
-                key: value
-                for key, value in self.training_data[i].items()
-                if key in self.emuparams
-            }
-            for i in range(len(self.training_data))
-        ]
-
-        # Sort the training data based on self.emuparams
-        training_data = sort_dict(training_data, self.emuparams)
-
-        # Convert the sorted training data to a list of lists
-        training_data = [
-            list(training_data[i].values())
-            for i in range(len(self.training_data))
-        ]
-
-        # Convert the training data to a numpy array
-        training_data = np.array(training_data)
+        input_emu = np.zeros((len(training_data), len(emu_input_names)))
+        output_emu = np.zeros((len(training_data), len(self.Arinyo_params)))
+        for ii in range(len(training_data)):
+            for jj, par in enumerate(emu_input_names):
+                input_emu[ii, jj] = training_data[ii][par]
+            for jj, par in enumerate(self.Arinyo_params):
+                output_emu[ii, jj] = training_data[ii][training_type][par]
 
         # Calculate and store the maximum and minimum values for parameter scaling
-        self.param_lims_max = training_data.max(0)
-        self.param_lims_min = training_data.min(0)
+        self.input_param_lims_max = input_emu.max(axis=0)
+        self.input_param_lims_min = input_emu.min(axis=0)
+
+        self.output_param_lims_max = output_emu.max(axis=0)
+        self.output_param_lims_min = output_emu.min(axis=0)
 
         # Scale the training data based on the parameter limits
-        training_data = (training_data - self.param_lims_max) / (
-            self.param_lims_max - self.param_lims_min
+        input_emu = (input_emu - self.input_param_lims_min) / (
+            self.input_param_lims_max - self.input_param_lims_min
+        )
+
+        output_emu[:, 2] = np.exp(output_emu[:, 2])
+        output_emu[:, 4] = np.exp(output_emu[:, 4])
+        output_emu[:, 6] = np.log(output_emu[:, 6])
+        if "q2" in self.Arinyo_params:
+            output_emu[:, 7] = np.exp(output_emu[:, 7])
+
+        # some special transformations applied to the output data
+        output_emu = (output_emu - self.output_param_lims_min) / (
+            self.output_param_lims_max - self.output_param_lims_min
         )
 
         # Convert the scaled training data to a torch.Tensor object
-        training_data = torch.Tensor(training_data)
+        input_emu = torch.Tensor(input_emu)
+        output_emu = torch.Tensor(output_emu)
 
-        return training_data
-
-    def _get_test_condition(self, emu_params):
-        """
-        Extract and sort test condition from given emu_params.
-
-        This function takes a list of dictionaries or dictionary (emu_params) containing emulator parameters
-        and extracts the relevant parameters specified by self.archive.emu_params. It then sorts
-        the extracted parameters based on the emulator parameters and returns them as a numpy array.
-
-        Args:
-            test_data (list): List of dictionaries containing emulator parameters for test data.
-
-        Returns:
-            np.array: Test conditions sorted based on emulator parameters.
-        """
-        # Extract emulator parameters from the test data
-        condition = [
-            {
-                key: value
-                for key, value in emu_params.items()
-                if key in self.archive.emu_params
-            }
-            for i in range(len(emu_params))
-        ]
-
-        # Sort the conditions based on emulator parameters
-        condition = sort_dict(condition, self.archive.emu_params)
-
-        # Convert the sorted conditions to a list of values
-        condition = [list(condition[i].values()) for i in range(len(condition))]
-
-        # Convert the list of conditions to a numpy array
-        condition = np.array(condition)
-
-        return condition
-
-    def _get_Arinyo_params(self):
-        """
-        Extract and preprocess Arinyo parameters from the training data.
-
-        This function retrieves Arinyo parameters from the training data and applies necessary transformations.
-        It sorts the parameters and returns them as a torch.Tensor object.
-
-        Returns:
-            torch.Tensor: Preprocessed Arinyo parameters.
-        """
-        # Extract relevant Arinyo parameters from the training data
-        training_label = [
-            {
-                key: value
-                for key, value in self.training_data[i][
-                    self.training_type
-                ].items()
-                if key in self.Arinyo_params
-            }
-            for i in range(len(self.training_data))
-        ]
-
-        # Sort the Arinyo parameters based on self.Arinyo_params
-        training_label = sort_dict(training_label, self.Arinyo_params)
-
-        # Convert the sorted Arinyo parameters to a list of lists
-        training_label = [
-            list(training_label[i].values())
-            for i in range(len(self.training_data))
-        ]
-
-        # Convert the Arinyo parameters to a numpy array
-        training_label = np.array(training_label)
-
-        # Apply specific transformations to certain parameters
-        training_label[:, 2] = np.exp(training_label[:, 2])
-        training_label[:, 4] = np.exp(training_label[:, 4])
-        training_label[:, 6] = np.log(training_label[:, 6])
-        if "q2" in self.Arinyo_params:
-            training_label[:, 7] = np.exp(training_label[:, 7])
-
-        # Convert the preprocessed Arinyo parameters to a torch.Tensor object
-        training_label = torch.Tensor(training_label)
-
-        return training_label
+        return input_emu, output_emu
 
     def _get_Plin(self):
         """
@@ -345,7 +223,7 @@ class P3DEmulator:
     def _check_emu_params(self, emu_params, info_power, kp_Mpc=0.7):
         # check if all emulator parameters are provided
         compute_linP = False
-        for param in self.emuparams:
+        for param in self.emu_input_names:
             # check cosmo params
             if param in ["Delta2_p", "n_p"]:
                 if param not in emu_params.keys():
@@ -395,27 +273,6 @@ class P3DEmulator:
         Nrealizations=None,
         seed=0,
     ):
-        # if natural_params:
-        # linP_zs = fit_linP.get_linP_Mpc_zs(sim_cosmo, [z], kp_Mpc)[0]
-        #     orig_params = {}
-        #     orig_params["Delta2_p"] = linP_zs["Delta2_p"]
-        #     orig_params["n_p"] = linP_zs["n_p"]
-        #     # include these in the emu_params for completeness
-        #     emu_params["alpha_p"] = linP_zs["alpha_p"]
-        #     if natural_params:
-        #         emu_params["f_p"] = linP_zs["f_p"]
-        #     arinyo_pred = transform_arinyo_params(
-        #         arinyo_pred, emu_params["f_p"]
-        #     )
-        #     coeff_dict_natural = []
-        #     coeffs_all_natural = np.zeros_like(coeffs_all)
-        #     for ii in range(coeffs_all.shape[0]):
-        #         _par = transform_arinyo_params(
-        #             params_numpy2dict(coeffs_all[ii]), emu_params["f_p"]
-        #         )
-        #         coeff_dict_natural.append(_par)
-        #         coeffs_all_natural[ii] = np.array(list(_par.values()))
-
         # Predict Arinyo coefficients for the given test conditions
         _ = self.predict_Arinyos(
             emu_params,
@@ -424,33 +281,26 @@ class P3DEmulator:
             seed=seed,
         )
 
+        out_dict["coeffs_Arinyo"] = {}
         if return_all_realizations:
             coeffs_all, coeffs_mean = _
-
-            coeff_dict = []
-            for ii in range(coeffs_all.shape[0]):
-                _par = params_numpy2dict(coeffs_all[ii])
-                if self.training_type == "Arinyo_minz":
-                    _par["q2"] = _par["q1"]
-                coeff_dict.append(_par)
-            out_dict["coeffs_Arinyo_all"] = coeff_dict
-
-            arinyo_pred_std = {}
-            std_coeffs = np.std(coeffs_all, axis=0)
-            for ii, key in enumerate(_par.keys()):
-                if (self.training_type == "Arinyo_minz") and (key == "q2"):
-                    arinyo_pred_std["q2"] = arinyo_pred_std["q1"]
-                else:
-                    arinyo_pred_std[key] = std_coeffs[ii]
-            out_dict["coeffs_Arinyo_std"] = arinyo_pred_std
+            out_dict["coeffs_all_Arinyo"] = {}
         else:
             coeffs_mean = _
 
-        # Store Arinyo parameters in the output dictionary
-        arinyo_pred = params_numpy2dict(coeffs_mean)
-        if self.training_type == "Arinyo_minz":
-            arinyo_pred["q2"] = arinyo_pred["q1"]
-        out_dict["coeffs_Arinyo"] = arinyo_pred
+        for jj, par in enumerate(self.Arinyo_params):
+            out_dict["coeffs_Arinyo"][par] = coeffs_mean[jj]
+            if return_all_realizations:
+                out_dict["coeffs_all_Arinyo"][par] = coeffs_all[:, jj]
+            # old training method
+            if (self.training_type == "Arinyo_minz") and (par == "q1"):
+                out_dict["coeffs_Arinyo"]["q2"] = out_dict["coeffs_Arinyo"][
+                    "q1"
+                ]
+                if return_all_realizations:
+                    out_dict["coeffs_all_Arinyo"]["q2"] = out_dict[
+                        "coeffs_all_Arinyo"
+                    ]["q1"]
 
         return out_dict
 
@@ -531,7 +381,7 @@ class P3DEmulator:
 
         return out_dict
 
-    def _get_p3d_cov(self, info_power, out_dict, model_Arinyo, Nrealizations):
+    def _get_p3d_cov(self, info_power, out_dict, model_Arinyo):
         try:
             k_Mpc = info_power["k3d_Mpc"]
             mu = info_power["mu"]
@@ -558,13 +408,17 @@ class P3DEmulator:
         else:
             raise ValueError("k and mu must be 1D or 2D arrays.")
 
-        p3ds_pred = np.zeros(shape=(Nrealizations, len(k_Mpc)))
-        for r in range(len(out_dict["coeffs_Arinyo_all"])):
+        Nrea = out_dict["coeffs_all_Arinyo"]["q1"].shape[0]
+        p3ds_pred = np.zeros((Nrea, len(k_Mpc)))
+        for r in range(Nrea):
+            input_pars = {}
+            for par in self.Arinyo_params:
+                input_pars[par] = out_dict["coeffs_all_Arinyo"][par][r]
             if "kmu_modes" in info_power:
                 _ = p3d_allkmu(
                     model_Arinyo,
                     info_power["z"],
-                    out_dict["coeffs_Arinyo_all"][r],
+                    input_pars,
                     info_power["kmu_modes"],
                     nk=nd1,
                     nmu=nd2,
@@ -573,7 +427,7 @@ class P3DEmulator:
                 p3ds_pred[r] = _.reshape(-1)
             else:
                 p3ds_pred[r] = model_Arinyo.P3D_Mpc(
-                    info_power["z"], k_Mpc, mu, coeff_dict[r]
+                    info_power["z"], k_Mpc, mu, input_pars
                 )
 
         p3d_cov = get_covariance(p3ds_pred, out_dict["p3d"])
@@ -605,11 +459,15 @@ class P3DEmulator:
             msg = "info_power must contain 'k1d_Mpc'."
             raise ValueError(msg)
 
-        p1ds_pred = np.zeros(shape=(Nrealizations, len(k1d_Mpc)))
+        Nrea = out_dict["coeffs_all_Arinyo"]["q1"].shape[0]
+        p1ds_pred = np.zeros((Nrea, len(k1d_Mpc)))
 
-        for r in range(len(out_dict["coeffs_Arinyo_all"])):
+        for r in range(Nrea):
+            input_pars = {}
+            for par in self.Arinyo_params:
+                input_pars[par] = out_dict["coeffs_all_Arinyo"][par][r]
             p1ds_pred[r] = model_Arinyo.P1D_Mpc(
-                info_power["z"], k1d_Mpc, parameters=coeff_dict[r]
+                info_power["z"], k1d_Mpc, parameters=input_pars
             )
 
         p1d_cov = get_covariance(p1ds_pred, out_dict["p1d"])
@@ -625,6 +483,8 @@ class P3DEmulator:
         return_all_realizations=False,
         verbose=True,
         seed=0,
+        kp_Mpc=0.7,
+        return_bias_eta=False,
     ):
         """
         Predict the power spectrum using the emulator for a given simulation label and redshift.
@@ -636,7 +496,7 @@ class P3DEmulator:
             z (float): Redshift to evaluate the model
             emu_params (dict): Dictionary containing emulator parameters
             info_power (dict, optional): Dictionary containing information for computing power spectrum
-            natural_params (bool, optional): Whether to return bias_delta and bias_eta instead of bias and beta. Default is False.
+            return_bias_eta (bool, optional): Return bias_delta. Default is False.
             Nrealizations (int, optional): Number of realizations to generate.
 
         Returns:
@@ -654,7 +514,6 @@ class P3DEmulator:
         out_dict = {}
 
         # Check if all emulator parameters are provided
-        orig_emu_params = emu_params.copy()
         emu_params = self._check_emu_params(emu_params, info_power)
 
         # Get Arinyo coefficients
@@ -665,14 +524,6 @@ class P3DEmulator:
             Nrealizations=Nrealizations,
             seed=seed,
         )
-
-        # Check if we can exit now
-        if info_power is None:
-            return out_dict
-        elif ("return_p3d" not in info_power) & (
-            "return_p1d" not in info_power
-        ):
-            return out_dict
 
         # Redshift
         if "z" not in info_power:
@@ -697,19 +548,29 @@ class P3DEmulator:
                 data_cosmo = np.load(fname, allow_pickle=True).item()
                 cosmo = data_cosmo[info_power["sim_label"]]["cosmo_params"]
 
+        if return_bias_eta:
+            linP_zs = fit_linP.get_linP_Mpc_zs(
+                camb_cosmo.get_cosmology(**cosmo), [info_power["z"]], kp_Mpc
+            )[0]
+            out_dict["coeffs_Arinyo"]["bias_eta"] = (
+                out_dict["coeffs_Arinyo"]["bias"]
+                * out_dict["coeffs_Arinyo"]["beta"]
+                / linP_zs["f_p"]
+            )
+            out_dict["coeffs_Arinyo"]["f_p"] = linP_zs["f_p"]
+
         # Check if enough cosmology parameters are provided
         for key in self.cosmo_fields:
             if key not in cosmo.keys():
                 raise ValueError("cosmo must contain:", self.cosmo_fields)
 
         # rescale cosmology to Delta2_p and n_p in orig_params if present
-        if ("Delta2_p" in orig_emu_params.keys()) | (
-            "n_p" in orig_emu_params.keys()
-        ):
-            cosmo = self._rescale_cosmo(orig_emu_params, cosmo, info_power["z"])
+        if ("Delta2_p" in emu_params.keys()) | ("n_p" in emu_params.keys()):
+            cosmo = self._rescale_cosmo(emu_params, cosmo, info_power["z"])
 
-        pk_interp = get_camb_interp("a", {"cosmo_params": cosmo})
-        model_Arinyo = ArinyoModel(camb_pk_interp=pk_interp)
+        if ("return_p3d" in info_power) | ("return_p1d" in info_power):
+            pk_interp = get_camb_interp("a", {"cosmo_params": cosmo})
+            model_Arinyo = ArinyoModel(camb_pk_interp=pk_interp)
 
         if "return_p3d" in info_power:
             out_dict = self._get_p3d(info_power, out_dict, model_Arinyo)
@@ -727,7 +588,7 @@ class P3DEmulator:
 
         return out_dict
 
-    def _define_cINN_Arinyo(self):
+    def _define_cINN_Arinyo(self, nLayers_inn, batch_size, dim_inputSpace):
         """
         Define a conditional invertible neural network (cINN) for Arinyo model.
 
@@ -752,6 +613,10 @@ class P3DEmulator:
                 nn.Linear(128, dims_out),
             )
 
+        self.nLayers_inn = nLayers_inn
+        self.batch_size = batch_size
+        self.dim_inputSpace = dim_inputSpace
+
         # Initialize the cINN model
         emulator = Ff.SequenceINN(self.dim_inputSpace)
 
@@ -766,7 +631,52 @@ class P3DEmulator:
 
         return emulator
 
-    def _train_Arinyo(self):
+    def _load_emu(self, model_path):
+        """
+        Load a pre-trained Arinyo model emulator.
+        """
+
+        # load metadata
+        metadata = np.load(
+            model_path + "_metadata.npy", allow_pickle=True
+        ).item()
+
+        self.training_type = metadata["training_type"]
+        self.input_param_lims_min = metadata["input_param_lims_min"]
+        self.input_param_lims_max = metadata["input_param_lims_max"]
+        self.output_param_lims_min = metadata["output_param_lims_min"]
+        self.output_param_lims_max = metadata["output_param_lims_max"]
+        self.emu_input_names = metadata["emu_input_names"]
+
+        self.emulator = self._define_cINN_Arinyo(
+            metadata["nLayers_inn"],
+            metadata["batch_size"],
+            metadata["dim_inputSpace"],
+        )
+
+        # Load a pre-trained model if model_path is provided
+        warn("Loading a pre-trained emulator")
+        self.emulator.load_state_dict(torch.load(model_path + ".pt"))
+
+    def _train_emu(
+        self,
+        training_data,
+        emu_input_names,
+        adamw=True,
+        lr=1e-3,
+        nepochs=300,
+        step_size=200,
+        use_chains=False,
+        chain_samp=100_000,
+        weight_decay=0,
+        dim_inputSpace=8,
+        nLayers_inn=12,
+        batch_size=100,
+        training_type="Arinyo_min",
+        save_path=None,
+        kmax_Mpc=4.0,
+        train_seed=32,
+    ):
         """
         Train the Arinyo model emulator using conditional invertible neural network (cINN).
 
@@ -776,54 +686,90 @@ class P3DEmulator:
         Returns:
             None
         """
-        # Get the training data and define the cINN model
-        training_data = self._get_training_data()
-        self.emulator = self._define_cINN_Arinyo()
 
-        # Load a pre-trained model if model_path is provided
-        if self.model_path != None:
-            warn("Loading a pre-trained emulator")
-            self.emulator.load_state_dict(torch.load(self.model_path))
-            return
+        random.seed(train_seed)
+        np.random.seed(train_seed)
+        torch.manual_seed(train_seed)
+        torch.cuda.manual_seed_all(train_seed)
+
+        # Get the training data and define the cINN model
+        emu_input, emu_output = self._get_training_data(
+            training_data, emu_input_names, training_type
+        )
+        self.emulator = self._define_cINN_Arinyo(
+            nLayers_inn, batch_size, dim_inputSpace
+        )
+
+        # Extract k_Mpc and mu from the training data
+        k_Mpc = training_data[0]["k3d_Mpc"]
+        mu = training_data[0]["mu3d"]
+        # Create a mask for k values within the specified kmax_Mpc range
+        k_mask = (k_Mpc < kmax_Mpc) & (k_Mpc > 0)
+
+        # store metadata
+        metadata = {
+            "nLayers_inn": nLayers_inn,
+            "batch_size": batch_size,
+            "dim_inputSpace": dim_inputSpace,
+            "input_param_lims_min": self.input_param_lims_min,
+            "input_param_lims_max": self.input_param_lims_max,
+            "output_param_lims_min": self.output_param_lims_min,
+            "output_param_lims_max": self.output_param_lims_max,
+            "training_type": training_type,
+            "kmax_Mpc": kmax_Mpc,
+            "lr": lr,
+            "nepochs": nepochs,
+            "step_size": step_size,
+            "use_chains": use_chains,
+            "chain_samp": chain_samp,
+            "weight_decay": weight_decay,
+            "adamw": adamw,
+            "emu_input_names": emu_input_names,
+            "k_Mpc": k_Mpc,
+            "mu": mu,
+            "k_mask": k_mask,
+            "k_Mpc_masked": k_Mpc[k_mask],
+            "mu_masked": mu[k_mask],
+            "train_seed": train_seed,
+        }
+        if save_path is not None:
+            np.save(save_path + "_metadata.npy", metadata)
 
         # Initialize the cINN model with Xavier initialization
         self.emulator.apply(init_xavier)
 
-        # Get Arinyo coefficients for training
-        Arinyo_coeffs = self._get_Arinyo_params()
-
         # Create a PyTorch dataset and loader for training
-        trainig_dataset = TensorDataset(training_data, Arinyo_coeffs)
+        trainig_dataset = TensorDataset(emu_input, emu_output)
         loader = DataLoader(
             trainig_dataset,
-            batch_size=self.batch_size,
+            batch_size=batch_size,
             shuffle=True,
             drop_last=True,
         )
 
         # Choose the optimizer (Adam or AdamW)
-        if self.adamw:
+        if adamw:
             optimizer = torch.optim.AdamW(
                 self.emulator.parameters(),
-                lr=self.lr,
-                weight_decay=self.weight_decay,
+                lr=lr,
+                weight_decay=weight_decay,
             )
         else:
             optimizer = optim.Adam(
                 self.emulator.parameters(),
-                lr=self.lr,
-                weight_decay=self.weight_decay,
+                lr=lr,
+                weight_decay=weight_decay,
             )
 
         # Learning rate scheduler
         scheduler = torch.optim.lr_scheduler.StepLR(
-            optimizer, step_size=self.step_size
+            optimizer, step_size=step_size
         )
 
         # Training loop
         self.loss_arr = []
         t0 = time.time()
-        for i in range(self.nepochs):
+        for i in range(nepochs):
             _loss_arr = []
             _latent_space = []
 
@@ -831,9 +777,9 @@ class P3DEmulator:
                 optimizer.zero_grad()
 
                 # Sample from the chains if use_chains is True
-                if self.use_chains == True:
+                if use_chains:
                     idx = np.random.choice(
-                        self.chain_samp, size=2_000, replace=False
+                        chain_samp, size=2_000, replace=False
                     )
                     coeffs = coeffs[:, idx, :].mean(axis=1)
 
@@ -855,138 +801,18 @@ class P3DEmulator:
             self.loss_arr.append(np.mean(_loss_arr))
 
             # Store latent space for the last epoch
-            if i == (self.nepochs - 1):
+            if i == (nepochs - 1):
                 self._latent_space = _latent_space
 
         print(f"Emulator optimized in {time.time() - t0} seconds")
 
         # Save the model if save_path is provided
-        if self.save_path != None:
-            torch.save(self.emulator.state_dict(), self.save_path)
-
-    # def predict_Arinyos_old(
-    #     self,
-    #     emu_params,
-    #     plot=False,
-    #     true_coeffs=None,
-    #     Nrealizations=None,
-    #     return_all_realizations=False,
-    # ):
-    #     """
-    #     Predict Arinyo coefficients using the trained emulator.
-
-    #     Args:
-    #         input_emu (list): List of cosmo+astro input parameters.
-    #         plot (bool): Whether to generate a corner plot. Default is False.
-    #         true_coeffs (list): True Arinyo coefficients for plotting comparison. Default is None.
-    #         return_all_realizations (bool): Whether to return all realizations or just the mean. Default is False.
-
-    #     Returns:
-    #         Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]: Arinyo coefficient predictions. If return_all_realizations is True, returns a tuple with all realizations and the mean.
-    #     """
-
-    #     if Nrealizations is None:
-    #         Nrealizations = self.Nrealizations
-
-    #     self.emulator = self.emulator.eval()
-
-    #     # Extract and sort emulator parameters from the test data
-    #     input_emu = self._get_test_condition(emu_params)
-
-    #     # Normalize the input data
-    #     test_data = np.array(input_emu)
-    #     test_data = (test_data - self.param_lims_max) / (
-    #         self.param_lims_max - self.param_lims_min
-    #     )
-    #     test_data = torch.Tensor(test_data)
-
-    #     # Number of iterations for batch processing
-    #     Niter = int(Nrealizations / self.batch_size)
-
-    #     # Initialize array for Arinyo predictions
-    #     Arinyo_preds = np.zeros(
-    #         shape=(Niter, self.batch_size, self.dim_inputSpace)
-    #     )
-
-    #     condition = torch.tile(test_data, (self.batch_size, 1))
-
-    #     # Generate predictions
-    #     with torch.no_grad():
-    #         for ii in range(Niter):
-    #             z_test = torch.randn(self.batch_size, self.dim_inputSpace)
-    #             Arinyo_pred, _ = self.emulator(z_test, condition, rev=True)
-
-    #             # Transform the predictions back to original space
-    #             Arinyo_pred[:, 2] = torch.log(Arinyo_pred[:, 2])
-    #             Arinyo_pred[:, 4] = torch.log(Arinyo_pred[:, 4])
-    #             Arinyo_pred[:, 6] = torch.exp(Arinyo_pred[:, 6])
-    #             if "q2" in self.Arinyo_params:
-    #                 Arinyo_pred[:, 7] = torch.log(Arinyo_pred[:, 7])
-
-    #             Arinyo_preds[ii, :] = Arinyo_pred.detach().cpu().numpy()
-    #             # Explicitly delete variables and call garbage collection
-    #             del z_test, Arinyo_pred
-    #             gc.collect()
-
-    #         Arinyo_preds = Arinyo_preds.reshape(
-    #             Niter * int(self.batch_size), self.dim_inputSpace
-    #         )
-
-    #     # Generate corner plot if plot is True
-    #     if plot == True:
-    #         if true_coeffs is None:
-    #             corner_plot = corner.corner(
-    #                 Arinyo_preds,
-    #                 labels=[
-    #                     r"$b$",
-    #                     r"$\beta$",
-    #                     "$q_1$",
-    #                     "$k_{vav}$",
-    #                     "$a_v$",
-    #                     "$b_v$",
-    #                     "$k_p$",
-    #                     "$q_2$",
-    #                 ],
-    #                 truth_color="crimson",
-    #             )
-    #         else:
-    #             corner_plot = corner.corner(
-    #                 Arinyo_preds,
-    #                 labels=[
-    #                     r"$b$",
-    #                     r"$\beta$",
-    #                     "$q_1$",
-    #                     "$k_{vav}$",
-    #                     "$a_v$",
-    #                     "$b_v$",
-    #                     "$k_p$",
-    #                     "$q_2$",
-    #                 ],
-    #                 truths=true_coeffs,
-    #                 truth_color="crimson",
-    #             )
-
-    #         # Increase the label font size for this plot
-    #         for ax in corner_plot.get_axes():
-    #             ax.xaxis.label.set_fontsize(16)
-    #             ax.yaxis.label.set_fontsize(16)
-    #             ax.xaxis.set_tick_params(labelsize=12)
-    #             ax.yaxis.set_tick_params(labelsize=12)
-    #         plt.show()
-
-    #     # Calculate the mean of the predictions
-    #     Arinyo_mean = np.median(Arinyo_preds, 0)
-
-    #     if return_all_realizations == True:
-    #         return Arinyo_preds, Arinyo_mean
-    #     else:
-    #         return Arinyo_mean
+        if save_path is not None:
+            torch.save(self.emulator.state_dict(), save_path + ".pt")
 
     def predict_Arinyos(
         self,
         emu_params,
-        plot=False,
-        true_coeffs=None,
         Nrealizations=None,
         return_all_realizations=False,
         seed=0,
@@ -995,112 +821,83 @@ class P3DEmulator:
         Predict Arinyo coefficients using the trained emulator.
 
         Args:
-            input_emu (list): List of cosmo+astro input parameters.
-            plot (bool): Whether to generate a corner plot. Default is False.
-            true_coeffs (list): True Arinyo coefficients for plotting comparison. Default is None.
-            return_all_realizations (bool): Whether to return all realizations or just the mean. Default is False.
+            emu_params (list of dict): List of dictionaries containing the
+                cosmo + IGM input parameters.
+            Nrealizations (int): Number of realizations to generate. Default is None.
+
+            return_all_realizations (bool): Whether to return all realizations
+                or just the mean. Default is False.
 
         Returns:
-            Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]: Arinyo coefficient predictions. If return_all_realizations is True, returns a tuple with all realizations and the mean.
+            Dictionary with mean Arinyo coefficient predictions.
+            If return_all_realizations is True, returns a tuple with all realizations and the mean.
         """
 
+        if isinstance(emu_params, dict):
+            emu_params = [emu_params]
+
+        # Use default number of realizations set when loading the emulator
+        # if not specified
         if Nrealizations is None:
             Nrealizations = self.Nrealizations
 
+        # Set the seed
         g = torch.Generator().manual_seed(seed)
 
-        # self.emulator = self.emulator.eval()
+        # Number of combinations of input parameters
+        neval = len(emu_params)
+        ninpt_pars = len(emu_params[0])
 
-        # Extract and sort emulator parameters from the test data
-        input_emu = self._get_test_condition(emu_params)[0]
-
-        # Normalize the input data
-        test_data = np.array(input_emu)
-        test_data = (test_data - self.param_lims_max) / (
-            self.param_lims_max - self.param_lims_min
-        )
-        condition = np.zeros((Nrealizations, test_data.shape[0]))
-        for ii in range(test_data.shape[0]):
-            condition[:, ii] = test_data[ii]
+        condition = np.zeros((neval * Nrealizations, ninpt_pars))
+        for jj in range(neval):
+            # Input to emulator
+            input_emu = []
+            for par in self.emu_input_names:
+                input_emu.append(emu_params[jj][par])
+            input_emu = np.array(input_emu)
+            # normalize the input data and arrange it along the first axis
+            condition[jj * Nrealizations : (jj + 1) * Nrealizations, :] = (
+                input_emu - self.input_param_lims_min
+            ) / (self.input_param_lims_max - self.input_param_lims_min)
         condition = torch.Tensor(condition)
 
+        # cINN stuff
+        aran = np.arange(neval * Nrealizations)
         self.emulator.conditions = []
         for ii in range(self.nLayers_inn):
-            self.emulator.conditions.append(np.arange(Nrealizations))
+            self.emulator.conditions.append(aran)
 
         # Generate predictions
         with torch.no_grad():
             z_test = torch.randn(
-                Nrealizations, self.dim_inputSpace, generator=g
+                neval * Nrealizations, self.dim_inputSpace, generator=g
             )
-            # print(z_test)
             Arinyo_preds, _ = self.emulator(z_test, condition, rev=True)
 
             # Transform the predictions back to original space
+            Arinyo_preds = (
+                Arinyo_preds
+                * (self.output_param_lims_max - self.output_param_lims_min)
+                + self.output_param_lims_min
+            )
             Arinyo_preds[:, 2] = torch.log(Arinyo_preds[:, 2])
             Arinyo_preds[:, 4] = torch.log(Arinyo_preds[:, 4])
             Arinyo_preds[:, 6] = torch.exp(Arinyo_preds[:, 6])
             if "q2" in self.Arinyo_params:
                 Arinyo_preds[:, 7] = torch.log(Arinyo_preds[:, 7])
 
-            Arinyo_preds = Arinyo_preds.detach().cpu().numpy()
+        all_realizations = np.array(
+            Arinyo_preds.reshape(neval, Nrealizations, self.dim_inputSpace)
+        )
 
-        # Generate corner plot if plot is True
-        if plot == True:
-            if true_coeffs is None:
-                corner_plot = corner.corner(
-                    Arinyo_preds,
-                    labels=[
-                        r"$b$",
-                        r"$\beta$",
-                        "$q_1$",
-                        "$k_{vav}$",
-                        "$a_v$",
-                        "$b_v$",
-                        "$k_p$",
-                        "$q_2$",
-                    ],
-                    truth_color="crimson",
-                )
-            else:
-                corner_plot = corner.corner(
-                    Arinyo_preds,
-                    labels=[
-                        r"$b$",
-                        r"$\beta$",
-                        "$q_1$",
-                        "$k_{vav}$",
-                        "$a_v$",
-                        "$b_v$",
-                        "$k_p$",
-                        "$q_2$",
-                    ],
-                    truths=true_coeffs,
-                    truth_color="crimson",
-                )
+        # Calculate the median of the predictions
+        Arinyo_mean = np.mean(all_realizations, axis=1)
 
-            # Increase the label font size for this plot
-            for ax in corner_plot.get_axes():
-                ax.xaxis.label.set_fontsize(16)
-                ax.yaxis.label.set_fontsize(16)
-                ax.xaxis.set_tick_params(labelsize=12)
-                ax.yaxis.set_tick_params(labelsize=12)
-            plt.show()
-
-        # Calculate the mean of the predictions
-        Arinyo_mean = np.median(Arinyo_preds, axis=0)
+        if Arinyo_mean.shape[0] == 1:
+            Arinyo_mean = Arinyo_mean[0]
+            all_realizations = all_realizations[0]
 
         if return_all_realizations == True:
-            return Arinyo_preds, Arinyo_mean
+            return all_realizations, Arinyo_mean
         else:
             return Arinyo_mean
-
-    def get_p1d_sim(self, dict_sim):
-        like = Likelihood(
-            dict_sim[0], self.archive.rel_err_p3d, self.archive.rel_err_p1d
-        )
-        k1d_mask = like.like.ind_fit1d.copy()
-        p1d_sim = like.like.data["p1d"][k1d_mask]
-        p1d_k = dict_sim[0]["k_Mpc"][k1d_mask]
-
-        return p1d_sim, p1d_k
