@@ -17,8 +17,9 @@
 # # ForestFlow tutorial
 #
 # In this tutorial we explain how to:
-# - Access best-fitting P3D model parameters to simulation measurements
-# - Use ForestFlow
+# - Train an emulator
+# - Evaluate the emulator to get Arinyo params, P3D, and P1D
+# - Accuracy tests as a function of the number of realizations
 
 # %%
 # %load_ext autoreload
@@ -45,7 +46,7 @@ path_program
 # %% [markdown]
 # ## Load P3D archive and train emulator 
 #
-# There is a trained version already stored, jump to load emulator if do not want to wait
+# There is a trained version already stored, jump to load emulator below if do not want to wait
 
 # %%
 # %%time
@@ -70,7 +71,7 @@ p3d_emu = P3DEmulator(
     nepochs=1001,
     step_size=500,
     Nrealizations=5000,
-    save_path=path_program+"/data/emulator_models/new_emu.pt",
+    save_path=path_program+"/data/emulator_models/new_emu",
 )
 
 # %%
@@ -79,11 +80,13 @@ plt.plot(-arr_loss)
 plt.ylim(30, 41)
 
 # %% [markdown]
-# ### Load emulator
+# ## Load emulator
+#
+# Here to directly load the emulator
 
 # %%
 p3d_emu = P3DEmulator(
-    model_path=path_program+"/data/emulator_models/new_emu.pt",
+    model_path=path_program+"/data/emulator_models/new_emu",
 )
 
 # %% [markdown]
