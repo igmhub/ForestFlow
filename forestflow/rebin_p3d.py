@@ -146,6 +146,7 @@ def p3d_allkmu(
         plin = np.zeros((nk, nmu))
 
     for ii in range(nk):
+        # print("ii = ", ii, " / ", nk)
         for jj in range(nmu):
             flag = str(ii) + "_" + str(jj)
             if flag + "_k" in kmu_modes:

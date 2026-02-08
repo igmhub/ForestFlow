@@ -186,11 +186,11 @@ class P3DEmulator:
             self.input_param_lims_max - self.input_param_lims_min
         )
 
-        output_emu[:, 2] = np.exp(output_emu[:, 2])
-        output_emu[:, 4] = np.exp(output_emu[:, 4])
-        output_emu[:, 6] = np.log(output_emu[:, 6])
-        if "q2" in self.Arinyo_params:
-            output_emu[:, 7] = np.exp(output_emu[:, 7])
+        # output_emu[:, 2] = np.exp(output_emu[:, 2])
+        # output_emu[:, 4] = np.exp(output_emu[:, 4])
+        # output_emu[:, 6] = np.log(output_emu[:, 6])
+        # if "q2" in self.Arinyo_params:
+        #     output_emu[:, 7] = np.exp(output_emu[:, 7])
 
         # some special transformations applied to the output data
         output_emu = (output_emu - self.output_param_lims_min) / (
@@ -770,6 +770,8 @@ class P3DEmulator:
         self.loss_arr = []
         t0 = time.time()
         for i in range(nepochs):
+            if i % 25 == 0:
+                print(f"Epoch {i}/{nepochs}")
             _loss_arr = []
             _latent_space = []
 
@@ -880,11 +882,12 @@ class P3DEmulator:
                 * (self.output_param_lims_max - self.output_param_lims_min)
                 + self.output_param_lims_min
             )
-            Arinyo_preds[:, 2] = torch.log(Arinyo_preds[:, 2])
-            Arinyo_preds[:, 4] = torch.log(Arinyo_preds[:, 4])
-            Arinyo_preds[:, 6] = torch.exp(Arinyo_preds[:, 6])
-            if "q2" in self.Arinyo_params:
-                Arinyo_preds[:, 7] = torch.log(Arinyo_preds[:, 7])
+
+            # Arinyo_preds[:, 2] = torch.log(Arinyo_preds[:, 2])
+            # Arinyo_preds[:, 4] = torch.log(Arinyo_preds[:, 4])
+            # Arinyo_preds[:, 6] = torch.exp(Arinyo_preds[:, 6])
+            # if "q2" in self.Arinyo_params:
+            #     Arinyo_preds[:, 7] = torch.log(Arinyo_preds[:, 7])
 
         all_realizations = np.array(
             Arinyo_preds.reshape(neval, Nrealizations, self.dim_inputSpace)

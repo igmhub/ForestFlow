@@ -67,9 +67,16 @@ p3d_emu = P3DEmulator(
     emu_input_names=Archive3D.emu_params,
     training_type='Arinyo_min',
     train=True,
-    Nrealizations=50000,
+    nepochs=1001,
+    step_size=500,
+    Nrealizations=5000,
     save_path=path_program+"/data/emulator_models/new_emu.pt",
 )
+
+# %%
+arr_loss = np.array(p3d_emu.loss_arr)
+plt.plot(-arr_loss)
+plt.ylim(30, 41)
 
 # %% [markdown]
 # ### Load emulator

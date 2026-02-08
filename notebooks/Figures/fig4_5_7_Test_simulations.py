@@ -92,26 +92,32 @@ print(len(Archive3D.training_data))
 #     # model_path = path_program+"/data/emulator_models/mpg_q1_q2/mpg_hypercube.pt"
 #     model_path=path_program+"/data/emulator_models/mpg_jointz.pt"
 
-training_type = "Arinyo_min"
-model_path=path_program+"/data/emulator_models/mpg_hypercube.pt"
 
+
+# load_old 
+# training_type = "Arinyo_min"
+# model_path=path_program+"/data/emulator_models/mpg_hypercube.pt"
+
+# emulator = P3DEmulator(
+#     Archive3D.training_data,
+#     Archive3D.emu_params,
+#     nepochs=300,
+#     lr=0.001,  # 0.005
+#     batch_size=20,
+#     step_size=200,
+#     gamma=0.1,
+#     weight_decay=0,
+#     adamw=True,
+#     nLayers_inn=12,  # 15
+#     Archive=Archive3D,
+#     Nrealizations=10000,
+#     training_type=training_type,
+#     model_path=model_path,
+#     # save_path=model_path,
+# )
 
 emulator = P3DEmulator(
-    Archive3D.training_data,
-    Archive3D.emu_params,
-    nepochs=300,
-    lr=0.001,  # 0.005
-    batch_size=20,
-    step_size=200,
-    gamma=0.1,
-    weight_decay=0,
-    adamw=True,
-    nLayers_inn=12,  # 15
-    Archive=Archive3D,
-    Nrealizations=10000,
-    training_type=training_type,
-    model_path=model_path,
-    # save_path=model_path,
+    model_path=path_program+"/data/emulator_models/new_emu.pt",
 )
 
 # %% [markdown]
@@ -149,6 +155,8 @@ p1d_Mpc = sim['p1d_Mpc'][mask_1d]
 # ### Central simulation
 
 # %%
+# %%time
+
 zcen = 3
 
 info_power = {
@@ -159,7 +167,7 @@ info_power = {
     "k1d_Mpc": k1d_Mpc,
     "return_p3d": True,
     "return_p1d": True,
-    "return_cov": True,
+    # "return_cov": True,
     "z": zcen,
 }
 
@@ -170,11 +178,16 @@ test_sim = Archive3D.get_testing_data(
 test_sim_z = [d for d in test_sim if d["z"] == info_power["z"]]
 emu_params = test_sim_z[0]
 
+input_emu = {}
+for par in emulator.emu_input_names:
+    input_emu[par] = emu_params[par]
+
+
 out = emulator.evaluate(
-    emu_params=emu_params,
+    emu_params=input_emu,
     info_power=info_power,
-    natural_params=True,
-    Nrealizations=10
+    # Nrealizations=2
+    Nrealizations=3000
 )
 
 # %% [markdown]
@@ -187,8 +200,8 @@ knew, munew, rebin_p3d_sim, mu_bins = _
 _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["p3d"], kmu_modes, n_mubins=n_mubins)
 knew, munew, rebin_p3d_emu, mu_bins = _
 
-_ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["p3d_std"], kmu_modes, n_mubins=n_mubins)
-knew, munew, rebin_p3d_std_emu, mu_bins = _
+# _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["p3d_std"], kmu_modes, n_mubins=n_mubins)
+# knew, munew, rebin_p3d_std_emu, mu_bins = _
 
 _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["Plin"], kmu_modes, n_mubins=n_mubins)
 knew, munew, rebin_plin, mu_bins = _
@@ -205,7 +218,7 @@ print(y[0]*100, 0.5*(y[2]-y[1])*100, np.std(rat)*100)
 # %%
 norm_p1d = out["k1d_Mpc"]/np.pi
 p1d_emu = norm_p1d * out["p1d"]
-p1d_std_emu = norm_p1d * out["p1d_std"]
+# p1d_std_emu = norm_p1d * out["p1d_std"]
 p1d_sim = norm_p1d * test_sim_z[0]["p1d_Mpc"][mask_1d]
 
 # %%
@@ -215,9 +228,11 @@ y = np.percentile(rat, [50, 16, 84])
 print(y[0]*100, 0.5*(y[2]-y[1])*100, np.std(rat)*100)
 
 # %%
+rebin_p3d_std_emu = rebin_p3d_emu * 0.001
 
 # %%
-folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+# folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures_new/"
 plot_p3d_snap(
     folder, 
     knew, 
@@ -230,6 +245,7 @@ plot_p3d_snap(
 )
 
 # %%
+p1d_std_emu = p1d_emu * 0.001
 plot_p1d_snap(
     folder, 
     out["k1d_Mpc"], 
@@ -338,13 +354,15 @@ for isim, sim_label in enumerate(sim_labels):
             "z": z,
         }
 
-        emu_params = test_sim_z[0]
+        input_pars = {}
+        for par in emulator.emu_input_names:
+            input_pars[par] = test_sim_z[0][par]
         
         out = emulator.evaluate(
-            emu_params=emu_params,
+            emu_params=input_pars,
             info_power=info_power,
-            # natural_params=True,
-            Nrealizations=100
+            return_bias_eta=True,
+            Nrealizations=3000
         )
         
         _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], test_sim_z[0]["p3d_Mpc"][mask_3d], kmu_modes, n_mubins=n_mubins)
@@ -357,23 +375,26 @@ for isim, sim_label in enumerate(sim_labels):
         arr_p1d_sim[isim, iz] = test_sim_z[0]["p1d_Mpc"][mask_1d]
 
         params_sim[isim, iz, 0] = test_sim_z[0]["Arinyo_min"]["bias"]
+        params_sim[isim, iz, 1] = test_sim_z[0]["Arinyo_min"]["bias"] * test_sim_z[0]["Arinyo_min"]["beta"] / out['coeffs_Arinyo']["f_p"]
         params_sim[isim, iz, 2] = test_sim_z[0]["Arinyo_min"]["beta"]
-        _ = new_params = transform_arinyo_params(
-            test_sim_z[0]["Arinyo_min"], 
-            test_sim_z[0]["f_p"]
-        )
-        params_sim[isim, iz, 1] = _["bias_eta"]
+        # _ = new_params = transform_arinyo_params(
+        #     test_sim_z[0]["Arinyo_min"], 
+        #     test_sim_z[0]["f_p"]
+        # )
+        # params_sim[isim, iz, 1] = _["bias_eta"]
 
         params_emu[isim, iz, 0] = out["coeffs_Arinyo"]["bias"]        
+        params_emu[isim, iz, 1] = out["coeffs_Arinyo"]["bias_eta"]
         params_emu[isim, iz, 2] = out["coeffs_Arinyo"]["beta"]        
-        _ = new_params = transform_arinyo_params(
-            out["coeffs_Arinyo"], 
-            test_sim_z[0]["f_p"]
-        )
-        params_emu[isim, iz, 1] = _["bias_eta"]
+        # _ = new_params = transform_arinyo_params(
+        #     out["coeffs_Arinyo"], 
+        #     test_sim_z[0]["f_p"]
+        # )
+        # params_emu[isim, iz, 1] = _["bias_eta"]
 
 # %%
-folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+# folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures_new/"
 np.savez(
     # folder + "temporal_central", 
     folder + "temporal_all", 
@@ -389,9 +410,10 @@ np.savez(
 # #### The following only for the central simulation!!!
 
 # %%
-folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
-fil = np.load(folder + "temporal_central.npz")
-# fil = np.load(folder + "temporal_all.npz")
+# folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures_new/"
+# fil = np.load(folder + "temporal_central.npz")
+fil = np.load(folder + "temporal_all.npz")
 arr_p3d_sim=fil["arr_p3d_sim"]
 arr_p3d_emu=fil["arr_p3d_emu"]
 arr_p1d_sim=fil["arr_p1d_sim"]
@@ -459,9 +481,11 @@ ax[ii].set_ylabel(r"$P_\mathrm{1D}^\mathrm{emu}/P_\mathrm{1D}^\mathrm{sim}-1$", 
 ax[ii].set_xlabel(r"$k_\parallel[\mathrm{Mpc}^{-1}]$", fontsize=ftsize)
 
 
-folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+# folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures_new/"
 plt.tight_layout()
 plt.savefig(folder + "central_z.pdf")
+plt.savefig(folder + "central_z.png")
 
 # %% [markdown]
 # ### Save data for zenodo
@@ -555,7 +579,8 @@ rat_p3d = arr_p3d_emu/arr_p3d_sim - 1
 rat_p1d = arr_p1d_emu/arr_p1d_sim - 1
 
 # %%
-folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+# folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures_new/"
 
 # %%
 savename = folder + "test_cosmo/test_cosmo_P3D"

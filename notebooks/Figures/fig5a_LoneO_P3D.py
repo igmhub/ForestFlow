@@ -81,12 +81,13 @@ print(len(Archive3D.training_data))
 # ### Train L1Os
 
 # %%
-do_training = False
+# %%time
+do_training = True
 
 if do_training:
     model_path = path_program+"/data/emulator_models/"
     training_type = "Arinyo_min"
-    for s in range(1, 30):
+    for s in range(30):
         print(f"Starting simulation {s}")
         print()
     
@@ -94,22 +95,38 @@ if do_training:
             d for d in Archive3D.training_data if d["sim_label"] != f"mpg_{s}"
         ]
     
+        # p3d_emu = P3DEmulator(
+        #     training_data,
+        #     Archive3D.emu_params,
+        #     nepochs=300,
+        #     lr=0.001,  # 0.005
+        #     batch_size=20,
+        #     step_size=200,
+        #     gamma=0.1,
+        #     weight_decay=0,
+        #     adamw=True,
+        #     nLayers_inn=12,  # 15
+        #     Nrealizations=200,
+        #     Archive=Archive3D,
+        #     training_type=training_type,
+        #     save_path=model_path + "mpg_drop"+str(s)+".pt",
+        # )
+
         p3d_emu = P3DEmulator(
-            training_data,
-            Archive3D.emu_params,
-            nepochs=300,
-            lr=0.001,  # 0.005
-            batch_size=20,
-            step_size=200,
-            gamma=0.1,
-            weight_decay=0,
-            adamw=True,
-            nLayers_inn=12,  # 15
-            Nrealizations=200,
-            Archive=Archive3D,
-            training_type=training_type,
-            save_path=model_path + "mpg_drop"+str(s)+".pt",
+            training_data=training_data,
+            emu_input_names=Archive3D.emu_params,
+            training_type='Arinyo_min',
+            train=True,
+            nepochs=1001,
+            step_size=500,
+            Nrealizations=5000,
+            save_path=model_path + "drop/new_drop"+str(s)+".pt",
         )
+
+        arr_loss = np.array(p3d_emu.loss_arr)
+        plt.plot(-arr_loss)
+        plt.ylim(30, 42)
+        print(arr_loss.min())
 
 # %% [markdown]
 # ### Evaluate L1Os
@@ -146,14 +163,17 @@ _ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], sim['p3d_Mpc'][mask_3d], kmu_m
 knew, munew, p3d_measured, mu_bins = _
 
 # %%
-# arr_p3d_sim = np.zeros((Nsim, Nz, np.sum(mask_3d), n_mubins))
-# arr_p3d_emu = np.zeros((Nsim, Nz, np.sum(mask_3d), n_mubins))
-# arr_p1d_sim = np.zeros((Nsim, Nz, np.sum(mask_1d)))
-# arr_p1d_emu = np.zeros((Nsim, Nz, np.sum(mask_1d)))
+# %%time
+
+arr_p3d_sim = np.zeros((Nsim, Nz, np.sum(mask_3d), n_mubins))
+arr_p3d_emu = np.zeros((Nsim, Nz, np.sum(mask_3d), n_mubins))
+arr_p1d_sim = np.zeros((Nsim, Nz, np.sum(mask_1d)))
+arr_p1d_emu = np.zeros((Nsim, Nz, np.sum(mask_1d)))
 params_sim = np.zeros((Nsim, Nz, 3))
 params_emu = np.zeros((Nsim, Nz, 3))
 
 for isim in range(Nsim):
+# for isim in range(24, 25):
     sim_label = f"mpg_{isim}"
     print(f"Starting simulation {isim}")
     print()
@@ -162,21 +182,24 @@ for isim in range(Nsim):
         d for d in Archive3D.training_data if d["sim_label"] != sim_label
     ]
 
+    # p3d_emu = P3DEmulator(
+    #     training_data,
+    #     Archive3D.emu_params,
+    #     nepochs=300,
+    #     lr=0.001,  # 0.005
+    #     batch_size=20,
+    #     step_size=200,
+    #     gamma=0.1,
+    #     weight_decay=0,
+    #     adamw=True,
+    #     nLayers_inn=12,  # 15
+    #     Nrealizations=200,
+    #     Archive=Archive3D,
+    #     training_type=training_type,
+    #     model_path=model_path + "mpg_drop"+str(isim)+".pt",
+    # )
     p3d_emu = P3DEmulator(
-        training_data,
-        Archive3D.emu_params,
-        nepochs=300,
-        lr=0.001,  # 0.005
-        batch_size=20,
-        step_size=200,
-        gamma=0.1,
-        weight_decay=0,
-        adamw=True,
-        nLayers_inn=12,  # 15
-        Nrealizations=200,
-        Archive=Archive3D,
-        training_type=training_type,
-        model_path=model_path + "mpg_drop"+str(isim)+".pt",
+        model_path=model_path + "drop/new_drop"+str(isim)+".pt",
     )
     
     for iz, z in enumerate(zs):
@@ -192,42 +215,51 @@ for isim in range(Nsim):
 
         info_power = {
             "sim_label": sim_label,
-            # "k3d_Mpc": k3d_Mpc[mask_3d, :],
-            # "mu": mu3d[mask_3d, :],
-            # "kmu_modes": kmu_modes,
-            # "k1d_Mpc": k1d_Mpc,
-            # "return_p3d": True,
-            # "return_p1d": True,
+            "k3d_Mpc": k3d_Mpc[mask_3d, :],
+            "mu": mu3d[mask_3d, :],
+            "kmu_modes": kmu_modes,
+            "k1d_Mpc": k1d_Mpc,
+            "return_p3d": True,
+            "return_p1d": True,
             "z": z,
         }
+
+        input_pars = {}
+        for par in p3d_emu.emu_input_names:
+            input_pars[par] = dict_sim[0][par]
         
         out = p3d_emu.evaluate(
-            emu_params=dict_sim[0],
+            emu_params=input_pars,
             info_power=info_power,
-            # natural_params=True,
-            Nrealizations=1000,
-            # Nrealizations=100
+            return_bias_eta=True,
+            Nrealizations=3000,
+            # Nrealizations=100,
         )
         
         # # p1d and p3d from sim
-        # _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], dict_sim[0]["p3d_Mpc"][mask_3d], kmu_modes, n_mubins=n_mubins)
-        # knew, munew, arr_p3d_sim[isim, iz], mu_bins = _
+        _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], dict_sim[0]["p3d_Mpc"][mask_3d], kmu_modes, n_mubins=n_mubins)
+        knew, munew, arr_p3d_sim[isim, iz], mu_bins = _
         
-        # _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["p3d"], kmu_modes, n_mubins=n_mubins)
-        # knew, munew, arr_p3d_emu[isim, iz], mu_bins = _
+        _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["p3d"], kmu_modes, n_mubins=n_mubins)
+        knew, munew, arr_p3d_emu[isim, iz], mu_bins = _
 
-        # arr_p1d_emu[isim, iz] = out["p1d"]
-        # arr_p1d_sim[isim, iz] = dict_sim[0]["p1d_Mpc"][mask_1d]
+        arr_p1d_emu[isim, iz] = out["p1d"]
+        arr_p1d_sim[isim, iz] = dict_sim[0]["p1d_Mpc"][mask_1d]
 
         params_emu[isim, iz, 0] = out['coeffs_Arinyo']["bias"]
+        params_emu[isim, iz, 1] = out['coeffs_Arinyo']["bias_eta"]
         params_emu[isim, iz, 2] = out['coeffs_Arinyo']["beta"]
-        _ = transform_arinyo_params(out['coeffs_Arinyo'], dict_sim[0]["f_p"])
-        params_emu[isim, iz, 1] = _["bias_eta"]
+        # _ = transform_arinyo_params(out['coeffs_Arinyo'], dict_sim[0]["f_p"])
+        # params_emu[isim, iz, 1] = _["bias_eta"]
 
         params_sim[isim, iz, 0] = dict_sim[0][training_type]["bias"]
+        params_sim[isim, iz, 1] = dict_sim[0][training_type]["bias"] * dict_sim[0][training_type]["beta"] / out['coeffs_Arinyo']["f_p"]
         params_sim[isim, iz, 2] = dict_sim[0][training_type]["beta"]
-        _ = transform_arinyo_params(dict_sim[0][training_type], dict_sim[0]["f_p"])
-        params_sim[isim, iz, 1] = _["bias_eta"]
+        # _ = transform_arinyo_params(dict_sim[0][training_type], dict_sim[0]["f_p"])
+        # params_sim[isim, iz, 1] = _["bias_eta"]
+
+    #     break
+    # break
         
     p3d_emu = 0
 
@@ -235,7 +267,8 @@ for isim in range(Nsim):
 # %%
 folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
 np.savez(
-    folder + "temporal_l1O", 
+    # folder + "temporal_l1O", 
+    folder + "temporal_l1O_new", 
     arr_p3d_sim=arr_p3d_sim, 
     arr_p3d_emu=arr_p3d_emu, 
     arr_p1d_sim=arr_p1d_sim, 
@@ -254,9 +287,43 @@ arr_p3d_emu = fil["arr_p3d_emu"]
 arr_p1d_sim = fil["arr_p1d_sim"]
 arr_p1d_emu = fil["arr_p1d_emu"]
 
+# %% [markdown]
+# New
+
 # %%
 for ii in range(2):
     y = np.percentile(params_emu[..., ii] / params_sim[..., ii] - 1, [50, 16, 84])
+    print(y[0]*100)
+    print(0.5*(y[2] - y[1])*100)
+
+# %%
+for ii in range(2):
+    y = np.percentile(params_emu[..., ii] / params_sim[..., ii] - 1, [50, 16, 84])
+    print(y[0]*100)
+    print(0.5*(y[2] - y[1])*100)
+
+# %% [markdown]
+# Old
+
+# %%
+for ii in range(2):
+    y = np.percentile(params_emu[..., ii] / params_sim[..., ii] - 1, [50, 16, 84])
+    print(y[0]*100)
+    print(0.5*(y[2] - y[1])*100)
+
+# %% [markdown]
+# New
+
+# %%
+kaiser_emu = np.zeros((params_emu.shape[0], params_emu.shape[1], 2))
+kaiser_sim = np.zeros((params_emu.shape[0], params_emu.shape[1], 2))
+kaiser_emu[:, :, 0] = params_emu[:, :, 0]**2
+kaiser_emu[:, :, 1] = params_emu[:, :, 0]**2 * (1+params_emu[:, :, 2])**2
+kaiser_sim[:, :, 0] = params_sim[:, :, 0]**2
+kaiser_sim[:, :, 1] = params_sim[:, :, 0]**2 * (1+params_sim[:, :, 2])**2
+
+for ii in range(2):
+    y = np.percentile(kaiser_emu[:, :, ii] / kaiser_sim[:, :, ii] - 1, [50, 16, 84])
     print(y[0]*100)
     print(0.5*(y[2] - y[1])*100)
 
@@ -273,10 +340,56 @@ for ii in range(2):
     print(y[0]*100)
     print(0.5*(y[2] - y[1])*100)
 
+# %% [markdown]
+# Old
+
+# %%
+kaiser_emu = np.zeros((params_emu.shape[0], params_emu.shape[1], 2))
+kaiser_sim = np.zeros((params_emu.shape[0], params_emu.shape[1], 2))
+kaiser_emu[:, :, 0] = params_emu[:, :, 0]**2
+kaiser_emu[:, :, 1] = params_emu[:, :, 0]**2 * (1+params_emu[:, :, 2])**2
+kaiser_sim[:, :, 0] = params_sim[:, :, 0]**2
+kaiser_sim[:, :, 1] = params_sim[:, :, 0]**2 * (1+params_sim[:, :, 2])**2
+
+for ii in range(2):
+    y = np.percentile(kaiser_emu[:, :, ii] / kaiser_sim[:, :, ii] - 1, [50, 16, 84])
+    print(y[0]*100)
+    print(0.5*(y[2] - y[1])*100)
+
+# %% [markdown]
+# New
+
 # %%
 _ = np.isfinite(knew) & (knew > 0.3) & (knew < 5)
 y = np.percentile(arr_p3d_emu[:, :, _]/arr_p3d_sim[:, :, _], [50, 16, 84]) - 1
 print(y[0]*100, 0.5*(y[2]-y[1])*100)
+
+# %%
+_ = np.isfinite(knew) & (knew > 0.3) & (knew < 5)
+arr_p3d_emu[14, 0, _]
+
+# %%
+for ii in range(arr_p3d_emu.shape[0]):
+    print(ii, arr_p3d_emu[ii, :, _].max())
+
+# %% [markdown]
+# Old
+
+# %%
+_ = np.isfinite(knew) & (knew > 0.3) & (knew < 5)
+y = np.percentile(arr_p3d_emu[:, :, _]/arr_p3d_sim[:, :, _], [50, 16, 84]) - 1
+print(y[0]*100, 0.5*(y[2]-y[1])*100)
+
+# %% [markdown]
+# New
+
+# %%
+_ = np.isfinite(k1d_Mpc) & (k1d_Mpc < 4)
+y = np.percentile(arr_p1d_emu[:, :, _]/arr_p1d_sim[:, :, _], [50, 16, 84]) - 1
+print(y[0]*100, 0.5*(y[2]-y[1])*100)
+
+# %% [markdown]
+# Old
 
 # %%
 _ = np.isfinite(k1d_Mpc) & (k1d_Mpc < 4)
