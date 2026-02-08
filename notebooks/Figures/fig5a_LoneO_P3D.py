@@ -279,7 +279,8 @@ np.savez(
 
 # %%
 folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
-fil = np.load(folder + "temporal_l1O.npz")
+# fil = np.load(folder + "temporal_l1O.npz")
+fil = np.load(folder + "temporal_l1O_new.npz")
 params_emu = fil["params_emu"]
 params_sim = fil["params_sim"]
 arr_p3d_sim = fil["arr_p3d_sim"]
@@ -289,12 +290,6 @@ arr_p1d_emu = fil["arr_p1d_emu"]
 
 # %% [markdown]
 # New
-
-# %%
-for ii in range(2):
-    y = np.percentile(params_emu[..., ii] / params_sim[..., ii] - 1, [50, 16, 84])
-    print(y[0]*100)
-    print(0.5*(y[2] - y[1])*100)
 
 # %%
 for ii in range(2):
@@ -313,19 +308,6 @@ for ii in range(2):
 
 # %% [markdown]
 # New
-
-# %%
-kaiser_emu = np.zeros((params_emu.shape[0], params_emu.shape[1], 2))
-kaiser_sim = np.zeros((params_emu.shape[0], params_emu.shape[1], 2))
-kaiser_emu[:, :, 0] = params_emu[:, :, 0]**2
-kaiser_emu[:, :, 1] = params_emu[:, :, 0]**2 * (1+params_emu[:, :, 2])**2
-kaiser_sim[:, :, 0] = params_sim[:, :, 0]**2
-kaiser_sim[:, :, 1] = params_sim[:, :, 0]**2 * (1+params_sim[:, :, 2])**2
-
-for ii in range(2):
-    y = np.percentile(kaiser_emu[:, :, ii] / kaiser_sim[:, :, ii] - 1, [50, 16, 84])
-    print(y[0]*100)
-    print(0.5*(y[2] - y[1])*100)
 
 # %%
 kaiser_emu = np.zeros((params_emu.shape[0], params_emu.shape[1], 2))
@@ -363,14 +345,6 @@ for ii in range(2):
 _ = np.isfinite(knew) & (knew > 0.3) & (knew < 5)
 y = np.percentile(arr_p3d_emu[:, :, _]/arr_p3d_sim[:, :, _], [50, 16, 84]) - 1
 print(y[0]*100, 0.5*(y[2]-y[1])*100)
-
-# %%
-_ = np.isfinite(knew) & (knew > 0.3) & (knew < 5)
-arr_p3d_emu[14, 0, _]
-
-# %%
-for ii in range(arr_p3d_emu.shape[0]):
-    print(ii, arr_p3d_emu[ii, :, _].max())
 
 # %% [markdown]
 # Old
@@ -403,7 +377,7 @@ print(y[0]*100, 0.5*(y[2]-y[1])*100)
 # ## PLOTTING
 
 # %%
-folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures_new/"
 z_use = np.arange(2, 4.5, 0.5)[::-1]
 
 mask_z = np.zeros(len(z_use), dtype=int)
