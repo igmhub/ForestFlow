@@ -6,11 +6,11 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.4
+#       jupytext_version: 1.16.1
 #   kernelspec:
-#     display_name: MyEnvironment
+#     display_name: Python 3 (ipykernel)
 #     language: python
-#     name: lace
+#     name: python3
 # ---
 
 # %% [markdown]
@@ -509,5 +509,24 @@ for ii in range(2):
 plt.tight_layout()
 plt.savefig("bias_beta_BAOvsP1D.png")
 plt.savefig("bias_beta_BAOvsP1D.pdf")
+
+# %% [markdown]
+# ### Get priors
+
+# %%
+fig, ax = plt.subplots(len(out_ari.keys()), 1, sharex=True, figsize=(8, 16))
+
+print("par", "mean", "std", "min", "max")
+
+for ii, par in enumerate(out_ari.keys()):
+    percen = np.percentile(out_ari[par], [16, 84], axis=0)
+    ax[ii].fill_between(zs, percen[0], percen[1])
+    percen = np.percentile(out_ari[par], [5, 95], axis=0)
+    cen = np.mean(out_ari[par][:, :2])
+    std = np.std(out_ari[par][:, :2])
+    print(par)
+    print(np.round(cen, 3), np.round(std, 3), np.round(np.min(percen[0, :2]), 3), np.round(np.max(percen[1, :2]), 3))
+    ax[ii].set_ylabel(par)
+    # print(par, np.mean(out_ari[par])
 
 # %%
