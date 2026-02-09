@@ -6,11 +6,11 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.16.4
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: MyEnvironment
 #     language: python
-#     name: python3
+#     name: lace
 # ---
 
 # %% [markdown]
@@ -29,10 +29,10 @@ from forestflow.model_p3d_arinyo import ArinyoModel
 from forestflow.archive import GadgetArchive3D
 from forestflow.P3D_cINN import P3DEmulator
 from forestflow.plots.test_sims import (
-    plot_p1d_test_sims, 
+    plot_p1d_test_sims,
     plot_p3d_test_sims,
     plot_p1d_snap,
-    plot_p3d_snap
+    plot_p3d_snap,
 )
 from forestflow.utils import params_numpy2dict
 from forestflow.rebin_p3d import p3d_allkmu, get_p3d_modes, p3d_rebin_mu
@@ -41,6 +41,8 @@ from matplotlib import rcParams
 
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
+
+np.__version__
 
 # %%
 import forestflow
@@ -59,34 +61,32 @@ from lace.cosmo import camb_cosmo, fit_linP
 # #### Using other people results, old(KP6 + Walther)
 
 # %%
-# target 
+# target
 # DESI KP6 Table 5
 bias = -0.1078
-err_bias = 0.5*(0.0045+0.0054)
+err_bias = 0.5 * (0.0045 + 0.0054)
 beta = 1.743
-err_beta = 0.5*(0.074 + 0.1)
+err_beta = 0.5 * (0.074 + 0.1)
 
 # input emu
-# DESI KP6 
+# DESI KP6
 z = 2.33
 omnuh2 = 0.0006
 mnu = omnuh2 * 93.14
 cosmo = {
-    'H0': 67.36,
-    'omch2': 0.12,
-    'ombh2': 0.02237,
-    'mnu': mnu,
-    'omk': 0,
-    'As': 2.1e-09,
-    'ns': 0.9649,
-    'nrun': 0.0,
-    'w': -1.0
+    "H0": 67.36,
+    "omch2": 0.12,
+    "ombh2": 0.02237,
+    "mnu": mnu,
+    "omk": 0,
+    "As": 2.1e-09,
+    "ns": 0.9649,
+    "nrun": 0.0,
+    "w": -1.0,
 }
 sim_cosmo = camb_cosmo.get_cosmology_from_dictionary(cosmo)
 # compute linear power parameters at each z (in Mpc units)
-linP_zs = fit_linP.get_linP_Mpc_zs(
-    sim_cosmo, [z], 0.7
-)
+linP_zs = fit_linP.get_linP_Mpc_zs(sim_cosmo, [z], 0.7)
 print(linP_zs[0])
 dkms_dMpc_zs = camb_cosmo.dkms_dMpc(sim_cosmo, z=np.array([z]))
 
@@ -112,19 +112,19 @@ dkms_dMpc_zs = camb_cosmo.dkms_dMpc(sim_cosmo, z=np.array([z]))
 # kF_Mpc = 1/(lambdap/1000)
 
 # Table 4 https://arxiv.org/pdf/1808.04367
-T0 = 0.5*(1.014+1.165)*1e4
+T0 = 0.5 * (1.014 + 1.165) * 1e4
 sigma_T_kms = thermal_broadening_kms(T0)
 sigT_Mpc = sigma_T_kms / dkms_dMpc_zs[0]
-gamma = 0.5*(1.74 + 1.63)
-mF = 0.5*(0.825+0.799)
-lambdap = 0.5*(79.4+81.1) # [kpc]
-kF_Mpc = 1/(lambdap/1000)
+gamma = 0.5 * (1.74 + 1.63)
+mF = 0.5 * (0.825 + 0.799)
+lambdap = 0.5 * (79.4 + 81.1)  # [kpc]
+kF_Mpc = 1 / (lambdap / 1000)
 
 emu_params = {
     "mF": mF,
     "gamma": gamma,
-    "sigT_Mpc":sigT_Mpc,
-    "kF_Mpc":kF_Mpc,
+    "sigT_Mpc": sigT_Mpc,
+    "kF_Mpc": kF_Mpc,
 }
 
 print(emu_params)
@@ -152,10 +152,10 @@ pip = Pipeline()
 
 # %%
 # local
-base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1"
-folder = os.path.join(base, "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/")
+# base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1"
+# folder = os.path.join(base, "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/")
 # nersc
-# folder = "/global/cfs/cdirs/desi/users/jjchaves/p1d"
+folder = "/global/cfs/cdirs/desi/users/jjchaves/p1d"
 
 fname = os.path.join(folder, "chain.npy")
 chain = np.array(np.load(fname))
@@ -191,32 +191,32 @@ pars_chain["kF_Mpc"] = np.zeros((ind.shape[0], zs.shape[0]))
 for ii in range(ind.shape[0]):
     if ii % 10 == 0:
         print(ii)
-# for ii in range(1):
+    # for ii in range(1):
 
-    chain_params = pip.fitter.like.parameters_from_sampling_point(chain[ind[ii], :])
+    chain_params = pip.fitter.like.parameters_from_sampling_point(
+        chain[ind[ii], :]
+    )
 
     # Planck cosmo
-    
+
     cosmo = {
-        'H0': 67.66,
-        'mnu': 0,
-        'omch2': 0.119,
-        'ombh2': 0.0224,
-        'omk': 0,
+        "H0": 67.66,
+        "mnu": 0,
+        "omch2": 0.119,
+        "ombh2": 0.0224,
+        "omk": 0,
         # 'As': 2.105e-09,
-        'As': chain_params[0].value_from_cube(chain[ind[ii],0]),
+        "As": chain_params[0].value_from_cube(chain[ind[ii], 0]),
         # 'ns': 0.9665,
-        'ns': chain_params[1].value_from_cube(chain[ind[ii],1]),
-        'nrun': 0.0,
-        'pivot_scalar':0.05,
-        'w': -1.0
+        "ns": chain_params[1].value_from_cube(chain[ind[ii], 1]),
+        "nrun": 0.0,
+        "pivot_scalar": 0.05,
+        "w": -1.0,
     }
     sim_cosmo = camb_cosmo.get_cosmology_from_dictionary(cosmo)
     # compute linear power parameters at each z (in Mpc units)
     kp_Mpc = 0.7
-    linP_zs = fit_linP.get_linP_Mpc_zs(
-        sim_cosmo, zs, kp_Mpc
-    )
+    linP_zs = fit_linP.get_linP_Mpc_zs(sim_cosmo, zs, kp_Mpc)
     dkms_dMpc_zs = camb_cosmo.dkms_dMpc(sim_cosmo, z=zs)
 
     for jj in range(len(linP_zs)):
@@ -226,26 +226,26 @@ for ii in range(ind.shape[0]):
     pars_chain["mF"][ii] = pip.fitter.like.theory.model_igm.models[
         "F_model"
     ].get_mean_flux(zs, like_params=chain_params)
-    
+
     pars_chain["gamma"][ii] = pip.fitter.like.theory.model_igm.models[
         "T_model"
     ].get_gamma(zs, like_params=chain_params)
-    
-    sigT_kms = pip.fitter.like.theory.model_igm.models[
-        "T_model"
-    ].get_sigT_kms(zs, like_params=chain_params)    
+
+    sigT_kms = pip.fitter.like.theory.model_igm.models["T_model"].get_sigT_kms(
+        zs, like_params=chain_params
+    )
     pars_chain["sigT_Mpc"][ii] = sigT_kms / dkms_dMpc_zs
 
-    kF_kms = pip.fitter.like.theory.model_igm.models[
-        "P_model"
-    ].get_kF_kms(zs, like_params=chain_params)
+    kF_kms = pip.fitter.like.theory.model_igm.models["P_model"].get_kF_kms(
+        zs, like_params=chain_params
+    )
     pars_chain["kF_Mpc"][ii] = kF_kms * dkms_dMpc_zs
 
 # %%
 np.save("inter_chain.npy", pars_chain)
 
 # %%
-pars_chain = np.load("inter_chain.npy")
+pars_chain = np.load("inter_chain.npy", allow_pickle=True).item()
 
 # %% [markdown]
 # load model to evaluate IGM parameters
@@ -339,19 +339,21 @@ emulator = P3DEmulator(
 
 # %%
 pars = pars_chain.keys()
-pars_ari = ['bias', 'beta', 'q1', 'kvav', 'av', 'bv', 'kp', 'q2']
+pars_ari = ["bias", "beta", "q1", "kvav", "av", "bv", "kp", "q2"]
 
 out_ari = {}
 for par in pars_ari:
-    out_ari[par] = np.zeros_like(pars_chain['mF'])
+    out_ari[par] = np.zeros_like(pars_chain["mF"])
 
 # %%
 # %%time
 # chain step
-for ii in range(pars_chain['mF'].shape[0]):
+for ii in range(pars_chain["mF"].shape[0]):
+    if ii % 10 == 0:
+        print(ii)
     list_input_emu = []
     # redshift
-    for jj in range(pars_chain['mF'].shape[1]):
+    for jj in range(pars_chain["mF"].shape[1]):
         input_emu = {}
         for par in pars:
             if par == "z":
@@ -360,17 +362,16 @@ for ii in range(pars_chain['mF'].shape[0]):
         list_input_emu.append(input_emu)
 
     out = emulator.predict_Arinyos(
-        emu_params=list_input_emu,
-        Nrealizations=3000
+        emu_params=list_input_emu, Nrealizations=3000
     )
 
-    for jj in range(pars_chain['mF'].shape[1]):
+    for jj in range(pars_chain["mF"].shape[1]):
         for kk, par in enumerate(pars_ari):
             out_ari[par][ii, jj] = out[jj, kk]
 
 
 # %%
-out_ari['bias'] = -out_ari['bias']
+out_ari["bias"] = -out_ari["bias"]
 
 # %% [markdown]
 # #### Store output for future use
@@ -396,19 +397,19 @@ out_ari = dict_out_all["ari_params"]
 dict_out_all.keys()
 
 # %%
-out_ari['bias'].shape
+out_ari["bias"].shape
 
 # %%
-fig, ax = plt.subplots(2, 1, sharex=True, figsize=(8,10))
+fig, ax = plt.subplots(2, 1, sharex=True, figsize=(8, 10))
 ftsize = 20
 
-# target 
+# target
 # DESI DR1 Table 5
 z = 2.33
 bias = -0.1078
-err_bias = 0.5*(0.0045+0.0054)
+err_bias = 0.5 * (0.0045 + 0.0054)
 beta = 1.743
-err_beta = 0.5*(0.074 + 0.1)
+err_beta = 0.5 * (0.074 + 0.1)
 
 # DESI DR2 (combined)
 z = 2.33
@@ -426,8 +427,8 @@ hi_beta_err = np.array([[0.35, 0.26], [0.14, 0.071], [0.069, 0.047]])
 
 
 # err
-mean = out_ari['bias'].mean(axis=0)
-percen = np.percentile(out_ari['bias'], [16, 84], axis=0)
+mean = out_ari["bias"].mean(axis=0)
+percen = np.percentile(out_ari["bias"], [16, 84], axis=0)
 ax[0].fill_between(zs, percen[0], percen[1], alpha=0.5, label="P1D DR1")
 # low = mean - percen[0]
 # high = percen[1] - mean
@@ -436,8 +437,22 @@ ax[0].fill_between(zs, percen[0], percen[1], alpha=0.5, label="P1D DR1")
 # err[1] = high
 
 # ax[0].errorbar(zs, mean, err, label="DR1 P1D")
-ax[0].errorbar([z,z], np.zeros(2)+bias, np.zeros(2)+err_bias, label="BAO DR1", color="C1", fmt=".") 
-ax[0].errorbar([z,z], np.zeros(2)+bias2, np.zeros(2)+err_bias2, label="BAO DR2", color="C2", fmt=".")
+ax[0].errorbar(
+    [z, z],
+    np.zeros(2) + bias,
+    np.zeros(2) + err_bias,
+    label="BAO DR1",
+    color="C1",
+    fmt=".",
+)
+ax[0].errorbar(
+    [z, z],
+    np.zeros(2) + bias2,
+    np.zeros(2) + err_bias2,
+    label="BAO DR2",
+    color="C2",
+    fmt=".",
+)
 
 col = "C3"
 for jj in range(len(hi_z)):
@@ -445,11 +460,18 @@ for jj in range(len(hi_z)):
         label = "Hiram BAO DR2"
     else:
         label = None
-    ax[0].errorbar([hi_z[jj], hi_z[jj]], np.zeros(2)+hi_bias[jj], hi_bias_err[jj:jj+1, :].T, label=label, color=col, fmt=".")
+    ax[0].errorbar(
+        [hi_z[jj], hi_z[jj]],
+        np.zeros(2) + hi_bias[jj],
+        hi_bias_err[jj : jj + 1, :].T,
+        label=label,
+        color=col,
+        fmt=".",
+    )
 
 # err
-mean = out_ari['beta'].mean(axis=0)
-percen = np.percentile(out_ari['beta'], [16, 84], axis=0)
+mean = out_ari["beta"].mean(axis=0)
+percen = np.percentile(out_ari["beta"], [16, 84], axis=0)
 # low = mean - percen[0]
 # high = percen[1] - mean
 # err = np.zeros((2, mean.shape[0]))
@@ -457,12 +479,23 @@ percen = np.percentile(out_ari['beta'], [16, 84], axis=0)
 # err[1] = high
 
 ax[1].fill_between(zs, percen[0], percen[1], alpha=0.5)
-ax[1].errorbar([z,z], np.zeros(2)+beta, np.zeros(2)+err_beta, fmt=".", color="C1") 
-ax[1].errorbar([z,z], np.zeros(2)+beta2, np.zeros(2)+err_beta2, fmt=".", color="C2") 
+ax[1].errorbar(
+    [z, z], np.zeros(2) + beta, np.zeros(2) + err_beta, fmt=".", color="C1"
+)
+ax[1].errorbar(
+    [z, z], np.zeros(2) + beta2, np.zeros(2) + err_beta2, fmt=".", color="C2"
+)
 
 
 for jj in range(len(hi_z)):
-    ax[1].errorbar([hi_z[jj], hi_z[jj]], np.zeros(2)+hi_beta[jj], hi_beta_err[jj:jj+1, :].T, label=label, color=col, fmt=".")
+    ax[1].errorbar(
+        [hi_z[jj], hi_z[jj]],
+        np.zeros(2) + hi_beta[jj],
+        hi_beta_err[jj : jj + 1, :].T,
+        label=label,
+        color=col,
+        fmt=".",
+    )
 
 ax[0].legend(fontsize=ftsize)
 
@@ -471,12 +504,10 @@ ax[1].set_ylabel(r"$\beta$", fontsize=ftsize)
 ax[1].set_xlabel(r"$z$", fontsize=ftsize)
 
 for ii in range(2):
-    ax[ii].tick_params(
-        axis="both", which="major", labelsize=ftsize
-    )
+    ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
 
 plt.tight_layout()
-# plt.savefig("bias_beta_BAOvsP1D.png")
-# plt.savefig("bias_beta_BAOvsP1D.pdf")
+plt.savefig("bias_beta_BAOvsP1D.png")
+plt.savefig("bias_beta_BAOvsP1D.pdf")
 
 # %%

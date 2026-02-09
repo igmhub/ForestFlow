@@ -102,7 +102,7 @@ class P3DEmulator:
         step_size=200,
         adamw=True,
         use_chains=False,
-        Nrealizations=10000,
+        Nrealizations=3000,
         training_type="Arinyo_min",
     ):
         # Initialize class attributes with provided arguments
