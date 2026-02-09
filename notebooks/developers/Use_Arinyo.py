@@ -151,7 +151,7 @@ Plin = Archive3D.training_data[ind_book]['Plin']
 k1d_Mpc = Archive3D.training_data[ind_book]['k_Mpc']
 p1d_Mpc = Archive3D.training_data[ind_book]['p1d_Mpc']
 
-arinyo_params = Archive3D.training_data[ind_book]['Arinyo_minin'] # best-fitting Arinyo params
+arinyo_params = Archive3D.training_data[ind_book]['Arinyo_min'] # best-fitting Arinyo params
 print(zs)
 arinyo_params
 

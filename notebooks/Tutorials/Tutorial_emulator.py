@@ -116,7 +116,7 @@ list_input_params = [
 coeffs_all, coeffs_mean = p3d_emu.predict_Arinyos(
     emu_params=list_input_params,
     return_all_realizations=True,
-    Nrealizations=1000,
+    Nrealizations=3000,
 )
 coeffs_mean
 
@@ -138,7 +138,7 @@ input_params = {
 coeffs_all, coeffs_mean = p3d_emu.predict_Arinyos(
     emu_params=input_params,
     return_all_realizations=True,
-    Nrealizations=1000,
+    Nrealizations=3000,
 )
 coeffs_mean
 

@@ -139,27 +139,13 @@ print(emu_params)
 # - Get other Arinyo, evaluate P1D, and compare with P1D from lace-mpg?
 
 # %%
-
-from cup1d.likelihood.input_pipeline import Args
 from cup1d.likelihood.pipeline import Pipeline
 
 # %% [markdown]
 # #### Set cup1d
 
 # %%
-
-data_label = "DESIY1_QMLE3"
-emulator_label="CH24_mpgcen_gpr"
-name_variation = None
-
-args = Args(data_label=data_label, emulator_label=emulator_label)
-args.set_baseline(
-    fit_type="global_opt",
-    fix_cosmo=False,
-    P1D_type=data_label,
-    name_variation=name_variation,
-)
-pip = Pipeline(args, out_folder=args.out_folder)
+pip = Pipeline()
 
 # %% [markdown]
 # #### Load chain
@@ -169,7 +155,7 @@ pip = Pipeline(args, out_folder=args.out_folder)
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1"
 folder = os.path.join(base, "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/")
 # nersc
-# base = "/global/cfs/cdirs/desi/users/jjchaves/p1d"
+# folder = "/global/cfs/cdirs/desi/users/jjchaves/p1d"
 
 fname = os.path.join(folder, "chain.npy")
 chain = np.array(np.load(fname))
@@ -186,7 +172,7 @@ chain.shape
 zs = np.linspace(2.2, 3.8, 8)
 nn = 500
 
-ind = np.random.permutation(np.arange(2739200))[:nn]
+ind = np.random.permutation(np.arange(chain.shape[0]))[:nn]
 pars_chain = {}
 pars_chain["z"] = zs
 pars_chain["Delta2_p"] = np.zeros((ind.shape[0], zs.shape[0]))
@@ -198,9 +184,13 @@ pars_chain["kF_Mpc"] = np.zeros((ind.shape[0], zs.shape[0]))
 
 # %% [markdown]
 # #### From each point, we get the input parameters to ForestFlow
+#
+# Most of the time goes into calling CAMB
 
 # %%
 for ii in range(ind.shape[0]):
+    if ii % 10 == 0:
+        print(ii)
 # for ii in range(1):
 
     chain_params = pip.fitter.like.parameters_from_sampling_point(chain[ind[ii], :])
@@ -236,15 +226,14 @@ for ii in range(ind.shape[0]):
     pars_chain["mF"][ii] = pip.fitter.like.theory.model_igm.models[
         "F_model"
     ].get_mean_flux(zs, like_params=chain_params)
+    
     pars_chain["gamma"][ii] = pip.fitter.like.theory.model_igm.models[
         "T_model"
     ].get_gamma(zs, like_params=chain_params)
-
     
     sigT_kms = pip.fitter.like.theory.model_igm.models[
         "T_model"
-    ].get_sigT_kms(zs, like_params=chain_params)
-    
+    ].get_sigT_kms(zs, like_params=chain_params)    
     pars_chain["sigT_Mpc"][ii] = sigT_kms / dkms_dMpc_zs
 
     kF_kms = pip.fitter.like.theory.model_igm.models[
@@ -253,7 +242,10 @@ for ii in range(ind.shape[0]):
     pars_chain["kF_Mpc"][ii] = kF_kms * dkms_dMpc_zs
 
 # %%
-# pars_chain
+np.save("inter_chain.npy", pars_chain)
+
+# %%
+pars_chain = np.load("inter_chain.npy")
 
 # %% [markdown]
 # load model to evaluate IGM parameters
@@ -300,45 +292,46 @@ for ii in range(ind.shape[0]):
 
 # print(emu_params)
 
-# %% [markdown]
-# ## LOAD P3D ARCHIVE (needed for forestflow)
-
 # %%
-# %%time
-folder_lya_data = path_repo + "/data/best_arinyo/"
-folder_interp = path_repo + "/data/plin_interp/"
+# # %%time
+# folder_lya_data = path_repo + "/data/best_arinyo/"
+# folder_interp = path_repo + "/data/plin_interp/"
 
-Archive3D = GadgetArchive3D(
-    base_folder=path_repo,
-    folder_data=folder_lya_data,
-    force_recompute_plin=False,
-    average="both",
-)
-print(len(Archive3D.training_data))
+# Archive3D = GadgetArchive3D(
+#     base_folder=path_repo,
+#     folder_data=folder_lya_data,
+#     force_recompute_plin=False,
+#     average="both",
+# )
+# print(len(Archive3D.training_data))
 
 
 # %% [markdown]
 # ## Load ForestFlow
 
 # %%
-training_type = "Arinyo_min"
-model_path=path_repo + "/data/emulator_models/mpg_hypercube.pt"
+# training_type = "Arinyo_min"
+# model_path=path_repo + "/data/emulator_models/mpg_hypercube.pt"
+
+# emulator = P3DEmulator(
+#     Archive3D.training_data,
+#     Archive3D.emu_params,
+#     nepochs=300,
+#     lr=0.001,  # 0.005
+#     batch_size=20,
+#     step_size=200,
+#     gamma=0.1,
+#     weight_decay=0,
+#     adamw=True,
+#     nLayers_inn=12,  # 15
+#     Archive=Archive3D,
+#     Nrealizations=10000,
+#     training_type=training_type,
+#     model_path=model_path,
+# )
 
 emulator = P3DEmulator(
-    Archive3D.training_data,
-    Archive3D.emu_params,
-    nepochs=300,
-    lr=0.001,  # 0.005
-    batch_size=20,
-    step_size=200,
-    gamma=0.1,
-    weight_decay=0,
-    adamw=True,
-    nLayers_inn=12,  # 15
-    Archive=Archive3D,
-    Nrealizations=10000,
-    training_type=training_type,
-    model_path=model_path,
+    model_path=path_repo + "/data/emulator_models/new_emu",
 )
 
 # %% [markdown]
@@ -352,36 +345,29 @@ out_ari = {}
 for par in pars_ari:
     out_ari[par] = np.zeros_like(pars_chain['mF'])
 
-# %% [markdown]
-# #### Call forestflow for each of the 500 points from the chain
-
 # %%
-# info_power = {
-#     "cosmo": cosmo,
-#     "z": z,
-# }
-# out
-
+# %%time
+# chain step
 for ii in range(pars_chain['mF'].shape[0]):
+    list_input_emu = []
+    # redshift
     for jj in range(pars_chain['mF'].shape[1]):
-        emu_params = {}
+        input_emu = {}
         for par in pars:
             if par == "z":
                 continue
-            emu_params[par] = pars_chain[par][ii, jj]
+            input_emu[par] = pars_chain[par][ii, jj]
+        list_input_emu.append(input_emu)
 
-        # print(emu_params)
-        out = emulator.evaluate(
-            emu_params=emu_params,
-            # info_power=info_power,
-            Nrealizations=10000
-        )
+    out = emulator.predict_Arinyos(
+        emu_params=list_input_emu,
+        Nrealizations=3000
+    )
 
-        for par in pars_ari:
-            out_ari[par][ii, jj] = out['coeffs_Arinyo'][par]
+    for jj in range(pars_chain['mF'].shape[1]):
+        for kk, par in enumerate(pars_ari):
+            out_ari[par][ii, jj] = out[jj, kk]
 
-# %% [markdown]
-# #### Needed because the bias is possitive internally in forestflow
 
 # %%
 out_ari['bias'] = -out_ari['bias']
@@ -396,13 +382,13 @@ if save:
     dict_out_all["emu_params"] = pars_chain
     dict_out_all["ari_params"] = out_ari
     dict_out_all["zs"] = zs
-    np.save("arinyo_from_p1d.npy", dict_out_all)
+    np.save("arinyo_from_p1d_new.npy", dict_out_all)
 
 # %% [markdown]
 # #### Load output
 
 # %%
-dict_out_all = np.load("arinyo_from_p1d.npy", allow_pickle=True).item()
+dict_out_all = np.load("arinyo_from_p1d_new.npy", allow_pickle=True).item()
 zs = dict_out_all["zs"]
 out_ari = dict_out_all["ari_params"]
 
@@ -414,7 +400,7 @@ out_ari['bias'].shape
 
 # %%
 fig, ax = plt.subplots(2, 1, sharex=True, figsize=(8,10))
-ftsize = 18
+ftsize = 20
 
 # target 
 # DESI DR1 Table 5
@@ -442,20 +428,21 @@ hi_beta_err = np.array([[0.35, 0.26], [0.14, 0.071], [0.069, 0.047]])
 # err
 mean = out_ari['bias'].mean(axis=0)
 percen = np.percentile(out_ari['bias'], [16, 84], axis=0)
-low = mean - percen[0]
-high = percen[1] - mean
-err = np.zeros((2, mean.shape[0]))
-err[0] = low
-err[1] = high
+ax[0].fill_between(zs, percen[0], percen[1], alpha=0.5, label="P1D DR1")
+# low = mean - percen[0]
+# high = percen[1] - mean
+# err = np.zeros((2, mean.shape[0]))
+# err[0] = low
+# err[1] = high
 
-ax[0].errorbar(zs, mean, err, label="DR1 P1D")
-ax[0].errorbar([z,z], np.zeros(2)+bias, np.zeros(2)+err_bias, label="DR1 BAO") 
-ax[0].errorbar([z,z], np.zeros(2)+bias2, np.zeros(2)+err_bias2, label="DR2 BAO")
+# ax[0].errorbar(zs, mean, err, label="DR1 P1D")
+ax[0].errorbar([z,z], np.zeros(2)+bias, np.zeros(2)+err_bias, label="BAO DR1", color="C1", fmt=".") 
+ax[0].errorbar([z,z], np.zeros(2)+bias2, np.zeros(2)+err_bias2, label="BAO DR2", color="C2", fmt=".")
 
 col = "C3"
 for jj in range(len(hi_z)):
     if jj == 0:
-        label = "Hiram DR2 BAO"
+        label = "Hiram BAO DR2"
     else:
         label = None
     ax[0].errorbar([hi_z[jj], hi_z[jj]], np.zeros(2)+hi_bias[jj], hi_bias_err[jj:jj+1, :].T, label=label, color=col, fmt=".")
@@ -463,15 +450,15 @@ for jj in range(len(hi_z)):
 # err
 mean = out_ari['beta'].mean(axis=0)
 percen = np.percentile(out_ari['beta'], [16, 84], axis=0)
-low = mean - percen[0]
-high = percen[1] - mean
-err = np.zeros((2, mean.shape[0]))
-err[0] = low
-err[1] = high
+# low = mean - percen[0]
+# high = percen[1] - mean
+# err = np.zeros((2, mean.shape[0]))
+# err[0] = low
+# err[1] = high
 
-ax[1].errorbar(zs, mean, err)
-ax[1].errorbar([z,z], np.zeros(2)+beta, np.zeros(2)+err_beta) 
-ax[1].errorbar([z,z], np.zeros(2)+beta2, np.zeros(2)+err_beta2) 
+ax[1].fill_between(zs, percen[0], percen[1], alpha=0.5)
+ax[1].errorbar([z,z], np.zeros(2)+beta, np.zeros(2)+err_beta, fmt=".", color="C1") 
+ax[1].errorbar([z,z], np.zeros(2)+beta2, np.zeros(2)+err_beta2, fmt=".", color="C2") 
 
 
 for jj in range(len(hi_z)):
@@ -483,9 +470,13 @@ ax[0].set_ylabel(r"$b$", fontsize=ftsize)
 ax[1].set_ylabel(r"$\beta$", fontsize=ftsize)
 ax[1].set_xlabel(r"$z$", fontsize=ftsize)
 
+for ii in range(2):
+    ax[ii].tick_params(
+        axis="both", which="major", labelsize=ftsize
+    )
 
 plt.tight_layout()
-plt.savefig("bias_beta_BAOvsP1D.png")
-plt.savefig("bias_beta_BAOvsP1D.pdf")
+# plt.savefig("bias_beta_BAOvsP1D.png")
+# plt.savefig("bias_beta_BAOvsP1D.pdf")
 
 # %%
