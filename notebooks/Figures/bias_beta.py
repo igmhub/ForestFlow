@@ -525,7 +525,12 @@ for ii, par in enumerate(out_ari.keys()):
     cen = np.mean(out_ari[par][:, :2])
     std = np.std(out_ari[par][:, :2])
     print(par)
-    print(np.round(cen, 3), np.round(std, 3), np.round(np.min(percen[0, :2]), 3), np.round(np.max(percen[1, :2]), 3))
+    print(
+        np.round(cen, 3),
+        np.round(std, 3),
+        np.round(np.min(percen[0, :2]), 3),
+        np.round(np.max(percen[1, :2]), 3),
+    )
     ax[ii].set_ylabel(par)
     # print(par, np.mean(out_ari[par])
 
