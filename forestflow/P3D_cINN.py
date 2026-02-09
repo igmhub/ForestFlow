@@ -838,6 +838,14 @@ class P3DEmulator:
         if isinstance(emu_params, dict):
             emu_params = [emu_params]
 
+        if len(emu_params) > 250:
+            print(
+                "WARNING: More than 500 instances of emu_params will take too much memory. "
+                "Please use a smaller number of emu_params at a time. "
+                "Returning None"
+            )
+            return
+
         # Use default number of realizations set when loading the emulator
         # if not specified
         if Nrealizations is None:
