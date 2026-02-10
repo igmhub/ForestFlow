@@ -69,27 +69,31 @@ print(len(Archive3D.training_data))
 # ### Load emulator
 
 # +
-training_type = "Arinyo_minz"
-nparams = 8
-model_path=path_program+"/data/emulator_models/mpg_jointz.pt"
+# training_type = "Arinyo_minz"
+# nparams = 8
+# model_path=path_program+"/data/emulator_models/mpg_jointz.pt"
+
+# emulator = P3DEmulator(
+#     Archive3D.training_data,
+#     Archive3D.emu_params,
+#     nepochs=300,
+#     lr=0.001,  # 0.005
+#     batch_size=20,
+#     step_size=200,
+#     gamma=0.1,
+#     weight_decay=0,
+#     adamw=True,
+#     nLayers_inn=12,  # 15
+#     Archive=Archive3D,
+#     Nrealizations=10000,
+#     training_type=training_type,
+#     model_path=model_path,
+# )
+# -
 
 emulator = P3DEmulator(
-    Archive3D.training_data,
-    Archive3D.emu_params,
-    nepochs=300,
-    lr=0.001,  # 0.005
-    batch_size=20,
-    step_size=200,
-    gamma=0.1,
-    weight_decay=0,
-    adamw=True,
-    nLayers_inn=12,  # 15
-    Archive=Archive3D,
-    Nrealizations=10000,
-    training_type=training_type,
-    model_path=model_path,
+    model_path=path_program+"/data/emulator_models/new_emu",
 )
-# -
 
 # ### General stuff
 
@@ -99,9 +103,9 @@ zcen = 3
 
 
 n_mubins = 4
-kmax_3d_plot = 4
+kmax_3d_plot = 5
 kmax_1d_plot = 4
-kmax_fit = 3
+kmax_fit = 4
 
 sim = Archive3D.training_data[0]
 
@@ -132,7 +136,7 @@ info_power = {
     "k1d_Mpc": k1d_Mpc,
     "return_p3d": True,
     "return_p1d": True,
-    "return_cov": True,
+    # "return_cov": True,
     "z": zcen,
 }
 
@@ -141,13 +145,16 @@ test_sim = Archive3D.get_testing_data(
     sim_label, force_recompute_plin=False
 )
 test_sim_z = [d for d in test_sim if d["z"] == info_power["z"]]
-emu_params_cen = test_sim_z[0]
+
+input_pars = {}
+for par in emulator.emu_input_names:
+    input_pars[par] = test_sim_z[0][par]
 
 out = emulator.evaluate(
-    emu_params=emu_params_cen,
+    emu_params=input_pars,
     info_power=info_power,
-    natural_params=True,
-    Nrealizations=100
+    # natural_params=True,
+    Nrealizations=3000
 )
 
 _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], test_sim_z[0]["p3d_Mpc"][mask_3d], kmu_modes, n_mubins=n_mubins)
@@ -156,17 +163,20 @@ knew, munew, rebin_p3d_simcen, mu_bins = _
 _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["p3d"], kmu_modes, n_mubins=n_mubins)
 knew, munew, rebin_p3d_emucen, mu_bins = _
 
-_ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["p3d_std"], kmu_modes, n_mubins=n_mubins)
-knew, munew, rebin_p3d_std_emucen, mu_bins = _
+# _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["p3d_std"], kmu_modes, n_mubins=n_mubins)
+# knew, munew, rebin_p3d_std_emucen, mu_bins = _
 
 _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["Plin"], kmu_modes, n_mubins=n_mubins)
 knew, munew, rebin_plincen, mu_bins = _
 
 norm_p1d = out["k1d_Mpc"]/np.pi
 p1d_emucen = norm_p1d * out["p1d"]
-p1d_std_emucen = norm_p1d * out["p1d_std"]
+# p1d_std_emucen = norm_p1d * out["p1d_std"]
 p1d_simcen = norm_p1d * test_sim_z[0]["p1d_Mpc"][mask_1d]
 # -
+
+input_cen = input_pars.copy()
+ari_cen = out["coeffs_Arinyo"].copy()
 
 # #### Running simulation
 
@@ -183,7 +193,7 @@ info_power = {
     "k1d_Mpc": k1d_Mpc,
     "return_p3d": True,
     "return_p1d": True,
-    "return_cov": True,
+    # "return_cov": True,
     "z": zcen,
 }
 
@@ -192,13 +202,16 @@ test_sim = Archive3D.get_testing_data(
     sim_label, force_recompute_plin=False
 )
 test_sim_z = [d for d in test_sim if d["z"] == info_power["z"]]
-emu_params_run = test_sim_z[0]
+
+input_pars = {}
+for par in emulator.emu_input_names:
+    input_pars[par] = test_sim_z[0][par]
 
 out = emulator.evaluate(
-    emu_params=emu_params_run,
+    emu_params=input_pars,
     info_power=info_power,
-    natural_params=True,
-    Nrealizations=100
+    # natural_params=True,
+    Nrealizations=3000
 )
 
 _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], test_sim_z[0]["p3d_Mpc"][mask_3d], kmu_modes, n_mubins=n_mubins)
@@ -207,21 +220,38 @@ knew, munew, rebin_p3d_simrun, mu_bins = _
 _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["p3d"], kmu_modes, n_mubins=n_mubins)
 knew, munew, rebin_p3d_emurun, mu_bins = _
 
-_ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["p3d_std"], kmu_modes, n_mubins=n_mubins)
-knew, munew, rebin_p3d_std_emurun, mu_bins = _
+# _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["p3d_std"], kmu_modes, n_mubins=n_mubins)
+# knew, munew, rebin_p3d_std_emurun, mu_bins = _
 
 _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["Plin"], kmu_modes, n_mubins=n_mubins)
 knew, munew, rebin_plinrun, mu_bins = _
 
 norm_p1d = out["k1d_Mpc"]/np.pi
 p1d_emurun = norm_p1d * out["p1d"]
-p1d_std_emurun = norm_p1d * out["p1d_std"]
+# p1d_std_emurun = norm_p1d * out["p1d_std"]
 p1d_simrun = norm_p1d * test_sim_z[0]["p1d_Mpc"][mask_1d]
 # -
 
-# #### Get P1D
+input_run = input_pars.copy()
+ari_run = out["coeffs_Arinyo"].copy()
 
-emu_params_run.keys()
+for par in input_run:
+    print(input_run[par]/input_cen[par])
+
+for par in ari_run:
+    print(ari_run[par]/a_cen[par])
+
+for ii in range(4):
+    plt.plot(knew[:, ii], rebin_plinrun[:, ii]/rebin_plincen[:, ii])
+    # plt.plot(knew[:, ii], rebin_plinrun[:, ii])
+    # plt.plot(knew[:, ii], rebin_plincen[:, ii])
+plt.xscale("log")
+# plt.yscale("log")
+# plt.savefig("ratio_pklin_cen_run.png")
+
+rebin_plinrun.shape
+
+# #### Get P1D
 
 # +
 
@@ -242,8 +272,8 @@ ks, zs, pk_run = camb_results_run.get_linear_matter_power_spectrum(
 
 # #### Ratio Plin
 
-_ = (ks > 0.01) & (ks < 50)
-plt.plot(ks[_], pk_run[0][_]/pk_cen[0][_])
+for ii in range(4):
+    plt.plot(ks[_], pk_run[0][_]/pk_cen[0][_])
 plt.xscale("log")
 # plt.savefig("ratio_pklin_cen_run.png")
 
@@ -291,17 +321,17 @@ p1d_lin_run = np.zeros((out["k1d_Mpc"].shape[0]))
 for ii, kpar in enumerate(out["k1d_Mpc"]):
     _, _, p1d_lin_cen[ii] = int_plin(kpar, ks, pk_cen[0])
     _, _, p1d_lin_run[ii] = int_plin(kpar, ks, pk_run[0])
-    
+
 
 plt.plot(out["k1d_Mpc"], p1d_emurun/p1d_emucen-1, label="ForestFlow")
-plt.plot(out["k1d_Mpc"], p1d_lin_run/p1d_lin_cen-1, label="P1D from lin th")
+# plt.plot(out["k1d_Mpc"], p1d_lin_run/p1d_lin_cen-1, label="P1D from lin th")
 plt.legend()
 plt.xscale("log")
 
 # We thus expect percent-level differences for P1Ds from cosmologies with the same amplitude and slope of the power spectrum but different runnings. However, this is not the case in the simulations. In fact, for large scales, it is the opposite.
 
 plt.plot(out["k1d_Mpc"], p1d_emurun/p1d_emucen-1, label="ForestFlow")
-plt.plot(out["k1d_Mpc"], p1d_lin_run/p1d_lin_cen-1, label="P1D from lin th")
+# plt.plot(out["k1d_Mpc"], p1d_lin_run/p1d_lin_cen-1, label="P1D from lin th")
 plt.plot(out["k1d_Mpc"], p1d_simrun/p1d_simcen-1, label="Simulation")
 plt.legend()
 plt.xscale("log")
@@ -314,8 +344,15 @@ for ii in range(4):
     plt.plot(knew[:,ii], rebin_p3d_simrun[:,ii]/rebin_p3d_simcen[:,ii], col)
     plt.plot(knew[:,ii], rebin_p3d_emurun[:,ii]/rebin_p3d_emucen[:,ii], col+'--')
 ii = 0
-plt.plot(knew[:,ii], rebin_plinrun[:,ii]/rebin_plincen[:,ii], "k")
+# plt.plot(knew[:,ii], rebin_plinrun[:,ii]/rebin_plincen[:,ii], "k")
     # plt.loglog(knew[:,ii], rebin_plin2[:,ii])
 plt.xscale("log")
+
+plt.plot(out["k1d_Mpc"], p1d_simcen/p1d_emucen-1, label="cen")
+# plt.plot(out["k1d_Mpc"], p1d_lin_run/p1d_lin_cen-1, label="P1D from lin th")
+plt.plot(out["k1d_Mpc"], p1d_emurun/p1d_simrun-1, label="run")
+plt.legend()
+plt.xscale("log")
+# plt.savefig("ratio_P1D_sims.png")
 
 

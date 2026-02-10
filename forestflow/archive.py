@@ -1,13 +1,8 @@
 import numpy as np
 import os
 
-# import matplotlib.pyplot as plt
-# from itertools import product
-
 from lace.archive.gadget_archive import GadgetArchive
-from lace.utils.exceptions import ExceptionList
-
-# from lace.utils.misc import split_string
+from lace.cosmo import camb_cosmo
 
 from forestflow.utils import (
     params_numpy2dict,
@@ -15,15 +10,15 @@ from forestflow.utils import (
     params_numpy2dict_minimizerz,
 )
 from forestflow.model_p3d_arinyo import ArinyoModel
+from forestflow.camb_routines import get_matter_power_interpolator
 
 
-def get_camb_interp(file, data):
-    from lace.cosmo import camb_cosmo
-    from forestflow.camb_routines import get_matter_power_interpolator
-
+def get_camb_interp(data, file=None):
     # check if Plin interporlator has been pre-computed for this simulation
     # if not, do it (to be fixed)
-    if os.path.isfile(file) == False:
+    try:
+        pk_interp = np.load(file, allow_pickle=True).all()
+    except:
         cosmo = camb_cosmo.get_cosmology_from_dictionary(data["cosmo_params"])
         # get model
         zs = np.arange(2.0, 4.75, 0.25)
@@ -43,9 +38,8 @@ def get_camb_interp(file, data):
         )
 
         # save linear Plin interpolator
-        np.save(file, pk_interp)
-    else:
-        pk_interp = np.load(file, allow_pickle=True).all()
+        if file is not None:
+            np.save(file, pk_interp)
 
     return pk_interp
 
@@ -318,9 +312,6 @@ class GadgetArchive3D(GadgetArchive):
                         & (val_scaling == archive[ii]["val_scaling"])
                     )[0, 0]
 
-                    # archive[ii]["Arinyo_min"] = params_numpy2dict_minimizer(
-                    #     best_params[ind, :, 0]
-                    # )
                     archive[ii]["Arinyo_min"] = best_params[ind]
                     archive[ii]["Arinyo_min"]["q1"] = np.abs(
                         archive[ii]["Arinyo_min"]["q1"]
@@ -424,10 +415,7 @@ class GadgetArchive3D(GadgetArchive):
                 arr_params[_]
             )
 
-    def add_Arinyo_model(
-        self,
-        archive,
-    ):
+    def add_Arinyo_model(self, archive):
         nelem = len(archive)
 
         for ind_book in range(nelem):
@@ -438,7 +426,7 @@ class GadgetArchive3D(GadgetArchive):
                 + archive[ind_book]["sim_label"][4:]
                 + ".npy"
             )
-            pk_interp = get_camb_interp(file, archive[ind_book])
+            pk_interp = get_camb_interp(archive[ind_book], file)
 
             # add Arinyo model to archive
             archive[ind_book]["model"] = ArinyoModel(camb_pk_interp=pk_interp)
