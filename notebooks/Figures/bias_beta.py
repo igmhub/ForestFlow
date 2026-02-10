@@ -117,7 +117,7 @@ emu_params = {
 print(emu_params)
 
 # %% [markdown]
-# # Using our results
+# # Using DESI DR1 results
 
 # %% [markdown]
 # - Load chain with As, ns, and IGM params
@@ -153,7 +153,7 @@ chain.shape
 
 # %%
 
-zs = np.linspace(2.2, 3.8, 8)
+zs = np.array([2.2, 2.33, 2.5, 2.8, 3.1, 3.3, 3.6, 3.9, 4.2])
 nn = 500
 
 ind = np.random.permutation(np.arange(chain.shape[0]))[:nn]
@@ -337,7 +337,9 @@ hi_beta_err = np.array([[0.35, 0.26], [0.14, 0.071], [0.069, 0.047]])
 # err
 mean = out_ari["bias"].mean(axis=0)
 percen = np.percentile(out_ari["bias"], [16, 84], axis=0)
-ax[0].fill_between(zs, percen[0], percen[1], alpha=0.5, label="P1D DR1")
+
+_ = zs < 3
+ax[0].fill_between(zs[_], percen[0][_], percen[1][_], alpha=0.5, label="P1D DR1")
 # low = mean - percen[0]
 # high = percen[1] - mean
 # err = np.zeros((2, mean.shape[0]))
@@ -386,7 +388,8 @@ percen = np.percentile(out_ari["beta"], [16, 84], axis=0)
 # err[0] = low
 # err[1] = high
 
-ax[1].fill_between(zs, percen[0], percen[1], alpha=0.5)
+_ = zs < 3
+ax[1].fill_between(zs[_], percen[0][_], percen[1][_], alpha=0.5)
 ax[1].errorbar(
     [z, z], np.zeros(2) + beta, np.zeros(2) + err_beta, fmt=".", color="C1"
 )
@@ -422,6 +425,9 @@ plt.savefig("bias_beta_BAOvsP1D.pdf")
 # ### Get priors
 
 # %%
+zs[1]
+
+# %%
 fig, ax = plt.subplots(len(out_ari.keys()), 1, sharex=True, figsize=(8, 16))
 
 print("par", "mean", "std", "min", "max")
@@ -430,16 +436,20 @@ for ii, par in enumerate(out_ari.keys()):
     percen = np.percentile(out_ari[par], [16, 84], axis=0)
     ax[ii].fill_between(zs, percen[0], percen[1])
     percen = np.percentile(out_ari[par], [5, 95], axis=0)
-    cen = np.mean(out_ari[par][:, :2])
-    std = np.std(out_ari[par][:, :2])
-    print(par)
+    cen = np.mean(out_ari[par][:, 1])
+    std = np.std(out_ari[par][:, 1])
     print(
+        par,
         np.round(cen, 3),
         np.round(std, 3),
-        np.round(np.min(percen[0, :2]), 3),
-        np.round(np.max(percen[1, :2]), 3),
+        np.round(np.min(percen[0, 1]), 3),
+        np.round(np.max(percen[1, 1]), 3),
     )
     ax[ii].set_ylabel(par)
     # print(par, np.mean(out_ari[par])
+ax[-1].set_xlabel(r"$z$")
+plt.tight_layout()
+plt.savefig("Arinyo_with_z.pdf")
+plt.savefig("Arinyo_with_z.png")
 
 # %%
