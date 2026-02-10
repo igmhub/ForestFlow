@@ -1,7 +1,13 @@
+import numpy as np
+import os
+import time
+import random
+from warnings import warn
+
+
 # torch modules
 import torch
-from torch.utils.data import DataLoader, dataset, TensorDataset
-from torch import nn, optim
+from torch.utils.data import DataLoader, TensorDataset
 
 # FrEIA imports
 import FrEIA.framework as Ff
@@ -14,30 +20,9 @@ import lace
 # forestflow models
 import forestflow
 from forestflow.model_p3d_arinyo import ArinyoModel
-from forestflow.archive import GadgetArchive3D, get_camb_interp
-from forestflow.likelihood import Likelihood
-from forestflow.utils import (
-    get_covariance,
-    params_numpy2dict,
-    transform_arinyo_params,
-)
+from forestflow.archive import get_camb_interp
+from forestflow.utils import get_covariance
 from forestflow.rebin_p3d import p3d_allkmu
-
-from warnings import warn
-import numpy as np
-import os
-import time
-import random
-import matplotlib.pyplot as plt
-from matplotlib import rcParams
-import corner
-import gc
-import psutil
-from functools import lru_cache
-
-
-rcParams["mathtext.fontset"] = "stix"
-rcParams["font.family"] = "STIXGeneral"
 
 
 def init_xavier(m):
@@ -50,6 +35,8 @@ def init_xavier(m):
 
 
 def print_memory_usage(step_description):
+    import psutil
+
     process = psutil.Process()
     memory_info = process.memory_info()
     print(
@@ -248,8 +235,14 @@ class P3DEmulator:
             elif "cosmo" in info_power:
                 cosmo = info_power["cosmo"]
             elif "sim_label" in info_power:
-                repo = os.path.dirname(lace.__path__[0]) + "/"
-                fname = repo + ("data/sim_suites/Australia20/mpg_emu_cosmo.npy")
+                repo = os.path.dirname(lace.__path__[0])
+                fname = os.path.join(
+                    repo,
+                    "data",
+                    "sim_suites",
+                    "Australia20",
+                    "mpg_emu_cosmo.npy",
+                )
                 data_cosmo = np.load(fname, allow_pickle=True).item()
                 cosmo = data_cosmo[sim_label]["cosmo_params"]
 
@@ -569,7 +562,7 @@ class P3DEmulator:
             cosmo = self._rescale_cosmo(emu_params, cosmo, info_power["z"])
 
         if ("return_p3d" in info_power) | ("return_p1d" in info_power):
-            pk_interp = get_camb_interp("a", {"cosmo_params": cosmo})
+            pk_interp = get_camb_interp({"cosmo_params": cosmo})
             model_Arinyo = ArinyoModel(camb_pk_interp=pk_interp)
 
         if "return_p3d" in info_power:
@@ -603,14 +596,14 @@ class P3DEmulator:
         """
 
         def subnet_fc(dims_in, dims_out):
-            return nn.Sequential(
-                nn.Linear(dims_in, 64),
-                nn.ReLU(),
-                nn.Dropout(0),
-                nn.Linear(64, 128),
-                nn.ReLU(),
-                nn.Dropout(0),
-                nn.Linear(128, dims_out),
+            return torch.nn.Sequential(
+                torch.nn.Linear(dims_in, 64),
+                torch.nn.ReLU(),
+                torch.nn.Dropout(0),
+                torch.nn.Linear(64, 128),
+                torch.nn.ReLU(),
+                torch.nn.Dropout(0),
+                torch.nn.Linear(128, dims_out),
             )
 
         self.nLayers_inn = nLayers_inn
@@ -755,7 +748,7 @@ class P3DEmulator:
                 weight_decay=weight_decay,
             )
         else:
-            optimizer = optim.Adam(
+            optimizer = torch.optim.Adam(
                 self.emulator.parameters(),
                 lr=lr,
                 weight_decay=weight_decay,

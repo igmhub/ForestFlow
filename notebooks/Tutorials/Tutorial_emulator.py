@@ -242,6 +242,8 @@ out = p3d_emu.evaluate(
 # Also return P3D 
 
 # %%
+# %%time
+
 # ks at which compute P3D
 k = np.logspace(-2, 1, 100)
 # mu's at which compute P3D
@@ -249,7 +251,7 @@ mu = np.zeros_like(k)
 
 k3d_Mpc = np.concatenate([k, k])
 mu3d = np.concatenate([mu, mu+1])
-Ntot = 100000
+Ntot = 10000
 
 info_power = {
     "cosmo": cosmo,
