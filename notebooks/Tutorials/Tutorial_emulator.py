@@ -239,7 +239,9 @@ out = p3d_emu.evaluate(
 )
 
 # %% [markdown]
-# Also return P3D 
+# #### Also return P3D 
+#
+# If you want to run faster, run with "return_cov":False (this is the default option)
 
 # %%
 # %%time
@@ -326,9 +328,12 @@ plt.legend()
 plt.xscale("log")
 
 # %% [markdown]
-# Now get P1D
+# #### Now get P1D
+#
+# If you want to run faster, run with "return_cov":False (this is the default option)
 
 # %%
+# %%time
 # ks at which compute P3D
 k1d_Mpc = np.geomspace(0.01, 4, 100)
 
@@ -337,7 +342,7 @@ info_power = {
     "z": z_test,
     "k1d_Mpc": k1d_Mpc,
     "return_p1d": True,
-    "return_cov": True,
+    # "return_cov": True,
 }
 Ntot = 10000
 
@@ -376,21 +381,5 @@ plt.xscale("log")
 
 # %%
 out.keys()
-
-# %%
-
-# %%
-
-# %%
-
-# %%
-
-# %%
-
-# %%
-
-# %%
-
-# %%
 
 # %%
