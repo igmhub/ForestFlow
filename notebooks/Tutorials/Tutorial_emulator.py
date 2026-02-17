@@ -63,21 +63,53 @@ print(len(Archive3D.training_data))
 # %%
 # %%time
 
+# p3d_emu = P3DEmulator(
+#     training_data=Archive3D.training_data,
+#     emu_input_names=Archive3D.emu_params,
+#     training_type='Arinyo_min',
+#     train=True,
+#     nepochs=1001,
+#     step_size=500,
+#     Nrealizations=5000,
+#     save_path=path_program+"/data/emulator_models/new_emu",
+# )
+
+
 p3d_emu = P3DEmulator(
     training_data=Archive3D.training_data,
     emu_input_names=Archive3D.emu_params,
     training_type='Arinyo_min',
     train=True,
-    nepochs=1001,
-    step_size=500,
-    Nrealizations=5000,
-    save_path=path_program+"/data/emulator_models/new_emu",
+    nepochs=1400,
+    # nepochs=24000,
+    batch_size=20,
+    step_size=200,
+    weight_decay=0.01,
+    Nrealizations=6000,
+    save_path=path_program+"/data/emulator_models/forest_mpg",
 )
+
+# %%
+28 * 24000/1400/60
 
 # %%
 arr_loss = np.array(p3d_emu.loss_arr)
 plt.plot(-arr_loss)
-plt.ylim(30, 41)
+plt.ylim(20, 41)
+# plt.axvline(700)
+plt.xscale("log")
+
+# %%
+arr_loss.min()
+
+# %%
+arr_loss.min()
+
+# %% [markdown]
+# Distribution parameters
+
+# %%
+arr_loss.min()
 
 # %% [markdown]
 # ## Load emulator

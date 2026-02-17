@@ -168,16 +168,16 @@ class P3DEmulator:
         self.output_param_lims_max = output_emu.max(axis=0)
         self.output_param_lims_min = output_emu.min(axis=0)
 
+        for ipar in [0]:
+            input_emu[:, ipar] = np.log(input_emu[:, ipar])
+
         # Scale the training data based on the parameter limits
         input_emu = (input_emu - self.input_param_lims_min) / (
             self.input_param_lims_max - self.input_param_lims_min
         )
 
-        # output_emu[:, 2] = np.exp(output_emu[:, 2])
-        # output_emu[:, 4] = np.exp(output_emu[:, 4])
-        # output_emu[:, 6] = np.log(output_emu[:, 6])
-        # if "q2" in self.Arinyo_params:
-        #     output_emu[:, 7] = np.exp(output_emu[:, 7])
+        for ipar in [0, 2, 3, 7]:
+            output_emu[:, ipar] = np.log(output_emu[:, ipar])
 
         # some special transformations applied to the output data
         output_emu = (output_emu - self.output_param_lims_min) / (
@@ -521,6 +521,11 @@ class P3DEmulator:
         # Redshift
         if "z" not in info_power:
             raise ValueError("z must be in info_power")
+        # else:
+        #     if len(info_power["z"].shape) != len(emu_params):
+        #         raise ValueError(
+        #             "The length of z emu_params must be the same as"
+        #         )
 
         # In order to compute P3D or P1D, we need to compute Plin first
         # for the target cosmology. Get the cosmology
@@ -574,6 +579,56 @@ class P3DEmulator:
             out_dict = self._get_p1d(info_power, out_dict, model_Arinyo)
             if "return_cov" in info_power:
                 out_dict = self._get_p1d_cov(info_power, out_dict, model_Arinyo)
+
+        # Clear GPU memory if using PyTorch
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+        return out_dict
+
+    def evaluate_arinyo(
+        self,
+        emu_params,
+        model_Arinyo,
+        info_power=None,
+        Nrealizations=3000,
+        seed=0,
+        kp_Mpc=0.7,
+    ):
+        """
+        Predict the power spectrum using the emulator for a given simulation label and redshift.
+
+        This function predicts the power spectrum using the emulator for a specified simulation label and redshift.
+        It utilizes the Arinyo model to generate power spectrum predictions based on the emulator coefficients.
+
+        Args:
+            z (float): Redshift to evaluate the model
+            emu_params (dict): Dictionary containing emulator parameters
+            info_power (dict, optional): Dictionary containing information for computing power spectrum
+            return_bias_eta (bool, optional): Return bias_delta. Default is False.
+            Nrealizations (int, optional): Number of realizations to generate.
+
+        Returns:
+            Dict: Dictionary containing the predicted Arinyo parameters and (if needed) power spectrum
+        """
+
+        # output
+        out_dict = {}
+
+        # Get Arinyo coefficients
+        out_dict = self._get_Arinyo_coeffs(
+            emu_params,
+            out_dict,
+            return_all_realizations=False,
+            Nrealizations=Nrealizations,
+            seed=seed,
+        )
+
+        if "return_p3d" in info_power:
+            out_dict = self._get_p3d(info_power, out_dict, model_Arinyo)
+
+        if "return_p1d" in info_power:
+            out_dict = self._get_p1d(info_power, out_dict, model_Arinyo)
 
         # Clear GPU memory if using PyTorch
         if torch.cuda.is_available():
@@ -756,7 +811,7 @@ class P3DEmulator:
 
         # Learning rate scheduler
         scheduler = torch.optim.lr_scheduler.StepLR(
-            optimizer, step_size=step_size
+            optimizer, step_size=step_size, gamma=0.7
         )
 
         # Training loop
@@ -859,6 +914,11 @@ class P3DEmulator:
                 input_emu.append(emu_params[jj][par])
             input_emu = np.array(input_emu)
             # normalize the input data and arrange it along the first axis
+            for ipar in [0]:
+                if input_emu.ndim == 1:
+                    input_emu[ipar] = np.log(input_emu[ipar])
+                else:
+                    input_emu[:, ipar] = np.log(input_emu[:, ipar])
             condition[jj * Nrealizations : (jj + 1) * Nrealizations, :] = (
                 input_emu - self.input_param_lims_min
             ) / (self.input_param_lims_max - self.input_param_lims_min)
@@ -884,11 +944,8 @@ class P3DEmulator:
                 + self.output_param_lims_min
             )
 
-            # Arinyo_preds[:, 2] = torch.log(Arinyo_preds[:, 2])
-            # Arinyo_preds[:, 4] = torch.log(Arinyo_preds[:, 4])
-            # Arinyo_preds[:, 6] = torch.exp(Arinyo_preds[:, 6])
-            # if "q2" in self.Arinyo_params:
-            #     Arinyo_preds[:, 7] = torch.log(Arinyo_preds[:, 7])
+            for ipar in [0, 2, 3, 7]:
+                Arinyo_preds[:, ipar] = torch.exp(Arinyo_preds[:, ipar])
 
         all_realizations = np.array(
             Arinyo_preds.reshape(neval, Nrealizations, self.dim_inputSpace)

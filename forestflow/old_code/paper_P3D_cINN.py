@@ -708,7 +708,7 @@ class P3DEmulator:
         ):
             cosmo = self._rescale_cosmo(orig_emu_params, cosmo, info_power["z"])
 
-        pk_interp = get_camb_interp("a", {"cosmo_params": cosmo})
+        pk_interp = get_camb_interp({"cosmo_params": cosmo}, "a")
         model_Arinyo = ArinyoModel(camb_pk_interp=pk_interp)
 
         if "return_p3d" in info_power:

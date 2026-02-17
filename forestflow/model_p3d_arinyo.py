@@ -218,6 +218,7 @@ class ArinyoModel(object):
 
         return linP * lowk_bias**2 * D_NL
 
+    #
     def P3D_Mpc(self, z, k, mu, pp):
         """
         Compute the model for the 3D flux power spectrum in units of Mpc^3.
@@ -266,7 +267,12 @@ class ArinyoModel(object):
             Px_per_kpar (array-like): values (float) of Px for each k parallel and rperp. Shape: (len(k_par), len(rperp)).
         """
         Px_Mpc = pcross.Px_Mpc(
-            z, kpar_iMpc, rperp_Mpc, self.P3D_Mpc, P3D_mode="pol", P3D_params=parameters
+            z,
+            kpar_iMpc,
+            rperp_Mpc,
+            self.P3D_Mpc,
+            P3D_mode="pol",
+            P3D_params=parameters,
         )
         return Px_Mpc
 
