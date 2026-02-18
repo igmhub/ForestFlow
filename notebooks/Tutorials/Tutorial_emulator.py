@@ -80,8 +80,9 @@ p3d_emu = P3DEmulator(
     emu_input_names=Archive3D.emu_params,
     training_type='Arinyo_min',
     train=True,
-    nepochs=1400,
-    # nepochs=24000,
+    # nepochs=1400,
+    # nepochs=4000,
+    nepochs=24000,
     batch_size=20,
     step_size=200,
     weight_decay=0.01,
@@ -90,14 +91,14 @@ p3d_emu = P3DEmulator(
 )
 
 # %%
-28 * 24000/1400/60
+28 * 24000/1400/60 4 h
 
 # %%
 arr_loss = np.array(p3d_emu.loss_arr)
 plt.plot(-arr_loss)
 plt.ylim(20, 41)
-# plt.axvline(700)
-plt.xscale("log")
+plt.axvline(4000)
+# plt.xscale("log")
 
 # %%
 arr_loss.min()

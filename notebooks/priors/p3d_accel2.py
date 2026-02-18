@@ -335,7 +335,7 @@ emulator = old_P3DEmulator(
 
 # %%
 emulator = P3DEmulator(
-    model_path = path_repo + "/data/emulator_models/new_emu3",
+    model_path = path_repo + "/data/emulator_models/forest_mpg",
 )
 
 # %% [markdown]
@@ -376,6 +376,77 @@ pk_interp = get_camb_interp({"cosmo_params": cosmo})
 model_Arinyo = ArinyoModel(camb_pk_interp=pk_interp)
 
 # %%
+model_Arinyo = ArinyoModel(cosmo)
+
+# %%
+# %%time
+for ii in range(10):
+    pklin = model_Arinyo.linP_Mpc(2.2, k_Mpc)
+
+# %%
+# %%time
+for ii in range(10):
+    pklin = model_Arinyo.linP_Mpc(2.2, k_Mpc, cosmo_new=cosmo_new)
+
+# %%
+
+# %%
+pklin = model_Arinyo.linP_Mpc(2.2, k_Mpc)
+plt.loglog(k_Mpc, pklin)
+
+cosmo_new = {
+    "H0": 67.66,
+    "mnu": 0,
+    "omch2": 0.119,
+    "ombh2": 0.0224,
+    "omk": 0,
+    'As': 2.105e-09,
+    # "As": pars_chain["As"][ii],
+    'ns': 0.9665,
+    # "ns": pars_chain["ns"][ii],
+    "nrun": 0.0,
+    "pivot_scalar": 0.05,
+    "w": -1.0,
+}
+
+pklin = model_Arinyo.linP_Mpc(2.2, k_Mpc, cosmo_new=cosmo_new)
+plt.loglog(k_Mpc, pklin)
+
+# %%
+
+# %%
+from forestflow.model_p3d_arinyo import get_linP_interp
+
+# %%
+# %%time
+linP_interp = get_linP_interp(cosmo)
+
+# %%
+get_linpower = types.MethodType(P_camb, linP_interp)
+
+# %%
+# %%time
+for ii in range(100):
+    get_linpower(2., k_Mpc, grid=False)
+
+# %%
+
+k_Mpc = np.geomspace(1e-4, 1, 100)
+pklin1 = get_linpower(0., k_Mpc, grid=False)
+pklin2 = get_linpower(3., k_Mpc, grid=False)
+plt.plot(k_Mpc, pklin1/pklin2)
+men = np.mean(pklin1/pklin2)
+print(men)
+plt.axhline(men)
+plt.xscale("log")
+
+# %%
+4**1.5
+
+# %%
+1.748359033570783
+
+# %%
 import types
 from forestflow.camb_routines import P_camb
 
@@ -401,30 +472,6 @@ tar_cosmo = {
 
 res_linP_zs = rescale_linP(fid_cosmo, tar_cosmo, linP_zs)
 
-def rescale_pklin(zz, k_Mpc, fun_linpower, fid_cosmo, tar_cosmo, kp_Mpc=0.7, ks_Mpc=0.05):
-
-    ratio_As = tar_cosmo["As"] / fid_cosmo["As"]
-    delta_ns = tar_cosmo["ns"] - fid_cosmo["ns"]
-    delta_nrun = tar_cosmo["nrun"] - fid_cosmo["nrun"]
-    
-    ln_kp_ks = np.log(kp_Mpc / ks_Mpc)
-    delta_alpha_p = delta_nrun
-    delta_n_p = delta_ns + delta_nrun * ln_kp_ks
-    ln_ratio_A_p = (
-        np.log(ratio_As)
-        + (delta_ns + 0.5 * delta_nrun * ln_kp_ks) * ln_kp_ks
-    )
-    
-    rotk = np.log(k_Mpc / kp_Mpc)    
-    pklin = get_linpower(zz, k_Mpc, grid=False)
-    
-    pklin_rescaled = pklin * np.exp(
-        ln_ratio_A_p
-        + delta_n_p * rotk
-        + 0.5 * delta_alpha_p * rotk**2
-    )
-
-    return pklin, pklin_rescaled
 
 
 # %%

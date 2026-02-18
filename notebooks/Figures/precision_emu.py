@@ -82,9 +82,9 @@ print(len(Archive3D.training_data))
 
 # %%
 p3d_emu = P3DEmulator(
-    # model_path=path_program+"/data/emulator_models/new_emu",
+    model_path=path_program+"/data/emulator_models/forest_mpg",
     # model_path=path_program+"/data/emulator_models/new_emu2",
-    model_path=path_program+"/data/emulator_models/new_emu3",
+    # model_path=path_program+"/data/emulator_models/new_emu3",
 )
 
 # %% [markdown]
