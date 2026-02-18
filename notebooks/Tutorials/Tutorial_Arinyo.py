@@ -195,10 +195,17 @@ for ii in range(10):
 
 # %% [markdown]
 # ## Arinyo model from emulator
+#
+# The emulator predicts the Arinyo parameters as a function of Delta2p, np, mF, sigT, gamma, kF
+#
+# The Arinyo model requires as input a cosmology (to evaluate the Plin) and some Arinyo parameters
+#
+# We need the value of Delta2p and np to be consistent with the cosmology provided to the Arinyo model
 
 # %%
 import forestflow
 from forestflow.P3D_cINN import P3DEmulator
+from lace.cosmo import camb_cosmo, fit_linP
 
 # %%
 path_repo = os.path.dirname(forestflow.__path__[0]) + '/'
@@ -207,29 +214,41 @@ emulator = P3DEmulator(
 )
 
 # %%
-emulator.
-
-# %% [markdown]
-# #### Ratio with best-fitting model
+z = 4.
+kp_Mpc = 0.7
+linP_zs = fit_linP.get_linP_Mpc_zs(
+    camb_cosmo.get_cosmology(**cosmo), [z], kp_Mpc
+)[0]
+linP_zs
 
 # %%
-mask = k3d_Mpc[:,0] < 4
-for ii in range(0, p3d_Mpc.shape[1]):
-    lab = r'$<\mu>=$'+str(np.round(np.nanmean(mu3d[:,ii]), 2))
-    plt.plot(k3d_Mpc[mask, ii], p3d_pred[mask, ii]/model_p3d[mask, ii]-1, label=lab)
-plt.plot(k3d_Mpc[mask, 0], k3d_Mpc[mask, 0]*0, 'k--')
-plt.xscale('log')
+input_emu = {
+    "Delta2_p": linP_zs["Delta2_p"],
+    "n_p": linP_zs["n_p"],
+    'mF': 0.23475637218289533,
+    'sigT_Mpc': 0.10040737452608385,
+    'gamma': 1.2115605945334802,
+    'kF_Mpc': 14.191866950067904
+}
+
+# %%
+par_ari = emulator.predict_Arinyos(input_emu, return_dict=True)
+par_ari
+
+# %%
+p3d_from_emu = model_Arinyo.P3D_Mpc(zs, k2d, mu2d, par_ari)
+plin = model_Arinyo.linP_Mpc(zs, k) 
+
+# %%
+
+for ii in range(0, k2d.shape[1]):
+    lab = r'$<\mu>=$'+str(np.round(np.nanmean(mu2d[:,ii]), 2))
+    mask = k2d[:,ii] < 4
+    plt.loglog(k2d[mask, ii], p3d_from_emu[mask, ii]/plin[mask], label=lab)
+# plt.plot(k3d_Mpc[mask, 0], k3d_Mpc[mask, 0]*0, 'k--')
+# plt.xscale('log')
 plt.xlabel(r'$k$ [Mpc]')
 plt.ylabel(r'$P/P_{\rm lin}$')
 plt.legend()
-
-# %%
-# mask = k1d_Mpc < 4
-# plt.plot(k1d_Mpc[mask], p1d_pred[mask]/model_p1d[mask]-1, '-', label='Sim/Model-1')
-# plt.plot(k1d_Mpc[mask], k1d_Mpc[mask]*0, 'k--')
-# plt.xscale('log')
-# plt.xlabel(r'$k$ [Mpc]')
-# plt.ylabel(r'$P_{\rm 1D}$')
-# plt.legend()
 
 # %%
