@@ -6,25 +6,6 @@ from forestflow.camb_routines import P_camb
 from forestflow import pcross
 
 
-def get_nmod(k, dk, Lbox):
-    """
-    Calculate the number of modes in a given k bin.
-
-    Parameters:
-        k (float): Center of the k bin.
-        dk (float): Width of the k bin.
-        Lbox (float): Size of the simulation box.
-
-    Returns:
-        Nk (float): Number of modes in the k bin.
-    """
-    Vs = 4 * np.pi**2 * k**2 * dk * (1 + 1 / 12 * (dk / k) ** 2)
-    kf = 2 * np.pi / Lbox
-    Vk = kf**3
-    Nk = Vs / Vk
-    return Nk
-
-
 def rescale_pklin(
     z, k_Mpc, fun_linpower, fid_cosmo, tar_cosmo, kp_Mpc=0.7, ks_Mpc=0.05
 ):

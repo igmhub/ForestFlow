@@ -1,6 +1,25 @@
 import numpy as np
 
 
+def get_nmod(k, dk, Lbox):
+    """
+    Calculate the number of modes in a given k bin.
+
+    Parameters:
+        k (float): Center of the k bin.
+        dk (float): Width of the k bin.
+        Lbox (float): Size of the simulation box.
+
+    Returns:
+        Nk (float): Number of modes in the k bin.
+    """
+    Vs = 4 * np.pi**2 * k**2 * dk * (1 + 1 / 12 * (dk / k) ** 2)
+    kf = 2 * np.pi / Lbox
+    Vk = kf**3
+    Nk = Vs / Vk
+    return Nk
+
+
 def normalize_power(arch, arch_av):
     nav = len(arch_av)
     nall = len(arch.data)
