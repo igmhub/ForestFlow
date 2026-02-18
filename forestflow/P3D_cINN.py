@@ -19,10 +19,11 @@ import lace
 
 # forestflow models
 import forestflow
-from forestflow.model_p3d_arinyo import ArinyoModel
-from forestflow.archive import get_camb_interp
-from forestflow.utils import get_covariance
-from forestflow.rebin_p3d import p3d_allkmu
+
+# from forestflow.model_p3d_arinyo import ArinyoModel
+
+# from forestflow.utils import get_covariance
+# from forestflow.rebin_p3d import p3d_allkmu
 
 
 def init_xavier(m):
@@ -168,16 +169,16 @@ class P3DEmulator:
         self.output_param_lims_max = output_emu.max(axis=0)
         self.output_param_lims_min = output_emu.min(axis=0)
 
+        for ipar in [0]:
+            input_emu[:, ipar] = np.log(input_emu[:, ipar])
+
         # Scale the training data based on the parameter limits
         input_emu = (input_emu - self.input_param_lims_min) / (
             self.input_param_lims_max - self.input_param_lims_min
         )
 
-        # output_emu[:, 2] = np.exp(output_emu[:, 2])
-        # output_emu[:, 4] = np.exp(output_emu[:, 4])
-        # output_emu[:, 6] = np.log(output_emu[:, 6])
-        # if "q2" in self.Arinyo_params:
-        #     output_emu[:, 7] = np.exp(output_emu[:, 7])
+        for ipar in [0, 2, 3, 7]:
+            output_emu[:, ipar] = np.log(output_emu[:, ipar])
 
         # some special transformations applied to the output data
         output_emu = (output_emu - self.output_param_lims_min) / (
@@ -190,396 +191,451 @@ class P3DEmulator:
 
         return input_emu, output_emu
 
-    def _get_Plin(self):
-        """
-        Retrieve linear power spectrum (Plin) from the training data.
+    # def _get_Plin(self):
+    #     """
+    #     Retrieve linear power spectrum (Plin) from the training data.
 
-        This function extracts Plin from the training data and returns it as a numpy array.
+    #     This function extracts Plin from the training data and returns it as a numpy array.
 
-        Returns:
-            np.array: Linear power spectrum (Plin) from the training data.
-        """
-        # Extract Plin from the training data
-        Plin = [d["Plin"] for d in self.training_data]
+    #     Returns:
+    #         np.array: Linear power spectrum (Plin) from the training data.
+    #     """
+    #     # Extract Plin from the training data
+    #     Plin = [d["Plin"] for d in self.training_data]
 
-        # Convert the list of Plin to a numpy array
-        Plin = np.array(Plin)
+    #     # Convert the list of Plin to a numpy array
+    #     Plin = np.array(Plin)
 
-        return Plin
+    #     return Plin
 
-    def _check_emu_params(self, emu_params, info_power, kp_Mpc=0.7):
-        # check if all emulator parameters are provided
-        compute_linP = False
-        for param in self.emu_input_names:
-            # check cosmo params
-            if param in ["Delta2_p", "n_p"]:
-                if param not in emu_params.keys():
-                    compute_linP = True
-            # check IGM params
-            else:
-                if param not in emu_params.keys():
-                    raise ValueError(f"{param} not provided in emu_params")
+    # def _check_emu_params(self, emu_params, info_power, kp_Mpc=0.7):
+    #     # check if all emulator parameters are provided
+    #     compute_linP = False
+    #     for param in self.emu_input_names:
+    #         # check cosmo params
+    #         if param in ["Delta2_p", "n_p"]:
+    #             if param not in emu_params.keys():
+    #                 compute_linP = True
+    #         # check IGM params
+    #         else:
+    #             if param not in emu_params.keys():
+    #                 raise ValueError(f"{param} not provided in emu_params")
 
-        # If Delta2p and np are not provided, compute them
-        if compute_linP:
-            msg_err = (
-                "Since Delta2_p or n_p are not provided, we need info_power"
-                " to include either cosmo or sim_label, not both or none."
-            )
-            if info_power is None:
-                raise ValueError(msg_err)
-            elif (("cosmo" in info_power) and ("sim_label" in info_power)) | (
-                ("cosmo" not in info_power) and ("sim_label" not in info_power)
-            ):
-                raise ValueError(msg_err)
-            elif "cosmo" in info_power:
-                cosmo = info_power["cosmo"]
-            elif "sim_label" in info_power:
-                repo = os.path.dirname(lace.__path__[0])
-                fname = os.path.join(
-                    repo,
-                    "data",
-                    "sim_suites",
-                    "Australia20",
-                    "mpg_emu_cosmo.npy",
-                )
-                data_cosmo = np.load(fname, allow_pickle=True).item()
-                cosmo = data_cosmo[sim_label]["cosmo_params"]
+    #     # If Delta2p and np are not provided, compute them
+    #     if compute_linP:
+    #         msg_err = (
+    #             "Since Delta2_p or n_p are not provided, we need info_power"
+    #             " to include either cosmo or sim_label, not both or none."
+    #         )
+    #         if info_power is None:
+    #             raise ValueError(msg_err)
+    #         elif (("cosmo" in info_power) and ("sim_label" in info_power)) | (
+    #             ("cosmo" not in info_power) and ("sim_label" not in info_power)
+    #         ):
+    #             raise ValueError(msg_err)
+    #         elif "cosmo" in info_power:
+    #             cosmo = info_power["cosmo"]
+    #         elif "sim_label" in info_power:
+    #             repo = os.path.dirname(lace.__path__[0])
+    #             fname = os.path.join(
+    #                 repo,
+    #                 "data",
+    #                 "sim_suites",
+    #                 "Australia20",
+    #                 "mpg_emu_cosmo.npy",
+    #             )
+    #             data_cosmo = np.load(fname, allow_pickle=True).item()
+    #             cosmo = data_cosmo[sim_label]["cosmo_params"]
 
-            # Get Delta2p and np from cosmology
-            sim_cosmo = camb_cosmo.get_cosmology(**cosmo)
-            linP_zs = fit_linP.get_linP_Mpc_zs(
-                sim_cosmo, [info_power["z"]], kp_Mpc
-            )[0]
+    #         # Get Delta2p and np from cosmology
+    #         sim_cosmo = camb_cosmo.get_cosmology(**cosmo)
+    #         linP_zs = fit_linP.get_linP_Mpc_zs(
+    #             sim_cosmo, [info_power["z"]], kp_Mpc
+    #         )[0]
 
-            # add these to emu_params
-            emu_params["Delta2_p"] = linP_zs["Delta2_p"]
-            emu_params["n_p"] = linP_zs["n_p"]
+    #         # add these to emu_params
+    #         emu_params["Delta2_p"] = linP_zs["Delta2_p"]
+    #         emu_params["n_p"] = linP_zs["n_p"]
 
-        return emu_params
+    #     return emu_params
 
-    def _get_Arinyo_coeffs(
-        self,
-        emu_params,
-        out_dict,
-        return_all_realizations=False,
-        Nrealizations=None,
-        seed=0,
-    ):
-        # Predict Arinyo coefficients for the given test conditions
-        _ = self.predict_Arinyos(
-            emu_params,
-            return_all_realizations=return_all_realizations,
-            Nrealizations=Nrealizations,
-            seed=seed,
-        )
+    # def _get_Arinyo_coeffs(
+    #     self,
+    #     emu_params,
+    #     out_dict,
+    #     return_all_realizations=False,
+    #     Nrealizations=None,
+    #     seed=0,
+    # ):
+    #     # Predict Arinyo coefficients for the given test conditions
+    #     _ = self.predict_Arinyos(
+    #         emu_params,
+    #         return_all_realizations=return_all_realizations,
+    #         Nrealizations=Nrealizations,
+    #         seed=seed,
+    #     )
 
-        out_dict["coeffs_Arinyo"] = {}
-        if return_all_realizations:
-            coeffs_all, coeffs_mean = _
-            out_dict["coeffs_all_Arinyo"] = {}
-        else:
-            coeffs_mean = _
+    #     out_dict["coeffs_Arinyo"] = {}
+    #     if return_all_realizations:
+    #         coeffs_all, coeffs_mean = _
+    #         out_dict["coeffs_all_Arinyo"] = {}
+    #     else:
+    #         coeffs_mean = _
 
-        for jj, par in enumerate(self.Arinyo_params):
-            out_dict["coeffs_Arinyo"][par] = coeffs_mean[jj]
-            if return_all_realizations:
-                out_dict["coeffs_all_Arinyo"][par] = coeffs_all[:, jj]
-            # old training method
-            if (self.training_type == "Arinyo_minz") and (par == "q1"):
-                out_dict["coeffs_Arinyo"]["q2"] = out_dict["coeffs_Arinyo"][
-                    "q1"
-                ]
-                if return_all_realizations:
-                    out_dict["coeffs_all_Arinyo"]["q2"] = out_dict[
-                        "coeffs_all_Arinyo"
-                    ]["q1"]
+    #     for jj, par in enumerate(self.Arinyo_params):
+    #         out_dict["coeffs_Arinyo"][par] = coeffs_mean[jj]
+    #         if return_all_realizations:
+    #             out_dict["coeffs_all_Arinyo"][par] = coeffs_all[:, jj]
+    #         # old training method
+    #         if (self.training_type == "Arinyo_minz") and (par == "q1"):
+    #             out_dict["coeffs_Arinyo"]["q2"] = out_dict["coeffs_Arinyo"][
+    #                 "q1"
+    #             ]
+    #             if return_all_realizations:
+    #                 out_dict["coeffs_all_Arinyo"]["q2"] = out_dict[
+    #                     "coeffs_all_Arinyo"
+    #                 ]["q1"]
 
-        return out_dict
+    #     return out_dict
 
-    def _rescale_cosmo(self, target_params, cosmo, z, kp_Mpc=0.7, ks_Mpc=0.05):
-        sim_cosmo = camb_cosmo.get_cosmology(**cosmo)
-        linP_zs = fit_linP.get_linP_Mpc_zs(sim_cosmo, [z], kp_Mpc)[0]
+    # def _rescale_cosmo(self, target_params, cosmo, z, kp_Mpc=0.7, ks_Mpc=0.05):
+    #     sim_cosmo = camb_cosmo.get_cosmology(**cosmo)
+    #     linP_zs = fit_linP.get_linP_Mpc_zs(sim_cosmo, [z], kp_Mpc)[0]
 
-        fid_Ap = linP_zs["Delta2_p"]
-        ratio_Ap = target_params["Delta2_p"] / fid_Ap
+    #     fid_Ap = linP_zs["Delta2_p"]
+    #     ratio_Ap = target_params["Delta2_p"] / fid_Ap
 
-        fid_np = linP_zs["n_p"]
-        delta_np = target_params["n_p"] - fid_np
+    #     fid_np = linP_zs["n_p"]
+    #     delta_np = target_params["n_p"] - fid_np
 
-        # logarithm of ratio of pivot points
-        ln_kp_ks = np.log(kp_Mpc / ks_Mpc)
+    #     # logarithm of ratio of pivot points
+    #     ln_kp_ks = np.log(kp_Mpc / ks_Mpc)
 
-        # compute scalings
-        delta_ns = delta_np
-        ln_ratio_As = np.log(ratio_Ap) - delta_np * ln_kp_ks
+    #     # compute scalings
+    #     delta_ns = delta_np
+    #     ln_ratio_As = np.log(ratio_Ap) - delta_np * ln_kp_ks
 
-        rescaled_cosmo = cosmo.copy()
-        rescaled_cosmo["As"] = np.exp(ln_ratio_As) * cosmo["As"]
-        rescaled_cosmo["ns"] = delta_ns + cosmo["ns"]
+    #     rescaled_cosmo = cosmo.copy()
+    #     rescaled_cosmo["As"] = np.exp(ln_ratio_As) * cosmo["As"]
+    #     rescaled_cosmo["ns"] = delta_ns + cosmo["ns"]
 
-        return rescaled_cosmo
+    #     return rescaled_cosmo
 
-    def _get_p3d(self, info_power, out_dict, model_Arinyo):
-        try:
-            k_Mpc = info_power["k3d_Mpc"]
-            mu = info_power["mu"]
-        except:
-            msg = "info_power must contain 'k3d_Mpc', 'mu', and (if needed) 'kmu_modes'."
-            raise ValueError(msg)
+    # def _get_p3d(self, info_power, out_dict, model_Arinyo):
+    #     try:
+    #         k_Mpc = info_power["k3d_Mpc"]
+    #         mu = info_power["mu"]
+    #     except:
+    #         msg = "info_power must contain 'k3d_Mpc', 'mu', and (if needed) 'kmu_modes'."
+    #         raise ValueError(msg)
 
-        if (len(k_Mpc.shape) == 2) & (len(mu.shape) == 2):
-            if (k_Mpc.shape[0] != mu.shape[0]) or (
-                k_Mpc.shape[1] != mu.shape[1]
-            ):
-                raise ValueError("k and mu must have the same shape.")
-            else:
-                nd1 = k_Mpc.shape[0]
-                nd2 = k_Mpc.shape[1]
-                k_Mpc = k_Mpc.reshape(-1)
-                mu = mu.reshape(-1)
-        elif (len(k_Mpc.shape) == 1) & (len(mu.shape) == 1):
-            if k_Mpc.shape[0] != mu.shape[0]:
-                raise ValueError("k and mu must have the same shape.")
-            else:
-                nd1 = k_Mpc.shape[0]
-                nd2 = 0
-        else:
-            raise ValueError("k and mu must be 1D or 2D arrays.")
+    #     if (len(k_Mpc.shape) == 2) & (len(mu.shape) == 2):
+    #         if (k_Mpc.shape[0] != mu.shape[0]) or (
+    #             k_Mpc.shape[1] != mu.shape[1]
+    #         ):
+    #             raise ValueError("k and mu must have the same shape.")
+    #         else:
+    #             nd1 = k_Mpc.shape[0]
+    #             nd2 = k_Mpc.shape[1]
+    #             k_Mpc = k_Mpc.reshape(-1)
+    #             mu = mu.reshape(-1)
+    #     elif (len(k_Mpc.shape) == 1) & (len(mu.shape) == 1):
+    #         if k_Mpc.shape[0] != mu.shape[0]:
+    #             raise ValueError("k and mu must have the same shape.")
+    #         else:
+    #             nd1 = k_Mpc.shape[0]
+    #             nd2 = 0
+    #     else:
+    #         raise ValueError("k and mu must be 1D or 2D arrays.")
 
-        out_dict["k_Mpc"] = k_Mpc
-        out_dict["mu"] = mu
+    #     out_dict["k_Mpc"] = k_Mpc
+    #     out_dict["mu"] = mu
 
-        if "kmu_modes" in info_power:
-            p3d_arinyo, out_dict["Plin"] = p3d_allkmu(
-                model_Arinyo,
-                info_power["z"],
-                out_dict["coeffs_Arinyo"],
-                info_power["kmu_modes"],
-                nk=nd1,
-                nmu=nd2,
-                compute_plin=True,
-            )
-            out_dict["p3d"] = p3d_arinyo.reshape(-1)
-        else:
-            out_dict["p3d"] = model_Arinyo.P3D_Mpc(
-                info_power["z"], k_Mpc, mu, out_dict["coeffs_Arinyo"]
-            )
-            out_dict["Plin"] = model_Arinyo.linP_Mpc(info_power["z"], k_Mpc)
+    #     if "kmu_modes" in info_power:
+    #         p3d_arinyo, out_dict["Plin"] = p3d_allkmu(
+    #             model_Arinyo,
+    #             info_power["z"],
+    #             out_dict["coeffs_Arinyo"],
+    #             info_power["kmu_modes"],
+    #             nk=nd1,
+    #             nmu=nd2,
+    #             compute_plin=True,
+    #         )
+    #         out_dict["p3d"] = p3d_arinyo.reshape(-1)
+    #     else:
+    #         out_dict["p3d"] = model_Arinyo.P3D_Mpc(
+    #             info_power["z"], k_Mpc, mu, out_dict["coeffs_Arinyo"]
+    #         )
+    #         out_dict["Plin"] = model_Arinyo.linP_Mpc(info_power["z"], k_Mpc)
 
-        if nd2 != 0:
-            out_dict["p3d"] = out_dict["p3d"].reshape(nd1, nd2)
-            out_dict["k_Mpc"] = out_dict["k_Mpc"].reshape(nd1, nd2)
-            out_dict["mu"] = out_dict["mu"].reshape(nd1, nd2)
+    #     if nd2 != 0:
+    #         out_dict["p3d"] = out_dict["p3d"].reshape(nd1, nd2)
+    #         out_dict["k_Mpc"] = out_dict["k_Mpc"].reshape(nd1, nd2)
+    #         out_dict["mu"] = out_dict["mu"].reshape(nd1, nd2)
 
-        return out_dict
+    #     return out_dict
 
-    def _get_p3d_cov(self, info_power, out_dict, model_Arinyo):
-        try:
-            k_Mpc = info_power["k3d_Mpc"]
-            mu = info_power["mu"]
-        except:
-            msg = "info_power must contain 'k3d_Mpc', 'mu', and (if needed) 'kmu_modes'."
-            raise ValueError(msg)
+    # def _get_p3d_cov(self, info_power, out_dict, model_Arinyo):
+    #     try:
+    #         k_Mpc = info_power["k3d_Mpc"]
+    #         mu = info_power["mu"]
+    #     except:
+    #         msg = "info_power must contain 'k3d_Mpc', 'mu', and (if needed) 'kmu_modes'."
+    #         raise ValueError(msg)
 
-        if (len(k_Mpc.shape) == 2) & (len(mu.shape) == 2):
-            if (k_Mpc.shape[0] != mu.shape[0]) or (
-                k_Mpc.shape[1] != mu.shape[1]
-            ):
-                raise ValueError("k and mu must have the same shape.")
-            else:
-                nd1 = k_Mpc.shape[0]
-                nd2 = k_Mpc.shape[1]
-                k_Mpc = k_Mpc.reshape(-1)
-                mu = mu.reshape(-1)
-        elif (len(k_Mpc.shape) == 1) & (len(mu.shape) == 1):
-            if k_Mpc.shape[0] != mu.shape[0]:
-                raise ValueError("k and mu must have the same shape.")
-            else:
-                nd1 = k_Mpc.shape[0]
-                nd2 = 0
-        else:
-            raise ValueError("k and mu must be 1D or 2D arrays.")
+    #     if (len(k_Mpc.shape) == 2) & (len(mu.shape) == 2):
+    #         if (k_Mpc.shape[0] != mu.shape[0]) or (
+    #             k_Mpc.shape[1] != mu.shape[1]
+    #         ):
+    #             raise ValueError("k and mu must have the same shape.")
+    #         else:
+    #             nd1 = k_Mpc.shape[0]
+    #             nd2 = k_Mpc.shape[1]
+    #             k_Mpc = k_Mpc.reshape(-1)
+    #             mu = mu.reshape(-1)
+    #     elif (len(k_Mpc.shape) == 1) & (len(mu.shape) == 1):
+    #         if k_Mpc.shape[0] != mu.shape[0]:
+    #             raise ValueError("k and mu must have the same shape.")
+    #         else:
+    #             nd1 = k_Mpc.shape[0]
+    #             nd2 = 0
+    #     else:
+    #         raise ValueError("k and mu must be 1D or 2D arrays.")
 
-        Nrea = out_dict["coeffs_all_Arinyo"]["q1"].shape[0]
-        p3ds_pred = np.zeros((Nrea, len(k_Mpc)))
-        for r in range(Nrea):
-            input_pars = {}
-            for par in self.Arinyo_params:
-                input_pars[par] = out_dict["coeffs_all_Arinyo"][par][r]
-            if "kmu_modes" in info_power:
-                _ = p3d_allkmu(
-                    model_Arinyo,
-                    info_power["z"],
-                    input_pars,
-                    info_power["kmu_modes"],
-                    nk=nd1,
-                    nmu=nd2,
-                    compute_plin=False,
-                )
-                p3ds_pred[r] = _.reshape(-1)
-            else:
-                p3ds_pred[r] = model_Arinyo.P3D_Mpc(
-                    info_power["z"], k_Mpc, mu, input_pars
-                )
+    #     Nrea = out_dict["coeffs_all_Arinyo"]["q1"].shape[0]
+    #     p3ds_pred = np.zeros((Nrea, len(k_Mpc)))
+    #     for r in range(Nrea):
+    #         input_pars = {}
+    #         for par in self.Arinyo_params:
+    #             input_pars[par] = out_dict["coeffs_all_Arinyo"][par][r]
+    #         if "kmu_modes" in info_power:
+    #             _ = p3d_allkmu(
+    #                 model_Arinyo,
+    #                 info_power["z"],
+    #                 input_pars,
+    #                 info_power["kmu_modes"],
+    #                 nk=nd1,
+    #                 nmu=nd2,
+    #                 compute_plin=False,
+    #             )
+    #             p3ds_pred[r] = _.reshape(-1)
+    #         else:
+    #             p3ds_pred[r] = model_Arinyo.P3D_Mpc(
+    #                 info_power["z"], k_Mpc, mu, input_pars
+    #             )
 
-        p3d_cov = get_covariance(p3ds_pred, out_dict["p3d"])
-        diag = np.diag(p3d_cov)
-        if nd2 != 0:
-            diag = diag.reshape(nd1, nd2)
-        out_dict["p3d_std"] = np.sqrt(diag)
+    #     p3d_cov = get_covariance(p3ds_pred, out_dict["p3d"])
+    #     diag = np.diag(p3d_cov)
+    #     if nd2 != 0:
+    #         diag = diag.reshape(nd1, nd2)
+    #     out_dict["p3d_std"] = np.sqrt(diag)
 
-        return out_dict
+    #     return out_dict
 
-    def _get_p1d(self, info_power, out_dict, model_Arinyo):
-        try:
-            k1d_Mpc = info_power["k1d_Mpc"]
-        except:
-            msg = "info_power must contain 'k1d_Mpc'."
-            raise ValueError(msg)
+    # def _get_p1d(self, info_power, out_dict, model_Arinyo):
+    #     try:
+    #         k1d_Mpc = info_power["k1d_Mpc"]
+    #     except:
+    #         msg = "info_power must contain 'k1d_Mpc'."
+    #         raise ValueError(msg)
 
-        out_dict["p1d"] = model_Arinyo.P1D_Mpc(
-            info_power["z"], k1d_Mpc, parameters=out_dict["coeffs_Arinyo"]
-        )
-        out_dict["k1d_Mpc"] = k1d_Mpc
+    #     out_dict["p1d"] = model_Arinyo.P1D_Mpc(
+    #         info_power["z"], k1d_Mpc, parameters=out_dict["coeffs_Arinyo"]
+    #     )
+    #     out_dict["k1d_Mpc"] = k1d_Mpc
 
-        return out_dict
+    #     return out_dict
 
-    def _get_p1d_cov(self, info_power, out_dict, model_Arinyo):
-        try:
-            k1d_Mpc = info_power["k1d_Mpc"]
-        except:
-            msg = "info_power must contain 'k1d_Mpc'."
-            raise ValueError(msg)
+    # def _get_p1d_cov(self, info_power, out_dict, model_Arinyo):
+    #     try:
+    #         k1d_Mpc = info_power["k1d_Mpc"]
+    #     except:
+    #         msg = "info_power must contain 'k1d_Mpc'."
+    #         raise ValueError(msg)
 
-        Nrea = out_dict["coeffs_all_Arinyo"]["q1"].shape[0]
-        p1ds_pred = np.zeros((Nrea, len(k1d_Mpc)))
+    #     Nrea = out_dict["coeffs_all_Arinyo"]["q1"].shape[0]
+    #     p1ds_pred = np.zeros((Nrea, len(k1d_Mpc)))
 
-        for r in range(Nrea):
-            input_pars = {}
-            for par in self.Arinyo_params:
-                input_pars[par] = out_dict["coeffs_all_Arinyo"][par][r]
-            p1ds_pred[r] = model_Arinyo.P1D_Mpc(
-                info_power["z"], k1d_Mpc, parameters=input_pars
-            )
+    #     for r in range(Nrea):
+    #         input_pars = {}
+    #         for par in self.Arinyo_params:
+    #             input_pars[par] = out_dict["coeffs_all_Arinyo"][par][r]
+    #         p1ds_pred[r] = model_Arinyo.P1D_Mpc(
+    #             info_power["z"], k1d_Mpc, parameters=input_pars
+    #         )
 
-        p1d_cov = get_covariance(p1ds_pred, out_dict["p1d"])
-        out_dict["p1d_std"] = np.sqrt(np.diag(p1d_cov))
+    #     p1d_cov = get_covariance(p1ds_pred, out_dict["p1d"])
+    #     out_dict["p1d_std"] = np.sqrt(np.diag(p1d_cov))
 
-        return out_dict
+    #     return out_dict
 
-    def evaluate(
-        self,
-        emu_params,
-        info_power=None,
-        Nrealizations=None,
-        return_all_realizations=False,
-        verbose=True,
-        seed=0,
-        kp_Mpc=0.7,
-        return_bias_eta=False,
-    ):
-        """
-        Predict the power spectrum using the emulator for a given simulation label and redshift.
+    # def evaluate(
+    #     self,
+    #     emu_params,
+    #     info_power=None,
+    #     Nrealizations=None,
+    #     return_all_realizations=False,
+    #     verbose=True,
+    #     seed=0,
+    #     kp_Mpc=0.7,
+    #     return_bias_eta=False,
+    # ):
+    #     """
+    #     Predict the power spectrum using the emulator for a given simulation label and redshift.
 
-        This function predicts the power spectrum using the emulator for a specified simulation label and redshift.
-        It utilizes the Arinyo model to generate power spectrum predictions based on the emulator coefficients.
+    #     This function predicts the power spectrum using the emulator for a specified simulation label and redshift.
+    #     It utilizes the Arinyo model to generate power spectrum predictions based on the emulator coefficients.
 
-        Args:
-            z (float): Redshift to evaluate the model
-            emu_params (dict): Dictionary containing emulator parameters
-            info_power (dict, optional): Dictionary containing information for computing power spectrum
-            return_bias_eta (bool, optional): Return bias_delta. Default is False.
-            Nrealizations (int, optional): Number of realizations to generate.
+    #     Args:
+    #         z (float): Redshift to evaluate the model
+    #         emu_params (dict): Dictionary containing emulator parameters
+    #         info_power (dict, optional): Dictionary containing information for computing power spectrum
+    #         return_bias_eta (bool, optional): Return bias_delta. Default is False.
+    #         Nrealizations (int, optional): Number of realizations to generate.
 
-        Returns:
-            Dict: Dictionary containing the predicted Arinyo parameters and (if needed) power spectrum
-        """
+    #     Returns:
+    #         Dict: Dictionary containing the predicted Arinyo parameters and (if needed) power spectrum
+    #     """
 
-        if Nrealizations is None:
-            Nrealizations = self.Nrealizations
+    #     if Nrealizations is None:
+    #         Nrealizations = self.Nrealizations
 
-        if info_power is not None:
-            if "return_cov" in info_power:
-                return_all_realizations = True
+    #     if info_power is not None:
+    #         if "return_cov" in info_power:
+    #             return_all_realizations = True
 
-        # output
-        out_dict = {}
+    #     # output
+    #     out_dict = {}
 
-        # Check if all emulator parameters are provided
-        emu_params = self._check_emu_params(emu_params, info_power)
+    #     # Check if all emulator parameters are provided
+    #     emu_params = self._check_emu_params(emu_params, info_power)
 
-        # Get Arinyo coefficients
-        out_dict = self._get_Arinyo_coeffs(
-            emu_params,
-            out_dict,
-            return_all_realizations=return_all_realizations,
-            Nrealizations=Nrealizations,
-            seed=seed,
-        )
+    #     # Get Arinyo coefficients
+    #     out_dict = self._get_Arinyo_coeffs(
+    #         emu_params,
+    #         out_dict,
+    #         return_all_realizations=return_all_realizations,
+    #         Nrealizations=Nrealizations,
+    #         seed=seed,
+    #     )
 
-        # Redshift
-        if "z" not in info_power:
-            raise ValueError("z must be in info_power")
+    #     # Redshift
+    #     if "z" not in info_power:
+    #         raise ValueError("z must be in info_power")
+    #     # else:
+    #     #     if len(info_power["z"].shape) != len(emu_params):
+    #     #         raise ValueError(
+    #     #             "The length of z emu_params must be the same as"
+    #     #         )
 
-        # In order to compute P3D or P1D, we need to compute Plin first
-        # for the target cosmology. Get the cosmology
-        if (("cosmo" in info_power) and ("sim_label" in info_power)) | (
-            ("cosmo" not in info_power) and ("sim_label" not in info_power)
-        ):
-            msg = (
-                "info_power needs to include either cosmo or sim_label, not both or none."
-                + "The cosmology is set by one of these."
-            )
-            raise ValueError(msg)
-        else:
-            if "cosmo" in info_power:
-                cosmo = info_power["cosmo"]
-            elif "sim_label" in info_power:
-                repo = os.path.dirname(lace.__path__[0]) + "/"
-                fname = repo + ("data/sim_suites/Australia20/mpg_emu_cosmo.npy")
-                data_cosmo = np.load(fname, allow_pickle=True).item()
-                cosmo = data_cosmo[info_power["sim_label"]]["cosmo_params"]
+    #     # In order to compute P3D or P1D, we need to compute Plin first
+    #     # for the target cosmology. Get the cosmology
+    #     if (("cosmo" in info_power) and ("sim_label" in info_power)) | (
+    #         ("cosmo" not in info_power) and ("sim_label" not in info_power)
+    #     ):
+    #         msg = (
+    #             "info_power needs to include either cosmo or sim_label, not both or none."
+    #             + "The cosmology is set by one of these."
+    #         )
+    #         raise ValueError(msg)
+    #     else:
+    #         if "cosmo" in info_power:
+    #             cosmo = info_power["cosmo"]
+    #         elif "sim_label" in info_power:
+    #             repo = os.path.dirname(lace.__path__[0]) + "/"
+    #             fname = repo + ("data/sim_suites/Australia20/mpg_emu_cosmo.npy")
+    #             data_cosmo = np.load(fname, allow_pickle=True).item()
+    #             cosmo = data_cosmo[info_power["sim_label"]]["cosmo_params"]
 
-        if return_bias_eta:
-            linP_zs = fit_linP.get_linP_Mpc_zs(
-                camb_cosmo.get_cosmology(**cosmo), [info_power["z"]], kp_Mpc
-            )[0]
-            out_dict["coeffs_Arinyo"]["bias_eta"] = (
-                out_dict["coeffs_Arinyo"]["bias"]
-                * out_dict["coeffs_Arinyo"]["beta"]
-                / linP_zs["f_p"]
-            )
-            out_dict["coeffs_Arinyo"]["f_p"] = linP_zs["f_p"]
+    #     if return_bias_eta:
+    #         linP_zs = fit_linP.get_linP_Mpc_zs(
+    #             camb_cosmo.get_cosmology(**cosmo), [info_power["z"]], kp_Mpc
+    #         )[0]
+    #         out_dict["coeffs_Arinyo"]["bias_eta"] = (
+    #             out_dict["coeffs_Arinyo"]["bias"]
+    #             * out_dict["coeffs_Arinyo"]["beta"]
+    #             / linP_zs["f_p"]
+    #         )
+    #         out_dict["coeffs_Arinyo"]["f_p"] = linP_zs["f_p"]
 
-        # Check if enough cosmology parameters are provided
-        for key in self.cosmo_fields:
-            if key not in cosmo.keys():
-                raise ValueError("cosmo must contain:", self.cosmo_fields)
+    #     # Check if enough cosmology parameters are provided
+    #     for key in self.cosmo_fields:
+    #         if key not in cosmo.keys():
+    #             raise ValueError("cosmo must contain:", self.cosmo_fields)
 
-        # rescale cosmology to Delta2_p and n_p in orig_params if present
-        if ("Delta2_p" in emu_params.keys()) | ("n_p" in emu_params.keys()):
-            cosmo = self._rescale_cosmo(emu_params, cosmo, info_power["z"])
+    #     # rescale cosmology to Delta2_p and n_p in orig_params if present
+    #     if ("Delta2_p" in emu_params.keys()) | ("n_p" in emu_params.keys()):
+    #         cosmo = self._rescale_cosmo(emu_params, cosmo, info_power["z"])
 
-        if ("return_p3d" in info_power) | ("return_p1d" in info_power):
-            pk_interp = get_camb_interp({"cosmo_params": cosmo})
-            model_Arinyo = ArinyoModel(camb_pk_interp=pk_interp)
+    #     if ("return_p3d" in info_power) | ("return_p1d" in info_power):
+    #         pk_interp = get_camb_interp({"cosmo_params": cosmo})
+    #         model_Arinyo = ArinyoModel(camb_pk_interp=pk_interp)
 
-        if "return_p3d" in info_power:
-            out_dict = self._get_p3d(info_power, out_dict, model_Arinyo)
-            if "return_cov" in info_power:
-                out_dict = self._get_p3d_cov(info_power, out_dict, model_Arinyo)
+    #     if "return_p3d" in info_power:
+    #         out_dict = self._get_p3d(info_power, out_dict, model_Arinyo)
+    #         if "return_cov" in info_power:
+    #             out_dict = self._get_p3d_cov(info_power, out_dict, model_Arinyo)
 
-        if "return_p1d" in info_power:
-            out_dict = self._get_p1d(info_power, out_dict, model_Arinyo)
-            if "return_cov" in info_power:
-                out_dict = self._get_p1d_cov(info_power, out_dict, model_Arinyo)
+    #     if "return_p1d" in info_power:
+    #         out_dict = self._get_p1d(info_power, out_dict, model_Arinyo)
+    #         if "return_cov" in info_power:
+    #             out_dict = self._get_p1d_cov(info_power, out_dict, model_Arinyo)
 
-        # Clear GPU memory if using PyTorch
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
+    #     # Clear GPU memory if using PyTorch
+    #     if torch.cuda.is_available():
+    #         torch.cuda.empty_cache()
 
-        return out_dict
+    #     return out_dict
+
+    # def evaluate_arinyo(
+    #     self,
+    #     emu_params,
+    #     model_Arinyo,
+    #     info_power=None,
+    #     Nrealizations=3000,
+    #     seed=0,
+    #     kp_Mpc=0.7,
+    # ):
+    #     """
+    #     Predict the power spectrum using the emulator for a given simulation label and redshift.
+
+    #     This function predicts the power spectrum using the emulator for a specified simulation label and redshift.
+    #     It utilizes the Arinyo model to generate power spectrum predictions based on the emulator coefficients.
+
+    #     Args:
+    #         z (float): Redshift to evaluate the model
+    #         emu_params (dict): Dictionary containing emulator parameters
+    #         info_power (dict, optional): Dictionary containing information for computing power spectrum
+    #         return_bias_eta (bool, optional): Return bias_delta. Default is False.
+    #         Nrealizations (int, optional): Number of realizations to generate.
+
+    #     Returns:
+    #         Dict: Dictionary containing the predicted Arinyo parameters and (if needed) power spectrum
+    #     """
+
+    #     # output
+    #     out_dict = {}
+
+    #     # Get Arinyo coefficients
+    #     out_dict = self._get_Arinyo_coeffs(
+    #         emu_params,
+    #         out_dict,
+    #         return_all_realizations=False,
+    #         Nrealizations=Nrealizations,
+    #         seed=seed,
+    #     )
+
+    #     if "return_p3d" in info_power:
+    #         out_dict = self._get_p3d(info_power, out_dict, model_Arinyo)
+
+    #     if "return_p1d" in info_power:
+    #         out_dict = self._get_p1d(info_power, out_dict, model_Arinyo)
+
+    #     # Clear GPU memory if using PyTorch
+    #     if torch.cuda.is_available():
+    #         torch.cuda.empty_cache()
+
+    #     return out_dict
 
     def _define_cINN_Arinyo(self, nLayers_inn, batch_size, dim_inputSpace):
         """
@@ -756,7 +812,7 @@ class P3DEmulator:
 
         # Learning rate scheduler
         scheduler = torch.optim.lr_scheduler.StepLR(
-            optimizer, step_size=step_size
+            optimizer, step_size=step_size, gamma=0.7
         )
 
         # Training loop
@@ -811,6 +867,7 @@ class P3DEmulator:
         Nrealizations=None,
         return_all_realizations=False,
         seed=0,
+        return_dict=True,
     ):
         """
         Predict Arinyo coefficients using the trained emulator.
@@ -859,6 +916,11 @@ class P3DEmulator:
                 input_emu.append(emu_params[jj][par])
             input_emu = np.array(input_emu)
             # normalize the input data and arrange it along the first axis
+            for ipar in [0]:
+                if input_emu.ndim == 1:
+                    input_emu[ipar] = np.log(input_emu[ipar])
+                else:
+                    input_emu[:, ipar] = np.log(input_emu[:, ipar])
             condition[jj * Nrealizations : (jj + 1) * Nrealizations, :] = (
                 input_emu - self.input_param_lims_min
             ) / (self.input_param_lims_max - self.input_param_lims_min)
@@ -884,11 +946,8 @@ class P3DEmulator:
                 + self.output_param_lims_min
             )
 
-            # Arinyo_preds[:, 2] = torch.log(Arinyo_preds[:, 2])
-            # Arinyo_preds[:, 4] = torch.log(Arinyo_preds[:, 4])
-            # Arinyo_preds[:, 6] = torch.exp(Arinyo_preds[:, 6])
-            # if "q2" in self.Arinyo_params:
-            #     Arinyo_preds[:, 7] = torch.log(Arinyo_preds[:, 7])
+            for ipar in [0, 2, 3, 7]:
+                Arinyo_preds[:, ipar] = torch.exp(Arinyo_preds[:, ipar])
 
         all_realizations = np.array(
             Arinyo_preds.reshape(neval, Nrealizations, self.dim_inputSpace)
@@ -897,9 +956,20 @@ class P3DEmulator:
         # Calculate the median of the predictions
         Arinyo_mean = np.mean(all_realizations, axis=1)
 
-        if Arinyo_mean.shape[0] == 1:
-            Arinyo_mean = Arinyo_mean[0]
-            all_realizations = all_realizations[0]
+        if return_dict:
+            _Arinyo_mean = []
+            for ii in range(Arinyo_mean.shape[0]):
+                _dict_int = {}
+                for jj, par in enumerate(self.Arinyo_params):
+                    _dict_int[par] = Arinyo_mean[ii, jj]
+                _Arinyo_mean.append(_dict_int)
+            Arinyo_mean = _Arinyo_mean
+            if len(Arinyo_mean) == 1:
+                Arinyo_mean = Arinyo_mean[0]
+        else:
+            if Arinyo_mean.shape[0] == 1:
+                Arinyo_mean = Arinyo_mean[0]
+                all_realizations = all_realizations[0]
 
         if return_all_realizations == True:
             return all_realizations, Arinyo_mean

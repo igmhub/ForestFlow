@@ -15,11 +15,6 @@
 
 # %% [markdown]
 # # ForestFlow tutorial
-#
-# In this tutorial we explain how to:
-# - Train an emulator
-# - Evaluate the emulator to get Arinyo params, P3D, and P1D
-# - Accuracy tests as a function of the number of realizations
 
 # %%
 # %load_ext autoreload
@@ -30,54 +25,9 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
-# %%
 import forestflow
 from forestflow.archive import GadgetArchive3D
-from forestflow.plots_v0 import plot_test_p3d
 from forestflow.P3D_cINN import P3DEmulator
-
-# %%
-path_program = os.path.dirname(forestflow.__path__[0]) + '/'
-path_program
-
-# %% [markdown]
-# ### LOAD P3D ARCHIVE
-
-# %% [markdown]
-# ## Load P3D archive and train emulator 
-#
-# There is a trained version already stored, jump to load emulator below if do not want to wait
-
-# %%
-# %%time
-folder_lya_data = path_program + "/data/best_arinyo/"
-
-Archive3D = GadgetArchive3D(
-    base_folder=path_program[:-1],
-    folder_data=folder_lya_data,
-    force_recompute_plin=False,
-    average="both",
-)
-print(len(Archive3D.training_data))
-
-# %%
-# %%time
-
-p3d_emu = P3DEmulator(
-    training_data=Archive3D.training_data,
-    emu_input_names=Archive3D.emu_params,
-    training_type='Arinyo_min',
-    train=True,
-    nepochs=1001,
-    step_size=500,
-    Nrealizations=5000,
-    save_path=path_program+"/data/emulator_models/new_emu",
-)
-
-# %%
-arr_loss = np.array(p3d_emu.loss_arr)
-plt.plot(-arr_loss)
-plt.ylim(30, 41)
 
 # %% [markdown]
 # ## Load emulator
@@ -85,8 +35,8 @@ plt.ylim(30, 41)
 # Here to directly load the emulator
 
 # %%
-p3d_emu = P3DEmulator(
-    model_path=path_program+"/data/emulator_models/new_emu",
+emulator = P3DEmulator(
+    model_path= os.path.join(os.path.dirname(forestflow.__path__[0]), "data", "emulator_models", "forest_mpg")
 )
 
 # %% [markdown]
@@ -113,11 +63,7 @@ list_input_params = [
 
 # %%
 # %%time
-coeffs_all, coeffs_mean = p3d_emu.predict_Arinyos(
-    emu_params=list_input_params,
-    return_all_realizations=True,
-    Nrealizations=3000,
-)
+coeffs_mean = emulator.predict_Arinyos(emu_params=list_input_params)
 coeffs_mean
 
 # %% [markdown]
@@ -135,12 +81,158 @@ input_params = {
 
 # %%
 # %%time
-coeffs_all, coeffs_mean = p3d_emu.predict_Arinyos(
+coeffs_mean = emulator.predict_Arinyos(
     emu_params=input_params,
-    return_all_realizations=True,
-    Nrealizations=3000,
 )
 coeffs_mean
+
+# %% [markdown]
+# #### return numpy array for compatibility with old version
+
+# %%
+# %%time
+coeffs_mean = emulator.predict_Arinyos(
+    emu_params=input_params,
+    return_dict=False
+)
+coeffs_mean
+
+# %% [markdown]
+# ## Get P3D and P1D
+#
+# See Tutorial_Arinyo for more info about the ArinyoModel class
+
+# %%
+from forestflow.model_p3d_arinyo import ArinyoModel
+from lace.cosmo import camb_cosmo, fit_linP
+
+# %%
+# target cosmology
+cosmo = {
+    "H0": 67.66,
+    "mnu": 0,
+    "omch2": 0.119,
+    "ombh2": 0.0224,
+    "omk": 0,
+    'As': 2.105e-09,
+    'ns': 0.9665,
+    "nrun": 0.0,
+    "pivot_scalar": 0.05,
+    "w": -1.0,
+}
+# set Arinyo model
+model_Arinyo = ArinyoModel(cosmo)
+
+
+# Compute compressed parameters for the target cosmology
+z = 4.
+kp_Mpc = 0.7
+linP_zs = fit_linP.get_linP_Mpc_zs(
+    camb_cosmo.get_cosmology(**cosmo), [z], kp_Mpc
+)[0]
+
+# define input parameters to emulator
+input_emu = {
+    "Delta2_p": linP_zs["Delta2_p"],
+    "n_p": linP_zs["n_p"],
+    'mF': 0.23475637218289533,
+    'sigT_Mpc': 0.10040737452608385,
+    'gamma': 1.2115605945334802,
+    'kF_Mpc': 14.191866950067904
+}
+
+
+# %% [markdown]
+# #### Predict Arinyo with emulator
+
+# %%
+par_ari = emulator.predict_Arinyos(input_emu, return_dict=True)
+par_ari
+
+# %% [markdown]
+# ### Get power
+
+# %%
+# %%time
+# P3D
+nn_k = 200 # number of k bins
+nn_mu = 10 # number of mu bins
+k = np.logspace(-1.5, 1, nn_k)
+mu = np.linspace(0, 1, nn_mu)
+k2d = np.tile(k[:, np.newaxis], nn_mu) # k grid for P3D
+mu2d = np.tile(mu[:, np.newaxis], nn_k).T # mu grid for P3D
+
+#P1D
+kpar = np.logspace(-1, np.log10(5), nn_k) # kpar for P1D
+
+
+
+plin = model_Arinyo.linP_Mpc(z, k) # get linear power spectrum at target zmodel_Arinyo
+p3d = model_Arinyo.P3D_Mpc(z, k2d, mu2d, par_ari) # get P3D at target z
+p1d = model_Arinyo.P1D_Mpc(z, kpar, par_ari) # get P1D at target z
+
+# %%
+for ii in range(p3d.shape[1]):
+    col = 'C'+str(ii)
+    if ii % 3 == 0:
+        lab = r'$<\mu>=$'+str(np.round(mu[ii], 2))
+    else:
+        lab = None
+    plt.loglog(k, p3d[:, ii]/plin, col, label=lab)
+    plt.plot(k, p3d[0, ii]/plin[0]+k[:]*0, col+'--')
+plt.xlabel(r'$k$ [Mpc]')
+plt.ylabel(r'$P/P_{\rm lin}$')
+plt.legend(loc='upper left')
+
+# %%
+plt.plot(kpar, kpar * p1d/np.pi)
+plt.xlabel(r'$k$ [Mpc]')
+plt.ylabel(r'$P_{\rm 1D}(k)$')
+plt.xscale('log')
+
+# %%
+
+# %% [markdown]
+# ## For developers, train emulator
+
+# %%
+# %%time
+folder_lya_data = path_program + "/data/best_arinyo/"
+
+Archive3D = GadgetArchive3D(
+    base_folder=path_program[:-1],
+    folder_data=folder_lya_data,
+    force_recompute_plin=False,
+    average="both",
+)
+print(len(Archive3D.training_data))
+
+# %%
+train = False
+if train:
+    emulator = P3DEmulator(
+        training_data=Archive3D.training_data,
+        emu_input_names=Archive3D.emu_params,
+        training_type='Arinyo_min',
+        train=True,
+        nepochs=4000,
+        batch_size=20,
+        step_size=200,
+        weight_decay=0.01,
+        Nrealizations=6000,
+        # save_path=path_program+"/data/emulator_models/forest_mpg",
+        save_path=path_program+"/data/emulator_models/test",
+    )
+
+# %%
+arr_loss = np.array(emulator.loss_arr)
+plt.plot(-arr_loss)
+plt.ylim(20, 41)
+plt.axvline(4000)
+# plt.xscale("log")
+
+# %% [markdown]
+# # For developers, Nrealizations parameter
 
 # %% [markdown]
 # #### Convergence
@@ -175,127 +267,6 @@ plt.axvline(2e3, color="k")
 plt.legend()
 
 # %% [markdown]
-# ## Get P3D and P1D
-#
-# You can also compute these quantities, but need to specify the cosmology. This is because we need Plin to
-# evaluate the Arinyo model
-
-# %%
-# target redshift
-z_test = 3
-
-# target cosmology
-cosmo = {
-    'H0': 67.0,
-    'omch2': 0.12,
-    'ombh2': 0.022,
-    'mnu': 0.0,
-    'omk': 0,
-    'As': 2.1e-09,
-    'ns': 0.96,
-    'nrun': 0.0,
-    'w': -1.0
-}
-
-# Cosmological and IGM input parameters. No need to specify 
-# cosmological parameters when target cosmology is provided
-# IGM parameters from random simulation, access via sim.keys()
-input_params = {
-    # 'Delta2_p': 0., # not used if you provide cosmology
-    # 'n_p': 0., # not used if you provide cosmology
-    'mF': 0.66,
-    'sigT_Mpc': 0.13,
-    'gamma': 1.5,
-    'kF_Mpc': 10.5
-}
-
-
-
-# %%
-# get only Arinyo params
-info_power = {
-    "cosmo": cosmo,
-    "z": z_test,
-}
-
-
-out = p3d_emu.evaluate(
-    emu_params=input_params,
-    info_power=info_power,
-    return_bias_eta=True,
-    Nrealizations=2000
-)
-out
-
-# %%
-# %%time
-Nrea = 1000
-out = p3d_emu.evaluate(
-    emu_params=input_params,
-    info_power=info_power,
-    Nrealizations=Nrea,
-    seed=0,
-    return_all_realizations=True
-)
-
-# %% [markdown]
-# #### Also return P3D 
-#
-# If you want to run faster, run with "return_cov":False (this is the default option)
-
-# %%
-# %%time
-
-# ks at which compute P3D
-k = np.logspace(-2, 1, 100)
-# mu's at which compute P3D
-mu = np.zeros_like(k)
-
-k3d_Mpc = np.concatenate([k, k])
-mu3d = np.concatenate([mu, mu+1])
-Ntot = 10000
-
-info_power = {
-    "cosmo": cosmo,
-    "z": z_test,
-    "k3d_Mpc": k3d_Mpc,
-    "mu": mu3d,
-    "return_p3d": True,
-    "return_cov": True,
-}
-
-out = p3d_emu.evaluate(
-    emu_params=input_params,
-    info_power=info_power,
-    Nrealizations=Ntot
-)
-out.keys()
-
-# %%
-ii = 0
-_ = out["mu"] == 0
-plt.errorbar(
-    out["k_Mpc"][_], 
-    out["p3d"][_]/out["Plin"][_], 
-    out["p3d_std"][_]/out["Plin"][_]/np.sqrt(Ntot), 
-    label="mu=0",
-    color = "C"+str(ii)
-)
-_ = out["mu"] == 1
-plt.errorbar(
-    out["k_Mpc"][_], 
-    out["p3d"][_]/out["Plin"][_], 
-    out["p3d_std"][_]/out["Plin"][_]/np.sqrt(Ntot), 
-    label="mu=1",
-    ls="--",
-    color = "C"+str(ii)
-)
-plt.ylabel("P3D/Plin")
-plt.xlabel("k")
-plt.legend()
-plt.xscale("log")
-
-# %% [markdown]
 # #### Convergence P3D
 
 # %%
@@ -327,39 +298,6 @@ plt.xlabel("k3d")
 plt.legend()
 plt.xscale("log")
 
-# %% [markdown]
-# #### Now get P1D
-#
-# If you want to run faster, run with "return_cov":False (this is the default option)
-
-# %%
-# %%time
-# ks at which compute P3D
-k1d_Mpc = np.geomspace(0.01, 4, 100)
-
-info_power = {
-    "cosmo": cosmo,
-    "z": z_test,
-    "k1d_Mpc": k1d_Mpc,
-    "return_p1d": True,
-    # "return_cov": True,
-}
-Ntot = 10000
-
-out = p3d_emu.evaluate(
-    emu_params=input_params,
-    info_power=info_power,
-    # natural_params=True,
-    Nrealizations=Ntot
-)
-out.keys()
-
-# %%
-plt.plot(out["k1d_Mpc"], out["k1d_Mpc"]/np.pi*out["p1d"])
-plt.ylabel("kpar*P1D/pi")
-plt.xlabel("kpar")
-plt.xscale("log")
-
 # %%
 nx = np.geomspace(10, Ntot, 8)
 
@@ -378,8 +316,3 @@ plt.ylabel("std_P1D/P1D/sqrt(Nrea)")
 plt.xlabel("kpar")
 plt.legend()
 plt.xscale("log")
-
-# %%
-out.keys()
-
-# %%

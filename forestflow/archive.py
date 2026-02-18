@@ -13,35 +13,35 @@ from forestflow.model_p3d_arinyo import ArinyoModel
 from forestflow.camb_routines import get_matter_power_interpolator
 
 
-def get_camb_interp(data, file=None):
-    # check if Plin interporlator has been pre-computed for this simulation
-    # if not, do it (to be fixed)
-    try:
-        pk_interp = np.load(file, allow_pickle=True).all()
-    except:
-        cosmo = camb_cosmo.get_cosmology_from_dictionary(data["cosmo_params"])
-        # get model
-        zs = np.arange(2.0, 4.75, 0.25)
-        camb_results = camb_cosmo.get_camb_results(
-            cosmo, zs=zs, camb_kmax_Mpc=200
-        )
+# def get_camb_interp(data, file=None):
+#     # check if Plin interporlator has been pre-computed for this simulation
+#     # if not, do it (to be fixed)
+#     try:
+#         pk_interp = np.load(file, allow_pickle=True).all()
+#     except:
+#         cosmo = camb_cosmo.get_cosmology_from_dictionary(data["cosmo_params"])
+#         # get model
+#         zs = np.arange(2.0, 4.75, 0.25)
+#         camb_results = camb_cosmo.get_camb_results(
+#             cosmo, zs=zs, camb_kmax_Mpc=200
+#         )
 
-        # get interpolator directly so we do not have to run camb each time
-        pk_interp = get_matter_power_interpolator(
-            camb_results,
-            nonlinear=False,
-            var1=8,
-            var2=8,
-            hubble_units=False,
-            k_hunit=False,
-            log_interp=True,
-        )
+#         # get interpolator directly so we do not have to run camb each time
+#         pk_interp = get_matter_power_interpolator(
+#             camb_results,
+#             nonlinear=False,
+#             var1=8,
+#             var2=8,
+#             hubble_units=False,
+#             k_hunit=False,
+#             log_interp=True,
+#         )
 
-        # save linear Plin interpolator
-        if file is not None:
-            np.save(file, pk_interp)
+#         # save linear Plin interpolator
+#         if file is not None:
+#             np.save(file, pk_interp)
 
-    return pk_interp
+#     return pk_interp
 
 
 def paramz_to_paramind(z, paramz):
@@ -418,21 +418,25 @@ class GadgetArchive3D(GadgetArchive):
     def add_Arinyo_model(self, archive):
         nelem = len(archive)
 
+        ari_model = ArinyoModel(cosmo=archive[0]["cosmo_params"])
+
         for ind_book in range(nelem):
             # load linear Plin interpolator
-            file = (
-                self.folder_interp
-                + "Plin_interp_sim"
-                + archive[ind_book]["sim_label"][4:]
-                + ".npy"
-            )
-            pk_interp = get_camb_interp(archive[ind_book], file)
+            # file = (
+            #     self.folder_interp
+            #     + "Plin_interp_sim"
+            #     + archive[ind_book]["sim_label"][4:]
+            #     + ".npy"
+            # )
+            # pk_interp = get_camb_interp(archive[ind_book], file)
 
             # add Arinyo model to archive
-            archive[ind_book]["model"] = ArinyoModel(camb_pk_interp=pk_interp)
+            # archive[ind_book]["model"] = ArinyoModel(camb_pk_interp=pk_interp)
             z = archive[ind_book]["z"]
             k3d = archive[ind_book]["k3d_Mpc"]
-            plin = archive[ind_book]["model"].linP_Mpc(z, k3d)
+            plin = ari_model.linP_Mpc(
+                z, k3d, cosmo_new=archive[ind_book]["cosmo_params"]
+            )
             archive[ind_book]["Plin"] = plin
 
     def add_plin(

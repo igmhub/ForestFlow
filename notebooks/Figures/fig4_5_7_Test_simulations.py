@@ -117,7 +117,9 @@ print(len(Archive3D.training_data))
 # )
 
 emulator = P3DEmulator(
-    model_path=path_program+"/data/emulator_models/new_emu.pt",
+    # model_path=path_program+"/data/emulator_models/new_emu",
+    # model_path=path_program+"/data/emulator_models/new_emu2",
+    model_path=path_program+"/data/emulator_models/new_emu3",
 )
 
 # %% [markdown]
@@ -536,6 +538,10 @@ for ii in range(2):
     print(y[0]*100, 0.5*(y[2] - y[1])*100, np.std(rat)*100)
 
 # %%
+-0.45957032745254645 3.191817004384772 3.7438390752616506
+0.7252962428330623 1.7373130418359652 1.7993740510349334
+
+# %%
 kaiser_emu = np.zeros((params_emu.shape[1], 2))
 kaiser_sim = np.zeros((params_emu.shape[1], 2))
 kaiser_emu[:, 0] = params_emu[0, :, 0]**2
@@ -549,16 +555,26 @@ for ii in range(2):
     print(y[0]*100, 0.5*(y[2] - y[1])*100, np.std(rat)*100)
 
 # %%
+-0.857919625444481 0.7383787076337223 0.967900034642005
+-3.63433277615558 2.294513731329036 2.1590873480292876
+
+# %%
 _ = np.isfinite(knew) & (knew > 0.3) & (knew < 5)
 rat = arr_p3d_emu[0, :, _]/arr_p3d_sim[0, :, _] - 1
 y = np.percentile(rat, [50, 16, 84])
 print(y[0]*100, 0.5*(y[2]-y[1])*100, np.std(rat)*100)
 
 # %%
+0.46359229254580026 2.6011666971809393 2.8853753620362728
+
+# %%
 _ = np.isfinite(k1d_Mpc) & (k1d_Mpc < 4) & (k1d_Mpc > 0)
 rat = arr_p1d_emu[0, :, _]/arr_p1d_sim[0, :, _] - 1
 y = np.percentile(rat, [50, 16, 84])
 print(y[0]*100, 0.5*(y[2]-y[1])*100, np.std(rat)*100)
+
+# %%
+0.3027507216495695 1.0152904879148137 0.9918596063491121
 
 # %% [markdown]
 # ### Now plot all

@@ -65,44 +65,6 @@ def params_numpy2dict(params):
     return dict_param
 
 
-# def add_plin_to_archive(
-#     folder_chains,
-#     archive,
-#     kmax_3d,
-#     noise_3d,
-#     kmax_1d,
-#     noise_1d,
-# ):
-#     """
-#     Adds Plin_nou parameter to the archive for each entry.
-
-#     Args:
-#         folder_chains (str): Path to the folder containing Plin_nou chains.
-#         archive (list): List of dictionaries representing the archive.
-#         kmax_3d (float): Maximum 3D wavenumber for the Plin_nou model.
-#         noise_3d (float): Noise level for the Plin_nou model in 3D.
-#         kmax_1d (float): Maximum 1D wavenumber for the Plin_nou model.
-#         noise_1d (float): Noise level for the Plin_nou model in 1D.
-
-#     Modifies:
-#         archive (list): Updated list of dictionaries with Plin_nou parameter added.
-
-#     Returns:
-#         None
-#     """
-#     init = "Plin_nou"
-#     for ind_book in range(len(archive)):
-#         sim_label = archive[ind_book]["sim_label"]
-#         ind_rescaling = archive[ind_book]["scale_tau"]
-#         ind_z = archive[ind_book]["z"]
-
-#         tag = get_flag_out(
-#             init, sim_label, ind_rescaling, ind_z, kmax_3d, noise_3d, kmax_1d, noise_1d
-#         )
-
-#         archive[ind_book]["Plin_nou"] = np.load(folder_chains + tag + ".npy")
-
-
 def get_flag_out(
     init,
     sim_label,
