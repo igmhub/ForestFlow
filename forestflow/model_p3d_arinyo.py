@@ -203,7 +203,7 @@ class ArinyoModel(object):
             float: Computed value of the 3D flux power spectrum.
         """
 
-        for par in default_params:
+        for par in self.default_params:
             if par not in ari_pp:
                 print(
                     par,
