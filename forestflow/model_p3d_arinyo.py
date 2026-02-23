@@ -1,69 +1,9 @@
 import types
 import numpy as np
-from lace.cosmo import camb_cosmo
-from scipy.integrate import simpson
 from forestflow.camb_routines import P_camb
 from forestflow import pcross
-
-
-def rescale_pklin(
-    z, k_Mpc, fun_linpower, fid_cosmo, tar_cosmo, kp_Mpc=0.7, ks_Mpc=0.05
-):
-    ratio_As = tar_cosmo["As"] / fid_cosmo["As"]
-    delta_ns = tar_cosmo["ns"] - fid_cosmo["ns"]
-    delta_nrun = tar_cosmo["nrun"] - fid_cosmo["nrun"]
-
-    ln_kp_ks = np.log(kp_Mpc / ks_Mpc)
-    delta_alpha_p = delta_nrun
-    delta_n_p = delta_ns + delta_nrun * ln_kp_ks
-    ln_ratio_A_p = (
-        np.log(ratio_As) + (delta_ns + 0.5 * delta_nrun * ln_kp_ks) * ln_kp_ks
-    )
-
-    rotk = np.log(k_Mpc / kp_Mpc)
-    pklin = fun_linpower(z, k_Mpc, grid=False)
-
-    pklin_rescaled = pklin * np.exp(
-        ln_ratio_A_p + delta_n_p * rotk + 0.5 * delta_alpha_p * rotk**2
-    )
-
-    return pklin, pklin_rescaled
-
-
-def get_linP_interp(cosmo, zmin=0, zmax=10, nz=256, camb_kmax_Mpc=200.0):
-    """
-    Obtain an interpolator of the linear power spectrum from CAMB.
-
-    Parameters:
-        cosmo (Cosmology): Cosmology object representing the cosmological parameters.
-        zs (list): List of redshifts at which to obtain the linear power spectrum.
-        camb_results (CAMBResults): CAMBResults object containing the precomputed CAMB results.
-        camb_kmax_Mpc (float, optional): Maximum k in Mpc^-1 to consider for the linear power spectrum.
-            Defaults to 30.
-
-    Returns:
-        linP_interp (interpolator): Interpolator for the linear power spectrum.
-    """
-
-    inst_camb = camb_cosmo.get_cosmology_from_dictionary(cosmo)
-
-    camb_results = camb_cosmo.get_camb_results(
-        inst_camb, zs=np.linspace(zmin, zmax, nz), camb_kmax_Mpc=camb_kmax_Mpc
-    )
-
-    # get interpolator from CAMB
-    # meaning of var1 and var2 here
-    # https://camb.readthedocs.io/en/latest/transfer_variables.html#transfer-variables
-    linP_interp = camb_results.get_matter_power_interpolator(
-        nonlinear=False,
-        var1=8,
-        var2=8,
-        hubble_units=False,
-        k_hunit=False,
-        log_interp=True,
-    )
-
-    return linP_interp
+from forestflow.p1d import P1D_Mpc as compute_P1D
+from forestflow.cosmo import rescale_pklin, get_linP_interp
 
 
 class ArinyoModel(object):
@@ -100,7 +40,7 @@ class ArinyoModel(object):
             default_kvav (float, optional): Units (1/Mpc)^(av). Defaults to 0.58.
             default_kp (float, optional): Units 1/Mpc. Defaults to 10.5.
             camb_kmax_Mpc (float, optional): Maximum k in Mpc^-1 to consider for the linear power spectrum.
-                Defaults to 100.0.
+                Defaults to 200.0.
         """
 
         self.cosmo = cosmo
@@ -228,6 +168,24 @@ class ArinyoModel(object):
 
         return linP * lowk_bias**2 * D_NL
 
+    def P1D_Mpc(self, z, k_par, ari_pp, cosmo_new=None):
+        """
+        Returns P1D for specified values of k_par, with the option to specify values of k_perp to be integrated over.
+
+        Parameters:
+            z (float): Redshift.
+            k_par (array-like): Array or list of values for which P1D is to be computed.
+            ari_pp (dict, optional): Additional parameters for the model. Defaults to {}.
+            cosmo_new (dict, optional): New cosmology. Defaults to None.
+
+        Returns:
+            array-like: Computed values of P1D.
+        """
+
+        p1d = compute_P1D(z, k_par, self.P3D_Mpc, ari_pp, cosmo_new=cosmo_new)
+
+        return p1d
+
     def Px_Mpc(self, z, kpar_iMpc, rperp_Mpc, parameters):
         """
         Compute P-cross for the P3D model.
@@ -248,157 +206,3 @@ class ArinyoModel(object):
             P3D_params=parameters,
         )
         return Px_Mpc
-
-    def P1D_Mpc(
-        self,
-        z,
-        k_par,
-        ari_pp,
-        k_perp_min=0.001,
-        k_perp_max=100,
-        n_k_perp=99,
-        cosmo_new=None,
-    ):
-        """
-        Returns P1D for specified values of k_par, with the option to specify values of k_perp to be integrated over.
-
-        Parameters:
-            z (float): Redshift.
-            k_par (array-like): Array or list of values for which P1D is to be computed.
-            k_perp_min (float, optional): Lower bound of integral. Defaults to 0.001.
-            k_perp_max (float, optional): Upper bound of integral. Defaults to 100.
-            n_k_perp (int, optional): Number of points in integral. Defaults to 99.
-            parameters (dict, optional): Additional parameters for the model. Defaults to {}.
-
-        Returns:
-            array-like: Computed values of P1D.
-        """
-
-        ln_k_perp = np.linspace(
-            np.log(k_perp_min), np.log(k_perp_max), n_k_perp
-        )
-
-        p1d = self._P1D_lnkperp_fast(
-            z, ln_k_perp, k_par, ari_pp, cosmo_new=cosmo_new
-        )
-
-        return p1d
-
-    def _P1D_lnkperp_fast(self, z, ln_k_perp, kpars, ari_pp, cosmo_new=None):
-        """
-        Compute P1D by integrating P3D in terms of ln(k_perp) using a fast method.
-
-        Parameters:
-            z (float): Redshift.
-            ln_k_perp (array-like): Array of natural logarithms of the perpendicular wavenumber.
-            kpars (array-like): Array of parallel wavenumbers.
-            parameters (dict, optional): Additional parameters for the model. Defaults to {}.
-
-        Returns:
-            array-like: Computed values of P1D.
-        """
-
-        # get interval for integration
-        dlnk = ln_k_perp[1] - ln_k_perp[0]
-
-        # get function to be integrated
-        # it is equivalent of the inner loop of _P1D_lnkperp
-        k_perp = np.exp(ln_k_perp)
-        k = np.sqrt(kpars[np.newaxis, :] ** 2 + k_perp[:, np.newaxis] ** 2)
-        mu = kpars[np.newaxis, :] / k
-        k = k.swapaxes(0, 1)
-        mu = mu.swapaxes(0, 1)
-
-        fact = (1 / (2 * np.pi)) * k_perp[:, np.newaxis] ** 2
-        fact = fact.swapaxes(0, 1)
-
-        p3d_fix_k_par = (
-            self.P3D_Mpc(z, k, mu, ari_pp, cosmo_new=cosmo_new) * fact
-        )
-
-        # perform numerical integration
-        p1d = simpson(p3d_fix_k_par, ln_k_perp, dx=dlnk, axis=1)
-
-        return p1d
-
-    def _P1D_lnkperp_fast_smooth(
-        self, z, ln_k_perp, kpars, k3d_smooth, parameters={}
-    ):
-        """
-        Compute P1D by integrating P3D in terms of ln(k_perp) with smoothing.
-
-        Parameters:
-            z (float): Redshift.
-            ln_k_perp (array-like): Array of natural logarithms of the perpendicular wavenumber.
-            kpars (array-like): Array of parallel wavenumbers.
-            k3d_smooth (float): Smoothing scale in units of k_perp.
-            parameters (dict, optional): Additional parameters for the model. Defaults to {}.
-
-        Returns:
-            array-like: Computed values of P1D.
-        """
-
-        # get interval for integration
-        dlnk = ln_k_perp[1] - ln_k_perp[0]
-
-        # get function to be integrated
-        # it is equivalent of the inner loop of _P1D_lnkperp
-        k_perp = np.exp(ln_k_perp)
-        k = np.sqrt(kpars[np.newaxis, :] ** 2 + k_perp[:, np.newaxis] ** 2)
-        mu = kpars[np.newaxis, :] / k
-        k = k.swapaxes(0, 1)
-        mu = mu.swapaxes(0, 1)
-
-        fact = (1 / (2 * np.pi)) * k_perp[:, np.newaxis] ** 2
-        fact = fact.swapaxes(0, 1)
-        p3d_fix_k_par = self.P3D_Mpc(z, k, mu, parameters) * fact
-
-        # perform numerical integration
-        kernel = np.sinc(k3d_smooth * np.exp(ln_k_perp))
-        # print(p3d_fix_k_par.shape, kernel.shape, kernel.shape)
-        p1d = simpson(
-            p3d_fix_k_par * kernel[np.newaxis, :] ** 2,
-            ln_k_perp,
-            dx=dlnk,
-            axis=1,
-        )
-
-        return p1d
-
-    def P1D_Mpc_smooth(
-        self,
-        z,
-        k_par,
-        k3d_smooth,
-        k_perp_min=0.001,
-        k_perp_max=100,
-        n_k_perp=99,
-        parameters={},
-    ):
-        """
-        Returns P1D for specified values of k_par, with the option to specify values of k_perp to be integrated over.
-
-        Smooth refers to computing P3D from grid.
-
-        Parameters:
-            z (float): Redshift.
-            k_par (array-like): Array or list of values for which P1D is to be computed.
-            k3d_smooth (float): Smoothing scale in units of k_perp.
-            k_perp_min (float, optional): Lower bound of integral. Defaults to 0.001.
-            k_perp_max (float, optional): Upper bound of integral. Defaults to 100.
-            n_k_perp (int, optional): Number of points in integral. Defaults to 99.
-            parameters (dict, optional): Additional parameters for the model. Defaults to {}.
-
-        Returns:
-            array-like: Computed values of P1D.
-        """
-
-        ln_k_perp = np.linspace(
-            np.log(k_perp_min), np.log(k_perp_max), n_k_perp
-        )
-
-        p1d = self._P1D_lnkperp_fast_smooth(
-            z, ln_k_perp, k_par, k3d_smooth, parameters
-        )
-
-        return p1d

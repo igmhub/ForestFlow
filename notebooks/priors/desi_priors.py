@@ -14,14 +14,12 @@
 # ---
 
 # %% [markdown]
-# # Test ForestFlow with ACCEL2
+# # Get priors on Arinyo from DR1 fit
 #
-# - Get P1D data from ACCEL2 and compute best-fitting model using cup1d (done separately)
-# - Read cup1d chain and evaluate ForestFlow to get Arinyo, P1D, and P3D
+# - Get chain data from DESI DR1 fit
+# - Evaluate ForestFlow to get Arinyo, P1D, and P3D for each point of the chain
 # - Compare ForestFlow P1D with lace-mpg P1D
-# - Compare P1D and P3D from ForestFlow with ACCEL2 predictions
-#
-# - Compare ACCEL2 P1D with best-fitting P1D to DESIY1
+# - Get priors on the Arinyo parameters
 
 # %%
 # %load_ext autoreload
@@ -83,7 +81,7 @@ zs
 # zs = pip.fitter.like.data.z.copy()
 # you change zs, take a look at the end of the cell
 zs = np.array([2.2, 2.33, 2.4, 2.6, 2.8, 3. , 3.2, 3.4, 3.6, 3.8, 4. , 4.2]) # adding 2.33 for the priors
-nn = 10000
+nn = 1000
 
 ind = np.random.permutation(np.arange(chain.shape[0]))[:nn]
 pars_chain = {}
@@ -257,7 +255,7 @@ for ii in range(ind.shape[0]):
     for jj in range(zs.shape[0]):        
         pars_chain["Delta2_p"][ii, jj] = res_linP_zs[jj]["Delta2_p"]
         pars_chain["n_p"][ii, jj] = res_linP_zs[jj]["n_p"]
-    
+
 
 # %%
 np.save("inter_chain.npy", pars_chain)
