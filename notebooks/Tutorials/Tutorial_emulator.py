@@ -197,18 +197,10 @@ plt.xscale('log')
 
 # %%
 # %%time
-folder_lya_data = path_program + "/data/best_arinyo/"
-
-Archive3D = GadgetArchive3D(
-    base_folder=path_program[:-1],
-    folder_data=folder_lya_data,
-    force_recompute_plin=False,
-    average="both",
-)
-print(len(Archive3D.training_data))
+Archive3D = GadgetArchive3D()
 
 # %%
-train = False
+train = True
 if train:
     emulator = P3DEmulator(
         training_data=Archive3D.training_data,

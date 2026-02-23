@@ -27,30 +27,17 @@
 # %autoreload 2
 
 import numpy as np
-import os
-import sys
 import matplotlib.pyplot as plt
 
-import forestflow
 from forestflow.archive import GadgetArchive3D
-from forestflow.rebin_p3d import p3d_allkmu, get_p3d_modes, p3d_rebin_mu
-
-# %%
-path_program = os.path.dirname(forestflow.__path__[0]) + '/'
-path_program
+from forestflow.rebin_p3d import get_p3d_modes, p3d_rebin_mu
 
 # %% [markdown]
 # ## LOAD P3D ARCHIVE
 
 # %%
 # %%time
-folder_lya_data = path_program + "/data/best_arinyo/"
-
-Archive3D = GadgetArchive3D(
-    base_folder=path_program[:-1],
-    folder_data=folder_lya_data,
-    average="both",
-)
+Archive3D = GadgetArchive3D()
 print(len(Archive3D.training_data))
 
 
@@ -126,7 +113,6 @@ plt.xscale('log')
 # ## Evaluate Arinyo model
 
 # %%
-
 from forestflow.model_p3d_arinyo import ArinyoModel
 
 # %% [markdown]
@@ -193,5 +179,7 @@ plt.xscale('log')
 
 # %% [markdown]
 # #### More on the Arinyo model on Tutorial_Arinyo
+
+# %%
 
 # %%
