@@ -32,13 +32,14 @@ class ArinyoModel(object):
             camb_pk_interp (interpolator, optional): Precomputed linear power spectrum interpolator.
                 If not provided, it will be obtained using the `get_linP_interp` function.
             cosmo (Cosmology, optional): CAMB params object defining the cosmology.
-            zs (list, optional): Redshifts for which predictions are desired.
-            camb_results (CAMBResults, optional): Precomputed CAMBResults object.
-            default_bias (float, optional): Starting value for the flux bias. Defaults to -0.18.
-            default_beta (float, optional): RSD parameter for the flux. Defaults to 1.3.
-            default_d1_{} (float, optional): Parameters in the non-linear model.
-            default_kvav (float, optional): Units (1/Mpc)^(av). Defaults to 0.58.
-            default_kp (float, optional): Units 1/Mpc. Defaults to 10.5.
+            default_bias (float, optional): Linear bias. Defaults to -0.18.
+            default_beta (float, optional): Linear RSD. Defaults to 1.3.
+            default_q1 (float, optional): Nonlinear growth. Defaults to 0.4.
+            default_q2 (float, optional): Nonlinear growth. Defaults to 0.0.
+            default_kvav (float, optional): Nonlinear RSD. Defaults to 0.58.
+            default_av (float, optional): Nonlinear RSD. Defaults to 0.29.
+            default_bv (float, optional): Nonlinear RSD. Defaults to 1.55.
+            default_kp (float, optional): Nonlinear pressure. Defaults to 10.5.
             camb_kmax_Mpc (float, optional): Maximum k in Mpc^-1 to consider for the linear power spectrum.
                 Defaults to 200.0.
         """
