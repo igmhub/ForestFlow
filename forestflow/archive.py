@@ -241,3 +241,149 @@ class GadgetArchive3D(GadgetArchive):
             archive[ii]["Arinyo_minz"] = params_numpy2dict_minimizerz(
                 arr_params[_]
             )
+
+    def get_priors_Arinyo(
+        self, zmin, zmax, type_fit="Arinyo_min", return_all=False
+    ):
+        # redshifts to be used
+        ind_z = np.argwhere(
+            (self.list_sim_redshifts >= zmin - 1e-3)
+            & (self.list_sim_redshifts <= zmax + 1e-3)
+        )[:, 0]
+        print("Using data from redshifts:", self.list_sim_redshifts[ind_z])
+
+        Nsim = len(self.list_sim_cube)
+        Nz = len(ind_z)
+        Nscalings = len(self.scalings_avail)
+
+        # mapping from redshift to index
+        conv_z_ind = {}
+        for ii in range(Nz):
+            conv_z_ind[self.list_sim_redshifts[ind_z[ii]]] = ii
+
+        # mapping sim_label to index
+        conv_sim_ind = {}
+        for ii in range(len(self.list_sim_cube)):
+            conv_sim_ind[self.list_sim_cube[ii]] = ii
+
+        # create dict to store params
+        data_priors = {}
+        for par in self.training_data[0][type_fit]:
+            data_priors[par] = np.zeros((Nsim, Nscalings, Nz))
+
+        # fill dict
+        for ii in range(len(self.training_data)):
+            if self.training_data[ii]["z"] not in conv_z_ind:
+                continue
+            else:
+                indz = conv_z_ind[self.training_data[ii]["z"]]
+                indsim = conv_sim_ind[self.training_data[ii]["sim_label"]]
+                indscal = self.training_data[ii]["ind_rescaling"]
+            for par in self.training_data[ii][type_fit]:
+                data_priors[par][indsim, indscal, indz] = self.training_data[
+                    ii
+                ][type_fit][par]
+
+        for par in self.training_data[0][type_fit]:
+            data_priors[par] = data_priors[par].reshape(-1)
+
+        out_priors = {}
+        out_priors["mean"] = {}
+        out_priors["std"] = {}
+        out_priors["min"] = {}
+        out_priors["max"] = {}
+        for par in data_priors:
+            if par == "zs":
+                continue
+
+            if par == "bias":
+                use_dat = -np.abs(data_priors[par])
+            else:
+                use_dat = data_priors[par]
+
+            out_priors["mean"][par] = np.mean(use_dat)
+            out_priors["std"][par] = np.std(use_dat)
+            out_priors["min"][par] = np.min(use_dat)
+            out_priors["max"][par] = np.max(use_dat)
+
+        if return_all:
+            return out_priors, data_priors
+        else:
+            return out_priors
+
+    def get_priors_IGM(self, zmin, zmax, return_all=False, IGM_params=None):
+        if IGM_params is None:
+            IGM_params = {
+                "Delta2_p",
+                "n_p",
+                "mF",
+                "sigT_Mpc",
+                "gamma",
+                "kF_Mpc",
+            }
+
+        # redshifts to be used
+        ind_z = np.argwhere(
+            (self.list_sim_redshifts >= zmin - 1e-3)
+            & (self.list_sim_redshifts <= zmax + 1e-3)
+        )[:, 0]
+        print("Using data from redshifts:", self.list_sim_redshifts[ind_z])
+
+        Nsim = len(self.list_sim_cube)
+        Nz = len(ind_z)
+        Nscalings = len(self.scalings_avail)
+
+        # mapping from redshift to index
+        conv_z_ind = {}
+        for ii in range(Nz):
+            conv_z_ind[self.list_sim_redshifts[ind_z[ii]]] = ii
+
+        # mapping sim_label to index
+        conv_sim_ind = {}
+        for ii in range(len(self.list_sim_cube)):
+            conv_sim_ind[self.list_sim_cube[ii]] = ii
+
+        # create dict to store params
+        data_priors = {}
+        for par in IGM_params:
+            data_priors[par] = np.zeros((Nsim, Nscalings, Nz))
+
+        # fill dict
+        for ii in range(len(self.training_data)):
+            if self.training_data[ii]["z"] not in conv_z_ind:
+                continue
+            else:
+                indz = conv_z_ind[self.training_data[ii]["z"]]
+                indsim = conv_sim_ind[self.training_data[ii]["sim_label"]]
+                indscal = self.training_data[ii]["ind_rescaling"]
+            for par in IGM_params:
+                data_priors[par][indsim, indscal, indz] = self.training_data[
+                    ii
+                ][par]
+
+        for par in IGM_params:
+            data_priors[par] = data_priors[par].reshape(-1)
+
+        out_priors = {}
+        out_priors["mean"] = {}
+        out_priors["std"] = {}
+        out_priors["min"] = {}
+        out_priors["max"] = {}
+        for par in data_priors:
+            if par == "zs":
+                continue
+
+            if par == "bias":
+                use_dat = -np.abs(data_priors[par])
+            else:
+                use_dat = data_priors[par]
+
+            out_priors["mean"][par] = np.mean(use_dat)
+            out_priors["std"][par] = np.std(use_dat)
+            out_priors["min"][par] = np.min(use_dat)
+            out_priors["max"][par] = np.max(use_dat)
+
+        if return_all:
+            return out_priors, data_priors
+        else:
+            return out_priors

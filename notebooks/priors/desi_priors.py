@@ -466,54 +466,11 @@ for par in out_ari.keys():
 np.save("priors_arinyo_from_p1d.npy", dict_save_file)
 
 # %%
-dict_save_file.keys()
-
-
-# %%
-def get_arinyo_priors(z):
-    fname = "priors_arinyo_from_p1d.npy"
-    folder = os.path.join(os.path.dirname(forestflow.__path__[0]), "data", "priors")
-    data_priors = np.load(os.path.join(folder, fname), allow_pickle=True).item()
-
-    if (z > np.max(data_priors["zs"])) | (z < np.min(data_priors["zs"])):
-        raise ValueError("Priors only computed between",np.min(data_priors["zs"]),"and",np.max(data_priors["zs"]),"use z within this range")
-
-    out_priors = {}
-    out_priors["cen"] = {}
-    out_priors["std"] = {}
-    out_priors["percen_5"] = {}
-    out_priors["percen_95"] = {}
-    for par in data_priors:
-        if par == "zs":
-            continue
-            
-        if par == "bias":
-            use_dat = -np.abs(data_priors[par])
-        else:
-            use_dat = data_priors[par]
-            
-        mean = np.mean(use_dat, axis=0)
-        std = np.std(use_dat, axis=0)
-        val_min = np.percentile(use_dat, 5, axis=0)
-        val_max = np.percentile(use_dat, 95, axis=0)
-
-        out_priors["cen"][par] = np.interp(z, data_priors["zs"], mean)
-        out_priors["std"][par] = np.interp(z, data_priors["zs"], std)
-        out_priors["percen_5"][par] = np.interp(z, data_priors["zs"], val_min)
-        out_priors["percen_95"][par] = np.interp(z, data_priors["zs"], val_max)
-    return out_priors
-
-
-# %%
-get_arinyo_priors(2.2)
-
-# %%
-
-# %%
-
-# %%
-
-# %%
+from forestflow.priors import get_arinyo_priors
+z = 3.
+priors = get_arinyo_priors(z)
+print(priors.keys())
+priors["mean"]
 
 # %%
 fig, ax = plt.subplots(2, 1, sharex=True, figsize=(8, 10))
@@ -544,7 +501,7 @@ hi_beta_err = np.array([[0.35, 0.26], [0.14, 0.071], [0.069, 0.047]])
 zmax = 5
 
 # err
-mean = -out_ari["bias"].mean(axis=0)
+mean = -np.abs(out_ari["bias"].mean(axis=0))
 percen = np.percentile(-out_ari["bias"], [16, 84], axis=0)
 
 _ = zs < zmax

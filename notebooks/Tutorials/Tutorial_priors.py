@@ -13,9 +13,12 @@
 #     name: python3
 # ---
 
-# # Get priors on Arinyo parameters
+# # Extracting priors from ForestFlow
 #
-# From the MP-Gadget simulations
+# - For the Arinyo parameters based on the DESI DR1 P1D fit (Chaves-Montero+26, https://arxiv.org/abs/2601.21432)
+# - For the cosmo+IGM parameters based on the DESI DR1 P1D fit (Chaves-Montero+26, https://arxiv.org/abs/2601.21432)
+# - For the Arinyo parameters based on the MP-simulations (Chaves-Montero+25, https://arxiv.org/abs/2409.05682)
+# - For cosmo+IGM parameters based on the MP-simulations (Cabayol-Garcia+24, https://arxiv.org/abs/2305.19064)
 
 # +
 # %load_ext autoreload
@@ -28,23 +31,30 @@ import numpy as np
 
 import forestflow
 from forestflow.archive import GadgetArchive3D
-
-
-path_program = os.path.dirname(forestflow.__path__[0]) + '/'
-path_program
-
-# +
-# %%time
-folder_lya_data = path_program + "/data/best_arinyo/"
-
-Archive3D = GadgetArchive3D(
-    base_folder=path_program[:-1],
-    folder_data=folder_lya_data,
-    force_recompute_plin=False,
-    average="both",
-)
-print(len(Archive3D.training_data))
 # -
+
+# ## Arinyo parameters based on DESI DR1 P1D fit
+
+from forestflow.priors import get_arinyo_priors
+# at a particular z
+z = 3.
+priors = get_arinyo_priors(z)
+print(priors.keys())
+priors["mean"]
+
+# ## Arinyo parameters based on MP-Gadget
+
+Archive3D = GadgetArchive3D()
+
+# redshift range
+zmin = 2.25
+zmax = 2.50
+priors = Archive3D.get_priors_Arinyo(zmin, zmax)
+priors["mean"]
+
+Archive3D.get_priors_IGM(zmin, zmax)
+
+
 
 params = "Arinyo_min"
 val_params = []
