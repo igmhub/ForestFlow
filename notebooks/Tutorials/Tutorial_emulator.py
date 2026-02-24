@@ -36,7 +36,7 @@ from forestflow.P3D_cINN import P3DEmulator
 
 # %%
 emulator = P3DEmulator(
-    model_path= os.path.join(os.path.dirname(forestflow.__path__[0]), "data", "emulator_models", "forest_mpg")
+    model_path=os.path.join(os.path.dirname(forestflow.__path__[0]), "data", "emulator_models", "forest_mpg")
 )
 
 # %% [markdown]
@@ -212,8 +212,8 @@ if train:
         step_size=200,
         weight_decay=0.01,
         Nrealizations=6000,
-        # save_path=path_program+"/data/emulator_models/forest_mpg",
-        save_path=path_program+"/data/emulator_models/test",
+        save_path=os.path.join(os.path.dirname(forestflow.__path__[0]), "data", "emulator_models", "test")
+        # save_path=os.path.join(os.path.dirname(forestflow.__path__[0]), "data", "emulator_models", "forest_mpg")
     )
 
 # %%

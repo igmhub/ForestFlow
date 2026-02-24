@@ -443,12 +443,77 @@ _ = pars_chain["k_kms"] != 0
 np.nanstd(out_ari["p1d"][:, _]/pars_chain["p1d_nocont"][:, _]-1)
 
 # %% [markdown]
-# #### Load output
+# # Load priors
 
 # %%
-dict_out_all = np.load("arinyo_from_p1d_new.npy", allow_pickle=True).item()
+emulator = P3DEmulator(
+    model_path=os.path.join(os.path.dirname(forestflow.__path__[0]), "data", "emulator_models", "forest_mpg")
+)
+
+# %%
+dict_out_all = np.load("arinyo_from_p1d.npy", allow_pickle=True).item()
 zs = dict_out_all["zs"]
 out_ari = dict_out_all["forest_out"]
+
+# %%
+dict_save_file = {
+    "zs": zs,
+}
+for par in out_ari.keys():
+    if par != "p1d":
+        dict_save_file[par] = out_ari[par]
+
+np.save("priors_arinyo_from_p1d.npy", dict_save_file)
+
+# %%
+dict_save_file.keys()
+
+
+# %%
+def get_arinyo_priors(z):
+    fname = "priors_arinyo_from_p1d.npy"
+    folder = os.path.join(os.path.dirname(forestflow.__path__[0]), "data", "priors")
+    data_priors = np.load(os.path.join(folder, fname), allow_pickle=True).item()
+
+    if (z > np.max(data_priors["zs"])) | (z < np.min(data_priors["zs"])):
+        raise ValueError("Priors only computed between",np.min(data_priors["zs"]),"and",np.max(data_priors["zs"]),"use z within this range")
+
+    out_priors = {}
+    out_priors["cen"] = {}
+    out_priors["std"] = {}
+    out_priors["percen_5"] = {}
+    out_priors["percen_95"] = {}
+    for par in data_priors:
+        if par == "zs":
+            continue
+            
+        if par == "bias":
+            use_dat = -np.abs(data_priors[par])
+        else:
+            use_dat = data_priors[par]
+            
+        mean = np.mean(use_dat, axis=0)
+        std = np.std(use_dat, axis=0)
+        val_min = np.percentile(use_dat, 5, axis=0)
+        val_max = np.percentile(use_dat, 95, axis=0)
+
+        out_priors["cen"][par] = np.interp(z, data_priors["zs"], mean)
+        out_priors["std"][par] = np.interp(z, data_priors["zs"], std)
+        out_priors["percen_5"][par] = np.interp(z, data_priors["zs"], val_min)
+        out_priors["percen_95"][par] = np.interp(z, data_priors["zs"], val_max)
+    return out_priors
+
+
+# %%
+get_arinyo_priors(2.2)
+
+# %%
+
+# %%
+
+# %%
+
+# %%
 
 # %%
 fig, ax = plt.subplots(2, 1, sharex=True, figsize=(8, 10))
