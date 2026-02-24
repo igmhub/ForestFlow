@@ -260,13 +260,27 @@ for ii in range(ind.shape[0]):
 # %%
 np.save("inter_chain.npy", pars_chain)
 
-# %%
-
 # %% [markdown]
 # # Load results from chain
 
 # %%
 pars_chain = np.load("inter_chain.npy", allow_pickle=True).item()
+
+# %%
+dict_save_file = {
+    "zs": pars_chain["z"],
+}
+for par in pars_chain.keys():
+    if par not in ["k_kms", "p1d", "p1d_nocont", "z", "As", "ns"]:
+        dict_save_file[par] = pars_chain[par]
+
+np.save("priors_cosmo_IGM_from_p1d.npy", dict_save_file)
+
+# %%
+dict_save_file["Delta2_p"].shape
+
+# %%
+dict_save_file.keys()
 
 # %% [markdown]
 # #### Best-fitting uncontaminated P1D measurements
