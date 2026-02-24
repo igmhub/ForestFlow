@@ -1,9 +1,9 @@
 import types
 import numpy as np
-from forestflow.camb_routines import P_camb
+from forestflow.camb_routines import get_linP_interp
 from forestflow import pcross
 from forestflow.p1d import P1D_Mpc as compute_P1D
-from forestflow.cosmo import rescale_pklin, get_linP_interp
+from forestflow.cosmo import rescale_pklin
 
 
 class ArinyoModel(object):
@@ -13,7 +13,7 @@ class ArinyoModel(object):
 
     def __init__(
         self,
-        cosmo,
+        cosmo=None,
         camb_pk_interp=None,
         default_bias=-0.18,
         default_beta=1.3,
@@ -44,17 +44,16 @@ class ArinyoModel(object):
                 Defaults to 200.0.
         """
 
-        self.cosmo = cosmo
-        self.camb_kmax_Mpc = camb_kmax_Mpc
+        if (cosmo is None) and (camb_pk_interp is None):
+            raise ValueError("Must provide either cosmo or camb_pk_interp")
 
         if camb_pk_interp is None:
             # get a linear power interpolator
-            self.linP_interp = get_linP_interp(
-                cosmo, camb_kmax_Mpc=self.camb_kmax_Mpc
+            self.get_linpower = get_linP_interp(
+                cosmo, camb_kmax_Mpc=camb_kmax_Mpc
             )
         else:
-            self.linP_interp = camb_pk_interp
-        self.get_linpower = types.MethodType(P_camb, self.linP_interp)
+            self.get_linpower = get_linpower
 
         # store bias parameters
         self.default_params = {
@@ -78,19 +77,19 @@ class ArinyoModel(object):
 
     def check_background(self, cosmo_new):
         change_expansion = False
-        for par in self.cosmo:
+        for par in self.get_linpower.cosmo:
             if par not in cosmo_new:
                 raise ValueError(
                     "cosmo_new must contain all parameters in cosmo, missing "
                     + par
                 )
             if par not in ["As", "ns", "nrun"]:
-                if cosmo_new[par] != self.cosmo[par]:
+                if cosmo_new[par] != self.get_linpower.cosmo[par]:
                     print(
                         "Expansion parameters changed for new cosmology: ",
                         par,
                         " ",
-                        self.cosmo[par],
+                        self.get_linpower.cosmo[par],
                         " ",
                         cosmo_new[par],
                     )
@@ -114,18 +113,17 @@ class ArinyoModel(object):
         if cosmo_new is not None:
             if self.check_background(cosmo_new):
                 # call camb again if background has changed
-                linP_interp = get_linP_interp(
-                    cosmo_new, camb_kmax_Mpc=self.camb_kmax_Mpc
+                get_linpower = get_linP_interp(
+                    cosmo_new, camb_kmax_Mpc=self.get_linpower.camb_kmax_Mpc
                 )
-                get_linpower = types.MethodType(P_camb, linP_interp)
-                pklin = get_linpower(z, k_Mpc, grid=False)
+                pklin = get_linpower(z, k_Mpc)
             else:
                 # rescale pklin to new cosmology, faster than calling camb again
                 pklin_orig, pklin = rescale_pklin(
-                    z, k_Mpc, self.get_linpower, self.cosmo, cosmo_new
+                    z, k_Mpc, self.get_linpower, cosmo_new
                 )
         else:
-            pklin = self.get_linpower(z, k_Mpc, grid=False)
+            pklin = self.get_linpower(z, k_Mpc)
 
         return pklin
 
