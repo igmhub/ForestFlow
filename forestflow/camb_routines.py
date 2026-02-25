@@ -125,24 +125,25 @@ def get_linP_interp(cosmo, zmin=0, zmax=10, nz=256, camb_kmax_Mpc=200.0):
 
     Parameters:
         cosmo (Cosmology): Cosmology object representing the cosmological parameters.
-        zs (list): List of redshifts at which to obtain the linear power spectrum.
-        camb_results (CAMBResults): CAMBResults object containing the precomputed CAMB results.
-        camb_kmax_Mpc (float, optional): Maximum k in Mpc^-1 to consider for the linear power spectrum.
-            Defaults to 30.
+        zmin (float, optional): Minimum redshift for the linear power spectrum interpolation. Defaults to 0.
+        zmax (float, optional): Maximum redshift for the linear power spectrum interpolation. Defaults to 10.
+        nz (int, optional): Number of redshift points to use for the linear power spectrum interpolation. Defaults to 256.
+        camb_kmax_Mpc (float, optional): Maximum wavenumber (in Mpc^-1) to consider for the linear power spectrum. Defaults to 200.0.
 
     Returns:
-        linP_interp (interpolator): Interpolator for the linear power spectrum.
+        get_plin (function): A function that takes redshift (z) and wavenumber (k_Mpc) as inputs and returns the corresponding linear power spectrum.
     """
-
+    # Get the CAMB cosmology instance from the provided cosmology object
     inst_camb = camb_cosmo.get_cosmology_from_dictionary(cosmo)
 
+    # Get the CAMB results for the specified redshift range and maximum wavenumber
     camb_results = camb_cosmo.get_camb_results(
         inst_camb, zs=np.linspace(zmin, zmax, nz), camb_kmax_Mpc=camb_kmax_Mpc
     )
 
-    # get interpolator from CAMB
-    # meaning of var1 and var2 here
-    # https://camb.readthedocs.io/en/latest/transfer_variables.html#transfer-variables
+    # Get the linear power spectrum interpolator from the CAMB results
+    # The `var1` and `var2` parameters refer to the transfer function variables
+    # used in the power spectrum calculation. 8 corresponds to the matter power spectrum.
     linP_interp = camb_results.get_matter_power_interpolator(
         nonlinear=False,
         var1=8,
@@ -152,9 +153,21 @@ def get_linP_interp(cosmo, zmin=0, zmax=10, nz=256, camb_kmax_Mpc=200.0):
         log_interp=True,
     )
 
+    # Create a method-bound function to get the linear power spectrum
     get_linpower = types.MethodType(P_camb, linP_interp)
 
     def get_plin(z, k_Mpc):
+        """
+        Get the linear power spectrum at the given redshift and wavenumber.
+
+        Parameters:
+            z (float or array-like): Redshift(s) at which to evaluate the linear power spectrum.
+            k_Mpc (float or array-like): Wavenumber(s) in Mpc^-1 at which to evaluate the linear power spectrum.
+
+        Returns:
+            float or array-like: Linear power spectrum at the given redshift(s) and wavenumber(s).
+        """
+        # Check if the requested redshift or wavenumber is outside the interpolation range
         if np.any(np.asarray(z) > zmax):
             raise ValueError(
                 f"Requested z={z} exceeds interpolation range zmax={zmax}"
@@ -163,8 +176,10 @@ def get_linP_interp(cosmo, zmin=0, zmax=10, nz=256, camb_kmax_Mpc=200.0):
             raise ValueError(
                 f"Requested k_Mpc={k_Mpc} exceeds interpolation range kmax_Mpc={camb_kmax_Mpc}"
             )
+        # Use the method-bound function to get the linear power spectrum
         return get_linpower(z, k_Mpc, grid=False)
 
+    # Attach the cosmology object and maximum wavenumber to the get_plin function
     get_plin.cosmo = cosmo
     get_plin.camb_kmax_Mpc = camb_kmax_Mpc
 

@@ -5,6 +5,23 @@ from pyDOE2 import lhs
 from lace.cosmo.camb_cosmo import dkms_dMpc
 
 
+def print_memory_usage(step_description):
+    import psutil
+
+    process = psutil.Process()
+    memory_info = process.memory_info()
+    print(
+        f"{step_description} - RSS: {memory_info.rss / (1024 ** 2):.2f} MB, VMS: {memory_info.vms / (1024 ** 2):.2f} MB"
+    )
+    if torch.cuda.is_available():
+        print(
+            f"GPU memory allocated: {torch.cuda.memory_allocated() / (1024 ** 2):.2f} MB"
+        )
+        print(
+            f"GPU memory cached: {torch.cuda.memory_reserved() / (1024 ** 2):.2f} MB"
+        )
+
+
 def params_numpy2dict(params):
     """
     Converts a numpy array of parameters to a dictionary.
@@ -356,17 +373,17 @@ def sort_dict(dct, keys):
 
 
 def get_covariance(x, y, return_corr=False):
-    
     # Calculate the mean and standard deviation along each column
     mean_x = np.mean(x, axis=0)
     std_dev_x = np.std(x, axis=0)
     # Create a mask indicating elements within one standard deviation from the mean
-    mask_within_sigma = np.abs(x - mean_x) <= 3*std_dev_x
+    mask_within_sigma = np.abs(x - mean_x) <= 3 * std_dev_x
     # Apply the mask along each column to preserve the shape
     x = x[mask_within_sigma.all(axis=1)]
 
     cov = (
-        1 / (len(x) - 1)
+        1
+        / (len(x) - 1)
         * np.einsum("ij,jk ->ik", (x - y[None, :]).T, (x - y[None, :]))
     )
     corr = np.corrcoef(cov)
