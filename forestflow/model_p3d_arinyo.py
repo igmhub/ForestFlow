@@ -53,7 +53,7 @@ class ArinyoModel(object):
                 cosmo, camb_kmax_Mpc=camb_kmax_Mpc
             )
         else:
-            self.get_linpower = get_linpower
+            self.get_linpower = camb_pk_interp
 
         # store bias parameters
         self.default_params = {
@@ -127,7 +127,25 @@ class ArinyoModel(object):
 
         return pklin
 
-    #
+    def P3D_Mpc_kpar_kperp(self, z, kpar, kperp, ari_pp, cosmo_new=None):
+        """
+        Calculates the 3D power spectrum in Mpc units given the parallel and perpendicular wavenumbers.
+
+        Parameters:
+        self (object): The instance of the class that this method belongs to.
+        z (float): The redshift value.
+        kpar (float): The parallel wavenumber.
+        kperp (float): The perpendicular wavenumber.
+        ari_pp (float): The anisotropic power spectrum parameter.
+        cosmo_new (object, optional): A new cosmology object to use for the calculation. If not provided, the default cosmology will be used.
+
+        Returns:
+        float: The 3D power spectrum in Mpc units.
+        """
+        k = np.sqrt(kpar**2 + kperp**2)
+        mu = kpar / k
+        return self.P3D_Mpc(z, k, mu, ari_pp, cosmo_new=cosmo_new)
+
     def P3D_Mpc(self, z, k, mu, ari_pp, cosmo_new=None):
         """
         Compute the model for the 3D flux power spectrum in units of Mpc^3.
@@ -142,6 +160,7 @@ class ArinyoModel(object):
             float: Computed value of the 3D flux power spectrum.
         """
 
+        # Check if all the default parameters are present in the ari_pp dictionary
         for par in self.default_params:
             if par not in ari_pp:
                 print(
@@ -151,13 +170,13 @@ class ArinyoModel(object):
                 )
                 ari_pp[par] = self.default_params[par]
 
-        # evaluate linear power at input (z,k)
+        # Evaluate the linear power spectrum at the given (z, k)
         linP = self.linP_Mpc(z, k, cosmo_new=cosmo_new)
 
-        # model large-scales biasing for delta_flux(k)
+        # Model the large-scale biasing for the flux field
         lowk_bias = ari_pp["bias"] * (1 + ari_pp["beta"] * mu**2)
 
-        # model small-scales correction (D_NL in Arinyo-i-Prats 2015)
+        # Model the small-scale correction (D_NL in Arinyo-i-Prats 2015)
         delta2 = (1 / (2 * np.pi**2)) * k**3 * linP
         nonlin = delta2 * (ari_pp["q1"] + ari_pp["q2"] * delta2)
         vel = k ** ari_pp["av"] / ari_pp["kvav"] * mu ** ari_pp["bv"]
@@ -165,20 +184,21 @@ class ArinyoModel(object):
 
         D_NL = np.exp(nonlin * (1 - vel) - press)
 
+        # Compute the final 3D flux power spectrum
         return linP * lowk_bias**2 * D_NL
 
     def P1D_Mpc(self, z, k_par, ari_pp, cosmo_new=None):
         """
-        Returns P1D for specified values of k_par, with the option to specify values of k_perp to be integrated over.
+        Compute the one-dimensional power spectrum (P1D) for the specified values of parallel wavenumber (k_par).
 
         Parameters:
-            z (float): Redshift.
-            k_par (array-like): Array or list of values for which P1D is to be computed.
-            ari_pp (dict, optional): Additional parameters for the model. Defaults to {}.
-            cosmo_new (dict, optional): New cosmology. Defaults to None.
+            z (float): Redshift at which to compute the P1D.
+            k_par (array-like): Array or list of values for the parallel wavenumber (k_par) for which the P1D should be computed.
+            ari_pp (dict, optional): Additional parameters for the model. Defaults to an empty dictionary `{}`.
+            cosmo_new (dict, optional): New cosmology parameters. Defaults to `None`, which means the existing cosmology will be used.
 
         Returns:
-            array-like: Computed values of P1D.
+            array-like: Computed values of the one-dimensional power spectrum (P1D) for the given `k_par` values.
         """
 
         p1d = compute_P1D(z, k_par, self.P3D_Mpc, ari_pp, cosmo_new=cosmo_new)

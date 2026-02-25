@@ -230,7 +230,7 @@ for ii in range(ind.shape[0]):
     )
     p1d_no = pip.fitter.like.get_p1d_kms(
         pip.fitter.like.data.z, pip.fitter.like.data.k_kms, chain[ind[ii], :], no_contaminants=True
-    )    
+    )
     # same k at 2.33 as at 2.2
     for jj in range(2):
         nelem = len(p1d[0][0])
