@@ -251,4 +251,27 @@ plt.xlabel(r'$k$ [Mpc]')
 plt.ylabel(r'$P/P_{\rm lin}$')
 plt.legend()
 
+# %% [markdown]
+# #### Precomputed interporlator
+
+# %%
+from forestflow.camb_routines import get_linP_interp
+
+# %%
+cosmo = {
+    "H0": 67.66,
+    "mnu": 0,
+    "omch2": 0.119,
+    "ombh2": 0.0224,
+    "omk": 0,
+    'As': 2.105e-09,
+    'ns': 0.9665,
+    "nrun": 0.0,
+    "pivot_scalar": 0.05,
+    "w": -1.0,
+}
+
+get_linpower = get_linP_interp(cosmo)
+model_Arinyo = ArinyoModel(camb_pk_interp=get_linpower)
+
 # %%
