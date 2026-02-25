@@ -1,5 +1,7 @@
+import types
 import numpy as np
 from scipy import interpolate
+from lace.cosmo import camb_cosmo
 
 
 def P_camb(pk_intp, z, kh, grid=None):
@@ -115,3 +117,55 @@ def get_matter_power_interpolator(
         return res, zs, khs
     else:
         return res
+
+
+def get_linP_interp(cosmo, zmin=0, zmax=10, nz=256, camb_kmax_Mpc=200.0):
+    """
+    Obtain an interpolator of the linear power spectrum from CAMB.
+
+    Parameters:
+        cosmo (Cosmology): Cosmology object representing the cosmological parameters.
+        zs (list): List of redshifts at which to obtain the linear power spectrum.
+        camb_results (CAMBResults): CAMBResults object containing the precomputed CAMB results.
+        camb_kmax_Mpc (float, optional): Maximum k in Mpc^-1 to consider for the linear power spectrum.
+            Defaults to 30.
+
+    Returns:
+        linP_interp (interpolator): Interpolator for the linear power spectrum.
+    """
+
+    inst_camb = camb_cosmo.get_cosmology_from_dictionary(cosmo)
+
+    camb_results = camb_cosmo.get_camb_results(
+        inst_camb, zs=np.linspace(zmin, zmax, nz), camb_kmax_Mpc=camb_kmax_Mpc
+    )
+
+    # get interpolator from CAMB
+    # meaning of var1 and var2 here
+    # https://camb.readthedocs.io/en/latest/transfer_variables.html#transfer-variables
+    linP_interp = camb_results.get_matter_power_interpolator(
+        nonlinear=False,
+        var1=8,
+        var2=8,
+        hubble_units=False,
+        k_hunit=False,
+        log_interp=True,
+    )
+
+    get_linpower = types.MethodType(P_camb, linP_interp)
+
+    def get_plin(z, k_Mpc):
+        if np.any(np.asarray(z) > zmax):
+            raise ValueError(
+                f"Requested z={z} exceeds interpolation range zmax={zmax}"
+            )
+        elif np.any(np.asarray(k_Mpc) > camb_kmax_Mpc):
+            raise ValueError(
+                f"Requested k_Mpc={k_Mpc} exceeds interpolation range kmax_Mpc={camb_kmax_Mpc}"
+            )
+        return get_linpower(z, k_Mpc, grid=False)
+
+    get_plin.cosmo = cosmo
+    get_plin.camb_kmax_Mpc = camb_kmax_Mpc
+
+    return get_plin

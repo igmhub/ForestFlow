@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=61.0", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name="forestflow"
-version="2024.0.0"
+dynamic = ["version"]
 authors = [
     { name="Jonas Chaves-Montero", email="jchaves@ifae.es" },
     { name="Laura Cabayol-Garcia", email="lcabayol@pic.es" },
@@ -35,6 +35,10 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
 ]
+
+[tool.setuptools_scm]
+version_scheme = "no-guess-dev"
+local_scheme = "node-and-date"
 
 [project.optional-dependencies]
 px = [
