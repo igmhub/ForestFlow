@@ -242,7 +242,7 @@ class GadgetArchive3D(GadgetArchive):
                 arr_params[_]
             )
 
-    def get_priors_Arinyo(
+    def get_Arinyo_priors(
         self, zmin, zmax, type_fit="Arinyo_min", return_all=False
     ):
         # redshifts to be used
@@ -311,7 +311,7 @@ class GadgetArchive3D(GadgetArchive):
         else:
             return out_priors
 
-    def get_priors_IGM(self, zmin, zmax, return_all=False, IGM_params=None):
+    def get_IGM_priors(self, zmin, zmax, return_all=False, IGM_params=None):
         if IGM_params is None:
             IGM_params = {
                 "Delta2_p",
