@@ -86,7 +86,7 @@ arinyo_pars = {
 }
 
 plin = model_Arinyo.linP_Mpc(zs, k) # get linear power spectrum at target zmodel_Arinyo
-p3d = model_Arinyo.P3D_Mpc(zs, k2d, mu2d, arinyo_pars) # get P3D at target z
+p3d = model_Arinyo.P3D_Mpc_k_mu(zs, k2d, mu2d, arinyo_pars) # get P3D at target z
 p1d = model_Arinyo.P1D_Mpc(zs, kpar, arinyo_pars) # get P1D at target z
 
 # %% [markdown]
@@ -134,7 +134,7 @@ cosmo_new = {
 }
 
 plin_new = model_Arinyo.linP_Mpc(zs, k, cosmo_new=cosmo_new) # get linear power spectrum at target zmodel_Arinyo
-p3d_new = model_Arinyo.P3D_Mpc(zs, k2d, mu2d, arinyo_pars, cosmo_new=cosmo_new) # get P3D at target z
+p3d_new = model_Arinyo.P3D_Mpc_k_mu(zs, k2d, mu2d, arinyo_pars, cosmo_new=cosmo_new) # get P3D at target z
 p1d_new = model_Arinyo.P1D_Mpc(zs, kpar, arinyo_pars, cosmo_new=cosmo_new) # get P1D at target z
 
 # %%
@@ -161,12 +161,12 @@ cosmo_new = {
 # %%
 # %%time
 for ii in range(100):
-    model_Arinyo.P3D_Mpc(zs, k2d, mu2d, arinyo_pars, cosmo_new=cosmo_new)
+    model_Arinyo.P3D_Mpc_k_mu(zs, k2d, mu2d, arinyo_pars, cosmo_new=cosmo_new)
 
 # %%
 # %%time
 for ii in range(100):
-    model_Arinyo.P3D_Mpc(zs, k2d, mu2d, arinyo_pars)
+    model_Arinyo.P3D_Mpc_k_mu(zs, k2d, mu2d, arinyo_pars)
 
 # %% [markdown]
 # #### Much slower when changing other parameters since we need to call camb every time
@@ -191,7 +191,7 @@ cosmo_new = {
 # %%
 # %%time
 for ii in range(10):
-    model_Arinyo.P3D_Mpc(zs, k2d, mu2d, arinyo_pars, cosmo_new=cosmo_new)
+    model_Arinyo.P3D_Mpc_k_mu(zs, k2d, mu2d, arinyo_pars, cosmo_new=cosmo_new)
 
 # %% [markdown]
 # ## Arinyo model from emulator
@@ -236,7 +236,7 @@ par_ari = emulator.predict_Arinyos(input_emu, return_dict=True)
 par_ari
 
 # %%
-p3d_from_emu = model_Arinyo.P3D_Mpc(zs, k2d, mu2d, par_ari)
+p3d_from_emu = model_Arinyo.P3D_Mpc_k_mu(zs, k2d, mu2d, par_ari)
 plin = model_Arinyo.linP_Mpc(zs, k) 
 
 # %%

@@ -154,7 +154,7 @@ model_Arinyo = ArinyoModel(sim["cosmo_params"])
 # %%
 # sim['Arinyo_min'] contains the best-fitting Arinyo parameters to this simulation
 
-p3d_model = model_Arinyo.P3D_Mpc(sim["z"], k3d_Mpc, mu3d, sim['Arinyo_min']) # get P3D for z, k3D (array), and mu3d(array)
+p3d_model = model_Arinyo.P3D_Mpc_k_mu(sim["z"], k3d_Mpc, mu3d, sim['Arinyo_min']) # get P3D for z, k3D (array), and mu3d(array)
 p1d_model = model_Arinyo.P1D_Mpc(sim["z"], k1d_Mpc, sim['Arinyo_min']) # get P1D for z, k1D (array)
 
 # apply rebinning

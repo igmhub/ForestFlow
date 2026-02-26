@@ -58,15 +58,24 @@ def _P1D_lnkperp_fast(z, ln_k_perp, kpars, p3d_fun, p3d_params, cosmo_new=None):
     # get function to be integrated
     # it is equivalent of the inner loop of _P1D_lnkperp
     k_perp = np.exp(ln_k_perp)
+    fact = (1 / (2 * np.pi)) * k_perp[:, np.newaxis] ** 2
+    fact = fact.swapaxes(0, 1)
+
     k = np.sqrt(kpars[np.newaxis, :] ** 2 + k_perp[:, np.newaxis] ** 2)
     mu = kpars[np.newaxis, :] / k
     k = k.swapaxes(0, 1)
     mu = mu.swapaxes(0, 1)
 
-    fact = (1 / (2 * np.pi)) * k_perp[:, np.newaxis] ** 2
-    fact = fact.swapaxes(0, 1)
-
-    p3d_fix_k_par = p3d_fun(z, k, mu, p3d_params, cosmo_new=cosmo_new) * fact
+    if p3d_fun.coordinates == "k_mu":
+        p3d_fix_k_par = p3d_fun(z, k, mu, p3d_params, cosmo_new=cosmo_new) * fact
+    elif p3d_fun.coordinates == "kpar_kperp":
+        kpar = k * mu
+        kperp = k * np.sqrt(1 - mu**2)
+        p3d_fix_k_par = p3d_fun(z, kpar, kperp, p3d_params, cosmo_new=cosmo_new) * fact
+    else:
+        raise ValueError(
+            "p3d_fun must have coordinates attribute set to 'k_mu' or 'kpar_kperp'"
+        )
 
     # perform numerical integration
     p1d = simpson(p3d_fix_k_par, ln_k_perp, dx=dlnk, axis=1)

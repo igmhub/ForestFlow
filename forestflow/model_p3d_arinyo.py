@@ -6,6 +6,14 @@ from forestflow.p1d import P1D_Mpc as compute_P1D
 from forestflow.cosmo import rescale_pklin
 
 
+def coordinates(name):
+    def decorator(func):
+        func.coordinates = name
+        return func
+
+    return decorator
+
+
 class ArinyoModel(object):
     """
     Class representing the Arinyo et al. model for Lyman-alpha forest flux power spectrum.
@@ -49,9 +57,7 @@ class ArinyoModel(object):
 
         if camb_pk_interp is None:
             # get a linear power interpolator
-            self.get_linpower = get_linP_interp(
-                cosmo, camb_kmax_Mpc=camb_kmax_Mpc
-            )
+            self.get_linpower = get_linP_interp(cosmo, camb_kmax_Mpc=camb_kmax_Mpc)
         else:
             self.get_linpower = camb_pk_interp
 
@@ -80,8 +86,7 @@ class ArinyoModel(object):
         for par in self.get_linpower.cosmo:
             if par not in cosmo_new:
                 raise ValueError(
-                    "cosmo_new must contain all parameters in cosmo, missing "
-                    + par
+                    "cosmo_new must contain all parameters in cosmo, missing " + par
                 )
             if par not in ["As", "ns", "nrun"]:
                 if cosmo_new[par] != self.get_linpower.cosmo[par]:
@@ -127,26 +132,49 @@ class ArinyoModel(object):
 
         return pklin
 
+    @coordinates("kpar_kperp")
     def P3D_Mpc_kpar_kperp(self, z, kpar, kperp, ari_pp, cosmo_new=None):
         """
-        Calculates the 3D power spectrum in Mpc units given the parallel and perpendicular wavenumbers.
+        Compute the 3D flux power spectrum for inputs given as k_parallel and k_perp.
 
         Parameters:
-        self (object): The instance of the class that this method belongs to.
-        z (float): The redshift value.
-        kpar (float): The parallel wavenumber.
-        kperp (float): The perpendicular wavenumber.
-        ari_pp (float): The anisotropic power spectrum parameter.
-        cosmo_new (object, optional): A new cosmology object to use for the calculation. If not provided, the default cosmology will be used.
+            z (float): Redshift (scalar).
+            kpar (float or array-like): Wavenumber component along the line-of-sight (Mpc^-1).
+            kperp (float or array-like): Wavenumber component perpendicular to the line-of-sight (Mpc^-1).
+            ari_pp (dict): Arinyo model parameters (missing keys will use defaults).
+            cosmo_new (dict, optional): Optional cosmology override passed through to `P3D_Mpc`.
 
         Returns:
-        float: The 3D power spectrum in Mpc units.
+            float or array-like: 3D flux power spectrum in units of Mpc^3 with the same shape as the broadcasted
+            inputs. The returned value is the same object produced by `P3D_Mpc` but with the attribute
+            `coordinates` set to `'kpar_kperp'`.
         """
+
         k = np.sqrt(kpar**2 + kperp**2)
         mu = kpar / k
-        return self.P3D_Mpc(z, k, mu, ari_pp, cosmo_new=cosmo_new)
+        return self._P3D_Mpc(z, k, mu, ari_pp, cosmo_new=cosmo_new)
 
-    def P3D_Mpc(self, z, k, mu, ari_pp, cosmo_new=None):
+    @coordinates("k_mu")
+    def P3D_Mpc_k_mu(self, z, k, mu, ari_pp, cosmo_new=None):
+        """
+        Compute the 3D flux power spectrum for inputs given as k (magnitude) and mu (cosine of angle).
+
+        Parameters:
+            z (float): Redshift (scalar).
+            k (float or array-like): Magnitude of the wavevector (Mpc^-1).
+            mu (float or array-like): Cosine of the angle between the wavevector and the line-of-sight
+                (mu = k_parallel / k).
+            ari_pp (dict): Arinyo model parameters (missing keys will use defaults).
+            cosmo_new (dict, optional): Optional cosmology override passed through to `P3D_Mpc`.
+
+        Returns:
+            float or array-like: 3D flux power spectrum in units of Mpc^3 with the same shape as the inputs.
+            The returned value is the same object produced by `P3D_Mpc` but with the attribute
+            `coordinates` set to `'k_mu'`.
+        """
+        return self._P3D_Mpc(z, k, mu, ari_pp, cosmo_new=cosmo_new)
+
+    def _P3D_Mpc(self, z, k, mu, ari_pp, cosmo_new=None):
         """
         Compute the model for the 3D flux power spectrum in units of Mpc^3.
 
@@ -201,7 +229,7 @@ class ArinyoModel(object):
             array-like: Computed values of the one-dimensional power spectrum (P1D) for the given `k_par` values.
         """
 
-        p1d = compute_P1D(z, k_par, self.P3D_Mpc, ari_pp, cosmo_new=cosmo_new)
+        p1d = compute_P1D(z, k_par, self.P3D_Mpc_k_mu, ari_pp, cosmo_new=cosmo_new)
 
         return p1d
 
