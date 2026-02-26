@@ -1,6 +1,7 @@
 **/*.ipynb
 **/*.pdf
 **/*.png
+**/*.npy
 **/.ipynb_checkpoints/
 data/
 **/__pycache__/

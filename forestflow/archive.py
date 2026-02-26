@@ -1,3 +1,14 @@
+"""forestflow.archive
+
+Utilities to load and process Arinyo/Gadget archives for ForestFlow.
+
+This module provides `GadgetArchive3D`, which extends
+`lace.archive.gadget_archive.GadgetArchive` with helpers to load
+training/testing data and Arinyo minimizer fits (both individual
+and redshift-parameterized), and to compute simple priors for
+Arinyo / IGM parameters.
+"""
+
 import numpy as np
 import os
 from lace.archive.gadget_archive import GadgetArchive
@@ -6,6 +17,14 @@ from forestflow.utils import params_numpy2dict_minimizerz
 
 
 class GadgetArchive3D(GadgetArchive):
+    """Archive helpers for 3D Gadget simulations.
+
+    Extends `GadgetArchive` with methods to load training and testing
+    data, attach Arinyo minimizer results (individual snapshots and
+    joint/redshift-parameterized fits), and to compute summary priors
+    for Arinyo and IGM parameters over redshift ranges.
+    """
+
     def __init__(
         self,
         base_folder=None,
@@ -61,6 +80,23 @@ class GadgetArchive3D(GadgetArchive):
     def get_testing_data(
         self, sim_label, ind_rescaling=0, kmax_3d=5, kmax_1d=4
     ):
+        """Return testing data augmented with Arinyo minimizer fits.
+
+        Loads testing data for the given `sim_label` (via
+        the parent `GadgetArchive.get_testing_data`) and attaches both
+        individual and joint Arinyo minimizer results to each snapshot
+        entry in the returned archive structure.
+
+        Parameters
+        - sim_label: str, label of the simulation to load
+        - ind_rescaling: int, index of rescaling to select (default 0)
+        - kmax_3d: int, maximum k for 3D minimizer files (default 5)
+        - kmax_1d: int, maximum k for 1D minimizer files (default 4)
+
+        Returns
+        - testing_data: list-like archive with added `Arinyo_min` and
+          `Arinyo_minz` entries where available
+        """
         testing_data = super().get_testing_data(
             sim_label, ind_rescaling=ind_rescaling
         )
@@ -245,6 +281,21 @@ class GadgetArchive3D(GadgetArchive):
     def get_Arinyo_priors(
         self, zmin, zmax, type_fit="Arinyo_min", return_all=False
     ):
+        """Compute summary priors for Arinyo fit parameters.
+
+        Aggregates Arinyo fit parameter values from `self.training_data`
+        within the redshift interval [zmin, zmax] and returns simple
+        summary statistics (mean, std, min, max) for each parameter.
+
+        Parameters
+        - zmin, zmax: float, redshift bounds (inclusive)
+        - type_fit: str, key in training_data entries to use (default
+          'Arinyo_min')
+        - return_all: bool, if True also return the raw flattened data
+
+        Returns
+        - out_priors: dict of summary stats (and optionally raw arrays)
+        """
         # redshifts to be used
         ind_z = np.argwhere(
             (self.list_sim_redshifts >= zmin - 1e-3)
@@ -312,6 +363,22 @@ class GadgetArchive3D(GadgetArchive):
             return out_priors
 
     def get_IGM_priors(self, zmin, zmax, return_all=False, IGM_params=None):
+        """Compute priors for a set of IGM parameters over redshift.
+
+        Gathers the requested `IGM_params` from `self.training_data`
+        within the redshift interval [zmin, zmax] and returns simple
+        summary statistics (mean, std, min, max) for each parameter.
+
+        Parameters
+        - zmin, zmax: float, redshift bounds (inclusive)
+        - return_all: bool, if True also return the raw flattened data
+        - IGM_params: iterable of parameter names to include. If None,
+          a default set of commonly used IGM/emu parameters is used.
+
+        Returns
+        - out_priors: dict of summary stats (and optionally raw arrays)
+        """
+
         if IGM_params is None:
             IGM_params = {
                 "Delta2_p",

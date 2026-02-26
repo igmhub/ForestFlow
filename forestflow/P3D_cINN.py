@@ -22,23 +22,6 @@ def init_xavier(m):
         m.bias.data.fill_(0.01)
 
 
-def print_memory_usage(step_description):
-    import psutil
-
-    process = psutil.Process()
-    memory_info = process.memory_info()
-    print(
-        f"{step_description} - RSS: {memory_info.rss / (1024 ** 2):.2f} MB, VMS: {memory_info.vms / (1024 ** 2):.2f} MB"
-    )
-    if torch.cuda.is_available():
-        print(
-            f"GPU memory allocated: {torch.cuda.memory_allocated() / (1024 ** 2):.2f} MB"
-        )
-        print(
-            f"GPU memory cached: {torch.cuda.memory_reserved() / (1024 ** 2):.2f} MB"
-        )
-
-
 class P3DEmulator:
     """A class for training an emulator.
 
@@ -433,18 +416,24 @@ class P3DEmulator:
             emu_params (list of dict): List of dictionaries containing the
                 cosmo + IGM input parameters.
             Nrealizations (int): Number of realizations to generate. Default is None.
-
             return_all_realizations (bool): Whether to return all realizations
                 or just the mean. Default is False.
+            seed (int): Seed for the random number generator. Default is 0.
+            return_dict (bool): Whether to return the mean Arinyo coefficients
+                as a dictionary or as a numpy array. Default is True.
 
         Returns:
-            Dictionary with mean Arinyo coefficient predictions.
-            If return_all_realizations is True, returns a tuple with all realizations and the mean.
+            dict or numpy.ndarray: Depending on the value of `return_dict`,
+                this function returns either a dictionary with the mean Arinyo
+                coefficient predictions or a numpy array with all realizations
+                and the mean.
         """
 
+        # Check if emu_params is a single dictionary and convert it to a list
         if isinstance(emu_params, dict):
             emu_params = [emu_params]
 
+        # Warn the user if the number of emu_params is too large
         if len(emu_params) > 250:
             print(
                 "WARNING: More than 500 instances of emu_params will take too much memory. "
@@ -453,26 +442,24 @@ class P3DEmulator:
             )
             return
 
-        # Use default number of realizations set when loading the emulator
-        # if not specified
+        # Use the default number of realizations if not specified
         if Nrealizations is None:
             Nrealizations = self.Nrealizations
 
-        # Set the seed
+        # Set the random seed
         g = torch.Generator().manual_seed(seed)
 
-        # Number of combinations of input parameters
+        # Calculate the number of combinations of input parameters and the number of input parameters
         neval = len(emu_params)
         ninpt_pars = len(emu_params[0])
 
+        # Normalize the input data and arrange it along the first axis
         condition = np.zeros((neval * Nrealizations, ninpt_pars))
         for jj in range(neval):
-            # Input to emulator
             input_emu = []
             for par in self.emu_input_names:
                 input_emu.append(emu_params[jj][par])
             input_emu = np.array(input_emu)
-            # normalize the input data and arrange it along the first axis
             for ipar in [0]:
                 if input_emu.ndim == 1:
                     input_emu[ipar] = np.log(input_emu[ipar])
@@ -483,36 +470,35 @@ class P3DEmulator:
             ) / (self.input_param_lims_max - self.input_param_lims_min)
         condition = torch.Tensor(condition)
 
-        # cINN stuff
+        # Prepare the conditions for the cINN
         aran = np.arange(neval * Nrealizations)
         self.emulator.conditions = []
         for ii in range(self.nLayers_inn):
             self.emulator.conditions.append(aran)
 
-        # Generate predictions
+        # Generate the Arinyo coefficient predictions
         with torch.no_grad():
             z_test = torch.randn(
                 neval * Nrealizations, self.dim_inputSpace, generator=g
             )
             Arinyo_preds, _ = self.emulator(z_test, condition, rev=True)
 
-            # Transform the predictions back to original space
+            # Transform the predictions back to the original space
             Arinyo_preds = (
                 Arinyo_preds
                 * (self.output_param_lims_max - self.output_param_lims_min)
                 + self.output_param_lims_min
             )
-
             for ipar in [0, 2, 3, 7]:
                 Arinyo_preds[:, ipar] = torch.exp(Arinyo_preds[:, ipar])
 
+        # Reshape the predictions and calculate the mean
         all_realizations = np.array(
             Arinyo_preds.reshape(neval, Nrealizations, self.dim_inputSpace)
         )
-
-        # Calculate the median of the predictions
         Arinyo_mean = np.mean(all_realizations, axis=1)
 
+        # Format the output as a dictionary or a numpy array
         if return_dict:
             _Arinyo_mean = []
             for ii in range(Arinyo_mean.shape[0]):
@@ -528,6 +514,7 @@ class P3DEmulator:
                 Arinyo_mean = Arinyo_mean[0]
                 all_realizations = all_realizations[0]
 
+        # Return the results
         if return_all_realizations == True:
             return all_realizations, Arinyo_mean
         else:
