@@ -1,23 +1,26 @@
 # ---
 # jupyter:
 #   jupytext:
-#     formats: ipynb,py
+#     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
-#       format_name: light
-#       format_version: '1.5'
-#       jupytext_version: 1.16.2
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.19.1
 #   kernelspec:
-#     display_name: cupix
+#     display_name: Python 3
 #     language: python
-#     name: cupix
+#     name: python3
 # ---
 
+# %% [markdown]
 # # Tutorial for how to calculate $P_\times$
 
+# %% [markdown]
 #
 # This notebook should be run in an environment that contains both LaCE and ForestFlow.
 
+# %%
 import numpy as np
 from scipy import special
 import numpy as np
@@ -26,7 +29,11 @@ import sys
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from matplotlib import rcParams
+# load profiler
+# %load_ext line_profiler
 
+
+# %%
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 # import P3D theory
@@ -35,26 +42,38 @@ from forestflow.model_p3d_arinyo import get_linP_interp
 from forestflow.model_p3d_arinyo import ArinyoModel
 import time
 
+# %%
 # %load_ext autoreload
 # %autoreload 2
 from forestflow.pcross import Px_Mpc, Px_Mpc_detailed
-import hankl
 
+# %% [markdown]
 # First, choose a redshift and $k$ range. Initialize an instance of the Arinyo class for this redshift given cosmology calculations from Camb.
 
+# %%
 zs = np.array([2, 2.5])  # set target redshift
-cosmo = camb_cosmo.get_cosmology()  # set default cosmo
-camb_results = camb_cosmo.get_camb_results(
-    cosmo, zs=zs, camb_kmax_Mpc=200
-)  # set default cosmo
-arinyo = ArinyoModel(
-    cosmo=cosmo, camb_results=camb_results, zs=zs, camb_kmax_Mpc=200
-)  # set model
-arinyo.default_params
 
+
+# %%
+cosmo = {
+    "H0": 67.66,
+    "mnu": 0,
+    "omch2": 0.119,
+    "ombh2": 0.0224,
+    "omk": 0,
+    'As': 2.105e-09,
+    'ns': 0.9665,
+    "nrun": 0.0,
+    "pivot_scalar": 0.05,
+    "w": -1.0,
+}
+model_Arinyo = ArinyoModel(cosmo)
+model_Arinyo.default_params
+
+# %% [markdown]
 # ## Plot the 3D power spectrum
 
-# +
+# %%
 nn_k = 200  # number of k bins
 nn_mu = 10  # number of mu bins
 k = np.logspace(-1.5, 2, nn_k)
@@ -64,15 +83,15 @@ mu2d = np.tile(mu[:, np.newaxis], nn_k).T  # mu grid for P3D
 
 kpar = np.logspace(-1, np.log10(5), nn_k)  # kpar for P1D
 
-plin = arinyo.linP_Mpc(zs[0], k)  # get linear power spectrum at target z
-p3d = arinyo.P3D_Mpc(
-    zs[0], k2d, mu2d, arinyo.default_params
+plin = model_Arinyo.linP_Mpc(zs[0], k)  # get linear power spectrum at target z
+p3d = model_Arinyo.P3D_Mpc_k_mu(
+    zs[0], k2d, mu2d, ari_pp=model_Arinyo.default_params
 )  # get P3D at target z
-p1d = arinyo.P1D_Mpc(
-    zs[0], kpar, parameters=arinyo.default_params
+p1d = model_Arinyo.P1D_Mpc(
+    zs[0], kpar, ari_pp=model_Arinyo.default_params
 )  # get P1D at target z
-# -
 
+# %%
 for ii in range(p3d.shape[1]):
     plt.loglog(
         k, p3d[:, ii] / plin, label=r"$<\mu>=$" + str(np.round(mu[ii], 2))
@@ -83,24 +102,24 @@ plt.xlim([10**-1, 10**8])
 plt.ylim([10**-10, 10])
 plt.legend()
 
+# %%
 rperp = np.logspace(-2,2,100) # use the same rperp for each z. We could also input this as a list of [rperp, rperp] for each z.
 
-arinyo.default_params
+# %%
+model_Arinyo.default_params
 
-if arinyo.default_params:
-    print("true")
+# %%
 
-# +
 # we can compute Px from within the Arinyo class using default parameters,
-Px_Mpc_1 = arinyo.Px_Mpc(z=zs[0], kpar_iMpc = kpar, rperp_Mpc = rperp, parameters=arinyo.default_params)
+Px_Mpc_1 = model_Arinyo.Px_Mpc(z=zs[0], kpar_iMpc = kpar, rperp_Mpc = rperp, ari_pp=model_Arinyo.default_params)
 
 # we could have also done it outside of the class with the function Px_Mpc:
 Px_Mpc_2 = Px_Mpc(
-    zs[0], kpar, rperp, arinyo.P3D_Mpc, P3D_mode="pol", P3D_params=arinyo.default_params
+    zs[0], kpar, rperp, model_Arinyo.P3D_Mpc_k_mu, p3d_params=model_Arinyo.default_params
 )
 print("Detailed method is equal to previous method:", np.allclose(Px_Mpc_1, Px_Mpc_2, atol=1e-15))
-# -
 
+# %% [markdown]
 # # Calculate $P_\times$ for a series of $k_\parallel$.
 #
 # Observationally, $P_\times$ is a measurement made between two sightlines separated by the angle $\theta$ on the sky. As such, it contains 3D information about correlations. It is relevant because we have distinct sightlines measured by spectroscopic instruments like DESI.
@@ -127,6 +146,7 @@ print("Detailed method is equal to previous method:", np.allclose(Px_Mpc_1, Px_M
 # <!-- $$ P_{\times}(z,k_{\parallel}, \theta) = \frac{1}{2\pi} \int_{k_{\parallel}}^{\infty} k dk J_0 (k_\perp \theta) P(z, k, \mu)$$ -->
 #
 
+# %%
 # choose some values of k parallel to compute. We can do this for two redshifts at once, but we will evaluate
 # the same kpar and rperp for both redshifts. It is also possible to input a list of different kpar and rperp
 # for each redshift, e.g. [kpar1, kpar2] and [rperp1, rperp2].
@@ -137,21 +157,22 @@ Px_per_theta_perz = Px_Mpc(
     zs,
     kpars_Px,
     rperp,
-    arinyo.P3D_Mpc,
-    P3D_mode="pol",
-    P3D_params=[arinyo.default_params, arinyo.default_params], # use the same parameters for both redshifts
+    model_Arinyo.P3D_Mpc_k_mu,
+    p3d_params=[model_Arinyo.default_params, model_Arinyo.default_params], # use the same parameters for both redshifts
 )
 
+# %% [markdown]
 # # Plot $P_\times$ as a function of $r_\perp$
 # At very low rperp, $P_\times$ should match with P1D. We can plot the P1D predictions for the same model for few values of $k_\parallel$, to test the integration.
 
+# %%
 p1d_comparison = []
 for iz, z in enumerate(zs):
-    p1d_comparison.append(arinyo.P1D_Mpc(
-        zs[iz], kpars_Px, parameters=arinyo.default_params
+    p1d_comparison.append(model_Arinyo.P1D_Mpc(
+        zs[iz], kpars_Px, ari_pp=model_Arinyo.default_params
     ))  # get the P1D comparison
 
-# +
+# %%
 # first, check if the fiducial matches P1D at the low end
 fig, ax = plt.subplots(
     nrows=2,
@@ -197,14 +218,14 @@ ax[0].set_ylim([0, np.amax(Px_per_theta_perz) + 0.1])
 ax[1].set_ylim([-1, 1])
 plt.suptitle(r"$P_\times$ vs P1D, default settings")
 
-# -
 
+# %% [markdown]
 # # Now let us look at $P_\times$ in a different way, as a function of $k_\parallel$ for different $r_\perp$ values
 
-# +
+# %%
 # series of rperp we're interested in
 rperp = (
-    np.array([0, 0.2, 0.972, 2.204, 3.444, 5.941]) / cosmo.h
+    np.array([0, 0.2, 0.972, 2.204, 3.444, 5.941]) / (cosmo["H0"]/100.)
 )  
 # the following will give a warning because we are inputting the same Arinyo parameter values for each redshift.
 # If you want to input different values for the different redshifts, these should be input in format:
@@ -214,13 +235,11 @@ Px_sel = Px_Mpc(
     zs,
     kpars_Px,
     rperp,
-    arinyo.P3D_Mpc,
-    P3D_mode="pol",
-    P3D_params=arinyo.default_params,
+    model_Arinyo.P3D_Mpc_k_mu,
+    p3d_params=model_Arinyo.default_params,
 )
 
-# +
-
+# %%
 # check that the first one has no fractional difference
 fig, ax = plt.subplots(
     nrows=2,
@@ -266,11 +285,11 @@ ax[0].set_xscale("log")
 ax[0].set_ylabel(r"$P_\times$ [Mpc/$h$]")
 ax[1].set_xlabel(r"$k_{\parallel}$ [$h$ Mpc$^{-1}$]")
 
-# -
 
+# %% [markdown]
 # Do the same in linear plot
 
-# +
+# %%
 
 # check that the first one has no fractional difference
 fig, ax = plt.subplots(
@@ -317,13 +336,15 @@ ax[0].set_ylim([10**-7, 1.1])
 ax[0].set_ylabel(r"$P_\times$ [Mpc/$h$]")
 ax[1].set_xlabel(r"$k_{\parallel}$ [$h$ Mpc$^{-1}$]")
 
-# -
 
+# %% [markdown]
 # These match perfectly as they should, since our first rperp is very close to 0, where the code transitions to using the P1D result.
 
+# %% [markdown]
 # Now, let's try to reproduce the plot from Abdul-Karim et al 2023
 #
 
+# %%
 colors = ["blue", "orange", "green", "red", "yellow", "purple"]
 for iz, z in enumerate(zs):
     fig, ax = plt.subplots(1, 1)
@@ -331,8 +352,8 @@ for iz, z in enumerate(zs):
     print("Plotting redshift", z)
     for r, Px in enumerate(Px_sel[iz]):
         plt.loglog(
-            kpars_Px / cosmo.h,
-            Px * cosmo.h,
+            kpars_Px / (cosmo["H0"]/100.),
+            Px * (cosmo["H0"]/100.),
             "o",
             label=f"$r_{{\perp}}=${round(rperp[r],3)*0.675} Mpc/h",
             ms=5,
@@ -342,8 +363,8 @@ for iz, z in enumerate(zs):
     ax.set_xlim([0.4, 20])
     ax.set_ylim([10**-7, 10**1])
     ax.loglog(
-        kpars_Px / cosmo.h,
-        p1d_comparison[iz] * cosmo.h,
+        kpars_Px / (cosmo["H0"]/100.),
+        p1d_comparison[iz] * (cosmo["H0"]/100.),
         label="arinyo model 1D",
         color="0.8",
     )
@@ -356,26 +377,40 @@ for iz, z in enumerate(zs):
     plt.show()
     plt.clf()
 
+# %% [markdown]
 # # If you want to use the pcross function with several variations, we can use Px_detailed
 
+# %%
 rperp = np.logspace(-4,3, 1000)
 
-# +
+# %%
+# profile the code with line_profiler
+# %lprun -f Px_Mpc_detailed Px_Mpc_detailed(zs[0], kpars_Px, rperp, model_Arinyo.P3D_Mpc_k_mu, p3d_params =model_Arinyo.default_params)
+
+
+# %%
+# time-test the code. The average should be about 130 ms.
+# %timeit Px_Mpc_detailed(zs[0], kpars_Px, rperp, model_Arinyo.P3D_Mpc_k_mu, p3d_params =model_Arinyo.default_params)
+
+# %%
+# now include 3x more kpars and time-test again. The code should scale roughly with N kpar, so we expect it to take about 3x as long, or about 400 ms.
+kpars_Px_extended = np.logspace(-3, np.log10(20), 300)
+# %timeit Px_Mpc_detailed(zs[0], kpars_Px_extended, rperp, model_Arinyo.P3D_Mpc_k_mu, p3d_params =model_Arinyo.default_params)
+
+# %%
 # change the value of nkerp to a very high value to get a 'perfect' integration via Hankel transform:
 
 Px_Mpc_full = Px_Mpc_detailed(
     zs[0],
     kpars_Px,
     rperp,
-    arinyo.P3D_Mpc,
-    P3D_mode="pol",
+    model_Arinyo.P3D_Mpc_k_mu,
     min_kperp=10.0**-20,
     max_kperp=10.0**3,
     nkperp=2**16,
     interpmin=0.005,
     interpmax=0.2,
-    fast_transition=False,
-    P3D_params =arinyo.default_params,
+    p3d_params =model_Arinyo.default_params,
 )
 
 # compare with a lower value of nkperp to see the difference:
@@ -383,15 +418,14 @@ Px_Mpc_lownkperp = Px_Mpc_detailed(
     zs[0],
     kpars_Px,
     rperp,
-    arinyo.P3D_Mpc,
-    P3D_mode="pol",
+    model_Arinyo.P3D_Mpc_k_mu,
     min_kperp=10.0**-20,
     max_kperp=10.0**3,
     nkperp=2**14,
-    P3D_params =arinyo.default_params,
+    p3d_params =model_Arinyo.default_params,
 )
 
-# +
+# %%
 # check accuracy with respect to fiducial
 
 
@@ -459,13 +493,13 @@ plt.suptitle(
     r"$N_\mathrm{steps} = 2^{14}, k_\perp^\mathrm{min}=10^{-20}, k_\perp^\mathrm{max}=10^3$"
 )
 
-
-# -
-
+# %% [markdown]
 # ## We can see that by lowering nkperp from 2^16 to 2^14, the integration accuracy has worsened
 
+# %% [markdown]
 # There are some strange discrete jumps when looking at the differences, e.g., at rperp~8. However, when we investigate further this appears to be very minor (see below plots). Therefore lowering Nkperp can be safe, but is worth testing depending on the accuracy to time tradeoff an analysis needs.
 
+# %%
 for ik, Px in enumerate(Px_Mpc_full.T[kpars_to_plot][:3]):
     plt.plot(
         rperp,
@@ -480,11 +514,12 @@ plt.xlim([5, 10])
 plt.ylim([0.125, 0.23])
 plt.legend()
 
+# %%
 for ik, Px in enumerate(Px_Mpc_full.T[kpars_to_plot][3:7]):
     plt.plot(
         rperp,
         Px,
-        label=f"$k_\parallel$={round(kpar_plot[ik],3)}",
+        label=f"$k_\parallel$={round(3+kpar_plot[ik],3)}",
         c=cmap((ik + 3) / len(kpars_to_plot)),
     )
     plt.plot(
@@ -497,11 +532,12 @@ plt.xlim([5, 10])
 plt.ylim([0.01, 0.3])
 plt.legend()
 
+# %%
 for ik, Px in enumerate(Px_Mpc_full.T[kpars_to_plot][7:9]):
     plt.plot(
         rperp,
         Px,
-        label=f"$k_\parallel$={round(kpar_plot[ik],3)}",
+        label=f"$k_\parallel$={round(kpar_plot[7+ik],3)}",
         c=cmap((ik + 7) / len(kpars_to_plot)),
     )
     plt.plot(
@@ -514,3 +550,5 @@ plt.xlim([5, 10])
 plt.ylim([10**-13, 0.01])
 plt.legend()
 plt.yscale("log")
+
+# %%

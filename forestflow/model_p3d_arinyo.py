@@ -233,7 +233,7 @@ class ArinyoModel(object):
 
         return p1d
 
-    def Px_Mpc(self, z, kpar_iMpc, rperp_Mpc, parameters):
+    def Px_Mpc(self, z, kpar_iMpc, rperp_Mpc, ari_pp):
         """
         Compute P-cross for the P3D model.
 
@@ -248,8 +248,8 @@ class ArinyoModel(object):
             z,
             kpar_iMpc,
             rperp_Mpc,
-            self.P3D_Mpc,
-            P3D_mode="pol",
-            P3D_params=parameters,
+            self.P3D_Mpc_k_mu,
+            p3d_params=ari_pp,
+            max_k_for_p3d=self.get_linpower.camb_kmax_Mpc
         )
         return Px_Mpc
