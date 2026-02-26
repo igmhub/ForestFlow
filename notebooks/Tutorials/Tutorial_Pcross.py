@@ -119,6 +119,13 @@ Px_Mpc_2 = Px_Mpc(
 )
 print("Detailed method is equal to previous method:", np.allclose(Px_Mpc_1, Px_Mpc_2, atol=1e-15))
 
+# %%
+# you could update the cosmology:
+# we can compute Px from within the Arinyo class using default parameters,
+Px_Mpc_3 = model_Arinyo.Px_Mpc(z=zs[0], kpar_iMpc = kpar, rperp_Mpc = rperp, ari_pp=model_Arinyo.default_params, cosmo_new={"H0": 70})
+print("Is updated cosmology returning the same as previous method?", np.allclose(Px_Mpc_1, Px_Mpc_3, atol=1e-15))
+# the last line should return False since we updated the cosmology.
+
 # %% [markdown]
 # # Calculate $P_\times$ for a series of $k_\parallel$.
 #

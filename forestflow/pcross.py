@@ -2,7 +2,7 @@ import numpy as np
 from scipy.interpolate import CubicSpline
 from forestflow.p1d import P1D_Mpc 
 
-def Px_Mpc(z, kpars, rperp_Mpc, p3d_fun_Mpc, p3d_params={}, max_k_for_p3d=200):
+def Px_Mpc(z, kpars, rperp_Mpc, p3d_fun_Mpc, p3d_params={}, max_k_for_p3d=200, **kwargs):
     """
     Compute the cross-power spectrum P_cross(k_parallel, r_perp) for a given 3D
     power spectrum model, as a function of parallel wavenumber and transverse
@@ -44,7 +44,7 @@ def Px_Mpc(z, kpars, rperp_Mpc, p3d_fun_Mpc, p3d_params={}, max_k_for_p3d=200):
     """
 
     return Px_Mpc_detailed(
-        z, kpars, rperp_Mpc, p3d_fun_Mpc=p3d_fun_Mpc, p3d_params=p3d_params, max_k_for_p3d=max_k_for_p3d
+        z, kpars, rperp_Mpc, p3d_fun_Mpc=p3d_fun_Mpc, p3d_params=p3d_params, max_k_for_p3d=max_k_for_p3d, **kwargs
     )
 
 
@@ -59,7 +59,8 @@ def Px_Mpc_detailed(
     interpmin=0.005,
     interpmax=0.2,
     p3d_params={},  # list of dictionaries with keyword parameters to be passed to the P3D function
-    max_k_for_p3d=200 # maximum kperp that will be calculated for the P3D, which will otherwise be zero
+    max_k_for_p3d=200, # maximum kperp that will be calculated for the P3D, which will otherwise be zero
+    **kwargs # extra keyword arguments for the P3D function that aren't parameter values
 ):
     """
     Compute the cross-power spectrum P_cross(k_parallel, r_perp) using a Hankel transform
@@ -204,10 +205,10 @@ def Px_Mpc_detailed(
         p3d_eval = np.zeros_like(k2d)
         if p3d_mode == "cart":
             # assume p3d_Mpc is a function of (z, kpar, kperp)
-            p3d_eval[within_range] = p3d_fun_Mpc(z[iz], kpar2d[within_range], kperp2d[within_range], p3d_params_byz[iz])
+            p3d_eval[within_range] = p3d_fun_Mpc(z[iz], kpar2d[within_range], kperp2d[within_range], p3d_params_byz[iz], **kwargs)
         elif p3d_mode == "pol":
             # assume p3d_Mpc is a function of (z, k, mu)
-            p3d_eval[within_range] = p3d_fun_Mpc(z[iz], k2d[within_range], mu2d[within_range], p3d_params_byz[iz])
+            p3d_eval[within_range] = p3d_fun_Mpc(z[iz], k2d[within_range], mu2d[within_range], p3d_params_byz[iz], **kwargs)
 
         P1D = P1D_Mpc(
             z=z[iz],
