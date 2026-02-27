@@ -168,7 +168,7 @@ kpar = np.logspace(-1, np.log10(5), nn_k) # kpar for P1D
 
 
 plin = model_Arinyo.linP_Mpc(z, k) # get linear power spectrum at target zmodel_Arinyo
-p3d = model_Arinyo.P3D_Mpc(z, k2d, mu2d, par_ari) # get P3D at target z
+p3d = model_Arinyo.P3D_Mpc_k_mu(z, k2d, mu2d, par_ari) # get P3D at target z
 p1d = model_Arinyo.P1D_Mpc(z, kpar, par_ari) # get P1D at target z
 
 # %%
@@ -222,89 +222,3 @@ plt.plot(-arr_loss)
 plt.ylim(20, 41)
 plt.axvline(4000)
 # plt.xscale("log")
-
-# %% [markdown]
-# # For developers, Nrealizations parameter
-
-# %% [markdown]
-# #### Convergence
-#
-# The emulator draws random samples internally, and their number
-# is characterize by Nrealizations. The precision of the parameters
-# as a function of the number of realizations is
-
-# %%
-# %%time
-
-Ntot = 100000
-coeffs_all, coeffs_mean = p3d_emu.predict_Arinyos(
-    emu_params=input_params,
-    return_all_realizations=True,
-    Nrealizations=Ntot,
-)
-coeffs_mean
-
-# %%
-nx = np.geomspace(10, Ntot, 10)
-
-for ii in range(coeffs_all.shape[1]):
-    plt.loglog(
-        nx, 
-        np.std(coeffs_all[:, ii])/np.mean(coeffs_all[:, ii])/np.sqrt(nx),
-        label=p3d_emu.Arinyo_params[ii]
-    )
-# 1% precision for 2000 realizations
-plt.axhline(0.01, color="k")
-plt.axvline(2e3, color="k")
-plt.legend()
-
-# %% [markdown]
-# #### Convergence P3D
-
-# %%
-nx = np.geomspace(10, Ntot, 8)
-
-for ii in range(8):
-    # _ = out["mu"] == 0
-    # plt.loglog(
-    #     out["k_Mpc"][_], 
-    #     out["p3d_std"][_]/out["Plin"][_]/np.sqrt(nx[ii]), 
-    #     label="mu=0",
-    #     ls="--",
-    #     color = "C"+str(ii)
-    # )
-    # only look at mu=1, bigger error
-    _ = out["mu"] == 1
-    plt.loglog(
-        out["k_Mpc"][_], 
-        out["p3d_std"][_]/out["p3d"][_]/np.sqrt(nx[ii]), 
-        label= str(int(nx[ii])),
-        ls="-",
-        color = "C"+str(ii)
-    )
-
-
-plt.axhline(1e-3, color="k")
-plt.ylabel("std_p3d/p3d/sqrt(Nrea)")
-plt.xlabel("k3d")
-plt.legend()
-plt.xscale("log")
-
-# %%
-nx = np.geomspace(10, Ntot, 8)
-
-for ii in range(8):
-    plt.loglog(
-        out["k1d_Mpc"], 
-        out["p1d_std"]/out["p1d"]/np.sqrt(nx[ii]), 
-        label= str(int(nx[ii])),
-        ls="-",
-        color = "C"+str(ii)
-    )
-
-
-plt.axhline(4.5e-4, color="k")
-plt.ylabel("std_P1D/P1D/sqrt(Nrea)")
-plt.xlabel("kpar")
-plt.legend()
-plt.xscale("log")
