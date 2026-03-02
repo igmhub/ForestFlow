@@ -1,19 +1,18 @@
 # ---
 # jupyter:
 #   jupytext:
-#     formats: ipynb,py:percent
+#     formats: ipynb,py
 #     text_representation:
 #       extension: .py
-#       format_name: percent
-#       format_version: '1.3'
+#       format_name: light
+#       format_version: '1.5'
 #       jupytext_version: 1.16.1
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: lace
 #     language: python
 #     name: python3
 # ---
 
-# %% [markdown]
 # # Get priors on Arinyo from DR1 fit
 #
 # - Get chain data from DESI DR1 fit
@@ -21,7 +20,7 @@
 # - Compare ForestFlow P1D with lace-mpg P1D
 # - Get priors on the Arinyo parameters
 
-# %%
+# +
 # %load_ext autoreload
 # %autoreload 2
 
@@ -42,20 +41,17 @@ from forestflow.P3D_cINN import P3DEmulator
 path_repo = os.path.dirname(forestflow.__path__[0])
 
 np.__version__
+# -
 
-# %% [markdown]
 # # Read chain using cup1d (DESI DR1), jump to load chain below after running once
 
-# %% [markdown]
 # #### Set cup1d
 
-# %%
 pip = Pipeline()
 
-# %% [markdown]
 # #### Load chain
 
-# %%
+# +
 # local
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1"
 folder = os.path.join(base, "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/")
@@ -66,22 +62,21 @@ fname = os.path.join(folder, "chain.npy")
 chain = np.array(np.load(fname))
 chain = chain.reshape(-1, 53)
 chain.shape
+# -
 
-# %% [markdown]
 # #### Initiate input from chain
 #
 # We select 500 points from the chains randomly
 
-# %%
 zs = pip.fitter.like.data.z.copy()
 zs
 
-# %%
+# +
 
 # zs = pip.fitter.like.data.z.copy()
 # you change zs, take a look at the end of the cell
 zs = np.array([2.2, 2.33, 2.4, 2.6, 2.8, 3. , 3.2, 3.4, 3.6, 3.8, 4. , 4.2]) # adding 2.33 for the priors
-nn = 1000
+nn = 10000
 
 rng = np.random.default_rng(seed=12345)
 ind = rng.permutation(np.arange(chain.shape[0]))[:nn]
@@ -97,7 +92,6 @@ pars_chain["ns"] = np.zeros((ind.shape[0]))
 pars_chain["sig_8"] = np.zeros((ind.shape[0]))
 pars_chain["sig_8_z0"] = np.zeros((ind.shape[0]))
 pars_chain["f_sig_8"] = np.zeros((ind.shape[0]))
-pars_chain["f_sig_8_z0"] = np.zeros((ind.shape[0]))
 
 # input ForestFlow
 pars_chain["Delta2_p"] = np.zeros((ind.shape[0], zs.shape[0]))
@@ -126,23 +120,25 @@ for jj in range(2, zs.shape[0]):
     nelem = len(p1d[0][jj-1])
     pars_chain["k_kms"][jj, :nelem] = pip.fitter.like.data.k_kms[jj-1]
 
-# %%
+# +
 # chi2_ev = np.zeros((500))
 # for ii in range(500):
 #     chi2_ev[ii] = pip.fitter.like.get_chi2(chain[ind[ii], :])
 
-# %%
+# +
 ii = 88
 pip.fitter.like.plot_p1d(chain[ind[ii], :], print_chi2=False)
 
 # pip.fitter.like.plot_p1d(p0, print_chi2=False)
+# -
 
-# %% [markdown]
 # #### From each point, we get the input parameters to ForestFlow
 #
 # Most of the time goes into calling CAMB
 
-# %%
+from forestflow.cosmo import sig8_fsig8_with_res, rescale_linP
+
+# +
 # we used the Planck cosmo as fiducial in the DR1 fit
 fid_cosmo = {
     "H0": 67.66,
@@ -173,84 +169,10 @@ print(sig_8, sig_8_z0)
 # same for f sig_8
 f_sig_8, f_sig_8_z0 = camb_results.get_fsigma8()
 print(f_sig_8, f_sig_8_z0)
+print(f_sig_8/sig_8)
 
-# %%
-from scipy.integrate import simpson
-
-
-# %%
-def fft_top_hat(k, R):
-    x = k * R
-    return 3 / x**3 * (np.sin(x) - x * np.cos(x))
-
-def sig8(k, pk, R):
-    res = (k**3*pk/2/np.pi**2) * fft_top_hat(k, R)**2
-    return np.sqrt(simpson(res, x=np.log(k)))
-    
-
-
-# %%
-k, z_pk, pk = camb_results.get_linear_matter_power_spectrum(k_hunit=True)
-
-# %%
-sig8(k, pk[0], 8)
-
-# %%
-
-# %%
-plt.loglog(k, k**3*pk[0]/2/np.pi**2 * fft_top_hat(k, 8)**2)
-plt.loglog(k, k**3*pk[1]/2/np.pi**2 * fft_top_hat(k, 8)**2)
-# plt.loglog(k, pk[1])
-
-# %%
-simpson()
-
-# %%
-help(simpson)
-
-
-# %%
-
-# %%
-
-# %%
-def rescale_linP(fid_cosmo, tar_cosmo, linP_zs, kp_Mpc=0.7, ks_Mpc=0.05):
-
-    ratio_As = 1.0
-    delta_ns = 0.0
-    delta_nrun = 0.0
-
-    for par in tar_cosmo:
-        ratio_As = tar_cosmo["As"] / fid_cosmo["As"]
-        delta_ns = tar_cosmo["ns"] - fid_cosmo["ns"]
-        delta_nrun = tar_cosmo["nrun"] - fid_cosmo["nrun"]
-    
-        ln_kp_ks = np.log(kp_Mpc / ks_Mpc)
-
-        # compute scalings
-        delta_alpha_p = delta_nrun
-        delta_n_p = delta_ns + delta_nrun * ln_kp_ks
-        ln_ratio_A_p = (
-            np.log(ratio_As)
-            + (delta_ns + 0.5 * delta_nrun * ln_kp_ks) * ln_kp_ks
-        )
-
-        # update values of linP_params at emulator pivot point, at each z
-        linP_Mpc_params = []
-        for zlinP in linP_zs:
-            linP_Mpc_params.append(
-                {
-                    "Delta2_p": zlinP["Delta2_p"] * np.exp(ln_ratio_A_p),
-                    "n_p": zlinP["n_p"] + delta_n_p,
-                    "alpha_p": zlinP["alpha_p"] + delta_alpha_p,
-                }
-            )
-        return linP_Mpc_params
-
-
-# %%
-
-# %%
+# +
+# %%time
 for ii in range(ind.shape[0]):
     if ii % 100 == 0:
         print(ii)
@@ -277,29 +199,34 @@ for ii in range(ind.shape[0]):
     )
     pars_chain["kF_Mpc"][ii] = kF_kms * dkms_dMpc_zs
 
-    p1d = pip.fitter.like.get_p1d_kms(
-        pip.fitter.like.data.z, pip.fitter.like.data.k_kms, chain[ind[ii], :]
-    )
-    p1d_no = pip.fitter.like.get_p1d_kms(
-        pip.fitter.like.data.z, pip.fitter.like.data.k_kms, chain[ind[ii], :], no_contaminants=True
-    )
+    # p1d = pip.fitter.like.get_p1d_kms(
+    #     pip.fitter.like.data.z, pip.fitter.like.data.k_kms, chain[ind[ii], :]
+    # )
+    # p1d_no = pip.fitter.like.get_p1d_kms(
+    #     pip.fitter.like.data.z, pip.fitter.like.data.k_kms, chain[ind[ii], :], no_contaminants=True
+    # )
     # same k at 2.33 as at 2.2
-    for jj in range(2):
-        nelem = len(p1d[0][0])
-        pars_chain["p1d"][ii, jj, :nelem] = p1d[0][0]
-        pars_chain["p1d_nocont"][ii, jj, :nelem] = p1d_no[0][0]
+    # for jj in range(2):
+    #     nelem = len(p1d[0][0])
+    #     pars_chain["p1d"][ii, jj, :nelem] = p1d[0][0]
+    #     pars_chain["p1d_nocont"][ii, jj, :nelem] = p1d_no[0][0]
     
-    # the others the same
-    for jj in range(2, zs.shape[0]):
-        nelem = len(p1d[0][jj-1])
-        pars_chain["p1d"][ii, jj, :nelem] = p1d[0][jj-1]
-        pars_chain["p1d_nocont"][ii, jj, :nelem] = p1d_no[0][jj-1]
-    
-    tar_cosmo = {
-        "As": chain_params[0].value_from_cube(chain[ind[ii], 0]),
-        "ns": chain_params[1].value_from_cube(chain[ind[ii], 1]),
-        "nrun":0
-    }
+    # # the others the same
+    # for jj in range(2, zs.shape[0]):
+    #     nelem = len(p1d[0][jj-1])
+    #     pars_chain["p1d"][ii, jj, :nelem] = p1d[0][jj-1]
+    #     pars_chain["p1d_nocont"][ii, jj, :nelem] = p1d_no[0][jj-1]
+
+    tar_cosmo = {}
+    for par in fid_cosmo.keys():
+        tar_cosmo[par] = fid_cosmo[par]
+    tar_cosmo["As"] = chain_params[0].value_from_cube(chain[ind[ii], 0])
+    tar_cosmo["ns"] = chain_params[1].value_from_cube(chain[ind[ii], 1])
+    out = sig8_fsig8_with_res(camb_results, fid_cosmo, tar_cosmo)
+
+    pars_chain["sig_8"][ii] = out["sigma8_z"]
+    pars_chain["sig_8_z0"][ii] = out["sigma8_z0"]
+    pars_chain["f_sig_8"][ii] = out["f_growth_z"]
 
     pars_chain["As"][ii] = tar_cosmo["As"]
     pars_chain["ns"][ii] = tar_cosmo["ns"]
@@ -308,17 +235,17 @@ for ii in range(ind.shape[0]):
         pars_chain["Delta2_p"][ii, jj] = res_linP_zs[jj]["Delta2_p"]
         pars_chain["n_p"][ii, jj] = res_linP_zs[jj]["n_p"]
 
+    
+# -
 
-# %%
+
 np.save("inter_chain.npy", pars_chain)
 
-# %% [markdown]
 # # Load results from chain
 
-# %%
 pars_chain = np.load("inter_chain.npy", allow_pickle=True).item()
 
-# %%
+# +
 dict_save_file = {
     "zs": pars_chain["z"],
 }
@@ -327,17 +254,14 @@ for par in pars_chain.keys():
         dict_save_file[par] = pars_chain[par]
 
 np.save("priors_cosmo_IGM_from_p1d.npy", dict_save_file)
+# -
 
-# %%
 dict_save_file["Delta2_p"].shape
 
-# %%
 dict_save_file.keys()
 
-# %% [markdown]
 # #### Best-fitting uncontaminated P1D measurements
 
-# %%
 for ii in range(pars_chain["z"].shape[0]):
     _ = pars_chain["k_kms"][ii] != 0
     kk = pars_chain["k_kms"][ii, _]
@@ -352,36 +276,32 @@ for ii in range(pars_chain["z"].shape[0]):
     # )
 plt.xscale("log")
 
-# %%
 
-# %%
 
-# %%
 
-# %% [markdown]
+
+
+
 # ## Load ForestFlow
 
-# %%
 emulator = P3DEmulator(
     model_path = path_repo + "/data/emulator_models/forest_mpg",
 )
 
-# %% [markdown]
 # #### Initiate output to store Arinyo parameters
 
-# %%
+# +
 pars = pars_chain.keys()
 
 out_ari = {}
 for par in emulator.Arinyo_params:
     out_ari[par] = np.zeros_like(pars_chain["mF"])
 
-out_ari["p1d"] = np.zeros_like(pars_chain["p1d_nocont"])
+# out_ari["p1d"] = np.zeros_like(pars_chain["p1d_nocont"])
+# -
 
-# %%
 from forestflow.model_p3d_arinyo import ArinyoModel
 
-# %%
 #initiate Arinyo model, needed to compute P1D
 fid_cosmo = {
     "H0": 67.66,
@@ -397,7 +317,7 @@ fid_cosmo = {
 }
 model_Arinyo = ArinyoModel(fid_cosmo)
 
-# %%
+# +
 # %%time
 # chain step
 for ii in range(pars_chain["mF"].shape[0]):
@@ -431,31 +351,31 @@ for ii in range(pars_chain["mF"].shape[0]):
             out_ari[par][ii, jj] = par_ari[par]
 
         # set k_Mpc
-        _ = pars_chain["k_kms"][jj] != 0
+        # _ = pars_chain["k_kms"][jj] != 0
         # we can use this one because we only chage the priordial power
-        k_Mpc = pars_chain["k_kms"][jj, _] * dkms_dMpc_zs[jj]
-        P1D_Mpc = model_Arinyo.P1D_Mpc(
-            pars_chain["z"][jj],
-            k_Mpc,
-            par_ari,
-            cosmo_new=new_cosmo,
-        )
-        out_ari["p1d"][ii, jj, :np.sum(_)]  = P1D_Mpc * dkms_dMpc_zs[jj]
+        # k_Mpc = pars_chain["k_kms"][jj, _] * dkms_dMpc_zs[jj]
+        # P1D_Mpc = model_Arinyo.P1D_Mpc(
+        #     pars_chain["z"][jj],
+        #     k_Mpc,
+        #     par_ari,
+        #     cosmo_new=new_cosmo,
+        # )
+        # out_ari["p1d"][ii, jj, :np.sum(_)]  = P1D_Mpc * dkms_dMpc_zs[jj]
 
 
+# -
 
-# %%
 save = True
 if save:
     dict_out_all = {}
     dict_out_all["emu_params"] = pars_chain
     dict_out_all["forest_out"] = out_ari
     dict_out_all["zs"] = zs
-    np.save("arinyo_from_p1d_new.npy", dict_out_all)
+    # np.save("arinyo_from_p1d_new.npy", dict_out_all)
+    np.save("arinyo_from_desi_p1d.npy", dict_out_all)
 
-# %%
 
-# %%
+
 # for ii in range(2):
 for ii in range(pars_chain["z"].shape[0]):
     _ = pars_chain["k_kms"][ii] != 0
@@ -481,10 +401,8 @@ for ii in range(pars_chain["z"].shape[0]):
     )
 plt.xscale("log")
 
-# %% [markdown]
 # ### Different between lace-mpg and Forestflow
 
-# %%
 # for ii in range(2):
 for ii in range(pars_chain["z"].shape[0]):
     _ = pars_chain["k_kms"][ii] != 0
@@ -500,28 +418,23 @@ for ii in range(pars_chain["z"].shape[0]):
 plt.legend()
 plt.xscale("log")
 
-# %%
 _ = pars_chain["k_kms"] != 0
 np.nanmean(out_ari["p1d"][:, _]/pars_chain["p1d_nocont"][:, _]-1)
 
-# %%
 _ = pars_chain["k_kms"] != 0
 np.nanstd(out_ari["p1d"][:, _]/pars_chain["p1d_nocont"][:, _]-1)
 
-# %% [markdown]
 # # Load priors
 
-# %%
 emulator = P3DEmulator(
     model_path=os.path.join(os.path.dirname(forestflow.__path__[0]), "data", "emulator_models", "forest_mpg")
 )
 
-# %%
 dict_out_all = np.load("arinyo_from_p1d.npy", allow_pickle=True).item()
 zs = dict_out_all["zs"]
 out_ari = dict_out_all["forest_out"]
 
-# %%
+# +
 dict_save_file = {
     "zs": zs,
 }
@@ -530,15 +443,15 @@ for par in out_ari.keys():
         dict_save_file[par] = out_ari[par]
 
 np.save("priors_arinyo_from_p1d.npy", dict_save_file)
+# -
 
-# %%
 from forestflow.priors import get_arinyo_priors
 z = 3.
 priors = get_arinyo_priors(z)
 print(priors.keys())
 priors["mean"]
 
-# %%
+# +
 fig, ax = plt.subplots(2, 1, sharex=True, figsize=(8, 10))
 ftsize = 20
 
@@ -652,14 +565,13 @@ for ii in range(2):
 plt.tight_layout()
 plt.savefig("bias_beta_BAOvsP1D.png")
 plt.savefig("bias_beta_BAOvsP1D.pdf")
+# -
 
-# %% [markdown]
 # ### Get priors
 
-# %%
 out_ari["bias"].shape
 
-# %%
+# +
 fig, ax = plt.subplots(len(emulator.Arinyo_params), 1, sharex=True, figsize=(8, 16))
 
 print("par", "mean", "std", "min", "max")
@@ -687,8 +599,8 @@ ax[-1].set_xlabel(r"$z$")
 plt.tight_layout()
 plt.savefig("Arinyo_with_z.pdf")
 plt.savefig("Arinyo_with_z.png")
+# -
 
-# %%
 par mean std min max
 bias -0.124 0.007 -0.135 -0.113
 beta 1.417 0.044 1.346 1.49
