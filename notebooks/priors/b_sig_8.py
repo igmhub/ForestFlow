@@ -13,9 +13,15 @@
 #     name: python3
 # ---
 
+
+
+
+
 import numpy as np
 from getdist import plots, loadMCSamples
 import matplotlib.pyplot as plt
+
+
 
 # ### Setup fiducial cosmology from DESI DR2 Lya BAO and compute sigma_8
 

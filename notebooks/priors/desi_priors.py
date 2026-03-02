@@ -83,7 +83,8 @@ zs
 zs = np.array([2.2, 2.33, 2.4, 2.6, 2.8, 3. , 3.2, 3.4, 3.6, 3.8, 4. , 4.2]) # adding 2.33 for the priors
 nn = 1000
 
-ind = np.random.permutation(np.arange(chain.shape[0]))[:nn]
+rng = np.random.default_rng(seed=12345)
+ind = rng.permutation(np.arange(chain.shape[0]))[:nn]
 pars_chain = {}
 
 pars_chain["z"] = zs
@@ -91,6 +92,12 @@ pars_chain["z"] = zs
 # cosmo (for Arinyo model)
 pars_chain["As"] = np.zeros((ind.shape[0]))
 pars_chain["ns"] = np.zeros((ind.shape[0]))
+
+# cosmo for this project
+pars_chain["sig_8"] = np.zeros((ind.shape[0]))
+pars_chain["sig_8_z0"] = np.zeros((ind.shape[0]))
+pars_chain["f_sig_8"] = np.zeros((ind.shape[0]))
+pars_chain["f_sig_8_z0"] = np.zeros((ind.shape[0]))
 
 # input ForestFlow
 pars_chain["Delta2_p"] = np.zeros((ind.shape[0], zs.shape[0]))
@@ -103,7 +110,7 @@ pars_chain["kF_Mpc"] = np.zeros((ind.shape[0], zs.shape[0]))
 # store p1d w/ and w/o contaminants
 ii = 0
 p1d = pip.fitter.like.get_p1d_kms(
-    pip.fitter.like.data.z, pip.fitter.like.data.k_kms, chain[ind[ii], :], no_contaminants=True
+    pip.fitter.like.data.z, pip.fitter.like.data.k_kms, chain[ind[ii], :]
 )
 pars_chain["k_kms"] = np.zeros((zs.shape[0], len(p1d[0][-1])))
 pars_chain["p1d"] = np.zeros((ind.shape[0], zs.shape[0], len(p1d[0][-1])))
@@ -160,6 +167,51 @@ linP_zs = fit_linP.get_linP_Mpc_zs(sim_cosmo, zs, kp_Mpc)
 # compute scaling of kms to Mpc
 dkms_dMpc_zs = camb_cosmo.dkms_dMpc(sim_cosmo, z=zs)
 
+camb_results = camb_cosmo.get_camb_results(sim_cosmo, zs=[2.33, 0])
+sig_8, sig_8_z0 = camb_results.get_sigma8()
+print(sig_8, sig_8_z0)
+# same for f sig_8
+f_sig_8, f_sig_8_z0 = camb_results.get_fsigma8()
+print(f_sig_8, f_sig_8_z0)
+
+# %%
+from scipy.integrate import simpson
+
+
+# %%
+def fft_top_hat(k, R):
+    x = k * R
+    return 3 / x**3 * (np.sin(x) - x * np.cos(x))
+
+def sig8(k, pk, R):
+    res = (k**3*pk/2/np.pi**2) * fft_top_hat(k, R)**2
+    return np.sqrt(simpson(res, x=np.log(k)))
+    
+
+
+# %%
+k, z_pk, pk = camb_results.get_linear_matter_power_spectrum(k_hunit=True)
+
+# %%
+sig8(k, pk[0], 8)
+
+# %%
+
+# %%
+plt.loglog(k, k**3*pk[0]/2/np.pi**2 * fft_top_hat(k, 8)**2)
+plt.loglog(k, k**3*pk[1]/2/np.pi**2 * fft_top_hat(k, 8)**2)
+# plt.loglog(k, pk[1])
+
+# %%
+simpson()
+
+# %%
+help(simpson)
+
+
+# %%
+
+# %%
 
 # %%
 def rescale_linP(fid_cosmo, tar_cosmo, linP_zs, kp_Mpc=0.7, ks_Mpc=0.05):
