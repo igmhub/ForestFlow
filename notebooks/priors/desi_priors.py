@@ -1,18 +1,19 @@
 # ---
 # jupyter:
 #   jupytext:
-#     formats: ipynb,py
+#     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
-#       format_name: light
-#       format_version: '1.5'
-#       jupytext_version: 1.16.1
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.19.1
 #   kernelspec:
 #     display_name: lace
 #     language: python
 #     name: python3
 # ---
 
+# %% [markdown]
 # # Get priors on Arinyo from DR1 fit
 #
 # - Get chain data from DESI DR1 fit
@@ -20,7 +21,7 @@
 # - Compare ForestFlow P1D with lace-mpg P1D
 # - Get priors on the Arinyo parameters
 
-# +
+# %%
 # %load_ext autoreload
 # %autoreload 2
 
@@ -41,17 +42,20 @@ from forestflow.P3D_cINN import P3DEmulator
 path_repo = os.path.dirname(forestflow.__path__[0])
 
 np.__version__
-# -
 
+# %% [markdown]
 # # Read chain using cup1d (DESI DR1), jump to load chain below after running once
 
+# %% [markdown]
 # #### Set cup1d
 
+# %%
 pip = Pipeline()
 
+# %% [markdown]
 # #### Load chain
 
-# +
+# %%
 # local
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1"
 folder = os.path.join(base, "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/")
@@ -62,20 +66,29 @@ fname = os.path.join(folder, "chain.npy")
 chain = np.array(np.load(fname))
 chain = chain.reshape(-1, 53)
 chain.shape
-# -
 
+
+# %%
+
+blobs = np.load(os.path.join(folder, "blobs.npy"), allow_pickle=True)
+d2star = blobs["Delta2_star"].reshape(-1)
+nstar = blobs["n_star"].reshape(-1)
+
+# %% [markdown]
 # #### Initiate input from chain
 #
 # We select 500 points from the chains randomly
 
+# %%
 zs = pip.fitter.like.data.z.copy()
 zs
 
-# +
-
+# %%
 # zs = pip.fitter.like.data.z.copy()
 # you change zs, take a look at the end of the cell
-zs = np.array([2.2, 2.33, 2.4, 2.6, 2.8, 3. , 3.2, 3.4, 3.6, 3.8, 4. , 4.2]) # adding 2.33 for the priors
+zs = np.array(
+    [2.2, 2.33, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0, 4.2]
+)  # adding 2.33 for the priors
 nn = 10000
 
 rng = np.random.default_rng(seed=12345)
@@ -87,6 +100,8 @@ pars_chain["z"] = zs
 # cosmo (for Arinyo model)
 pars_chain["As"] = np.zeros((ind.shape[0]))
 pars_chain["ns"] = np.zeros((ind.shape[0]))
+pars_chain["Delta2star"] = np.zeros((ind.shape[0]))
+pars_chain["nstar"] = np.zeros((ind.shape[0]))
 
 # cosmo for this project
 pars_chain["sig_8"] = np.zeros((ind.shape[0]))
@@ -117,28 +132,29 @@ for jj in range(2):
 
 # the others the same
 for jj in range(2, zs.shape[0]):
-    nelem = len(p1d[0][jj-1])
-    pars_chain["k_kms"][jj, :nelem] = pip.fitter.like.data.k_kms[jj-1]
+    nelem = len(p1d[0][jj - 1])
+    pars_chain["k_kms"][jj, :nelem] = pip.fitter.like.data.k_kms[jj - 1]
 
-# +
+# %%
 # chi2_ev = np.zeros((500))
 # for ii in range(500):
 #     chi2_ev[ii] = pip.fitter.like.get_chi2(chain[ind[ii], :])
 
-# +
+# %%
 ii = 88
 pip.fitter.like.plot_p1d(chain[ind[ii], :], print_chi2=False)
 
 # pip.fitter.like.plot_p1d(p0, print_chi2=False)
-# -
 
+# %% [markdown]
 # #### From each point, we get the input parameters to ForestFlow
 #
 # Most of the time goes into calling CAMB
 
+# %%
 from forestflow.cosmo import sig8_fsig8_with_res, rescale_linP
 
-# +
+# %%
 # we used the Planck cosmo as fiducial in the DR1 fit
 fid_cosmo = {
     "H0": 67.66,
@@ -146,8 +162,8 @@ fid_cosmo = {
     "omch2": 0.119,
     "ombh2": 0.0224,
     "omk": 0,
-    'As': 2.105e-09,
-    'ns': 0.9665,
+    "As": 2.105e-09,
+    "ns": 0.9665,
     "nrun": 0.0,
     "pivot_scalar": 0.05,
     "w": -1.0,
@@ -169,9 +185,9 @@ print(sig_8, sig_8_z0)
 # same for f sig_8
 f_sig_8, f_sig_8_z0 = camb_results.get_fsigma8()
 print(f_sig_8, f_sig_8_z0)
-print(f_sig_8/sig_8)
+print(f_sig_8 / sig_8)
 
-# +
+# %%
 # %%time
 for ii in range(ind.shape[0]):
     if ii % 100 == 0:
@@ -224,6 +240,9 @@ for ii in range(ind.shape[0]):
     tar_cosmo["ns"] = chain_params[1].value_from_cube(chain[ind[ii], 1])
     out = sig8_fsig8_with_res(camb_results, fid_cosmo, tar_cosmo)
 
+    pars_chain["Delta2star"][ii] = d2star[ind[ii]]
+    pars_chain["nstar"][ii] = nstar[ind[ii]]
+
     pars_chain["sig_8"][ii] = out["sigma8_z"]
     pars_chain["sig_8_z0"][ii] = out["sigma8_z0"]
     pars_chain["f_sig_8"][ii] = out["f_growth_z"]
@@ -236,16 +255,21 @@ for ii in range(ind.shape[0]):
         pars_chain["n_p"][ii, jj] = res_linP_zs[jj]["n_p"]
 
     
-# -
 
 
+# %%
+pars_chain["sig_8"][:10]
+
+# %%
 np.save("inter_chain.npy", pars_chain)
 
+# %% [markdown]
 # # Load results from chain
 
+# %%
 pars_chain = np.load("inter_chain.npy", allow_pickle=True).item()
 
-# +
+# %%
 dict_save_file = {
     "zs": pars_chain["z"],
 }
@@ -254,43 +278,49 @@ for par in pars_chain.keys():
         dict_save_file[par] = pars_chain[par]
 
 np.save("priors_cosmo_IGM_from_p1d.npy", dict_save_file)
-# -
 
+# %%
 dict_save_file["Delta2_p"].shape
 
+# %%
 dict_save_file.keys()
 
+# %% [markdown]
 # #### Best-fitting uncontaminated P1D measurements
 
+# %%
 for ii in range(pars_chain["z"].shape[0]):
     _ = pars_chain["k_kms"][ii] != 0
     kk = pars_chain["k_kms"][ii, _]
     plt.errorbar(
-        kk, 
-        kk/np.pi * np.mean(pars_chain["p1d_nocont"][:, ii, _], axis=0), 
-        kk/np.pi * np.std(pars_chain["p1d_nocont"][:, ii, _], axis=0)
+        kk,
+        kk / np.pi * np.mean(pars_chain["p1d_nocont"][:, ii, _], axis=0),
+        kk / np.pi * np.std(pars_chain["p1d_nocont"][:, ii, _], axis=0),
     )
     # plt.plot(
-    #     kk, 
-    #     kk/np.pi * np.mean(pars_chain["p1d"][:, ii, _], axis=0), 
+    #     kk,
+    #     kk/np.pi * np.mean(pars_chain["p1d"][:, ii, _], axis=0),
     # )
 plt.xscale("log")
 
+# %%
 
+# %%
 
+# %%
 
-
-
-
+# %% [markdown]
 # ## Load ForestFlow
 
+# %%
 emulator = P3DEmulator(
-    model_path = path_repo + "/data/emulator_models/forest_mpg",
+    model_path=path_repo + "/data/emulator_models/forest_mpg",
 )
 
+# %% [markdown]
 # #### Initiate output to store Arinyo parameters
 
-# +
+# %%
 pars = pars_chain.keys()
 
 out_ari = {}
@@ -298,26 +328,27 @@ for par in emulator.Arinyo_params:
     out_ari[par] = np.zeros_like(pars_chain["mF"])
 
 # out_ari["p1d"] = np.zeros_like(pars_chain["p1d_nocont"])
-# -
 
+# %%
 from forestflow.model_p3d_arinyo import ArinyoModel
 
-#initiate Arinyo model, needed to compute P1D
+# %%
+# initiate Arinyo model, needed to compute P1D
 fid_cosmo = {
     "H0": 67.66,
     "mnu": 0,
     "omch2": 0.119,
     "ombh2": 0.0224,
     "omk": 0,
-    'As': 2.105e-09,
-    'ns': 0.9665,
+    "As": 2.105e-09,
+    "ns": 0.9665,
     "nrun": 0.0,
     "pivot_scalar": 0.05,
     "w": -1.0,
 }
 model_Arinyo = ArinyoModel(fid_cosmo)
 
-# +
+# %%
 # %%time
 # chain step
 for ii in range(pars_chain["mF"].shape[0]):
@@ -363,8 +394,8 @@ for ii in range(pars_chain["mF"].shape[0]):
         # out_ari["p1d"][ii, jj, :np.sum(_)]  = P1D_Mpc * dkms_dMpc_zs[jj]
 
 
-# -
 
+# %%
 save = True
 if save:
     dict_out_all = {}
@@ -374,67 +405,88 @@ if save:
     # np.save("arinyo_from_p1d_new.npy", dict_out_all)
     np.save("arinyo_from_desi_p1d.npy", dict_out_all)
 
+# %%
+# save = True
+# if save:
+#     dat = np.load("arinyo_from_desi_p1d.npy", allow_pickle=True).item()
+#     dict_out_all = {}
+#     dict_out_all["emu_params"] = pars_chain
+#     dict_out_all["forest_out"] = dat["forest_out"]
+#     dict_out_all["zs"] = dat["zs"]
+#     np.save("arinyo_from_desi_p1d.npy", dict_out_all)
 
+# %%
 
+# %%
 # for ii in range(2):
 for ii in range(pars_chain["z"].shape[0]):
     _ = pars_chain["k_kms"][ii] != 0
     kk = pars_chain["k_kms"][ii, _]
     plt.errorbar(
-        kk, 
-        kk/np.pi * np.mean(pars_chain["p1d_nocont"][:, ii, _], axis=0), 
-        kk/np.pi * np.std(pars_chain["p1d_nocont"][:, ii, _], axis=0),
+        kk,
+        kk / np.pi * np.mean(pars_chain["p1d_nocont"][:, ii, _], axis=0),
+        kk / np.pi * np.std(pars_chain["p1d_nocont"][:, ii, _], axis=0),
         alpha=0.5,
-        color="C"+str(ii)
+        color="C" + str(ii),
     )
     # plt.errorbar(
-    #     kk, 
-    #     kk/np.pi * np.mean(out_ari["p1d"][:, ii, _], axis=0), 
+    #     kk,
+    #     kk/np.pi * np.mean(out_ari["p1d"][:, ii, _], axis=0),
     #     kk/np.pi * np.std(out_ari["p1d"][:, ii, _], axis=0)
     # )
-    
+
     plt.plot(
-        kk, 
-        kk/np.pi * np.mean(out_ari["p1d"][:, ii, _], axis=0), 
+        kk,
+        kk / np.pi * np.mean(out_ari["p1d"][:, ii, _], axis=0),
         # kk/np.pi * np.std(out_ari["p1d"][:, ii, _], axis=0)
-        color="C"+str(ii)
+        color="C" + str(ii),
     )
 plt.xscale("log")
 
+# %% [markdown]
 # ### Different between lace-mpg and Forestflow
 
+# %%
 # for ii in range(2):
 for ii in range(pars_chain["z"].shape[0]):
     _ = pars_chain["k_kms"][ii] != 0
     kk = pars_chain["k_kms"][ii, _]
     plt.plot(
-        kk, 
-        np.mean(pars_chain["p1d_nocont"][:, ii, _]/out_ari["p1d"][:, ii, _], axis=0)-1, 
+        kk,
+        np.mean(pars_chain["p1d_nocont"][:, ii, _] / out_ari["p1d"][:, ii, _], axis=0)
+        - 1,
         label=str(dict_out_all["zs"][ii]),
         # np.std(pars_chain["p1d_nocont"][:, ii, _], axis=0)/np.mean(out_ari["p1d"][:, ii, _], axis=0),
         # alpha=0.5,
-        color="C"+str(ii)
+        color="C" + str(ii),
     )
 plt.legend()
 plt.xscale("log")
 
+# %%
 _ = pars_chain["k_kms"] != 0
-np.nanmean(out_ari["p1d"][:, _]/pars_chain["p1d_nocont"][:, _]-1)
+np.nanmean(out_ari["p1d"][:, _] / pars_chain["p1d_nocont"][:, _] - 1)
 
+# %%
 _ = pars_chain["k_kms"] != 0
-np.nanstd(out_ari["p1d"][:, _]/pars_chain["p1d_nocont"][:, _]-1)
+np.nanstd(out_ari["p1d"][:, _] / pars_chain["p1d_nocont"][:, _] - 1)
 
+# %% [markdown]
 # # Load priors
 
+# %%
 emulator = P3DEmulator(
-    model_path=os.path.join(os.path.dirname(forestflow.__path__[0]), "data", "emulator_models", "forest_mpg")
+    model_path=os.path.join(
+        os.path.dirname(forestflow.__path__[0]), "data", "emulator_models", "forest_mpg"
+    )
 )
 
+# %%
 dict_out_all = np.load("arinyo_from_p1d.npy", allow_pickle=True).item()
 zs = dict_out_all["zs"]
 out_ari = dict_out_all["forest_out"]
 
-# +
+# %%
 dict_save_file = {
     "zs": zs,
 }
@@ -443,15 +495,16 @@ for par in out_ari.keys():
         dict_save_file[par] = out_ari[par]
 
 np.save("priors_arinyo_from_p1d.npy", dict_save_file)
-# -
 
+# %%
 from forestflow.priors import get_arinyo_priors
-z = 3.
+
+z = 3.0
 priors = get_arinyo_priors(z)
 print(priors.keys())
 priors["mean"]
 
-# +
+# %%
 fig, ax = plt.subplots(2, 1, sharex=True, figsize=(8, 10))
 ftsize = 20
 
@@ -535,9 +588,7 @@ percen = np.percentile(out_ari["beta"], [16, 84], axis=0)
 
 _ = zs < zmax
 ax[1].fill_between(zs[_], percen[0][_], percen[1][_], alpha=0.5)
-ax[1].errorbar(
-    [z, z], np.zeros(2) + beta, np.zeros(2) + err_beta, fmt=".", color="C1"
-)
+ax[1].errorbar([z, z], np.zeros(2) + beta, np.zeros(2) + err_beta, fmt=".", color="C1")
 ax[1].errorbar(
     [z, z], np.zeros(2) + beta2, np.zeros(2) + err_beta2, fmt=".", color="C2"
 )
@@ -565,13 +616,14 @@ for ii in range(2):
 plt.tight_layout()
 plt.savefig("bias_beta_BAOvsP1D.png")
 plt.savefig("bias_beta_BAOvsP1D.pdf")
-# -
 
+# %% [markdown]
 # ### Get priors
 
+# %%
 out_ari["bias"].shape
 
-# +
+# %%
 fig, ax = plt.subplots(len(emulator.Arinyo_params), 1, sharex=True, figsize=(8, 16))
 
 print("par", "mean", "std", "min", "max")
@@ -599,8 +651,8 @@ ax[-1].set_xlabel(r"$z$")
 plt.tight_layout()
 plt.savefig("Arinyo_with_z.pdf")
 plt.savefig("Arinyo_with_z.png")
-# -
 
+# %%
 par mean std min max
 bias -0.124 0.007 -0.135 -0.113
 beta 1.417 0.044 1.346 1.49
