@@ -52,11 +52,27 @@ class ArinyoModel(object):
                 Defaults to 200.0.
         """
 
-        if (cosmo is None) and (camb_pk_interp is None):
-            raise ValueError("Must provide either cosmo or camb_pk_interp")
+        if (cosmo is not None) and (camb_pk_interp is not None):
+            raise ValueError("You cannot provide both cosmo and camb_pk_interp")
 
         if camb_pk_interp is None:
             # get a linear power interpolator
+            if cosmo is None:
+                print(
+                    "Cosmo not provided, using Planck LCDM cosmology for linear power spectrum"
+                )
+                cosmo = {
+                    "H0": 67.66,
+                    "mnu": 0,
+                    "omch2": 0.119,
+                    "ombh2": 0.0224,
+                    "omk": 0,
+                    "As": 2.105e-09,
+                    "ns": 0.9665,
+                    "nrun": 0.0,
+                    "pivot_scalar": 0.05,
+                    "w": -1.0,
+                }
             self.get_linpower = get_linP_interp(cosmo, camb_kmax_Mpc=camb_kmax_Mpc)
         else:
             self.get_linpower = camb_pk_interp
@@ -72,14 +88,6 @@ class ArinyoModel(object):
             "bv": default_bv,
             "kp": default_kp,
         }
-        self.default_bias = default_bias
-        self.default_beta = default_beta
-        self.default_q1 = default_q1
-        self.default_q2 = default_q2
-        self.default_kvav = default_kvav
-        self.default_av = default_av
-        self.default_bv = default_bv
-        self.default_kp = default_kp
 
     def check_background(self, cosmo_new):
         change_expansion = False
@@ -138,7 +146,7 @@ class ArinyoModel(object):
         Compute the 3D flux power spectrum for inputs given as k_parallel and k_perp.
 
         Parameters:
-            z (float): Redshift (scalar).
+            z (float): Redshift (scalar). It modifies the linear power spectrum but not the value of the Arinyo parameters
             kpar (float or array-like): Wavenumber component along the line-of-sight (Mpc^-1).
             kperp (float or array-like): Wavenumber component perpendicular to the line-of-sight (Mpc^-1).
             ari_pp (dict): Arinyo model parameters (missing keys will use defaults).
@@ -160,7 +168,7 @@ class ArinyoModel(object):
         Compute the 3D flux power spectrum for inputs given as k (magnitude) and mu (cosine of angle).
 
         Parameters:
-            z (float): Redshift (scalar).
+            z (float): Redshift (scalar). It modifies the linear power spectrum but not the value of the Arinyo parameters
             k (float or array-like): Magnitude of the wavevector (Mpc^-1).
             mu (float or array-like): Cosine of the angle between the wavevector and the line-of-sight
                 (mu = k_parallel / k).
@@ -179,7 +187,7 @@ class ArinyoModel(object):
         Compute the model for the 3D flux power spectrum in units of Mpc^3.
 
         Parameters:
-            z (float): Redshift.
+            z (float): Redshift. It modifies the linear power spectrum but not the value of the Arinyo parameters
             k (float): Wavenumber.
             mu (float): Cosine of the angle between the line-of-sight and the wavevector.
             ari_pp (dict): Arinyo parameters
@@ -193,7 +201,7 @@ class ArinyoModel(object):
             if par not in ari_pp:
                 print(
                     par,
-                    " not in input, using default value, ",
+                    " not in ari_pp, using default value, ",
                     self.default_params[par],
                 )
                 ari_pp[par] = self.default_params[par]
@@ -220,7 +228,7 @@ class ArinyoModel(object):
         Compute the one-dimensional power spectrum (P1D) for the specified values of parallel wavenumber (k_par).
 
         Parameters:
-            z (float): Redshift at which to compute the P1D.
+            z (float): Redshift at which to compute the P1D. It modifies the linear power spectrum but not the value of the Arinyo parameters
             k_par (array-like): Array or list of values for the parallel wavenumber (k_par) for which the P1D should be computed.
             ari_pp (dict, optional): Additional parameters for the model. Defaults to an empty dictionary `{}`.
             cosmo_new (dict, optional): New cosmology parameters. Defaults to `None`, which means the existing cosmology will be used.
@@ -251,6 +259,6 @@ class ArinyoModel(object):
             self.P3D_Mpc_k_mu,
             p3d_params=ari_pp,
             max_k_for_p3d=self.get_linpower.camb_kmax_Mpc,
-            cosmo_new=cosmo_new
+            cosmo_new=cosmo_new,
         )
         return Px_Mpc

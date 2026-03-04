@@ -6,7 +6,7 @@ def P1D_Mpc(
     z,
     k_par,
     p3d_fun,
-    p3d_params,
+    p3d_params={},
     cosmo_new=None,
     k_perp_min=0.001,
     k_perp_max=100,
@@ -16,14 +16,15 @@ def P1D_Mpc(
     Returns P1D for specified values of k_par, with the option to specify values of k_perp to be integrated over.
 
     Parameters:
-        z (float): Redshift.
+        z (float): Redshift. It modifies the linear power spectrum but not the value of the Arinyo parameters.
         k_par (array-like): Array or list of values for which P1D is to be computed.
-        p3d_fun (function): Function that returns P3D. It takes as input z, k, mu, and p3d_params,
-            you can also provide a cosmology object.
+        p3d_fun (function): Function that returns P3D. It takes as input z, k/kpar, mu/kperp, with the difference
+            depending on the value of p3d_fun.coordinates. It also takes as input p3d_params and optionally cosmo_new.
+        p3d_params (dict, optional): Additional parameters for the model. Defaults to {}.
+        cosmo_new (dict, optional): Optional cosmology override passed through to `P3D_Mpc`.
         k_perp_min (float, optional): Lower bound of integral. Defaults to 0.001.
         k_perp_max (float, optional): Upper bound of integral. Defaults to 100.
         n_k_perp (int, optional): Number of points in integral. Defaults to 99.
-        parameters (dict, optional): Additional parameters for the model. Defaults to {}.
 
     Returns:
         array-like: Computed values of P1D.
@@ -38,7 +39,7 @@ def P1D_Mpc(
     return p1d
 
 
-def _P1D_lnkperp_fast(z, ln_k_perp, kpars, p3d_fun, p3d_params, cosmo_new=None):
+def _P1D_lnkperp_fast(z, ln_k_perp, kpars, p3d_fun, p3d_params={}, cosmo_new=None):
     """
     Compute P1D by integrating P3D in terms of ln(k_perp) using a fast method.
 
@@ -46,7 +47,9 @@ def _P1D_lnkperp_fast(z, ln_k_perp, kpars, p3d_fun, p3d_params, cosmo_new=None):
         z (float): Redshift.
         ln_k_perp (array-like): Array of natural logarithms of the perpendicular wavenumber.
         kpars (array-like): Array of parallel wavenumbers.
-        parameters (dict, optional): Additional parameters for the model. Defaults to {}.
+        p3d_fun (function): Function that returns P3D.
+        p3d_params (dict, optional): Additional parameters for the model. Defaults to {}.
+        cosmo_new (dict, optional): Optional cosmology override passed through to `P3D_Mpc`.
 
     Returns:
         array-like: Computed values of P1D.
@@ -84,7 +87,7 @@ def _P1D_lnkperp_fast(z, ln_k_perp, kpars, p3d_fun, p3d_params, cosmo_new=None):
 
 
 def _P1D_lnkperp_fast_smooth(
-    z, ln_k_perp, kpars, k3d_smooth, p3d_fun, p3d_params, cosmo_new=None
+    z, ln_k_perp, kpars, k3d_smooth, p3d_fun, p3d_params={}, cosmo_new=None
 ):
     """
     Compute P1D by integrating P3D in terms of ln(k_perp) with smoothing.
@@ -94,7 +97,9 @@ def _P1D_lnkperp_fast_smooth(
         ln_k_perp (array-like): Array of natural logarithms of the perpendicular wavenumber.
         kpars (array-like): Array of parallel wavenumbers.
         k3d_smooth (float): Smoothing scale in units of k_perp.
-        parameters (dict, optional): Additional parameters for the model. Defaults to {}.
+        p3d_fun (function): Function that returns P3D.
+        p3d_params (dict, optional): Additional parameters for the model. Defaults to {}.
+        cosmo_new (dict, optional): Optional cosmology override passed through to `P3D_Mpc`.
 
     Returns:
         array-like: Computed values of P1D.
