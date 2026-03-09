@@ -6,11 +6,11 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.1
+#       jupytext_version: 1.16.4
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: cupix
 #     language: python
-#     name: python3
+#     name: cupix
 # ---
 
 # %% [markdown]
@@ -37,8 +37,9 @@ from matplotlib import rcParams
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 # import P3D theory
-from lace.cosmo import camb_cosmo
-from forestflow.model_p3d_arinyo import get_linP_interp
+#from lace.cosmo import camb_cosmo
+from lace.cosmo import cosmology
+#from forestflow.model_p3d_arinyo import get_linP_interp
 from forestflow.model_p3d_arinyo import ArinyoModel
 import time
 
@@ -55,7 +56,7 @@ zs = np.array([2, 2.5])  # set target redshift
 
 
 # %%
-cosmo = {
+cosmo_params = {
     "H0": 67.66,
     "mnu": 0,
     "omch2": 0.119,
@@ -67,7 +68,8 @@ cosmo = {
     "pivot_scalar": 0.05,
     "w": -1.0,
 }
-model_Arinyo = ArinyoModel(cosmo)
+cosmo = cosmology.Cosmology(cosmo_params_dict=cosmo_params)
+model_Arinyo = ArinyoModel(fid_cosmo=cosmo)
 model_Arinyo.default_params
 
 # %% [markdown]
@@ -122,7 +124,7 @@ print("Detailed method is equal to previous method:", np.allclose(Px_Mpc_1, Px_M
 # %%
 # you could update the cosmology:
 # we can compute Px from within the Arinyo class using default parameters,
-Px_Mpc_3 = model_Arinyo.Px_Mpc(z=zs[0], kpar_iMpc = kpar, rperp_Mpc = rperp, ari_pp=model_Arinyo.default_params, cosmo_new={"H0": 70})
+Px_Mpc_3 = model_Arinyo.Px_Mpc(z=zs[0], kpar_iMpc = kpar, rperp_Mpc = rperp, ari_pp=model_Arinyo.default_params, new_cosmo_params={"H0": 70})
 print("Is updated cosmology returning the same as previous method?", np.allclose(Px_Mpc_1, Px_Mpc_3, atol=1e-15))
 # the last line should return False since we updated the cosmology.
 
@@ -232,7 +234,7 @@ plt.suptitle(r"$P_\times$ vs P1D, default settings")
 # %%
 # series of rperp we're interested in
 rperp = (
-    np.array([0, 0.2, 0.972, 2.204, 3.444, 5.941]) / (cosmo["H0"]/100.)
+    np.array([0, 0.2, 0.972, 2.204, 3.444, 5.941]) / (cosmo.get_h())
 )  
 # the following will give a warning because we are inputting the same Arinyo parameter values for each redshift.
 # If you want to input different values for the different redshifts, these should be input in format:
@@ -353,14 +355,15 @@ ax[1].set_xlabel(r"$k_{\parallel}$ [$h$ Mpc$^{-1}$]")
 
 # %%
 colors = ["blue", "orange", "green", "red", "yellow", "purple"]
+h = cosmo.get_h()
 for iz, z in enumerate(zs):
     fig, ax = plt.subplots(1, 1)
     
     print("Plotting redshift", z)
     for r, Px in enumerate(Px_sel[iz]):
         plt.loglog(
-            kpars_Px / (cosmo["H0"]/100.),
-            Px * (cosmo["H0"]/100.),
+            kpars_Px / h,
+            Px * h,
             "o",
             label=f"$r_{{\perp}}=${round(rperp[r],3)*0.675} Mpc/h",
             ms=5,
@@ -370,8 +373,8 @@ for iz, z in enumerate(zs):
     ax.set_xlim([0.4, 20])
     ax.set_ylim([10**-7, 10**1])
     ax.loglog(
-        kpars_Px / (cosmo["H0"]/100.),
-        p1d_comparison[iz] * (cosmo["H0"]/100.),
+        kpars_Px / h,
+        p1d_comparison[iz] * h,
         label="arinyo model 1D",
         color="0.8",
     )
@@ -434,8 +437,6 @@ Px_Mpc_lownkperp = Px_Mpc_detailed(
 
 # %%
 # check accuracy with respect to fiducial
-
-
 fig, ax = plt.subplots(
     nrows=3,
     ncols=1,

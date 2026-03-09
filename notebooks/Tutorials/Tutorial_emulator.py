@@ -6,11 +6,11 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.16.4
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: cupix
 #     language: python
-#     name: python3
+#     name: cupix
 # ---
 
 # %% [markdown]
@@ -25,6 +25,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
+from lace.cosmo import cosmology
 import forestflow
 from forestflow.archive import GadgetArchive3D
 from forestflow.P3D_cINN import P3DEmulator
@@ -104,11 +105,11 @@ coeffs_mean
 
 # %%
 from forestflow.model_p3d_arinyo import ArinyoModel
-from lace.cosmo import camb_cosmo, fit_linP
+#from lace.cosmo import camb_cosmo, fit_linP
 
 # %%
 # target cosmology
-cosmo = {
+cosmo_params = {
     "H0": 67.66,
     "mnu": 0,
     "omch2": 0.119,
@@ -120,16 +121,15 @@ cosmo = {
     "pivot_scalar": 0.05,
     "w": -1.0,
 }
-# set Arinyo model
-model_Arinyo = ArinyoModel(cosmo)
+cosmo = cosmology.Cosmology(cosmo_params_dict=cosmo_params)
 
+# set Arinyo model
+model_Arinyo = ArinyoModel(fid_cosmo=cosmo)
 
 # Compute compressed parameters for the target cosmology
 z = 4.
 kp_Mpc = 0.7
-linP_zs = fit_linP.get_linP_Mpc_zs(
-    camb_cosmo.get_cosmology(**cosmo), [z], kp_Mpc
-)[0]
+linP_zs = cosmo.get_linP_Mpc_params(z, kp_Mpc)
 
 # define input parameters to emulator
 input_emu = {
@@ -222,3 +222,7 @@ plt.plot(-arr_loss)
 plt.ylim(20, 41)
 plt.axvline(4000)
 # plt.xscale("log")
+
+# %%
+
+# %%

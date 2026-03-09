@@ -7,7 +7,7 @@ def P1D_Mpc(
     k_par,
     p3d_fun,
     p3d_params={},
-    cosmo_new=None,
+    new_cosmo_params=None,
     k_perp_min=0.001,
     k_perp_max=100,
     n_k_perp=99,
@@ -19,9 +19,9 @@ def P1D_Mpc(
         z (float): Redshift. It modifies the linear power spectrum but not the value of the Arinyo parameters.
         k_par (array-like): Array or list of values for which P1D is to be computed.
         p3d_fun (function): Function that returns P3D. It takes as input z, k/kpar, mu/kperp, with the difference
-            depending on the value of p3d_fun.coordinates. It also takes as input p3d_params and optionally cosmo_new.
+            depending on the value of p3d_fun.coordinates. It also takes as input p3d_params and optionally new_cosmo_params.
         p3d_params (dict, optional): Additional parameters for the model. Defaults to {}.
-        cosmo_new (dict, optional): Optional cosmology override passed through to `P3D_Mpc`.
+        new_cosmo_params (dict, optional): Optional cosmology override passed through to `P3D_Mpc`.
         k_perp_min (float, optional): Lower bound of integral. Defaults to 0.001.
         k_perp_max (float, optional): Upper bound of integral. Defaults to 100.
         n_k_perp (int, optional): Number of points in integral. Defaults to 99.
@@ -33,13 +33,13 @@ def P1D_Mpc(
     ln_k_perp = np.linspace(np.log(k_perp_min), np.log(k_perp_max), n_k_perp)
 
     p1d = _P1D_lnkperp_fast(
-        z, ln_k_perp, k_par, p3d_fun, p3d_params, cosmo_new=cosmo_new
+        z, ln_k_perp, k_par, p3d_fun, p3d_params, new_cosmo_params=new_cosmo_params
     )
 
     return p1d
 
 
-def _P1D_lnkperp_fast(z, ln_k_perp, kpars, p3d_fun, p3d_params={}, cosmo_new=None):
+def _P1D_lnkperp_fast(z, ln_k_perp, kpars, p3d_fun, p3d_params={}, new_cosmo_params=None):
     """
     Compute P1D by integrating P3D in terms of ln(k_perp) using a fast method.
 
@@ -49,7 +49,7 @@ def _P1D_lnkperp_fast(z, ln_k_perp, kpars, p3d_fun, p3d_params={}, cosmo_new=Non
         kpars (array-like): Array of parallel wavenumbers.
         p3d_fun (function): Function that returns P3D.
         p3d_params (dict, optional): Additional parameters for the model. Defaults to {}.
-        cosmo_new (dict, optional): Optional cosmology override passed through to `P3D_Mpc`.
+        new_cosmo_params (dict, optional): Optional cosmology override passed through to `P3D_Mpc`.
 
     Returns:
         array-like: Computed values of P1D.
@@ -70,11 +70,11 @@ def _P1D_lnkperp_fast(z, ln_k_perp, kpars, p3d_fun, p3d_params={}, cosmo_new=Non
     mu = mu.swapaxes(0, 1)
 
     if p3d_fun.coordinates == "k_mu":
-        p3d_fix_k_par = p3d_fun(z, k, mu, p3d_params, cosmo_new=cosmo_new) * fact
+        p3d_fix_k_par = p3d_fun(z, k, mu, p3d_params, new_cosmo_params=new_cosmo_params) * fact
     elif p3d_fun.coordinates == "kpar_kperp":
         kpar = k * mu
         kperp = k * np.sqrt(1 - mu**2)
-        p3d_fix_k_par = p3d_fun(z, kpar, kperp, p3d_params, cosmo_new=cosmo_new) * fact
+        p3d_fix_k_par = p3d_fun(z, kpar, kperp, p3d_params, new_cosmo_params=new_cosmo_params) * fact
     else:
         raise ValueError(
             "p3d_fun must have coordinates attribute set to 'k_mu' or 'kpar_kperp'"
@@ -87,7 +87,7 @@ def _P1D_lnkperp_fast(z, ln_k_perp, kpars, p3d_fun, p3d_params={}, cosmo_new=Non
 
 
 def _P1D_lnkperp_fast_smooth(
-    z, ln_k_perp, kpars, k3d_smooth, p3d_fun, p3d_params={}, cosmo_new=None
+    z, ln_k_perp, kpars, k3d_smooth, p3d_fun, p3d_params={}, new_cosmo_params=None
 ):
     """
     Compute P1D by integrating P3D in terms of ln(k_perp) with smoothing.
@@ -99,7 +99,7 @@ def _P1D_lnkperp_fast_smooth(
         k3d_smooth (float): Smoothing scale in units of k_perp.
         p3d_fun (function): Function that returns P3D.
         p3d_params (dict, optional): Additional parameters for the model. Defaults to {}.
-        cosmo_new (dict, optional): Optional cosmology override passed through to `P3D_Mpc`.
+        new_cosmo_params (dict, optional): Optional cosmology override passed through to `P3D_Mpc`.
 
     Returns:
         array-like: Computed values of P1D.
@@ -118,7 +118,7 @@ def _P1D_lnkperp_fast_smooth(
 
     fact = (1 / (2 * np.pi)) * k_perp[:, np.newaxis] ** 2
     fact = fact.swapaxes(0, 1)
-    p3d_fix_k_par = p3d_fun(z, k, mu, p3d_params, cosmo_new=cosmo_new) * fact
+    p3d_fix_k_par = p3d_fun(z, k, mu, p3d_params, new_cosmo_params=new_cosmo_params) * fact
 
     # perform numerical integration
     kernel = np.sinc(k3d_smooth * np.exp(ln_k_perp))
