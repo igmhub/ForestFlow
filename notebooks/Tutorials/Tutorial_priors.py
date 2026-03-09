@@ -6,11 +6,11 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.16.4
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: cupix
 #     language: python
-#     name: python3
+#     name: cupix
 # ---
 
 # # Extracting priors from ForestFlow
@@ -97,5 +97,7 @@ for par in igm_priors_DR1["mean"].keys():
         np.round(igm_priors_mpg["max"][par], 3),
         sep="\t"
     )
+
+
 
 

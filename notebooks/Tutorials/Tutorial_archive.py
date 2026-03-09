@@ -6,11 +6,11 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.16.4
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: cupix
 #     language: python
-#     name: python3
+#     name: cupix
 # ---
 
 # %% [markdown]
@@ -62,7 +62,6 @@ training_data = Archive3D.training_data
 
 # %%
 # same way for other simulations
-
 sim = Archive3D.get_testing_data("mpg_central")
 
 # %% [markdown]
@@ -113,6 +112,7 @@ plt.xscale('log')
 # ## Evaluate Arinyo model
 
 # %%
+from lace.cosmo import cosmology
 from forestflow.model_p3d_arinyo import ArinyoModel
 
 # %% [markdown]
@@ -149,7 +149,11 @@ p1d_sim = k1d_Mpc/np.pi * p1d_Mpc
 # It calls camb (takes time), so better do it once and then it can be evaluated at any redshift
 
 # %%
-model_Arinyo = ArinyoModel(sim["cosmo_params"])
+fid_cosmo = cosmology.Cosmology(cosmo_params_dict=sim["cosmo_params"])
+model_Arinyo = ArinyoModel(fid_cosmo = fid_cosmo)
+
+# %%
+sim['Arinyo_min']
 
 # %%
 # sim['Arinyo_min'] contains the best-fitting Arinyo parameters to this simulation

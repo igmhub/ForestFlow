@@ -105,6 +105,7 @@ coeffs_mean
 
 # %%
 from forestflow.model_p3d_arinyo import ArinyoModel
+from lace.cosmo import cosmology
 #from lace.cosmo import camb_cosmo, fit_linP
 
 # %%
@@ -224,5 +225,6 @@ plt.axvline(4000)
 # plt.xscale("log")
 
 # %%
+a=3
 
 # %%

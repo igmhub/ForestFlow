@@ -37,9 +37,7 @@ from matplotlib import rcParams
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 # import P3D theory
-#from lace.cosmo import camb_cosmo
 from lace.cosmo import cosmology
-#from forestflow.model_p3d_arinyo import get_linP_interp
 from forestflow.model_p3d_arinyo import ArinyoModel
 import time
 
@@ -558,5 +556,7 @@ plt.xlim([5, 10])
 plt.ylim([10**-13, 0.01])
 plt.legend()
 plt.yscale("log")
+
+# %%
 
 # %%
