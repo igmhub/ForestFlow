@@ -406,6 +406,49 @@ if save:
     np.save("arinyo_from_desi_p1d.npy", dict_out_all)
 
 # %%
+import numpy as np
+import math
+
+dict_out_all = np.load("arinyo_from_desi_p1d.npy", allow_pickle=True).item()
+
+zs = dict_out_all["zs"]
+p = dict_out_all["emu_params"]
+
+# p["sigT_Mpc"] *= 1000
+
+params = ["Delta2_p", "mF", "sigT_Mpc", "gamma", "kF_Mpc"]
+
+means = {k: np.mean(p[k], axis=0) for k in params}
+stds = {k: np.std(p[k], axis=0) for k in params}
+
+
+def format_pm(val, err, sig=2):
+    if err == 0:
+        return f"${val} \\pm 0$"
+    exp = math.floor(math.log10(abs(err)))
+    decimals = -(exp - (sig - 1))
+    err_r = round(err, decimals)
+    val_r = round(val, decimals)
+    fmt = f"{{:.{max(decimals,0)}f}}"
+    return f"${fmt.format(val_r)} \\pm {fmt.format(err_r)}$"
+
+
+for i, z in enumerate(zs):
+    row = [f"{z:.2f}"]
+    for k in params:
+        row.append(format_pm(means[k][i], stds[k][i]))
+    print(" & ".join(row) + r" \\")
+
+# %%
+$-2.313 \pm 0.020$
+
+# %%
+zs
+
+# %%
+p["n_p"].shape
+
+# %%
 # save = True
 # if save:
 #     dat = np.load("arinyo_from_desi_p1d.npy", allow_pickle=True).item()
