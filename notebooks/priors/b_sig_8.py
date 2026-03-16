@@ -26,9 +26,10 @@ from matplotlib import rcParams
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
-from getdist import plots, loadMCSamples, MCSamples
-from vega import FitResults
+from getdist import plots
 from lace.cosmo import cosmology
+
+from forestflow.priors_paper import load, set_getdist, all_plots, importance
 
 np.__version__
 
@@ -40,7 +41,7 @@ np.__version__
 # biaseta * f(z) * sig8(z) = beta * biasdelta * sig8(z)
 
 # %% [markdown]
-# ### Setup fiducial cosmology from DESI DR2 Lya BAO and compute sigma_8
+# ### Setup fiducial cosmology
 
 # %%
 zeff = 2.33
@@ -51,1110 +52,108 @@ planck_f = class_planck.get_growth_rate(zeff)
 planck_fsig8 = planck_f * planck_sig8
 print(planck_sig8_z0, planck_sig8, planck_fsig8)
 
-
 # %% [markdown]
 # ### Read chains from the DESI DR2 Lya BAO analysis
 
 # %%
-def load_BAO_data(sig8):
+BAO = load.load_BAO_data(planck_sig8, planck_f)
 
-    BAO = {}
-
-    # load baseline
-
-    chains_dir = "/home/jchaves/Proyectos/projects/lya/data/lya_bao/dr1/"
-    chains_file_dr1 = chains_dir + "/lyaxlya_lyaxlyb_lyaxqso_lybxqso-baseline_combined"
-
-    chains_dir = "/home/jchaves/Proyectos/projects/lya/data/lya_bao/dr2/"
-    chains_file_dr2 = chains_dir + "/lyaxlya_lyaxlyb_lyaxqso_lybxqso-final_base"
-
-    chains_file = [chains_file_dr1, chains_file_dr2]
-    labels = ["dr1", "dr2"]
-
-    for ii, file in enumerate(chains_file):
-        samples = loadMCSamples(file)
-
-        BAO[labels[ii]] = {}
-        BAO[labels[ii]]["bias_delta_sig_8_z"] = samples.getParams().bias_LYA * sig8
-        BAO[labels[ii]]["bias_eta_f_sig_8_z"] = (
-            samples.getParams().beta_LYA * samples.getParams().bias_LYA * sig8
-        )
-        BAO[labels[ii]]["bias_delta"] = samples.getParams().bias_LYA
-        BAO[labels[ii]]["beta"] = samples.getParams().beta_LYA
-        BAO[labels[ii]]["bias_hcd"] = samples.getParams().bias_hcd
-        BAO[labels[ii]]["weights"] = samples.weights
-
-    # load high SNR, HCD prior
-
-    # number of realizations to sample the covariance of the fitter
-    n = 10000
-    basedir = "/home/jchaves/Proyectos/projects/lya/data/lya_bao/fits_andreu/"
-    fit_file_dr1 = basedir + "fit_output_dr1_mid_prior.fits"
-    fit_file_dr2 = basedir + "fit_output_mid_prior.fits"
-
-    fit_files = [fit_file_dr1, fit_file_dr2]
-    labels = ["dr1_hsnr", "dr2_hsnr"]
-
-    for ii, file in enumerate(fit_files):
-
-        samples = FitResults(file)
-        params = samples.params
-        cov = samples.cov
-
-        # mean vector (ordered consistently with the covariance)
-        names = list(params.keys())
-        mean = np.array([params[k] for k in names])
-
-        # draw samples
-        samples = np.random.multivariate_normal(mean, cov, size=n)
-
-        # dictionary of arrays (each array has length n)
-        samples_dict = {name: samples[:, i] for i, name in enumerate(names)}
-
-        BAO[labels[ii]] = {}
-        BAO[labels[ii]]["bias_delta_sig_8_z"] = samples_dict["bias_LYA"] * sig8
-        BAO[labels[ii]]["bias_eta_f_sig_8_z"] = (
-            samples_dict["beta_LYA"] * samples_dict["bias_LYA"] * sig8
-        )
-        BAO[labels[ii]]["bias_delta"] = samples_dict["bias_LYA"]
-        BAO[labels[ii]]["beta"] = samples_dict["beta_LYA"]
-        BAO[labels[ii]]["bias_hcd"] = samples_dict["bias_hcd"]
-
-    return BAO
-
+P1D = load.load_p1d_data(planck_f)
 
 # %%
-BAO = load_BAO_data(planck_sig8)
-
-# %%
-print("dr1_hsnr", "dr2_hsnr")
-for key in ["bias_delta", "beta", "bias_delta_sig_8_z", "bias_eta_f_sig_8_z", "bias_hcd"]:
+print("P1D", "dr1_hsnr", "dr2_hsnr")
+for key in ["bias_delta_sig_8_z", "bias_eta_f_sig_8_z"]:
     print()
     print(
         key,
+        np.round(np.mean(P1D[key]), 4),
         np.round(np.mean(BAO["dr1_hsnr"][key]), 4),
         np.round(np.mean(BAO["dr2_hsnr"][key]), 4),
     )
     print(
         "err",
+        np.round(np.std(P1D[key]), 4),
         np.round(np.std(BAO["dr1_hsnr"][key]), 4),
         np.round(np.std(BAO["dr2_hsnr"][key]), 4),
     )
 
-
 # %%
-def load_p1d_data(f):
-    dict_out_all = np.load("arinyo_from_desi_p1d.npy", allow_pickle=True).item()
-    dict_out_all["forest_out"]["bias"] = -np.abs(dict_out_all["forest_out"]["bias"])
-
-    P1D = {}
-    P1D["bias_delta_sig_8_z"] = (
-        dict_out_all["emu_params"]["sig_8"] * dict_out_all["forest_out"]["bias"][:, 1]
-    )
-    P1D["bias_eta_f_sig_8_z"] = (
-        dict_out_all["emu_params"]["sig_8"]
-        * dict_out_all["forest_out"]["bias"][:, 1]
-        * dict_out_all["forest_out"]["beta"][:, 1]
-    )
-    P1D["sig_8"] = dict_out_all["emu_params"]["sig_8"]
-    P1D["sig_8_z0"] = dict_out_all["emu_params"]["sig_8_z0"]
-    P1D["fsig_8"] = P1D["sig_8"] * planck_f
-
-    for par in dict_out_all["forest_out"].keys():
-        if par == "bias":
-            lab = "bias_delta"
-        else:
-            lab = par
-
-        P1D[lab] = dict_out_all["forest_out"][par][:, 1]
-
-    P1D["bias_eta"] = P1D["bias_delta"] * P1D["beta"] / planck_f
-
-    P1D["Delta2star"] = dict_out_all["emu_params"]["Delta2star"]
-    P1D["nstar"] = dict_out_all["emu_params"]["nstar"]
-
-    return P1D
-
-
-# %%
-P1D = load_p1d_data(planck_f)
-
-
-# %%
-
-# %%
-def set_getdist_samples(BAO, P1D):
-
-    names = ["b_delta_sigma8", "b_eta_f_sigma8", "bias_delta", "beta", "bias_hcd"]
-    labels = [
-        r"b_\delta \sigma_8",
-        r"b_{\eta} f \sigma_8",
-        r"b_\delta",
-        r"\beta",
-        r"b_\mathrm{HCD}",
-    ]
-    label_sample = {
-        "dr1": "BAO DR1 baseline",
-        "dr2": "BAO DR2 baseline",
-        "dr1_hsnr": "BAO DR1 HSNR",
-        "dr2_hsnr": "BAO DR2 HSNR",
-    }
-    all_samples = {}
-    for key in BAO.keys():
-        vstack = np.vstack(
-            [
-                BAO[key]["bias_delta_sig_8_z"],
-                BAO[key]["bias_eta_f_sig_8_z"],
-                BAO[key]["bias_delta"],
-                BAO[key]["beta"],
-                BAO[key]["bias_hcd"],
-            ]
-        ).T
-
-        if "weights" in BAO[key]:
-            all_samples[key] = MCSamples(
-                samples=vstack.copy(),
-                names=names,
-                labels=labels,
-                weights=BAO[key]["weights"].copy(),
-                label=label_sample[key],
-            )
-        else:
-            all_samples[key] = MCSamples(
-                samples=vstack.copy(),
-                names=names,
-                labels=labels,
-                label=label_sample[key],
-            )
-
-    p1d = np.vstack(
-        [
-            P1D["bias_delta_sig_8_z"],
-            P1D["bias_eta_f_sig_8_z"],
-            P1D["sig_8"],
-            P1D["sig_8_z0"],
-            P1D["fsig_8"],
-            P1D["bias_delta"],
-            P1D["beta"],
-            P1D["q1"],
-            P1D["kvav"],
-            P1D["av"],
-            P1D["bv"],
-            P1D["kp"],
-            P1D["q2"],
-            P1D["bias_eta"],
-            P1D["Delta2star"],
-            P1D["nstar"],
-        ]
-    ).T
-    names = [
-        "b_delta_sigma8",
-        "b_eta_f_sigma8",
-        "sigma8",
-        "sigma8_z0",
-        "fsigma8",
-        "bias_delta",
-        "beta",
-        "q1",
-        "kvav",
-        "av",
-        "bv",
-        "kp",
-        "q2",
-        "bias_eta",
-        "Delta2star",
-        "nstar",
-    ]
-    labels = [
-        r"b_\delta \sigma_8",
-        r"b_\eta f \sigma_8",
-        r"\sigma_8(z=2.33)",
-        r"\sigma_8(z=0)",
-        r"f \sigma_8",
-        r"b_\delta",
-        r"\beta",
-        r"q_1",
-        r"k_\mathrm{vav}",
-        r"a_\mathrm{v}",
-        r"b_\mathrm{v}",
-        r"k_\mathrm{p}",
-        r"q_2",
-        r"b_\eta",
-        r"\Delta^2_\star",
-        r"n_\star",
-    ]
-
-    label_sample = {
-        "p1d" : "P1D",
-        "p1d_dr1" : "P1D + BAO DR1",
-        "p1d_dr2" : "P1D + BAO DR2",
-    }
-
-    for key in ["p1d", "p1d_dr1", "p1d_dr2"]:
-        all_samples[key] = MCSamples(
-            samples=p1d.copy(),
-            names=names,
-            labels=labels,
-            label=label_sample[key],
-        )
-
-    return all_samples
-
-
-
-# %%
-samples = set_getdist_samples(BAO, P1D)
+samples = set_getdist.set_getdist_samples(BAO, P1D)
 samples.keys()
 
-# %%
-# # optional smoothing comparable to corner(smooth=True)
-# for s in [s_bao_dr1, s_bao_dr2, s_p1d]:
-#     s.updateSettings({'smooth_scale_2D': 0.5})
-
-# --- plotting ---
-g = plots.get_subplot_plotter(width_inch=8)
-g.settings.lab_fontsize = ftsize
-g.settings.axes_fontsize = ftsize
-g.settings.legend_fontsize = ftsize
-g.settings.num_plot_contours = 2  # 68%, 95%
-
-g.triangle_plot(
-    [s_p1d, s_bao_dr1, s_bao_dr2, s_bao_dr1_hsnr, s_bao_dr2_hsnr],
-    params=["b_delta_sigma8", "b_eta_f_sigma8"],
-    filled=[
-        True,
-        False,
-        False,
-        True,
-        True,
-    ],
-    contour_colors=["C0", "C1", "C2", "C3", "C4"],
-    contour_ls=[
-        "-",
-        "--",
-        "-.",
-        ":",
-        ":",
-    ],
-    contour_lws=[3, 3, 3, 3, 3],
-)
-
-
-plt.tight_layout()
-plt.savefig("figs/nocomb_bdsig8_befsig8.pdf")
-plt.savefig("figs/nocomb_bdsig8_befsig8.png")
+# %% [markdown]
+# Fit for importance sampling
 
 # %%
-# --- plotting ---
-ftsize = 20
-g = plots.get_subplot_plotter(width_inch=8)
-g.settings.lab_fontsize = ftsize
-g.settings.axes_fontsize = ftsize
-g.settings.legend_fontsize = ftsize
-g.settings.num_plot_contours = 2  # 68%, 95%
+fits = {}
+for label in ['dr1', 'dr2', "dr1_hsnr", "dr2_hsnr"]:
+    fits[label] = importance.fit_gaussian(samples[label])
 
-g.triangle_plot(
-    [s_bao_dr1, s_bao_dr2, s_bao_dr1_hsnr, s_bao_dr2_hsnr],
-    params=["bias_delta", "beta", "bias_hcd"],
-    filled=[
-        False,
-        False,
-        True,
-        True,
-    ],
-    contour_colors=["C0", "C1", "C9", "C3"],
-    contour_ls=[
-        "-",
-        "--",
-        ":",
-        ":",
-    ],
-    contour_lws=[2, 2, 3, 3],
-)
+# %%
+labs_comb = {
+    "dr1": "p1d_dr1_low",
+    "dr2": "p1d_dr2_low",
+    "dr1_hsnr": "p1d_dr1",
+    "dr2_hsnr": "p1d_dr2",
+}
+label_sample = {
+    "dr1": "P1D + BAO DR1 low SNR",
+    "dr2": "P1D + BAO DR2 low SNR",
+    "dr1_hsnr": "P1D + BAO DR1",
+    "dr2_hsnr": "P1D + BAO DR2",
+}
 
-plt.tight_layout()
-plt.savefig("figs/bao_biases.pdf")
-plt.savefig("figs/bao_biases.png")
+
+for label in fits.keys():
+    print(labs_comb[label], label)
+    samples[labs_comb[label]] = importance.combine(
+        samples["p1d"], fits[label], label_sample[label]
+    )
+
+# %% [markdown]
+# ### Plots
+
+# %% [markdown]
+# Data to combine
+
+# %%
+all_plots.plot_bsig8_betafsigma8(samples)
+
+# %% [markdown]
+# BAO biases
+
+# %%
+all_plots.plot_bao_biases(samples)
 
 # %% [markdown]
 # Fit to P1D data using Gaussian approximation to the likelihood. We can compute the mean and covariance from the samples, then plot the corresponding Gaussian contours on top of the GetDist plot.
 
 # %%
-from getdist import plots
-
-fits = {}
-
-for samples in [s_bao_dr1_hsnr, s_bao_dr2_hsnr]:
-
-    # assume `samples` is an MCSamples object
-    p1, p2 = "b_delta_sigma8", "b_eta_f_sigma8"
-
-    # --- Gaussian approximation from samples ---
-    params = samples.getParams()
-    x = getattr(params, p1)
-    y = getattr(params, p2)
-    w = samples.weights.copy()
-    w = w / np.sum(w)  # normalize weights
-
-    data = np.vstack([x, y]).T
-    mean = np.average(data, axis=0, weights=w)
-    cov = np.cov(data, rowvar=False, aweights=w)
-
-    x_val, y_val = mean
-    x_err = np.sqrt(cov[0, 0])
-    y_err = np.sqrt(cov[1, 1])
-    r = cov[0, 1] / (x_err * y_err)
-
-    fits[samples.label] = {
-        "x_val": x_val,
-        "y_val": y_val,
-        "x_err": x_err,
-        "y_err": y_err,
-        "r": r,
-    }
-
-    # eigen-decomposition
-    eigvals, eigvecs = np.linalg.eigh(cov)
-    order = eigvals.argsort()[::-1]
-    eigvals, eigvecs = eigvals[order], eigvecs[:, order]
-
-    # 68% contour scaling for 2D Gaussian
-    # chi2_2(0.68) ≈ 2.30
-    scale = np.sqrt(2.30)
-
-    theta = np.linspace(0, 2 * np.pi, 400)
-    circle = np.vstack([np.cos(theta), np.sin(theta)])
-    ellipse1 = (eigvecs @ np.diag(np.sqrt(eigvals)) @ circle) * scale
-    ellipse1[0] += mean[0]
-    ellipse1[1] += mean[1]
-
-    scale = np.sqrt(5.99)  # 95% contour scaling for 2D Gaussian
-    ellipse2 = (eigvecs @ np.diag(np.sqrt(eigvals)) @ circle) * scale
-    ellipse2[0] += mean[0]
-    ellipse2[1] += mean[1]
-
-    # --- GetDist plot ---
-    # g = plots.get_subplot_plotter()
-    g = plots.get_subplot_plotter(width_inch=10)
-    g.plot_2d(samples, p1, p2, filled=True)
-
-    ax = g.subplots[0, 0]
-    ax.plot(ellipse1[0], ellipse1[1], color="k", lw=2, label="Gaussian (68%)")
-    ax.plot(ellipse2[0], ellipse2[1], color="k", lw=2, ls="--", label="Gaussian (95%)")
-    ax.legend()
-
+samples.keys()
 
 # %%
-def gaussian_chi2(x, y, x_val, y_val, x_err, y_err, r):
-    """Given central values and errors for Delta_L^2 and n_eff, and its
-    cross-correlation coefficient r, compute Gaussian delta chi^2 at
-    points (neff,DL2).
-    """
-    chi2 = (
-        (y - y_val) ** 2 / y_err**2
-        + (x - x_val) ** 2 / x_err**2
-        - 2 * r * (x - x_val) * (y - y_val) / y_err / x_err
-    ) / (1 - r * r)
-    return chi2
-
+all_plots.plot_comb_bdsig8_befsig8(samples)
 
 # %%
-labels = ["BAO DR1", "BAO DR2"]
-
-for ii, samples in enumerate([rw1_p1d, rw2_p1d]):
-
-    label = labels[ii]
-
-    # assume `samples` is an MCSamples object
-    p1, p2 = "b_delta_sigma8", "b_eta_f_sigma8"
-
-    # --- Gaussian approximation from samples ---
-    params = samples.getParams()
-    x = getattr(params, p1)
-    y = getattr(params, p2)
-
-    logw = 0.5 * gaussian_chi2(
-        x,
-        y,
-        fits[label]["x_val"],
-        fits[label]["y_val"],
-        fits[label]["x_err"],
-        fits[label]["y_err"],
-        fits[label]["r"],
-    )
-
-    samples.reweightAddingLogLikes(logw)
+all_plots.plot_sig8(samples)
 
 # %%
+all_plots.plot_sig8z(samples)
 
 # %%
-# --- plotting ---
-ftsize = 20
-g = plots.get_subplot_plotter(width_inch=8)
-g.settings.lab_fontsize = ftsize
-g.settings.axes_fontsize = ftsize
-g.settings.legend_fontsize = ftsize
-g.settings.num_plot_contours = 2  # 68%, 95%
-
-# g.triangle_plot(
-#     [s_p1d, s_bao_dr1, s_bao_dr2, rw2_p1d],
-#     filled=[False, False, False, True],
-#     params=["b_delta_sigma8", "b_eta_f_sigma8"],
-#     contour_colors=["C0", "C2", "C3", "C1"],
-#     contour_ls=["-", ":", "-.", "--",],
-#     contour_lws=[2.0, 2.0, 2.0, 2.],
-# )
-
-
-g.triangle_plot(
-    [s_p1d, s_bao_dr1_hsnr, s_bao_dr2_hsnr, rw1_p1d, rw2_p1d],
-    filled=[False, False, False, True, True, True],
-    params=["b_delta_sigma8", "b_eta_f_sigma8"],
-    contour_colors=["C0", "C9", "C3", "C1", "C2"],
-    contour_ls=[
-        "-",
-        ":",
-        ":",
-        "--",
-        "-.",
-    ],
-    contour_lws=[3.0, 3.0, 3.0, 3.0, 3.0, 2],
-)
-
-plt.tight_layout()
-plt.savefig("figs/comb_bdsig8_befsig8.pdf")
-plt.savefig("figs/comb_bdsig8_befsig8.png")
+all_plots.plot_fsig8z(samples)
 
 # %%
+all_plots.plot_sig8z233(samples)
 
 # %%
-# DESY6 Table IV https://arxiv.org/pdf/2601.14559
-# DES 3x2pt LCDM
-mu_des = 0.751
-sigma_des = 0.035
-# DES all LCDM
-mu_des_all = 0.771
-sigma_des_all = 0.020
-
-# CMB-SPA https://arxiv.org/abs/2506.20707v1 LCDM
-mu_cmb = 0.8137
-sigma_cmb = 0.0038
-
-# DESI BAO + full shape LCDM https://arxiv.org/abs/2602.18761
-mu_desi = 0.822
-sigma_desi = 0.034
-
-# --- GetDist chains ---
-chains = [s_p1d, rw1_p1d, rw2_p1d]
-chain_labels = [
-    r"DESI $P_\mathrm{1D}$",
-    r"DESI $P_\mathrm{1D}$ & Ly$\alpha$ BAO DR1",
-    r"DESI $P_\mathrm{1D}$ & Ly$\alpha$ BAO DR2",
-]
-
-mus = []
-sigmas = []
-
-for s in chains:
-    m = s.getMeans()[s.index["sigma8_z0"]]
-    cov = s.getCov()
-    i = s.index["sigma8_z0"]
-    sig = np.sqrt(cov[i, i])
-    mus.append(m)
-    sigmas.append(sig)
-
-# --- external constraints ---
-labels = chain_labels + [r"DESI DR2 BAO & DR1 FS", "DESY6 all probes", "CMB-SPA"]
-mu = np.array(mus + [mu_desi, mu_des_all, mu_cmb])
-sigma = np.array(sigmas + [sigma_desi, sigma_des_all, sigma_cmb])
-
-# reverse order
-labels = labels[::-1]
-mu = mu[::-1]
-sigma = sigma[::-1]
-
-
-colors = [f"C{i}" for i in range(len(mu))]
-colors = colors[::-1]
-y = np.arange(len(labels))
-
-ftsize = 18
-fig, ax = plt.subplots(figsize=(8, 6))
-
-for i in range(len(mu)):
-    ax.errorbar(
-        mu[i],
-        y[i],
-        xerr=sigma[i],
-        fmt="o",
-        lw=2,
-        capsize=4,
-        color=colors[i],
-    )
-
-ax.axhline(2.5, linestyle=":", color="k", lw=2)
-
-ax.set_yticks(y)
-ax.set_yticklabels(labels, fontsize=ftsize)
-ax.set_xlabel(r"$\sigma_8$", fontsize=ftsize + 2)
-ax.tick_params(labelsize=ftsize)
-# ax.grid(axis="x", alpha=0.3)
-
-plt.tight_layout()
-
-plt.tight_layout()
-plt.savefig("figs/sig8.pdf")
-plt.savefig("figs/sig8.png")
-
-# %% [markdown]
-# Figure with sig8 as a function of z
+all_plots.plot_compressed(samples)
 
 # %%
-# CMB-SPA Table 1 https://arxiv.org/abs/2506.20707v1
-from lace.cosmo import cosmology
-
-cosmo_full_cmbspa = {
-    "H0": 67.24,
-    "err_H0": 0.35,
-    "mnu": 0.06,
-    "omch2": 0.12009,
-    "err_omch2": 0.00086,
-    "ombh2": 0.022381,
-    "err_ombh2": 0.000093,
-    "omk": 0,
-    "log_As": 3.0479,
-    "err_log_As": 0.0099,
-    "ns": 0.9684,
-    "err_ns": 0.0030,
-    "nrun": 0.0,
-    "pivot_scalar": 0.05,
-    "w": -1.0,
-}
+all_plots.plot_bdelta_beta_beta(samples)
 
 # %%
-# DESI FS DR1  redshifts https://arxiv.org/abs/2411.12021
-
-# Table1
-desi_fs_zeff = np.array([0.295, 0.510, 0.706, 0.930, 1.317, 1.491])
-
-datasets = ["BGS", "LRG1", "LRG2", "LRG3", "ELG2", "QSO"]
-
-Omega_m = np.array(
-    [
-        (0.284, 0.024, 0.024),
-        (0.307, 0.018, 0.020),
-        (0.287, 0.020, 0.020),
-        (0.304, 0.023, 0.023),
-        (0.310, 0.027, 0.034),
-        (0.314, 0.029, 0.039),
-    ]
-)
-
-H0 = np.array(
-    [
-        (68.3, 2.4, 2.4),
-        (68.8, 1.3, 1.5),
-        (70.9, 1.6, 1.6),
-        (66.8, 1.2, 1.2),
-        (68.5, 2.1, 2.1),
-        (69.4, 3.1, 3.1),
-    ]
-)
-
-ln10As = np.array(
-    [
-        (2.73, 0.40, 0.40),
-        (3.05, 0.22, 0.22),
-        (3.17, 0.21, 0.24),
-        (3.12, 0.22, 0.22),
-        (2.86, 0.17, 0.19),
-        (3.26, 0.18, 0.18),
-    ]
-)
-
-ns = np.array(
-    [
-        (0.962, 0.040),
-        (0.964, 0.039),
-        (0.979, 0.038),
-        (0.972, 0.038),
-        (0.969, 0.039),
-        (0.976, 0.038),
-    ]
-)
-
-
-cosmo_full_desi = {}
-
-for ii in range(len(datasets)):
-    cosmo_full_desi[datasets[ii]] = {
-        "H0": H0[ii][0],
-        "err_H0": np.mean(H0[ii][1:]),
-        "mnu": 0.0,
-        "omch2": Omega_m[ii][0] * (H0[ii][0] / 100) ** 2,
-        "err_omch2": np.mean(Omega_m[ii][1:]) * (H0[ii][0] / 100) ** 2,
-        "ombh2": 0.02218,
-        "err_ombh2": 0.00055,  # Table4
-        "omk": 0,
-        "log_As": ln10As[ii][0],
-        "err_log_As": np.mean(ln10As[ii][1:]),
-        "ns": ns[ii][0],
-        "err_ns": ns[ii][1],
-        "nrun": 0.0,
-        "pivot_scalar": 0.05,
-        "w": -1.0,
-    }
-    print(datasets[ii], cosmo_full_desi[datasets[ii]])
-
-
-# %%
-def sample_cosmo_dict(base, n_samples=1, rng=None):
-    rng = np.random.default_rng(rng)
-
-    # parameters with errors
-    params = {k: v for k, v in base.items() if not k.startswith("err_")}
-    errs = {k[4:]: v for k, v in base.items() if k.startswith("err_")}
-
-    samples = []
-    for _ in range(n_samples):
-        d = {}
-        # set parameters without errors
-        for p in params:
-            if p != "log_As":
-                d[p] = params[p]
-        # for those with errors, sample a normal distribution
-        for p, err in errs.items():
-            _par = rng.normal(base[p], err)
-            if p == "log_As":
-                d["As"] = np.exp(_par) * 1e-10
-            else:
-                d[p] = _par
-        samples.append(d)
-
-    return samples
-
-
-# %%
-
-# %% [markdown]
-# For CMB-SPA
-
-# %%
-run_again = False
-
-if run_again:
-
-    nsamples = 200
-    nz = 20
-    cmb_spa_samples = sample_cosmo_dict(cosmo_full_cmbspa, n_samples=nsamples)
-    zplot = np.linspace(0, 3, nz)
-    sig8 = np.zeros((nsamples, nz))
-    f = np.zeros((nsamples, nz))
-
-    for ii, dict_cosmo in enumerate(cmb_spa_samples):
-        class_cosmo = cosmology.Cosmology(cosmo_params_dict=dict_cosmo)
-        sig8[ii] = class_cosmo.get_sigma8(zplot)
-        f[ii] = class_cosmo.get_growth_rate(zplot)
-
-    dict_out = {"z": zplot, "sig8": sig8, "f": f}
-    np.save("sig8_cmb_spa.npy", dict_out)
-else:
-    data = np.load("sig8_cmb_spa.npy", allow_pickle=True).item()
-    zplot = data["z"]
-    sig8 = data["sig8"]
-    # it is f, not fsig8
-    f = data["fsig8"]
-    fsig8 = f * sig8
-
-# %% [markdown]
-# For DESI
-
-# %%
-cosmo_full_desi.keys()
-
-# %%
-run_again = False
-
-if run_again:
-
-    nmods = len(datasets)
-    nsamples = 5000
-    sig8 = np.zeros((nsamples, nmods))
-    sig8_z0 = np.zeros((nsamples, nmods))
-    f = np.zeros((nsamples, nmods))
-
-    for jj in range(nmods):
-        print(datasets[jj])
-        desi_samples = sample_cosmo_dict(
-            cosmo_full_desi[datasets[jj]], n_samples=nsamples
-        )
-
-        for ii, dict_cosmo in enumerate(desi_samples):
-            if ii % 100 == 0:
-                print(ii, nsamples)
-            class_cosmo = cosmology.Cosmology(cosmo_params_dict=dict_cosmo)
-            sig8[ii, jj] = class_cosmo.get_sigma8(desi_fs_zeff[jj])
-            f[ii, jj] = class_cosmo.get_growth_rate(desi_fs_zeff[jj])
-            sig8_z0[ii, jj] = class_cosmo.get_sigma8(0)
-
-    dict_out = {"sig8": sig8, "f": f, "datasets": datasets, "zeff": desi_fs_zeff}
-    np.save("sig8_desi.npy", dict_out)
-else:
-    data = np.load("sig8_desi.npy", allow_pickle=True).item()
-    desi_zplot = data["zeff"]
-    desi_sig8 = data["sig8"]
-    f = data["f"]
-    desi_fsig8 = f * desi_sig8
-
-# %%
-desi_sig8.mean(axis=0)
-
-# %%
-# DES 3x2pt LCDM, Fig 12 https://arxiv.org/abs/2207.05766
-bins_zs_DES = np.array([0, 0.4, 0.55, 0.7, 1.5])
-plot_zs_DES = np.array([0.30, 0.48, 0.63, 0.80])
-sig8_DES = np.array([0.64, 0.585, 0.505, 0.46])
-errsig8_DES = np.array([0.045, 0.055, 0.055, 0.065])
-
-# --- GetDist chains ---
-chains = [s_p1d, rw1_p1d, rw2_p1d]
-chain_labels = [
-    r"DESI $P_\mathrm{1D}$",
-    r"DESI $P_\mathrm{1D}$ & Ly$\alpha$ BAO DR1",
-    r"DESI $P_\mathrm{1D}$ & Ly$\alpha$ BAO DR2",
-]
-
-mus = []
-sigmas = []
-zeff = 2.33
-
-for s in chains:
-    m = s.getMeans()[s.index["sigma8"]]
-    cov = s.getCov()
-    i = s.index["sigma8"]
-    sig = np.sqrt(cov[i, i])
-    mus.append(m)
-    sigmas.append(sig)
-
-
-ftsize = 20
-fig, ax = plt.subplots(figsize=(8, 6))
-
-# vertical dotted lines for bin edges
-# for z in bins_zs_DES:
-#     ax.axvline(z, linestyle=':')
-
-
-# CMB-SPA
-mean = np.mean(sig8, axis=0)
-std = np.std(sig8, axis=0)
-_ = (zplot > -1) & (zplot < 2.7)
-ax.fill_between(
-    zplot[_], (mean - std)[_], (mean + std)[_], alpha=0.3, label="CMB-SPA", color="C1"
-)
-
-# DES
-# cmb_at_des = np.interp(plot_zs_DES, zplot, mean)
-ax.errorbar(plot_zs_DES, sig8_DES, yerr=errsig8_DES, fmt="o", label="DESY6 3x2pt")
-
-# DESI FS
-ax.errorbar(
-    desi_zplot,
-    np.mean(desi_sig8, axis=0),
-    yerr=np.std(desi_sig8, axis=0),
-    fmt="o",
-    label="DESI DR1 FS",
-    color="C2",
-)
-
-
-# Ours
-# cmb_at_ours = np.interp(zeff, zplot, mean)
-shift = [-0.05, 0, 0.05]
-for i in range(len(mus)):
-    ax.errorbar(
-        zeff + shift[i],
-        mus[i],
-        yerr=sigmas[i],
-        fmt="o",
-        color=colors[i],
-        label=chain_labels[i],
-    )
-
-ax.set_xlabel(r"$z$", fontsize=ftsize)
-ax.set_ylabel(r"$\sigma_8(z)$", fontsize=ftsize)
-ax.tick_params(labelsize=ftsize)
-ax.legend(fontsize=ftsize - 2)
-
-
-plt.tight_layout()
-plt.savefig("figs/sig8z.pdf")
-plt.savefig("figs/sig8z.png")
-
-# %%
-# Cuceu+2026 Eq. 23 Lya full shape https://arxiv.org/abs/2509.15308
-lya_z_fsig8 = 2.33
-lya_fsig8 = 0.37
-lya_fsig8_err = np.sqrt(0.060**2 + 0.033**2)
-
-# DESI+2025 full shape all Fig. 14 (extract from figure) https://arxiv.org/abs/2411.12021
-z = np.array([0.30, 0.52, 0.72, 0.95, 1.35, 1.50])
-
-fs8 = np.array([0.378, 0.515, 0.485, 0.422, 0.375, 0.435])
-
-err_fs8 = np.array([0.095, 0.060, 0.055, 0.045, 0.035, 0.045])
-
-fig, ax = plt.subplots(figsize=(8, 6))
-
-ax.errorbar(
-    z, fs8, yerr=err_fs8, fmt="o", color="C0", label="DESI DR1 FS GAL+QSO", alpha=0.5
-)
-ax.errorbar(
-    lya_z_fsig8,
-    lya_fsig8,
-    yerr=lya_fsig8_err,
-    fmt="o",
-    color="C2",
-    label="DESI DR1 FS Lya",
-    alpha=0.5,
-)
-
-# CMB-SPA
-mean = np.mean(fsig8, axis=0)
-std = np.std(fsig8, axis=0)
-_ = (zplot > -1) & (zplot < 2.7)
-ax.fill_between(
-    zplot[_], (mean - std)[_], (mean + std)[_], alpha=0.3, label="CMB-SPA", color="C1"
-)
-
-# ours
-mus = []
-sigmas = []
-zeff = 2.33
-
-for s in chains:
-    m = s.getMeans()[s.index["sigma8"]]
-    cov = s.getCov()
-    i = s.index["sigma8"]
-    sig = np.sqrt(cov[i, i])
-    mus.append(m)
-    sigmas.append(sig)
-
-shift = [-0.05, 0, 0.05]
-for i in range(len(mus)):
-    ax.errorbar(
-        zeff + shift[i],
-        mus[i],
-        yerr=sigmas[i],
-        fmt="o",
-        color=colors[i],
-        label=chain_labels[i],
-    )
-
-ax.set_xlabel(r"$z$", fontsize=ftsize)
-ax.set_ylabel(r"$f\sigma_8(z)$", fontsize=ftsize)
-ax.tick_params(labelsize=ftsize)
-ax.legend(fontsize=ftsize - 4)
-
-plt.tight_layout()
-plt.savefig("figs/fsig8z.pdf")
-plt.savefig("figs/fsig8z.png")
-
-# %%
-
-# %%
-# --- plotting ---
-ftsize = 20
-g = plots.get_subplot_plotter(width_inch=8)
-g.settings.lab_fontsize = ftsize
-g.settings.axes_fontsize = ftsize
-g.settings.legend_fontsize = ftsize
-g.settings.num_plot_contours = 2  # 68%, 95%
-
-
-g.triangle_plot(
-    [s_p1d, rw1_p1d, rw2_p1d],
-    filled=[False, True, True, True],
-    params=["sigma8"],
-    contour_colors=["C0", "C1", "C2", "C3"],
-    contour_ls=[
-        "-",
-        "--",
-        "-.",
-        ":",
-    ],
-    contour_lws=[3.0, 3.0, 3.0, 2.0],
-)
-
-plt.tight_layout()
-plt.savefig("figs/sig8z233.pdf")
-plt.savefig("figs/sig8z233.png")
-
-# %%
-# for sampler in [s_p1d, rw2_p1d]:
-#     sampler.updateSettings({'smooth_scale_2D': 0.5})
-
-# --- plotting ---
-ftsize = 20
-g = plots.get_subplot_plotter(width_inch=8)
-g.settings.lab_fontsize = ftsize
-g.settings.axes_fontsize = ftsize
-g.settings.legend_fontsize = ftsize
-g.settings.num_plot_contours = 2  # 68%, 95%
-
-g.triangle_plot(
-    [s_p1d, rw1_p1d, rw2_p1d],
-    filled=[False, True, True, True],
-    params=["Delta2star", "nstar"],
-    contour_colors=["C0", "C1", "C2", "C3"],
-    contour_ls=[
-        "-",
-        "--",
-        "-.",
-        ":",
-    ],
-    contour_lws=[3.0, 3.0, 3.0, 2.0],
-)
-
-# g.triangle_plot(
-#     [s_p1d, rw2_p1d],
-#     filled=[False, False, False, True],
-#     params=["Delta2star", "nstar"],
-#     contour_colors=["C0", "C1", "C2", "C3"],
-#     contour_ls=["-", "--", "-.", ":",],
-#     contour_lws=[2.0, 2.0, 2.0, 2.],
-# )
-
-plt.tight_layout()
-plt.savefig("figs/delta2star_nstar.pdf")
-plt.savefig("figs/delta2star_nstar.png")
-
-# %%
-# for sampler in [s_p1d, rw1_p1d, rw2_p1d]:
-#     sampler.updateSettings({'smooth_scale_2D': 0.8, 'smooth_scale_1D': 0.6})
-
-
-# --- plotting ---
-ftsize = 20
-g = plots.get_subplot_plotter(width_inch=8)
-g.settings.lab_fontsize = ftsize
-g.settings.axes_fontsize = ftsize
-g.settings.legend_fontsize = ftsize
-g.settings.num_plot_contours = 2  # 68%, 95%
-
-# g.triangle_plot(
-#     [s_p1d, rw2_p1d],
-#     filled=[False, False, False, True],
-#     params=["bias_delta", "bias_eta"],
-#     contour_colors=["C0", "C1", "C2", "C3"],
-#     contour_ls=["-", "--", "-.", ":",],
-#     contour_lws=[2.0, 2.0, 2.0, 2.],
-# )
-
-g.triangle_plot(
-    [s_p1d, rw1_p1d, rw2_p1d],
-    filled=[False, True, True, True],
-    params=["bias_delta", "bias_eta"],
-    contour_colors=["C0", "C1", "C2", "C3"],
-    contour_ls=[
-        "-",
-        "--",
-        "-.",
-        ":",
-    ],
-    contour_lws=[3.0, 3.0, 3.0, 2.0],
-)
-
-
-plt.tight_layout()
-plt.savefig("figs/bdelta_beta.pdf")
-plt.savefig("figs/bdelta_beta.png")
-
-# %%
-# --- plotting ---
-ftsize = 20
-g = plots.get_subplot_plotter(width_inch=8)
-g.settings.lab_fontsize = ftsize
-g.settings.axes_fontsize = ftsize
-g.settings.legend_fontsize = ftsize
-g.settings.num_plot_contours = 2  # 68%, 95%
-
-g.triangle_plot(
-    [s_p1d, rw1_p1d, rw2_p1d],
-    filled=[False, True, True, True],
-    params=["bias_delta", "bias_eta", "beta"],
-    contour_colors=["C0", "C1", "C2", "C3"],
-    contour_ls=[
-        "-",
-        "--",
-        "-.",
-        ":",
-    ],
-    contour_lws=[3.0, 3.0, 3.0, 2.0],
-)
-
-
-# g.triangle_plot(
-#     [s_p1d, rw2_p1d],
-#     filled=[False, False, False, True],
-#     params=["bias_delta", "bias_eta", "beta"],
-#     contour_colors=["C0", "C1", "C2", "C3"],
-#     contour_ls=["-", "--", "-.", ":",],
-#     contour_lws=[2.0, 2.0, 2.0, 2.],
-# )
-
-plt.tight_layout()
-plt.savefig("figs/bdelta_beta_beta.pdf")
-plt.savefig("figs/bdelta_beta_beta.png")
-
-# %%
-# --- plotting ---
-ftsize = 20
-g = plots.get_subplot_plotter(width_inch=10)
-g.settings.lab_fontsize = ftsize
-g.settings.axes_fontsize = ftsize
-g.settings.legend_fontsize = ftsize
-g.settings.num_plot_contours = 2  # 68%, 95%
-
-g.triangle_plot(
-    [s_p1d, rw1_p1d, rw2_p1d],
-    filled=[False, True, True, True],
-    params=["q1", "q2", "kvav", "av", "bv", "kp"],
-    contour_colors=["C0", "C1", "C2", "C3"],
-    contour_ls=[
-        "-",
-        "--",
-        "-.",
-        ":",
-    ],
-    contour_lws=[3.0, 3.0, 3.0, 2.0],
-)
-
-
-# g.triangle_plot(
-#     [s_p1d, rw2_p1d],
-#     filled=[False, False, False, True],
-#     params=["q1", "q2", "kvav", "av", "bv", "kp"],
-#     contour_colors=["C0", "C1", "C2", "C3"],
-#     contour_ls=[
-#         "-",
-#         "--",
-#         "-.",
-#         ":",
-#     ],
-#     contour_lws=[2.0, 2.0, 2.0, 2.0],
-# )
-
-plt.tight_layout()
-plt.savefig("figs/corner_arinyo.pdf")
-plt.savefig("figs/corner_arinyo.png")
-
-# %% [markdown]
-# beta = biaseta * f(z) / biasdelta
-#
-# biaseta = beta * biasdelta / f(z)
-#
-# biaseta * f(z) * sig8(z) = beta * biasdelta * sig8(z)
+all_plots.plot_P3D_small_params(samples)
 
 # %%
 
