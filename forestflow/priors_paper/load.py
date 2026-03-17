@@ -1,9 +1,19 @@
+import os
+import sys
 import numpy as np
 from getdist import loadMCSamples
 from vega import FitResults
+from forestflow.priors_paper import set_samples
+
+from lace.cosmo import cosmology
 
 
-def load_BAO_data(sig8, f):
+def load_BAO_data():
+
+    zeff = 2.33
+    class_planck = cosmology.Cosmology(cosmo_label="Planck18_noBAO")
+    planck_sig8 = class_planck.get_sigma8(zeff)
+    planck_f = class_planck.get_growth_rate(zeff)
 
     BAO = {}
 
@@ -22,13 +32,15 @@ def load_BAO_data(sig8, f):
         samples = loadMCSamples(file)
 
         BAO[labels[ii]] = {}
-        BAO[labels[ii]]["bias_delta_sig_8_z"] = samples.getParams().bias_LYA * sig8
+        BAO[labels[ii]]["bias_delta_sig_8_z"] = (
+            samples.getParams().bias_LYA * planck_sig8
+        )
         BAO[labels[ii]]["bias_eta_f_sig_8_z"] = (
-            samples.getParams().beta_LYA * samples.getParams().bias_LYA * sig8
+            samples.getParams().beta_LYA * samples.getParams().bias_LYA * planck_sig8
         )
         BAO[labels[ii]]["bias_delta"] = samples.getParams().bias_LYA
         BAO[labels[ii]]["bias_eta"] = (
-            samples.getParams().bias_LYA * samples.getParams().beta_LYA / f
+            samples.getParams().bias_LYA * samples.getParams().beta_LYA / planck_f
         )
         BAO[labels[ii]]["beta"] = samples.getParams().beta_LYA
         BAO[labels[ii]]["bias_hcd"] = samples.getParams().bias_hcd
@@ -62,13 +74,13 @@ def load_BAO_data(sig8, f):
         samples_dict = {name: samples[:, i] for i, name in enumerate(names)}
 
         BAO[labels[ii]] = {}
-        BAO[labels[ii]]["bias_delta_sig_8_z"] = samples_dict["bias_LYA"] * sig8
+        BAO[labels[ii]]["bias_delta_sig_8_z"] = samples_dict["bias_LYA"] * planck_sig8
         BAO[labels[ii]]["bias_eta_f_sig_8_z"] = (
-            samples_dict["beta_LYA"] * samples_dict["bias_LYA"] * sig8
+            samples_dict["beta_LYA"] * samples_dict["bias_LYA"] * planck_sig8
         )
         BAO[labels[ii]]["bias_delta"] = samples_dict["bias_LYA"]
         BAO[labels[ii]]["bias_eta"] = (
-            samples_dict["bias_LYA"] * samples_dict["beta_LYA"] / f
+            samples_dict["bias_LYA"] * samples_dict["beta_LYA"] / planck_f
         )
         BAO[labels[ii]]["beta"] = samples_dict["beta_LYA"]
         BAO[labels[ii]]["bias_hcd"] = samples_dict["bias_hcd"]
@@ -76,13 +88,16 @@ def load_BAO_data(sig8, f):
     return BAO
 
 
-def load_p1d_data(f):
-    dict_out_all = np.load(
-        "int_data_figs/arinyo_from_desi_p1d.npy", allow_pickle=True
-    ).item()
+def load_p1d_data(zeff=2.33):
+
+    class_planck = cosmology.Cosmology(cosmo_label="Planck18")
+    planck_f = class_planck.get_growth_rate(zeff)
+
+    dict_out_all = load_map_igm_p3d()
     dict_out_all["forest_out"]["bias"] = -np.abs(dict_out_all["forest_out"]["bias"])
 
     P1D = {}
+
     P1D["bias_delta_sig_8_z"] = (
         dict_out_all["emu_params"]["sig_8"] * dict_out_all["forest_out"]["bias"][:, 1]
     )
@@ -93,7 +108,7 @@ def load_p1d_data(f):
     )
     P1D["sig_8"] = dict_out_all["emu_params"]["sig_8"]
     P1D["sig_8_z0"] = dict_out_all["emu_params"]["sig_8_z0"]
-    P1D["fsig_8"] = P1D["sig_8"] * f
+    P1D["fsig_8"] = P1D["sig_8"] * planck_f
 
     for par in dict_out_all["forest_out"].keys():
         if par == "bias":
@@ -103,9 +118,45 @@ def load_p1d_data(f):
 
         P1D[lab] = dict_out_all["forest_out"][par][:, 1]
 
-    P1D["bias_eta"] = P1D["bias_delta"] * P1D["beta"] / f
+    P1D["bias_eta"] = P1D["bias_delta"] * P1D["beta"] / planck_f
 
     P1D["Delta2star"] = dict_out_all["emu_params"]["Delta2star"]
     P1D["nstar"] = dict_out_all["emu_params"]["nstar"]
 
     return P1D
+
+
+def load_p1d_chain_for_forestflow():
+    try:
+        data = np.load(
+            "int_data_figs/priors_cosmo_IGM_from_p1d.npy", allow_pickle=True
+        ).item()
+    except:
+        set_samples.set_process_p1d_chain()
+        data = np.load(
+            "int_data_figs/priors_cosmo_IGM_from_p1d.npy", allow_pickle=True
+        ).item()
+    return data
+
+
+def load_map_igm_p3d(zeff=2.33):
+    try:
+        data = np.load(
+            "int_data_figs/arinyo_from_desi_p1d.npy", allow_pickle=True
+        ).item()
+    except:
+        pars_data = load_p1d_chain_for_forestflow()
+        set_samples.set_map_igm_p3d(pars_chain)
+        data = np.load(
+            "int_data_figs/arinyo_from_desi_p1d.npy", allow_pickle=True
+        ).item()
+
+    class_planck = cosmology.Cosmology(cosmo_label="Planck18")
+    planck_f = class_planck.get_growth_rate(zeff)
+
+    data["forest_out"]["bias_delta"] = -np.abs(data["forest_out"]["bias"])
+    data["forest_out"]["bias_eta"] = (
+        data["forest_out"]["beta"] * data["forest_out"]["bias_delta"] / planck_f
+    )
+
+    return data

@@ -53,7 +53,7 @@ rcParams["font.family"] = "STIXGeneral"
 from getdist import plots
 from lace.cosmo import cosmology
 
-from forestflow.priors_paper import load, set_getdist, all_plots, importance
+from forestflow.priors_paper import load, set_samples, all_plots, importance
 
 np.__version__
 
@@ -102,7 +102,7 @@ for key in ["bias_delta_sig_8_z", "bias_eta_f_sig_8_z"]:
     )
 
 # %%
-samples = set_getdist.set_getdist_samples(BAO, P1D)
+samples = set_samples.set_getdist_samples(BAO, P1D)
 samples.keys()
 
 # %% [markdown]

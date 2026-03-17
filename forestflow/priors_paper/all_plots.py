@@ -6,7 +6,7 @@ rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
 from getdist import plots
-from lace.cosmo import cosmology
+from forestflow.priors_paper import set_samples
 
 
 def plot_bsig8_betafsigma8(samples, ftsize=18):
@@ -232,7 +232,7 @@ def plot_sig8z(samples, ftsize=20):
         data = np.load("int_data_figs/sig8_cmb_spa.npy", allow_pickle=True).item()
     except:
         print("setting CMB-SPA")
-        set_cmbspa_sig8z()
+        set_samples.set_cmbspa_sig8z()
         data = np.load("int_data_figs/sig8_cmb_spa.npy", allow_pickle=True).item()
 
     zplot = data["z"]
@@ -246,7 +246,7 @@ def plot_sig8z(samples, ftsize=20):
         data = np.load("int_data_figs/sig8_desi.npy", allow_pickle=True).item()
     except:
         print("setting DESI FS")
-        set_desi_sig8z()
+        set_samples.set_desi_sig8z()
         data = np.load("int_data_figs/sig8_desi.npy", allow_pickle=True).item()
 
     desi_zplot = data["zeff"]
@@ -346,7 +346,7 @@ def plot_fsig8z(samples, ftsize=20):
         data = np.load("sig8_cmb_spa.npy", allow_pickle=True).item()
     except:
         print("setting CMB-SPA")
-        set_cmbspa_sig8z()
+        set_samples.set_cmbspa_sig8z()
         data = np.load("sig8_cmb_spa.npy", allow_pickle=True).item()
 
     zplot = data["z"]
@@ -552,164 +552,32 @@ def plot_P3D_small_params(samples, ftsize=20):
     plt.savefig("figs/corner_arinyo.png")
 
 
-def set_cmbspa_sig8z(nsamples=200, nz=20):
+def table_cosmo_igm(dict_out_all):
 
-    # CMB-SPA Table 1 https://arxiv.org/abs/2506.20707v1
-    cosmo_full_cmbspa = {
-        "H0": 67.24,
-        "err_H0": 0.35,
-        "mnu": 0.06,
-        "omch2": 0.12009,
-        "err_omch2": 0.00086,
-        "ombh2": 0.022381,
-        "err_ombh2": 0.000093,
-        "omk": 0,
-        "log_As": 3.0479,
-        "err_log_As": 0.0099,
-        "ns": 0.9684,
-        "err_ns": 0.0030,
-        "nrun": 0.0,
-        "pivot_scalar": 0.05,
-        "w": -1.0,
-    }
+    def format_pm(val, err, sig=2):
+        import math
 
-    cmb_spa_samples = sample_cosmo_dict(cosmo_full_cmbspa, n_samples=nsamples)
-    zplot = np.linspace(0, 3, nz)
-    sig8 = np.zeros((nsamples, nz))
-    f = np.zeros((nsamples, nz))
+        if err == 0:
+            return f"${val} \\pm 0$"
+        exp = math.floor(math.log10(abs(err)))
+        decimals = -(exp - (sig - 1))
+        err_r = round(err, decimals)
+        val_r = round(val, decimals)
+        fmt = f"{{:.{max(decimals,0)}f}}"
+        return f"${fmt.format(val_r)} \\pm {fmt.format(err_r)}$"
 
-    for ii, dict_cosmo in enumerate(cmb_spa_samples):
-        class_cosmo = cosmology.Cosmology(cosmo_params_dict=dict_cosmo)
-        sig8[ii] = class_cosmo.get_sigma8(zplot)
-        f[ii] = class_cosmo.get_growth_rate(zplot)
+    params = ["Delta2_p", "mF", "sigT_Mpc", "gamma", "kF_Mpc"]
 
-    dict_out = {"z": zplot, "sig8": sig8, "f": f}
-    np.save("int_data_figs/sig8_cmb_spa.npy", dict_out)
+    p = dict_out_all["emu_params"]
+    means = {k: np.mean(p[k], axis=0) for k in params}
+    stds = {k: np.std(p[k], axis=0) for k in params}
 
-    return
+    print("z", params[0], params[1], params[2], params[3], params[4], sep=" & ")
 
-
-def sample_cosmo_dict(base, n_samples=1, rng=None):
-    rng = np.random.default_rng(rng)
-
-    # parameters with errors
-    params = {k: v for k, v in base.items() if not k.startswith("err_")}
-    errs = {k[4:]: v for k, v in base.items() if k.startswith("err_")}
-
-    samples = []
-    for _ in range(n_samples):
-        d = {}
-        # set parameters without errors
-        for p in params:
-            if p != "log_As":
-                d[p] = params[p]
-        # for those with errors, sample a normal distribution
-        for p, err in errs.items():
-            _par = rng.normal(base[p], err)
-            if p == "log_As":
-                d["As"] = np.exp(_par) * 1e-10
-            else:
-                d[p] = _par
-        samples.append(d)
-
-    return samples
-
-
-def set_desifs_sig8z(nsamples=5000):
-
-    # DESI FS DR1  redshifts https://arxiv.org/abs/2411.12021
-
-    # Table1
-    desi_fs_zeff = np.array([0.295, 0.510, 0.706, 0.930, 1.317, 1.491])
-
-    datasets = ["BGS", "LRG1", "LRG2", "LRG3", "ELG2", "QSO"]
-
-    Omega_m = np.array(
-        [
-            (0.284, 0.024, 0.024),
-            (0.307, 0.018, 0.020),
-            (0.287, 0.020, 0.020),
-            (0.304, 0.023, 0.023),
-            (0.310, 0.027, 0.034),
-            (0.314, 0.029, 0.039),
-        ]
-    )
-
-    H0 = np.array(
-        [
-            (68.3, 2.4, 2.4),
-            (68.8, 1.3, 1.5),
-            (70.9, 1.6, 1.6),
-            (66.8, 1.2, 1.2),
-            (68.5, 2.1, 2.1),
-            (69.4, 3.1, 3.1),
-        ]
-    )
-
-    ln10As = np.array(
-        [
-            (2.73, 0.40, 0.40),
-            (3.05, 0.22, 0.22),
-            (3.17, 0.21, 0.24),
-            (3.12, 0.22, 0.22),
-            (2.86, 0.17, 0.19),
-            (3.26, 0.18, 0.18),
-        ]
-    )
-
-    ns = np.array(
-        [
-            (0.962, 0.040),
-            (0.964, 0.039),
-            (0.979, 0.038),
-            (0.972, 0.038),
-            (0.969, 0.039),
-            (0.976, 0.038),
-        ]
-    )
-
-    cosmo_full_desi = {}
-
-    for ii in range(len(datasets)):
-        cosmo_full_desi[datasets[ii]] = {
-            "H0": H0[ii][0],
-            "err_H0": np.mean(H0[ii][1:]),
-            "mnu": 0.0,
-            "omch2": Omega_m[ii][0] * (H0[ii][0] / 100) ** 2,
-            "err_omch2": np.mean(Omega_m[ii][1:]) * (H0[ii][0] / 100) ** 2,
-            "ombh2": 0.02218,
-            "err_ombh2": 0.00055,  # Table4
-            "omk": 0,
-            "log_As": ln10As[ii][0],
-            "err_log_As": np.mean(ln10As[ii][1:]),
-            "ns": ns[ii][0],
-            "err_ns": ns[ii][1],
-            "nrun": 0.0,
-            "pivot_scalar": 0.05,
-            "w": -1.0,
-        }
-        print(datasets[ii], cosmo_full_desi[datasets[ii]])
-
-    nmods = len(datasets)
-    sig8 = np.zeros((nsamples, nmods))
-    sig8_z0 = np.zeros((nsamples, nmods))
-    f = np.zeros((nsamples, nmods))
-
-    for jj in range(nmods):
-        print(datasets[jj])
-        desi_samples = sample_cosmo_dict(
-            cosmo_full_desi[datasets[jj]], n_samples=nsamples
-        )
-
-        for ii, dict_cosmo in enumerate(desi_samples):
-            if ii % 100 == 0:
-                print(ii, nsamples)
-            class_cosmo = cosmology.Cosmology(cosmo_params_dict=dict_cosmo)
-            sig8[ii, jj] = class_cosmo.get_sigma8(desi_fs_zeff[jj])
-            f[ii, jj] = class_cosmo.get_growth_rate(desi_fs_zeff[jj])
-            sig8_z0[ii, jj] = class_cosmo.get_sigma8(0)
-
-    dict_out = {"sig8": sig8, "f": f, "datasets": datasets, "zeff": desi_fs_zeff}
-    np.save("int_data_figs/sig8_desi.npy", dict_out)
+    for i, z in enumerate(dict_out_all["zs"]):
+        row = [f"{z:.2f}"]
+        for k in params:
+            row.append(format_pm(means[k][i], stds[k][i]))
+        print(" & ".join(row) + r" \\")
 
     return

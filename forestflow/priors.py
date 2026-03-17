@@ -7,13 +7,9 @@ def get_arinyo_priors(z, tag="DESI_DR1_P1D", return_all=False):
     if tag == "DESI_DR1_P1D":
         fname = "priors_arinyo_from_p1d.npy"
     else:
-        raise ValueError(
-            "tag not recognized, only implemented for DESI_DR1_P1D"
-        )
+        raise ValueError("tag not recognized, only implemented for DESI_DR1_P1D")
 
-    folder = os.path.join(
-        os.path.dirname(forestflow.__path__[0]), "data", "priors"
-    )
+    folder = os.path.join(os.path.dirname(forestflow.__path__[0]), "data", "priors")
     data_priors = np.load(os.path.join(folder, fname), allow_pickle=True).item()
 
     if (z > np.max(data_priors["zs"])) | (z < np.min(data_priors["zs"])):
@@ -59,13 +55,9 @@ def get_IGM_priors(z, tag="DESI_DR1_P1D", return_all=False):
     if tag == "DESI_DR1_P1D":
         fname = "priors_cosmo_IGM_from_p1d.npy"
     else:
-        raise ValueError(
-            "tag not recognized, only implemented for DESI_DR1_P1D"
-        )
+        raise ValueError("tag not recognized, only implemented for DESI_DR1_P1D")
 
-    folder = os.path.join(
-        os.path.dirname(forestflow.__path__[0]), "data", "priors"
-    )
+    folder = os.path.join(os.path.dirname(forestflow.__path__[0]), "data", "priors")
     data_priors = np.load(os.path.join(folder, fname), allow_pickle=True).item()
 
     if (z > np.max(data_priors["zs"])) | (z < np.min(data_priors["zs"])):
