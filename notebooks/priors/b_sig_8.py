@@ -13,6 +13,30 @@
 #     name: python3
 # ---
 
+# %% [markdown]
+# # Combine BAO and P1D data
+#
+# In this notebook, we combine P1D and BAO measurements through
+#
+# - $b_\delta \sigma_8$
+# - $b_\eta f\sigma_8$
+#
+# #### In BAO we measure
+#
+# - $b_\delta \sigma_8$
+# - $\beta \sigma_8$
+#
+# with $\beta = b_\eta f/b_\delta$, so $b_\eta f\sigma_8=\beta b_\delta \sigma_8$
+#
+# #### In P1D we measure
+#
+# $\Delta^2_p(z)$, $n_p(z)$, and IGM(z). Using ForestFlow, we can map these constraints into measurements of 
+#
+# - $b_\delta$ and $b_\eta$
+# - Small-scale P3D params
+#
+# This mapping is done in the notebooks desi_priors and accel2_priors
+
 # %%
 # %load_ext autoreload
 # %autoreload 2
@@ -86,7 +110,7 @@ samples.keys()
 
 # %%
 fits = {}
-for label in ['dr1', 'dr2', "dr1_hsnr", "dr2_hsnr"]:
+for label in ["dr1", "dr2", "dr1_hsnr", "dr2_hsnr"]:
     fits[label] = importance.fit_gaussian(samples[label])
 
 # %%

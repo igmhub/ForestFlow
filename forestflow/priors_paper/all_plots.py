@@ -229,11 +229,11 @@ def plot_sig8z(samples, ftsize=20):
 
     # load CMB-SPA
     try:
-        data = np.load("sig8_cmb_spa.npy", allow_pickle=True).item()
+        data = np.load("int_data_figs/sig8_cmb_spa.npy", allow_pickle=True).item()
     except:
         print("setting CMB-SPA")
         set_cmbspa_sig8z()
-        data = np.load("sig8_cmb_spa.npy", allow_pickle=True).item()
+        data = np.load("int_data_figs/sig8_cmb_spa.npy", allow_pickle=True).item()
 
     zplot = data["z"]
     sig8 = data["sig8"]
@@ -243,11 +243,11 @@ def plot_sig8z(samples, ftsize=20):
 
     # load DESI FS
     try:
-        data = np.load("sig8_desi.npy", allow_pickle=True).item()
+        data = np.load("int_data_figs/sig8_desi.npy", allow_pickle=True).item()
     except:
         print("setting DESI FS")
         set_desi_sig8z()
-        data = np.load("sig8_desi.npy", allow_pickle=True).item()
+        data = np.load("int_data_figs/sig8_desi.npy", allow_pickle=True).item()
 
     desi_zplot = data["zeff"]
     desi_sig8 = data["sig8"]
@@ -584,7 +584,7 @@ def set_cmbspa_sig8z(nsamples=200, nz=20):
         f[ii] = class_cosmo.get_growth_rate(zplot)
 
     dict_out = {"z": zplot, "sig8": sig8, "f": f}
-    np.save("sig8_cmb_spa.npy", dict_out)
+    np.save("int_data_figs/sig8_cmb_spa.npy", dict_out)
 
     return
 
@@ -710,6 +710,6 @@ def set_desifs_sig8z(nsamples=5000):
             sig8_z0[ii, jj] = class_cosmo.get_sigma8(0)
 
     dict_out = {"sig8": sig8, "f": f, "datasets": datasets, "zeff": desi_fs_zeff}
-    np.save("sig8_desi.npy", dict_out)
+    np.save("int_data_figs/sig8_desi.npy", dict_out)
 
     return

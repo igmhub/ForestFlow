@@ -77,7 +77,9 @@ def load_BAO_data(sig8, f):
 
 
 def load_p1d_data(f):
-    dict_out_all = np.load("arinyo_from_desi_p1d.npy", allow_pickle=True).item()
+    dict_out_all = np.load(
+        "int_data_figs/arinyo_from_desi_p1d.npy", allow_pickle=True
+    ).item()
     dict_out_all["forest_out"]["bias"] = -np.abs(dict_out_all["forest_out"]["bias"])
 
     P1D = {}
