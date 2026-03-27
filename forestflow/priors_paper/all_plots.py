@@ -581,3 +581,167 @@ def table_cosmo_igm(dict_out_all):
         print(" & ".join(row) + r" \\")
 
     return
+
+
+def plot_bias_beta_zev(
+    bao_data, dict_mapping, zmax=5, ftsize=24, plot_bias_eta=False, z0=3
+):
+
+    import matplotlib.ticker as mticker
+
+    from scipy.optimize import curve_fit
+
+    def fit_pow(z, a, b):
+        x = (1 + z) / (1 + z0)
+        return a * x**b
+
+    def fit_pol(z, a, b, c, d):
+        x = (1 + z) / (1 + z0)
+        return a + b * x + c * x**2 + d * x**3
+
+    if plot_bias_eta:
+        params_labels = ["bias_delta", "beta", "bias_eta"]
+    else:
+        params_labels = ["bias_delta", "beta"]
+    params_labels_latex = [
+        r"$b_\delta$",
+        r"$\beta$",
+        r"$b_\eta$",
+    ]
+
+    fig, ax = plt.subplots(len(params_labels), 1, sharex=True, figsize=(10, 10))
+
+    bao_plot = {}
+    for ii, key in enumerate(["dr1_hsnr", "dr2_hsnr"]):
+        bao_plot[key] = {}
+        bao_plot[key]["zeff"] = 2.33
+        bao_plot[key]["label"] = "BAO DR" + str(ii + 1)
+        for lab in params_labels:
+            bao_plot[key][lab] = {}
+            bao_plot[key][lab]["mean"] = bao_data[key][lab].mean()
+            bao_plot[key][lab]["std"] = bao_data[key][lab].std()
+
+    xdisp = [-0.01, 0.01]
+    data = {}
+    for ii, lab in enumerate(params_labels):
+
+        param = dict_mapping["forest_out"][lab]
+        percen = np.percentile(param, [16, 84], axis=0)
+
+        ax[ii].fill_between(
+            dict_mapping["zs"],
+            percen[0],
+            percen[1],
+            alpha=0.5,
+            label=r"$P_\mathrm{1D}$ DR1",
+        )
+
+        zplot = np.linspace(np.min(dict_mapping["zs"]), np.max(dict_mapping["zs"]), 100)
+
+        mean = np.mean(param, axis=0)
+        if ii == 0:
+            fit_func = fit_pol
+        else:
+            fit_func = fit_pol
+        fit_val = curve_fit(fit_func, dict_mapping["zs"], mean)[0]
+        data[params_labels_latex[ii]] = fit_val
+
+        # data[params_latex[ii]] = fit_val
+        ax[ii].plot(zplot, fit_func(zplot, *fit_val), color="C0", ls="--")
+
+        for jj, key in enumerate(bao_plot):
+            dumm = np.zeros(2)
+            ax[ii].errorbar(
+                dumm + bao_plot[key]["zeff"] + xdisp[jj],
+                dumm + bao_plot[key][lab]["mean"],
+                dumm + bao_plot[key][lab]["std"],
+                fmt="o",
+                label=bao_plot[key]["label"],
+                color="C" + str(jj + 1),
+            )
+
+            if (ii == 0) & (key == "dr2_hsnr"):
+                b1 = bao_plot[key][lab]["mean"] - bao_plot[key][lab]["std"]
+                b2 = bao_plot[key][lab]["mean"] + bao_plot[key][lab]["std"]
+                expo = 2.9
+                bz = ((1 + zplot) / (1 + bao_plot[key]["zeff"])) ** expo
+                ax[ii].fill_between(zplot, b1 * bz, b2 * bz, color="C2", alpha=0.2)
+
+    ax[0].legend(fontsize=ftsize)
+
+    for ii in range(len(params_labels)):
+        ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
+        ax[ii].set_ylabel(params_labels_latex[ii], fontsize=ftsize)
+        ax[ii].yaxis.set_major_formatter(mticker.FormatStrFormatter("% .1f"))
+    ax[-1].set_xlabel(r"$z$", fontsize=ftsize)
+
+    for key, vals in data.items():
+        vals = np.round(vals, 2)
+        row = " & ".join(f"{v:.2f}" for v in vals)
+        print(f"{key} & {row} \\\\")
+
+    plt.tight_layout()
+    plt.savefig("figs/bias_beta_BAOvsP1D.png")
+    plt.savefig("figs/bias_beta_BAOvsP1D.pdf")
+
+
+def plot_p3d_small_z(dict_mapping, ftsize=20, z0=3):
+
+    from scipy.optimize import curve_fit
+
+    def fit_func(z, a, b, c, d):
+        x = (1 + z) / (1 + z0)
+        return a + b * x + c * x**2 + d * x**3
+
+    params = ["q1", "q2", "av", "bv", "kvav", "kp"]
+    params_latex = [
+        r"$q_1$",
+        r"$q_2$",
+        r"$a_\mathrm{v}$",
+        r"$b_\mathrm{v}$",
+        r"$k_\mathrm{v}\,[\mathrm{Mpc}^{-1}]$",
+        r"$k_\mathrm{p}\,[\mathrm{Mpc}^{-1}]$",
+    ]
+
+    fig, ax = plt.subplots(len(params) // 2, 2, sharex=True, figsize=(10, 8))
+    ax = ax.flatten()
+
+    data = {}
+
+    for ii, par in enumerate(params):
+        if par != "kvav":
+            val_par = dict_mapping["forest_out"][par]
+        else:
+            val_par = dict_mapping["forest_out"]["kvav"] ** (
+                1 / dict_mapping["forest_out"]["av"]
+            )
+        percen = np.percentile(val_par, [16, 84], axis=0)
+        ax[ii].fill_between(dict_mapping["zs"], percen[0], percen[1], alpha=0.5)
+        mean = np.mean(val_par, axis=0)
+        fit_val = curve_fit(fit_func, dict_mapping["zs"], mean)[0]
+
+        data[params_latex[ii]] = fit_val
+        zplot = np.linspace(np.min(dict_mapping["zs"]), np.max(dict_mapping["zs"]), 100)
+        ax[ii].plot(
+            zplot,
+            fit_func(zplot, *fit_val),
+            color="C0",
+            ls="--",
+        )
+        ax[ii].set_ylabel(params_latex[ii], fontsize=ftsize)
+        ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
+
+    for key, vals in data.items():
+        vals = np.round(vals, 2)
+        row = " & ".join(f"{v:.2f}" for v in vals)
+        print(f"{key} & {row} \\\\")
+
+    # ax[-1].set_xticks([2, 3, 4])
+    # ax[-1].set_xticklabels(["2", "3", "4"])
+    ax[0].set_xlim(1.9, 4.3)
+
+    ax[-2].set_xlabel(r"$z$", fontsize=ftsize)
+    ax[-1].set_xlabel(r"$z$", fontsize=ftsize)
+    plt.tight_layout()
+    plt.savefig("figs/Arinyo_with_z.pdf")
+    plt.savefig("figs/Arinyo_with_z.png")
