@@ -1,7 +1,7 @@
 # ---
 # jupyter:
 #   jupytext:
-#     formats: ipynb,py
+#     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
 #       format_name: light
@@ -13,6 +13,7 @@
 #     name: cupix
 # ---
 
+# %% [markdown]
 # # Extracting priors from ForestFlow
 #
 # - For the Arinyo parameters based on the DESI DR1 P1D fit (Chaves-Montero+26, https://arxiv.org/abs/2601.21432)
@@ -20,60 +21,96 @@
 # - For the Arinyo parameters based on the MP-simulations (Chaves-Montero+25, https://arxiv.org/abs/2409.05682)
 # - For cosmo+IGM parameters based on the MP-simulations (Cabayol-Garcia+24, https://arxiv.org/abs/2305.19064)
 
-# +
+# %%
 # %load_ext autoreload
 # %autoreload 2
 
-import sys
-import os
-import matplotlib.pyplot as plt
 import numpy as np
-
-import forestflow
 from forestflow.archive import GadgetArchive3D
-# -
 
+# %% [markdown]
 # ## Arinyo parameters based on DESI DR1 P1D fit
 
+# %%
 from forestflow.priors import get_arinyo_priors
 # at a particular z
 z = 3.
 arinyo_priors_DR1 = get_arinyo_priors(z)
 print(arinyo_priors_DR1.keys())
-arinyo_priors_DR1["mean"]
 
+
+print(f"{'parameter':<15} {'mean':>10} {'std':>10}")
+print(f"{'-'*15} {'-'*10} {'-'*10}")
+for par in arinyo_priors_DR1["mean"].keys():
+
+    mean = arinyo_priors_DR1["mean"][par]
+    std  = arinyo_priors_DR1["std"][par]
+    print(f"{par:<15} {mean:10.3f} {std:10.3f}")
+
+
+# %% [markdown]
 # ## Cosmo and IGM parameters based on DESI DR1 P1D fit
 
+# %%
 from forestflow.priors import get_IGM_priors
 # at a particular z
 z = 3.
 igm_priors_DR1 = get_IGM_priors(z)
 print(igm_priors_DR1.keys())
-igm_priors_DR1["mean"]
 
+print(f"{'parameter':<15} {'mean':>10} {'std':>10}")
+print(f"{'-'*15} {'-'*10} {'-'*10}")
+for par in igm_priors_DR1["mean"].keys():
+
+    mean = igm_priors_DR1["mean"][par]
+    std  = igm_priors_DR1["std"][par]
+    print(f"{par:<15} {mean:10.3f} {std:10.3f}")
+
+# %% [markdown]
 # ## Arinyo parameters based on MP-Gadget
 
+# %%
 # load archive
 Archive3D = GadgetArchive3D()
 
+# %%
 # redshift range
 zmin = 3.
 zmax = 3.
 arinyo_priors_mpg = Archive3D.get_Arinyo_priors(zmin, zmax)
-arinyo_priors_mpg["mean"]
+arinyo_priors_mpg.keys()
 
+print(f"{'parameter':<15} {'mean':>10} {'std':>10}")
+print(f"{'-'*15} {'-'*10} {'-'*10}")
+for par in arinyo_priors_mpg["mean"].keys():
+
+    mean = arinyo_priors_mpg["mean"][par]
+    std  = arinyo_priors_mpg["std"][par]
+    print(f"{par:<15} {mean:10.3f} {std:10.3f}")
+
+# %%
 # redshift range
 zmin = 3.
 zmax = 3.
 igm_priors_mpg = Archive3D.get_IGM_priors(zmin, zmax)
-igm_priors_mpg["mean"]
 
+
+print(f"{'parameter':<15} {'mean':>10} {'std':>10}")
+print(f"{'-'*15} {'-'*10} {'-'*10}")
+for par in igm_priors_mpg["mean"].keys():
+
+    mean = igm_priors_mpg["mean"][par]
+    std  = igm_priors_mpg["std"][par]
+    print(f"{par:<15} {mean:10.3f} {std:10.3f}")
+
+# %% [markdown]
 # ## Compare priors
 #
 # The DR1 analysis provies values of the parameters consistent with P1D observations, while the parameters from the MP-Gadget sims gives a plausible range of values. 
 #
 # As expected, the first should be included within the second
 
+# %%
 # It works
 print("par     min mpg, central DR1, max mpg")
 print("-------------------------------------")
@@ -86,6 +123,7 @@ for par in arinyo_priors_DR1["mean"].keys():
         sep="\t"
     )
 
+# %%
 # It works
 print("par            min mpg, central DR1, max mpg")
 print("--------------------------------------------")
