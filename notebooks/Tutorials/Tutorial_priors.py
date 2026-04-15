@@ -4,13 +4,13 @@
 #     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
-#       format_name: light
-#       format_version: '1.5'
-#       jupytext_version: 1.16.4
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.19.1
 #   kernelspec:
-#     display_name: cupix
+#     display_name: lace
 #     language: python
-#     name: cupix
+#     name: python3
 # ---
 
 # %% [markdown]
@@ -136,6 +136,6 @@ for par in igm_priors_DR1["mean"].keys():
         sep="\t"
     )
 
+# %%
 
-
-
+# %%

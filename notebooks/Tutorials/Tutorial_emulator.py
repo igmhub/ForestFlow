@@ -6,11 +6,11 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.4
+#       jupytext_version: 1.19.1
 #   kernelspec:
-#     display_name: cupix
+#     display_name: lace
 #     language: python
-#     name: cupix
+#     name: python3
 # ---
 
 # %% [markdown]
@@ -25,9 +25,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
-from lace.cosmo import cosmology
 import forestflow
-from forestflow.archive import GadgetArchive3D
 from forestflow.P3D_cINN import P3DEmulator
 
 # %% [markdown]
@@ -106,40 +104,28 @@ coeffs_mean
 # %%
 from forestflow.model_p3d_arinyo import ArinyoModel
 from lace.cosmo import cosmology
-#from lace.cosmo import camb_cosmo, fit_linP
 
 # %%
-# target cosmology
-cosmo_params = {
-    "H0": 67.66,
-    "mnu": 0,
-    "omch2": 0.119,
-    "ombh2": 0.0224,
-    "omk": 0,
-    'As': 2.105e-09,
-    'ns': 0.9665,
-    "nrun": 0.0,
-    "pivot_scalar": 0.05,
-    "w": -1.0,
-}
-cosmo = cosmology.Cosmology(cosmo_params_dict=cosmo_params)
-
 # set Arinyo model
-model_Arinyo = ArinyoModel(fid_cosmo=cosmo)
+fid_cosmo = cosmology.Cosmology()
+model_Arinyo = ArinyoModel(fid_cosmo)
+
 
 # Compute compressed parameters for the target cosmology
 z = 4.
 kp_Mpc = 0.7
-linP_zs = cosmo.get_linP_Mpc_params(z, kp_Mpc)
+# get Delta2_p and n_p from fiducial cosmology
+linP_zs = fid_cosmo.get_linP_Mpc_params(z=z, kp_Mpc=kp_Mpc)
+print(linP_zs)
 
-# define input parameters to emulator
+# get Delta2_p and n_p from emulator, random values for the IGM parameters
 input_emu = {
     "Delta2_p": linP_zs["Delta2_p"],
     "n_p": linP_zs["n_p"],
-    'mF': 0.23475637218289533,
-    'sigT_Mpc': 0.10040737452608385,
-    'gamma': 1.2115605945334802,
-    'kF_Mpc': 14.191866950067904
+    'mF': 0.23,
+    'sigT_Mpc': 0.10,
+    'gamma': 1.21,
+    'kF_Mpc': 14.20
 }
 
 
@@ -197,6 +183,10 @@ plt.xscale('log')
 # ## For developers, train emulator
 
 # %%
+
+from forestflow.archive import GadgetArchive3D
+
+# %%
 # %%time
 Archive3D = GadgetArchive3D()
 
@@ -223,8 +213,3 @@ plt.plot(-arr_loss)
 plt.ylim(20, 41)
 plt.axvline(4000)
 # plt.xscale("log")
-
-# %%
-a=3
-
-# %%
