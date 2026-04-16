@@ -6,9 +6,9 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.19.1
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: lace
 #     language: python
 #     name: python3
 # ---
@@ -147,9 +147,15 @@ p1d_sim = k1d_Mpc/np.pi * p1d_Mpc
 # #### Set the Arinyo model
 #
 # It calls camb (takes time), so better do it once and then it can be evaluated at any redshift
+#
+# For more info, check out Tutorial_Arinyo
 
 # %%
-model_Arinyo = ArinyoModel(sim["cosmo_params"])
+from lace.cosmo import cosmology
+
+# %%
+fid_cosmo = cosmology.Cosmology(sim["cosmo_params"])
+model_Arinyo = ArinyoModel(fid_cosmo)
 
 # %%
 # sim['Arinyo_min'] contains the best-fitting Arinyo parameters to this simulation
@@ -176,10 +182,3 @@ plt.xscale('log')
 plt.plot(k1d_Mpc, p1d_sim)
 plt.plot(k1d_Mpc, p1d_model, "--")
 plt.xscale('log')
-
-# %% [markdown]
-# #### More on the Arinyo model on Tutorial_Arinyo
-
-# %%
-
-# %%

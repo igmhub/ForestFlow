@@ -6,9 +6,9 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.19.1
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: lace
 #     language: python
 #     name: python3
 # ---
@@ -33,6 +33,7 @@ rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
 from forestflow.model_p3d_arinyo import ArinyoModel
+from lace.cosmo import cosmology
 
 
 # %% [markdown]
@@ -41,19 +42,14 @@ from forestflow.model_p3d_arinyo import ArinyoModel
 # For more details about the Arinyo model see Eq. 4.5 from Givans+22 (https://arxiv.org/abs/2205.00962)
 
 # %%
-cosmo = {
-    "H0": 67.66,
-    "mnu": 0,
-    "omch2": 0.119,
-    "ombh2": 0.0224,
-    "omk": 0,
-    'As': 2.105e-09,
-    'ns': 0.9665,
-    "nrun": 0.0,
-    "pivot_scalar": 0.05,
-    "w": -1.0,
-}
-model_Arinyo = ArinyoModel(cosmo)
+fid_cosmo = cosmology.Cosmology()
+model_Arinyo = ArinyoModel(fid_cosmo)
+
+# %%
+fid_cosmo.background_params
+
+# %%
+fid_cosmo.CAMBparams.InitPower.As
 
 # %% [markdown]
 # ### Compute P3D & P1D
@@ -120,70 +116,43 @@ plt.xscale('log')
 # Very useful during inference, much faster than creating more instances of the same model
 
 # %%
-cosmo_new = {
-    "H0": 67.66,
-    "mnu": 0,
-    "omch2": 0.119,
-    "ombh2": 0.0224,
-    "omk": 0,
-    'As': 2.105e-09,
-    'ns': 0.8665, # different
-    "nrun": 0.0,
-    "pivot_scalar": 0.05,
-    "w": -1.0,
-}
+new_cosmo_params = {"ns": 0.8665} # only change ns compared to the value for the fiducial cosmology
 
-plin_new = model_Arinyo.linP_Mpc(zs, k, cosmo_new=cosmo_new) # get linear power spectrum at target zmodel_Arinyo
-p3d_new = model_Arinyo.P3D_Mpc_k_mu(zs, k2d, mu2d, arinyo_pars, cosmo_new=cosmo_new) # get P3D at target z
-p1d_new = model_Arinyo.P1D_Mpc(zs, kpar, arinyo_pars, cosmo_new=cosmo_new) # get P1D at target z
+plin_new = model_Arinyo.linP_Mpc(zs, k, new_cosmo_params=new_cosmo_params) # get linear power spectrum at target zmodel_Arinyo
+p3d_new = model_Arinyo.P3D_Mpc_k_mu(zs, k2d, mu2d, arinyo_pars, new_cosmo_params=new_cosmo_params) # get P3D at target z
+p1d_new = model_Arinyo.P1D_Mpc(zs, kpar, arinyo_pars, new_cosmo_params=new_cosmo_params) # get P1D at target z
 
 # %%
 plt.loglog(k, plin)
 plt.loglog(k, plin_new)
 
 # %% [markdown]
-# #### Typically, we only change As and ns during fits, and it takes almost the same time
+# #### Typically, we only change As or ns during fits, and it takes almost the same time
 
-# %%
-cosmo_new = {
-    "H0": 67.66,
-    "mnu": 0,
-    "omch2": 0.119,
-    "ombh2": 0.0224,
-    "omk": 0,
-    'As': 2.105e-09,
-    'ns': 0.8665, # different
-    "nrun": 0.0,
-    "pivot_scalar": 0.05,
-    "w": -1.0,
-}
+# %% [markdown]
+# Time without changing cosmo
 
 # %%
 # %%time
-for ii in range(100):
-    model_Arinyo.P3D_Mpc_k_mu(zs, k2d, mu2d, arinyo_pars, cosmo_new=cosmo_new)
-
-# %%
-# %%time
-for ii in range(100):
+for ii in range(1000):
     model_Arinyo.P3D_Mpc_k_mu(zs, k2d, mu2d, arinyo_pars)
+
+# %% [markdown]
+# Time after changing cosmo, practically the same
+
+# %%
+new_cosmo_params = {"ns": 0.8665}
+
+# %%
+# %%time
+for ii in range(1000):
+    model_Arinyo.P3D_Mpc_k_mu(zs, k2d, mu2d, arinyo_pars, new_cosmo_params=new_cosmo_params)
 
 # %% [markdown]
 # #### Much slower when changing other parameters since we need to call camb every time
 
 # %%
-cosmo_new = {
-    "H0": 67.66,
-    "mnu": 0,
-    "omch2": 0.219, # different
-    "ombh2": 0.0224,
-    "omk": 0,
-    'As': 2.105e-09,
-    'ns': 0.9665,
-    "nrun": 0.0,
-    "pivot_scalar": 0.05,
-    "w": -1.0,
-}
+new_cosmo_params = {"H0": 80}
 
 # %% [markdown]
 # Note we are calling the function 10 times
@@ -191,7 +160,7 @@ cosmo_new = {
 # %%
 # %%time
 for ii in range(10):
-    model_Arinyo.P3D_Mpc_k_mu(zs, k2d, mu2d, arinyo_pars, cosmo_new=cosmo_new)
+    model_Arinyo.P3D_Mpc_k_mu(zs, k2d, mu2d, arinyo_pars, new_cosmo_params=new_cosmo_params)
 
 # %% [markdown]
 # ## Arinyo model from emulator
@@ -214,64 +183,49 @@ emulator = P3DEmulator(
 )
 
 # %%
-z = 4.
-kp_Mpc = 0.7
-linP_zs = fit_linP.get_linP_Mpc_zs(
-    camb_cosmo.get_cosmology(**cosmo), [z], kp_Mpc
-)[0]
-linP_zs
+# P3D
+nn_k = 200 # number of k bins
+nn_mu = 10 # number of mu bins
+k = np.logspace(-1.5, 1.05, nn_k)
+mu = np.linspace(0, 1, nn_mu)
+k2d = np.tile(k[:, np.newaxis], nn_mu) # k grid for P3D
+mu2d = np.tile(mu[:, np.newaxis], nn_k).T # mu grid for P3D
 
-# %%
+zs = 3.
+kp_Mpc = 0.7
+
+# get Delta2_p and n_p from fiducial cosmology
+linP_zs = fid_cosmo.get_linP_Mpc_params(z=zs, kp_Mpc=kp_Mpc)
+print(linP_zs)
+
+# get Delta2_p and n_p from emulator, random values for the IGM parameters
 input_emu = {
     "Delta2_p": linP_zs["Delta2_p"],
     "n_p": linP_zs["n_p"],
-    'mF': 0.23475637218289533,
-    'sigT_Mpc': 0.10040737452608385,
-    'gamma': 1.2115605945334802,
-    'kF_Mpc': 14.191866950067904
+    'mF': 0.23,
+    'sigT_Mpc': 0.10,
+    'gamma': 1.21,
+    'kF_Mpc': 14.20
 }
 
 # %%
+# evaluate emulator to get the Arinyo parameters
 par_ari = emulator.predict_Arinyos(input_emu, return_dict=True)
 par_ari
 
 # %%
+# get statistics from arinyo model using the parameters from the emulator
 p3d_from_emu = model_Arinyo.P3D_Mpc_k_mu(zs, k2d, mu2d, par_ari)
 plin = model_Arinyo.linP_Mpc(zs, k) 
 
 # %%
-
 for ii in range(0, k2d.shape[1]):
+    col = 'C'+str(ii)
     lab = r'$<\mu>=$'+str(np.round(np.nanmean(mu2d[:,ii]), 2))
-    mask = k2d[:,ii] < 4
-    plt.loglog(k2d[mask, ii], p3d_from_emu[mask, ii]/plin[mask], label=lab)
-# plt.plot(k3d_Mpc[mask, 0], k3d_Mpc[mask, 0]*0, 'k--')
-# plt.xscale('log')
+    plt.loglog(k, p3d_from_emu[:, ii]/plin, col, label=lab)
+    plt.plot(k, p3d_from_emu[0, ii]/plin[0]+k[:]*0, col+'--')
 plt.xlabel(r'$k$ [Mpc]')
 plt.ylabel(r'$P/P_{\rm lin}$')
-plt.legend()
-
-# %% [markdown]
-# #### Precomputed interporlator
-
-# %%
-from forestflow.camb_routines import get_linP_interp
-
-# %%
-cosmo = {
-    "H0": 67.66,
-    "mnu": 0,
-    "omch2": 0.119,
-    "ombh2": 0.0224,
-    "omk": 0,
-    'As': 2.105e-09,
-    'ns': 0.9665,
-    "nrun": 0.0,
-    "pivot_scalar": 0.05,
-    "w": -1.0,
-}
-
-get_linpower = get_linP_interp(cosmo)
-model_Arinyo = ArinyoModel(camb_pk_interp=get_linpower)
+plt.legend(ncol=3)
 
 # %%
