@@ -46,8 +46,10 @@ def compute_px_from_p3d_kmu_Mpc(kp_Mpc, rt_Mpc, p3d_func_kmu_Mpc,
     def dummy_p3d_func_kmu(dummy, k, mu, ari_pp=None, new_cosmo_params=None):
         return p3d_func_kmu_Mpc(k, mu)
 
+    dummy_z = 123456789
+    dummy_p3d_params = {'dummy': 123456789}
     Px = Px_Mpc_detailed(
-        z=123456789,
+        z=dummy_z,
         kpar_iMpc=kp_Mpc,
         rperp_Mpc=rt_Mpc,
         p3d_fun_Mpc=dummy_p3d_func_kmu,
@@ -56,7 +58,7 @@ def compute_px_from_p3d_kmu_Mpc(kp_Mpc, rt_Mpc, p3d_func_kmu_Mpc,
         nkperp=hankl_nkt,
         interpmin=interp_rt_Mpc_min,
         interpmax=interp_rt_Mpc_max,
-        p3d_params={'dummy':123456789},
+        p3d_params=dummy_p3d_params,
         max_k_for_p3d=p3d_k_Mpc_max)
 
     return Px
