@@ -127,6 +127,21 @@ print("Is updated cosmology returning the same as previous method?", np.allclose
 # the last line should return False since we updated the cosmology.
 
 # %% [markdown]
+# ### Compare against the new function in integrate_p3d
+#
+# Andreu has recently added a new function to be used from cupix, that offers a different interface to compute Px
+
+# %%
+from forestflow.integrate_p3d import compute_px_from_p3d_kmu_Mpc
+
+def p3d_func_kmu_Mpc(k, mu):
+    z = zs[0]
+    return model_Arinyo.P3D_Mpc_k_mu(z, k, mu, ari_pp=model_Arinyo.default_params)
+
+Px_Mpc_3 = compute_px_from_p3d_kmu_Mpc(kp_Mpc=kpar, rt_Mpc=rperp, p3d_func_kmu_Mpc=p3d_func_kmu_Mpc)
+print("Math-only method is equal to previous method:", np.allclose(Px_Mpc_1, Px_Mpc_3, atol=1e-15))
+
+# %% [markdown]
 # # Calculate $P_\times$ for a series of $k_\parallel$.
 #
 # Observationally, $P_\times$ is a measurement made between two sightlines separated by the angle $\theta$ on the sky. As such, it contains 3D information about correlations. It is relevant because we have distinct sightlines measured by spectroscopic instruments like DESI.
