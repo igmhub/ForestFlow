@@ -2,6 +2,7 @@
 **/*.pdf
 **/*.png
 **/*.npy
+**/*.npz
 **/.ipynb_checkpoints/
 data/
 **/__pycache__/
