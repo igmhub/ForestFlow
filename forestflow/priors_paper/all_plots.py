@@ -660,10 +660,13 @@ def plot_bias_beta_zev(
                 color="C" + str(jj + 1),
             )
 
-            if (ii == 0) & (key == "dr2_hsnr"):
+            if key == "dr2_hsnr":
                 b1 = bao_plot[key][lab]["mean"] - bao_plot[key][lab]["std"]
                 b2 = bao_plot[key][lab]["mean"] + bao_plot[key][lab]["std"]
-                expo = 2.9
+                if ii == 0:
+                    expo = 2.9
+                else:
+                    expo = 0
                 bz = ((1 + zplot) / (1 + bao_plot[key]["zeff"])) ** expo
                 ax[ii].fill_between(zplot, b1 * bz, b2 * bz, color="C2", alpha=0.2)
 
