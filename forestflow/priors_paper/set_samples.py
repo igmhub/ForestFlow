@@ -29,7 +29,7 @@ def set_getdist_samples(BAO, P1D):
         "dr1": "DESI DR1 BAO (w/ low SNR)",
         "dr2": "DESI DR2 BAO (w/ low SNR)",
         "dr1_hsnr": "DESI DR1 BAO",
-        "dr2_hsnr": "DESI DR2 BAO",
+        "dr2_hsnr": "DESI BAO",
     }
     all_samples = {}
     for key in BAO.keys():
@@ -117,7 +117,7 @@ def set_getdist_samples(BAO, P1D):
         r"n_\star",
     ]
 
-    label_sample = {"p1d": r"DESI DR1 $P_\mathrm{1D}$"}
+    label_sample = {"p1d": r"DESI $P_\mathrm{1D}$"}
 
     for key in ["p1d"]:
         all_samples[key] = MCSamples(

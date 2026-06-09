@@ -60,37 +60,56 @@ def plot_bsig8_betafsigma8(samples, ftsize=18):
     plt.savefig("figs/nocomb_bdsig8_befsig8.png")
 
 
-def plot_bao_biases(samples, ftsize=18):
+def plot_bao_biases(samples, ftsize=22):
 
     g = plots.get_subplot_plotter(width_inch=8)
-    g.settings.lab_fontsize = ftsize
+    g.settings.lab_fontsize = ftsize + 2
     g.settings.axes_fontsize = ftsize
     g.settings.legend_fontsize = ftsize
     g.settings.num_plot_contours = 2  # 68%, 95%
 
+    samples["dr1"].label = "DR1 BAO (original)"
+    samples["dr2"].label = "DR2 BAO (original)"
+    samples["dr1_hsnr"].label = "DR1 BAO (reanalysis)"
+    samples["dr2_hsnr"].label = "DR2 BAO (reanalysis)"
+
+    for lab in ["dr1", "dr2", "dr1_hsnr", "dr2_hsnr"]:
+        samples[lab].paramNames.parWithName(
+            "bias_delta"
+        ).label = "b_\\delta \sigma_8/ \sigma^\mathrm{fid}_8"
+
+        samples[lab].paramNames.parWithName(
+            "beta"
+        ).label = "\\beta \sigma_8/ \sigma^\mathrm{fid}_8"
+
+        samples[lab].paramNames.parWithName(
+            "bias_hcd"
+        ).label = "b_\\mathrm{HCD}\, \sigma_8/ \sigma^\mathrm{fid}_8"
+
     g.triangle_plot(
         [
-            # samples["p1d"],
             samples["dr1"],
             samples["dr2"],
             samples["dr1_hsnr"],
             samples["dr2_hsnr"],
         ],
-        params=["bias_delta", "bias_eta", "beta", "bias_hcd"],
+        # params=["bias_delta", "bias_eta", "beta", "bias_hcd"],
+        params=["bias_delta", "beta", "bias_hcd"],
         filled=[
             False,
             False,
             True,
             True,
         ],
-        contour_colors=["C1", "C2", "C3", "C4"],
+        contour_colors=["C0", "C1", "C2", "C3"],
         contour_ls=[
-            "--",
-            "--",
             "-",
             "-",
+            "--",
+            "--",
         ],
-        contour_lws=[3, 3, 3, 3],
+        contour_lws=[2, 2, 2, 2],
+        alpha=0.5,
     )
 
     plt.tight_layout()
@@ -98,12 +117,12 @@ def plot_bao_biases(samples, ftsize=18):
     plt.savefig("figs/bao_biases.png")
 
 
-def plot_comb_bdsig8_befsig8(samples, ftsize=20):
+def plot_comb_bdsig8_befsig8(samples, ftsize=24):
 
     # --- plotting ---
     g = plots.get_subplot_plotter(width_inch=8)
-    g.settings.lab_fontsize = ftsize + 4
-    g.settings.axes_fontsize = ftsize + 2
+    g.settings.lab_fontsize = ftsize + 2
+    g.settings.axes_fontsize = ftsize
     g.settings.legend_fontsize = ftsize
     g.settings.num_plot_contours = 2  # 68%, 95%
 

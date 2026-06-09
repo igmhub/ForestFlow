@@ -120,7 +120,7 @@ label_sample = {
     "dr1": "P1D + BAO DR1 low SNR",
     "dr2": "P1D + BAO DR2 low SNR",
     "dr1_hsnr": "P1D + BAO DR1",
-    "dr2_hsnr": r"DESI $P_\mathrm{1D}$ + BAO",
+    "dr2_hsnr": r"$P_\mathrm{1D}$ + BAO",
 }
 
 
@@ -143,6 +143,8 @@ all_plots.plot_bsig8_betafsigma8(samples)
 # BAO biases
 
 # %%
+
+# %%
 all_plots.plot_bao_biases(samples)
 
 # %% [markdown]
@@ -156,7 +158,7 @@ for p in samples["p1d_dr2"].getParamNames().names:
     print(p.name, " -> ", p.label)
 
 # %%
-all_plots.plot_comb_bd_be_beta(samples)
+# all_plots.plot_comb_bd_be_beta(samples)
 
 # %%
 
