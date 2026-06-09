@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
+import matplotlib.ticker as mticker
 
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
@@ -101,6 +102,44 @@ def plot_comb_bdsig8_befsig8(samples, ftsize=20):
 
     # --- plotting ---
     g = plots.get_subplot_plotter(width_inch=8)
+    g.settings.lab_fontsize = ftsize + 4
+    g.settings.axes_fontsize = ftsize + 2
+    g.settings.legend_fontsize = ftsize
+    g.settings.num_plot_contours = 2  # 68%, 95%
+
+    samples["p1d"].updateSettings(
+        {
+            "smooth_scale_2D": 0.5,
+            "smooth_scale_1D": 0.5,
+        }
+    )
+
+    g.triangle_plot(
+        [
+            samples["p1d"],
+            samples["dr2_hsnr"],
+            samples["p1d_dr2"],
+        ],
+        filled=[False, False, True],
+        params=["b_delta_sigma8", "b_eta_f_sigma8"],
+        contour_colors=["C0", "C1", "C2"],
+        contour_ls=[
+            "-.",
+            "--",
+            "-",
+        ],
+        contour_lws=[3.0, 3.0, 3.0],
+    )
+
+    plt.tight_layout()
+    plt.savefig("figs/comb_bdsig8_befsig8.pdf")
+    plt.savefig("figs/comb_bdsig8_befsig8.png")
+
+
+def plot_comb_bd_be_beta(samples, ftsize=20):
+
+    # --- plotting ---
+    g = plots.get_subplot_plotter(width_inch=8)
     g.settings.lab_fontsize = ftsize
     g.settings.axes_fontsize = ftsize
     g.settings.legend_fontsize = ftsize
@@ -109,27 +148,23 @@ def plot_comb_bdsig8_befsig8(samples, ftsize=20):
     g.triangle_plot(
         [
             samples["p1d"],
-            samples["dr1_hsnr"],
             samples["dr2_hsnr"],
-            samples["p1d_dr1"],
             samples["p1d_dr2"],
         ],
-        filled=[False, False, False, True, True, True],
-        params=["b_delta_sigma8", "b_eta_f_sigma8"],
-        contour_colors=["C0", "C9", "C3", "C1", "C2"],
+        filled=[False, False, True],
+        params=["bias_delta", "beta"],
+        contour_colors=["C0", "C1", "C2"],
         contour_ls=[
             "-",
             ":",
-            ":",
             "--",
-            "-.",
         ],
         contour_lws=[3.0, 3.0, 3.0, 3.0, 3.0, 2],
     )
 
     plt.tight_layout()
-    plt.savefig("figs/comb_bdsig8_befsig8.pdf")
-    plt.savefig("figs/comb_bdsig8_befsig8.png")
+    plt.savefig("figs/comb_bd_be_beta.pdf")
+    plt.savefig("figs/comb_bd_be_beta.png")
 
 
 def plot_sig8(samples, ftsize=20):
@@ -583,17 +618,14 @@ def table_cosmo_igm(dict_out_all):
     return
 
 
-def plot_bias_beta_zev(
-    bao_data, dict_mapping, zmax=5, ftsize=24, plot_bias_eta=False, z0=3
-):
+def plot_bias_beta_zev(bao_data, dict_mapping, plot_bias_eta=False, z0=3, ftsize=24):
 
-    import matplotlib.ticker as mticker
-
+    # from mpl_toolkits.axes_grid1.inset_locator import inset_axes
     from scipy.optimize import curve_fit
 
-    def fit_pow(z, a, b):
-        x = (1 + z) / (1 + z0)
-        return a * x**b
+    # def fit_pow(z, a, b):
+    #     x = (1 + z) / (1 + z0)
+    #     return a * x**b
 
     def fit_pol(z, a, b, c, d):
         x = (1 + z) / (1 + z0)
@@ -604,39 +636,52 @@ def plot_bias_beta_zev(
     else:
         params_labels = ["bias_delta", "beta"]
     params_labels_latex = [
-        r"$b_\delta$",
-        r"$\beta$",
+        r"$b_\delta$, $b_\delta \sigma_8/\sigma_8^\mathrm{fid}$",
+        r"$\beta$, $\beta \sigma_8/\sigma_8^\mathrm{fid}$",
         r"$b_\eta$",
     ]
 
-    fig, ax = plt.subplots(len(params_labels), 1, sharex=True, figsize=(10, 10))
+    fig, ax = plt.subplots(len(params_labels), 1, sharex=True, figsize=(8, 8))
 
     bao_plot = {}
     for ii, key in enumerate(["dr1_hsnr", "dr2_hsnr"]):
         bao_plot[key] = {}
         bao_plot[key]["zeff"] = 2.33
-        bao_plot[key]["label"] = "BAO DR" + str(ii + 1)
+        bao_plot[key]["label"] = "DESI DR" + str(ii + 1) + " BAO"
         for lab in params_labels:
             bao_plot[key][lab] = {}
             bao_plot[key][lab]["mean"] = bao_data[key][lab].mean()
             bao_plot[key][lab]["std"] = bao_data[key][lab].std()
 
+            print(
+                f"{bao_plot[key]['label']} & {lab} & {bao_plot[key][lab]['mean']:.4f} & {bao_plot[key][lab]['std']:.4f} \\\\"
+            )
+
     xdisp = [-0.01, 0.01]
+    zmin_bao = np.min(bao_data["dr2"]["zhist"])
+    zmax_bao = np.max(bao_data["dr2"]["zhist"])
+    zmin_fit = np.min(dict_mapping["zs"])
+    zmax_fit = np.max(dict_mapping["zs"])
+    zbao = np.linspace(zmin_bao, zmax_bao, 100)
+    zfit = np.linspace(zmin_fit, zmax_fit, 100)
+
     data = {}
     for ii, lab in enumerate(params_labels):
 
         param = dict_mapping["forest_out"][lab]
         percen = np.percentile(param, [16, 84], axis=0)
 
+        print(
+            f"{lab} {dict_mapping['zs'][1]:.2f}: {param[:,1].mean():.4f} & {param[:,1].std():.4f}"
+        )
+
         ax[ii].fill_between(
             dict_mapping["zs"],
             percen[0],
             percen[1],
-            alpha=0.5,
-            label=r"$P_\mathrm{1D}$ DR1",
+            alpha=0.3,
+            label=r"DESI $P_\mathrm{1D}$",
         )
-
-        zplot = np.linspace(np.min(dict_mapping["zs"]), np.max(dict_mapping["zs"]), 100)
 
         mean = np.mean(param, axis=0)
         if ii == 0:
@@ -647,7 +692,7 @@ def plot_bias_beta_zev(
         data[params_labels_latex[ii]] = fit_val
 
         # data[params_latex[ii]] = fit_val
-        ax[ii].plot(zplot, fit_func(zplot, *fit_val), color="C0", ls="--")
+        ax[ii].plot(zfit, fit_func(zfit, *fit_val), color="C0", ls="--")
 
         for jj, key in enumerate(bao_plot):
             dumm = np.zeros(2)
@@ -655,7 +700,7 @@ def plot_bias_beta_zev(
                 dumm + bao_plot[key]["zeff"] + xdisp[jj],
                 dumm + bao_plot[key][lab]["mean"],
                 dumm + bao_plot[key][lab]["std"],
-                fmt="o",
+                fmt=".",
                 label=bao_plot[key]["label"],
                 color="C" + str(jj + 1),
             )
@@ -667,16 +712,34 @@ def plot_bias_beta_zev(
                     expo = 2.9
                 else:
                     expo = 0
-                bz = ((1 + zplot) / (1 + bao_plot[key]["zeff"])) ** expo
-                ax[ii].fill_between(zplot, b1 * bz, b2 * bz, color="C2", alpha=0.2)
+                bz = ((1 + zbao) / (1 + bao_plot[key]["zeff"])) ** expo
+                ax[ii].fill_between(zbao, b1 * bz, b2 * bz, color="C2", alpha=0.2)
 
-    ax[0].legend(fontsize=ftsize)
+    ax[0].legend(fontsize=ftsize - 2)
 
     for ii in range(len(params_labels)):
         ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
         ax[ii].set_ylabel(params_labels_latex[ii], fontsize=ftsize)
-        ax[ii].yaxis.set_major_formatter(mticker.FormatStrFormatter("% .1f"))
-    ax[-1].set_xlabel(r"$z$", fontsize=ftsize)
+
+    ii = -1
+    ypos = 0.6
+    ax[ii].fill_between(
+        bao_data["dr2"]["zhist"],
+        ypos,
+        ypos + bao_data["dr2"]["smooth_weights"] * 0.3,
+        alpha=0.5,
+        color="grey",
+    )
+    ax[ii].text(
+        bao_data["dr2"]["zhist"].min() + 0.05,
+        ypos + 0.05,
+        "BAO weights",
+        fontsize=ftsize,
+    )
+    ax[ii].set_xlabel(r"$z$", fontsize=ftsize)
+
+    # ax[0].set_ylim(ymax=0.02)
+    # ax[1].set_ylim(ymin=0.0)
 
     for key, vals in data.items():
         vals = np.round(vals, 2)
@@ -688,7 +751,105 @@ def plot_bias_beta_zev(
     plt.savefig("figs/bias_beta_BAOvsP1D.pdf")
 
 
-def plot_p3d_small_z(dict_mapping, ftsize=20, z0=3):
+def plot_bias_beta_zev_val(dict_mapping, plot_bias_eta=False, ftsize=24):
+
+    params_sim = {
+        "z": np.array([4.0, 3.6, 3.0, 2.6, 2.0]),
+        "bias_delta": {
+            "value": np.array([-0.404, -0.315, -0.209, -0.15, -0.0805]),
+            "error": np.array([0.00676, 0.00701, 0.00453, 0.00334, 0.002]),
+        },
+        "beta": {
+            "value": np.array([0.874, 1.07, 1.42, 1.61, 1.75]),
+            "error": np.array([0.0717, 0.0752, 0.0774, 0.0819, 0.0918]),
+        },
+        "q1": {
+            "value": np.array([2.55, 1.92, 1.08, 0.779, 0.562]),
+            "error": np.array([0.121, 0.239, 0.171, 0.147, 0.125]),
+        },
+        "q2": {
+            "value": np.array([-1.0, -0.684, -0.156, 0.0235, 0.16]),
+            "error": np.array([0.349, 0.33, 0.192, 0.137, 0.0835]),
+        },
+        "k_v": {
+            "value": np.array([2.67, 1.78, 1.01, 0.61, 0.152]),
+            "error": np.array([0.856, 0.516, 0.324, 0.266, 0.15]),
+        },
+        "a_v": {
+            "value": np.array([0.25, 0.353, 0.445, 0.394, 0.225]),
+            "error": np.array([0.0781, 0.093, 0.1, 0.0916, 0.068]),
+        },
+        "b_v": {
+            "value": np.array([1.65, 1.69, 1.74, 1.7, 1.54]),
+            "error": np.array([0.131, 0.126, 0.109, 0.0907, 0.0613]),
+        },
+        "k_p": {
+            "value": np.array([16.0, 18.4, 21.0, 21.3, 15.8]),
+            "error": np.array([1.9, 4.38, 6.89, 7.61, 3.63]),
+        },
+    }
+
+    if plot_bias_eta:
+        params_labels = ["bias_delta", "beta", "bias_eta"]
+    else:
+        params_labels = ["bias_delta", "beta"]
+    params_labels_latex = [
+        r"$b_\delta$",
+        r"$\beta$",
+        r"$b_\eta$",
+    ]
+
+    fig, ax = plt.subplots(len(params_labels), 1, sharex=True, figsize=(8, 8))
+
+    data = {}
+    for ii, lab in enumerate(params_labels):
+
+        param = dict_mapping["forest_out"][lab]
+        percen = np.percentile(param, [16, 84], axis=0)
+
+        ind_data = dict_mapping["zs"] >= 2.6
+
+        ax[ii].fill_between(
+            dict_mapping["zs"][ind_data],
+            percen[0][ind_data],
+            percen[1][ind_data],
+            alpha=0.3,
+            label=r"Model",
+        )
+
+        ind_sim = params_sim["z"] >= 2.6
+
+        ax[ii].errorbar(
+            params_sim["z"][ind_sim],
+            params_sim[lab]["value"][ind_sim],
+            params_sim[lab]["error"][ind_sim],
+            alpha=0.95,
+            label=r"Simulation",
+            color="C1",
+            linestyle="-",
+            lw=2,
+        )
+
+    ax[0].legend(fontsize=ftsize)
+
+    for ii in range(len(params_labels)):
+        ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
+        ax[ii].set_ylabel(params_labels_latex[ii], fontsize=ftsize)
+        ax[ii].yaxis.set_major_formatter(mticker.FormatStrFormatter("% .1f"))
+
+    ax[ii].set_xlabel(r"$z$", fontsize=ftsize)
+
+    ax[-1].set_xticks([2.5, 3.0, 3.5, 4.0])
+    ax[-1].set_xticklabels(["2.5", "3.0", "3.5", "4.0"])
+    plt.xlim(2.45, 4.05)
+
+    plt.tight_layout()
+
+    plt.savefig("figs/bias_beta_accel2.png")
+    plt.savefig("figs/bias_beta_accel2.pdf")
+
+
+def plot_p3d_small_z(dict_mapping, z0=3, ftsize=24):
 
     from scipy.optimize import curve_fit
 
@@ -706,7 +867,7 @@ def plot_p3d_small_z(dict_mapping, ftsize=20, z0=3):
         r"$k_\mathrm{p}\,[\mathrm{Mpc}^{-1}]$",
     ]
 
-    fig, ax = plt.subplots(len(params) // 2, 2, sharex=True, figsize=(10, 8))
+    fig, ax = plt.subplots(len(params) // 2, 2, sharex=True, figsize=(10, 10))
     ax = ax.flatten()
 
     data = {}
@@ -718,9 +879,9 @@ def plot_p3d_small_z(dict_mapping, ftsize=20, z0=3):
             val_par = dict_mapping["forest_out"]["kvav"] ** (
                 1 / dict_mapping["forest_out"]["av"]
             )
-        percen = np.percentile(val_par, [16, 84], axis=0)
-        ax[ii].fill_between(dict_mapping["zs"], percen[0], percen[1], alpha=0.5)
-        mean = np.mean(val_par, axis=0)
+        percen = np.nanpercentile(val_par, [16, 84], axis=0)
+        ax[ii].fill_between(dict_mapping["zs"], percen[0], percen[1], alpha=0.3)
+        mean = np.nanmean(val_par, axis=0)
         fit_val = curve_fit(fit_func, dict_mapping["zs"], mean)[0]
 
         data[params_latex[ii]] = fit_val
@@ -739,12 +900,104 @@ def plot_p3d_small_z(dict_mapping, ftsize=20, z0=3):
         row = " & ".join(f"{v:.2f}" for v in vals)
         print(f"{key} & {row} \\\\")
 
-    # ax[-1].set_xticks([2, 3, 4])
-    # ax[-1].set_xticklabels(["2", "3", "4"])
-    ax[0].set_xlim(1.9, 4.3)
+    ax[-1].set_xticks([2, 3, 4])
+    ax[-1].set_xticklabels(["2", "3", "4"])
+    # ax[0].set_xlim(1.9, 4.3)
 
     ax[-2].set_xlabel(r"$z$", fontsize=ftsize)
     ax[-1].set_xlabel(r"$z$", fontsize=ftsize)
     plt.tight_layout()
     plt.savefig("figs/Arinyo_with_z.pdf")
     plt.savefig("figs/Arinyo_with_z.png")
+
+
+def plot_p3d_validation(knew3d, munew3d, data_pip, data_sim, ftsize=24):
+
+    from matplotlib.patches import Patch
+
+    p3d = data_pip["forest_out"]["p3d"]
+    plin = data_pip["forest_out"]["plin"]
+    zz = data_pip["zs"]
+
+    p3d_accel2 = data_sim["p3d_Mpc"]
+    diff_mu = data_sim["mu3d"][0, 1] - data_sim["mu3d"][0, 0]
+
+    fig, ax = plt.subplots(3, 1, figsize=(8, 10), sharex=True)
+    ax = ax.reshape(-1)
+
+    _ = np.argwhere(knew3d[:, 0] < 4)[:, 0]
+
+    for ii in range(2, zz.shape[0] - 1):
+        print(zz[ii])
+        for jj in range(4):
+            if (ii == 2) and (jj == 0):
+                label = "Model"
+            else:
+                label = None
+
+            # average of many mu bins, same range as accel2 data
+            if jj != 3:
+                ind = np.argwhere(
+                    (munew3d[0] >= diff_mu * jj) & (munew3d[0] < diff_mu * (jj + 1))
+                )[:, 0]
+            else:
+                ind = np.argwhere(munew3d[0] >= diff_mu * jj)[:, 0]
+
+            rat = p3d[:, ii, :, ind] / plin[np.newaxis, :, ii, :]
+            no_nan = np.isfinite(rat[0, :, 0])
+
+            yytop = np.percentile(rat[:, no_nan, :], [84], axis=(0, 1))[0]
+            yybot = np.percentile(rat[:, no_nan, :], [16], axis=(0, 1))[0]
+            ax[ii - 2].fill_between(
+                knew3d[_, 0],
+                yytop[_],
+                yybot[_],
+                alpha=0.3,
+                color="C" + str(jj),
+                label=label,
+            )
+
+            if (ii == 2) and (jj == 0):
+                label = "Simulation"
+            else:
+                label = None
+
+            ind2 = np.argmin(np.abs(zz[ii] - data_sim["z"]))
+            yy = (p3d_accel2[ind2, :, jj] / np.median(plin[:, ii, :], axis=0))[_]
+            ax[ii - 2].plot(knew3d[_, 0], yy, "C" + str(jj) + "-", label=label)
+
+    ax[0].legend(fontsize=ftsize)
+
+    colors = ["tab:blue", "tab:orange", "tab:green", "tab:red"]
+    labels = [
+        r"$0.00<\mu<0.25$",
+        r"$0.25<\mu<0.50$",
+        r"$0.50<\mu<0.75$",
+        r"$0.75<\mu<1.00$",
+    ]
+    handles = [Patch(facecolor=c, label=l) for c, l in zip(colors, labels)]
+
+    for ii in range(0, 2):
+        ax[ii + 1].legend(
+            handles=handles[ii * 2 : (ii + 1) * 2],
+            loc="upper right",
+            fontsize=ftsize - 4,
+            ncol=1,
+        )
+
+    fig.supylabel("$P(k)/P_\mathrm{lin}(k)$", fontsize=ftsize + 2)
+
+    labs = [r"$z=2.6$", r"$z=3.0$", r"$z=3.6$"]
+    ylabpos = [0.2, 0.35, 0.6]
+    for ii in range(3):
+        ax[ii].text(0.04, ylabpos[ii], labs[ii], fontsize=ftsize)
+
+    for ii in range(3):
+        ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
+
+    ax[-1].set_xlabel("$k\, [1/\mathrm{Mpc}]$", fontsize=ftsize)
+
+    plt.xscale("log")
+    plt.tight_layout()
+    plt.savefig("figs/forestflow_p3d_accel2.png")
+    plt.savefig("figs/forestflow_p3d_accel2.pdf")

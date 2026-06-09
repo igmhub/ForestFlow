@@ -37,7 +37,7 @@ np.__version__
 # #### Load data
 
 # %%
-dict_mapping = load.load_map_igm_p3d()
+dict_mapping = load.load_map_igm_p3d(lab_sample="desi")
 
 # %% [markdown]
 # Table with output of P1D chain
@@ -49,7 +49,23 @@ all_plots.table_cosmo_igm(dict_mapping)
 bao_data = load.load_BAO_data()
 
 # %%
-all_plots.plot_bias_beta_zev(bao_data, dict_mapping)
+all_plots.plot_bias_beta_zev(bao_data, dict_mapping, plot_bias_eta=False)
+
+# %%
+BAO DR1 & bias_delta & -0.1318 & 0.0059 \\
+BAO DR1 & beta & 1.5429 & 0.0948 \\
+
+BAO DR2 & bias_delta & -0.1302 & 0.0048 \\
+BAO DR2 & beta & 1.5017 & 0.0659 \\
+
+bias_delta 2.33: -0.1229 & 0.0061
+beta 2.33: 1.4330 & 0.0493
+
+# %%
+61/48
+
+# %%
+659/493
 
 # %%
 all_plots.plot_p3d_small_z(dict_mapping)

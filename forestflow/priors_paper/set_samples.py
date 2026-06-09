@@ -1,9 +1,10 @@
+import os
 import numpy as np
 from getdist import MCSamples
 
 from cup1d.likelihood.pipeline import Pipeline
 from lace.cosmo import cosmology, rescale_cosmology
-from forestflow.P3D_cINN import P3DEmulator
+from cup1d.likelihood.pipeline import Args
 
 
 def set_getdist_samples(BAO, P1D):
@@ -25,10 +26,10 @@ def set_getdist_samples(BAO, P1D):
         r"b_\mathrm{HCD}",
     ]
     label_sample = {
-        "dr1": "BAO DR1 low SNR",
-        "dr2": "BAO DR2 low SNR",
-        "dr1_hsnr": "BAO DR1",
-        "dr2_hsnr": "BAO DR2",
+        "dr1": "DESI DR1 BAO (w/ low SNR)",
+        "dr2": "DESI DR2 BAO (w/ low SNR)",
+        "dr1_hsnr": "DESI DR1 BAO",
+        "dr2_hsnr": "DESI DR2 BAO",
     }
     all_samples = {}
     for key in BAO.keys():
@@ -116,7 +117,7 @@ def set_getdist_samples(BAO, P1D):
         r"n_\star",
     ]
 
-    label_sample = {"p1d": "P1D"}
+    label_sample = {"p1d": r"DESI DR1 $P_\mathrm{1D}$"}
 
     for key in ["p1d"]:
         all_samples[key] = MCSamples(
@@ -129,26 +130,9 @@ def set_getdist_samples(BAO, P1D):
     return all_samples
 
 
-def set_process_p1d_chain(nn=1000, seed=12345, store_p1d=False, zeff=2.33):
+def set_process_p1d_chain(lab_sample, nn=10000, seed=12345, store_p1d=False):
 
-    pip = Pipeline()
-    # local
-    base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1"
-    folder = os.path.join(base, "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/")
-    # nersc
-    # folder = "/global/cfs/cdirs/desi/users/jjchaves/p1d"
-
-    fname = os.path.join(folder, "chain.npy")
-    chain = np.array(np.load(fname))
-    chain = chain.reshape(-1, 53)
-
-    blobs = np.load(os.path.join(folder, "blobs.npy"), allow_pickle=True)
-    d2star = blobs["Delta2_star"].reshape(-1)
-    nstar = blobs["n_star"].reshape(-1)
-
-    zs = np.array(
-        [2.2, zeff, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0, 4.2]
-    )  # adding 2.33 for the priors
+    pip, chain, d2star, nstar, zs, zeff = set_input_process_p1d_chain(lab_sample)
 
     # get a random sample
     rng = np.random.default_rng(seed=seed)
@@ -242,9 +226,7 @@ def set_process_p1d_chain(nn=1000, seed=12345, store_p1d=False, zeff=2.33):
         pars_chain["f_sig_8"][ii] = planck_f * pars_chain["sig_8"][ii]
 
         for jj in range(zs.shape[0]):
-            linP_params = class_planck.get_linP_Mpc_params(
-                pars_chain["z"][jj], kp_Mpc=0.7
-            )
+            linP_params = class_new.get_linP_Mpc_params(pars_chain["z"][jj], kp_Mpc=0.7)
             pars_chain["Delta2_p"][ii, jj] = linP_params["Delta2_p"]
             pars_chain["n_p"][ii, jj] = linP_params["n_p"]
 
@@ -270,16 +252,90 @@ def set_process_p1d_chain(nn=1000, seed=12345, store_p1d=False, zeff=2.33):
                 pars_chain["p1d"][ii, jj, :nelem] = p1d[0][jj - 1]
                 pars_chain["p1d_nocont"][ii, jj, :nelem] = p1d_no[0][jj - 1]
 
-    np.save("int_data_figs/inter_chain.npy", pars_chain)
+    np.save("int_data_figs/" + lab_sample + "_inter_chain.npy", pars_chain)
 
     dict_save_file = {"zs": pars_chain["z"]}
     for par in pars_chain.keys():
-        if par not in ["k_kms", "p1d", "p1d_nocont", "z", "As", "ns"]:
+        # if par not in ["k_kms", "p1d", "p1d_nocont", "z", "As", "ns"]:
+        if par not in ["k_kms", "p1d", "p1d_nocont", "z"]:
             dict_save_file[par] = pars_chain[par]
 
-    np.save("int_data_figs/priors_cosmo_IGM_from_p1d.npy", dict_save_file)
+    np.save(
+        "int_data_figs/" + lab_sample + "_priors_cosmo_IGM_from_p1d.npy", dict_save_file
+    )
 
     return
+
+
+def set_input_process_p1d_chain(lab_sample, zeff=2.33):
+    if lab_sample == "desi":
+        pip = Pipeline()
+        # local
+        base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1"
+        folder = os.path.join(base, "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/")
+        # nersc
+        # folder = "/global/cfs/cdirs/desi/users/jjchaves/p1d"
+
+        zs = np.array([2.2, zeff, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0, 4.2])
+
+    elif lab_sample == "accel2":
+        ## set pipeline
+        emu = "mpg"
+        fit_type = "global_opt"
+        mcmc_conf = "test"
+        path_data = "jjchaves"
+        cov_label = "DESIY1_QMLE3"
+        data_label = "accel2"
+        name_variation = "sim_" + data_label
+
+        zmin = 2.2
+        zmax = 4.2
+
+        args = Args(
+            data_label=data_label,
+            cov_label=cov_label,
+            emulator_label="CH24_" + emu + "cen_gpr",
+            true_cosmo_label=data_label,
+            apply_smoothing=True,
+            add_noise=False,
+            seed_noise=0,
+            emu_cov_type="full",
+        )
+
+        args.set_baseline(
+            fit_type=fit_type,
+            fix_cosmo=False,
+            fid_cosmo_label=data_label,
+            P1D_type=cov_label,
+            name_variation=name_variation,
+            z_min=zmin,
+            z_max=zmax,
+            mcmc_conf=mcmc_conf,
+        )
+
+        if path_data == "jjchaves":
+            args.path_data = (
+                "/home/jchaves/Proyectos/projects/lya/data/accel2/frontier_grid"
+            )
+        elif path_data == "nersc":
+            args.path_data = "/global/cfs/cdirs/desi/users/ravouxco/accel2/shared_files/frontier_grid"
+
+        pip = Pipeline(args)
+
+        ## load chain
+        folder = "/home/jchaves/Proyectos/projects/lya/data/accel2/chains/chain_1/"
+
+        zs = np.array([2.2, zeff, 2.6, 3.0, 3.6, 4.0])
+
+    fname = os.path.join(folder, "chain.npy")
+    chain = np.array(np.load(fname))
+    chain = chain.reshape(-1, 53)
+
+    blobs = np.load(os.path.join(folder, "blobs.npy"), allow_pickle=True)
+    d2star = blobs["Delta2_star"].reshape(-1)
+    nstar = blobs["n_star"].reshape(-1)
+
+    return pip, chain, d2star, nstar, zs, zeff
 
 
 def set_cmbspa_sig8z(nsamples=200, nz=20):
@@ -343,6 +399,24 @@ def sample_cosmo_dict(base, n_samples=1, rng=None):
         samples.append(d)
 
     return samples
+
+
+def load_k_mu_accel2():
+    from cup1d.p1ds.data_accel2 import load_data
+
+    folder = "/home/jchaves/Proyectos/projects/lya/data/accel2/frontier_grid/"
+    data_accel2 = load_data(folder)
+
+    # more mu bins, then average
+    nmu = 25
+    knew3d = np.zeros((data_accel2["k3d_Mpc"].shape[0], nmu))
+    munew3d = np.zeros((data_accel2["k3d_Mpc"].shape[0], nmu))
+    mnu_uni = np.linspace(0, 1, nmu)
+    for ii in range(nmu):
+        knew3d[:, ii] = data_accel2["k3d_Mpc"][:, 0]
+        munew3d[:, ii] = mnu_uni[ii]
+
+    return knew3d, munew3d, data_accel2
 
 
 def set_desifs_sig8z(nsamples=5000):
@@ -445,20 +519,58 @@ def set_desifs_sig8z(nsamples=5000):
     return
 
 
-def set_map_igm_p3d(pars_chain, store_p1d=False):
+def set_map_igm_p3d(
+    lab_sample, pars_chain, store_p1d=False, store_p3d=False, old_emu=True
+):
 
     import forestflow
     from forestflow.model_p3d_arinyo import ArinyoModel
 
-    path_repo = forestflow.__path__[0]
+    if old_emu:
+        # old emu, better accuracy
+        from forestflow.old_emu.paper_P3D_cINN import P3DEmulator as old_P3DEmulator
+        from forestflow.archive import GadgetArchive3D
 
-    emulator = P3DEmulator(
-        model_path=path_repo + "/data/emulator_models/forest_mpg",
-    )
+        Archive3D = GadgetArchive3D()
+        emulator = old_P3DEmulator(
+            Archive3D.training_data,
+            Archive3D.emu_params,
+            nLayers_inn=12,
+            Archive=Archive3D,
+            Nrealizations=3000,
+            training_type="Arinyo_min",
+            model_path=os.path.join(
+                os.path.dirname(forestflow.__path__[0]),
+                "data",
+                "emulator_models",
+                "mpg_hypercube.pt",
+            ),
+        )
+    else:
+        # new emu, worse accuracy
+        from forestflow.P3D_cINN import P3DEmulator
 
-    if store_p1d:
-        class_planck = cosmology.Cosmology(cosmo_label="Planck18")
-        dkms_dMpc_zs = class_planck.get_dkms_dMpc(pars_chain["zs"])
+        emulator = P3DEmulator(
+            model_path=os.path.join(
+                os.path.dirname(forestflow.__path__[0]),
+                "data",
+                "emulator_models",
+                "forest_mpg",
+            )
+        )
+
+    print("Emulator loaded")
+
+    if lab_sample == "accel2":
+        knew3d, munew3d, _ = load_k_mu_accel2()
+        k_Mpc = _["k1d_Mpc"]
+    else:
+        if store_p1d | store_p3d:
+            # class_planck = cosmology.Cosmology(cosmo_label="Planck18")
+            # dkms_dMpc_zs = class_planck.get_dkms_dMpc(pars_chain["zs"])
+            raise NotImplementedError(
+                "k and mu for p1d and p3d not implemented for this sample"
+            )
 
     # initiate Arinyo model, needed to compute P1D
     fid_cosmo = {
@@ -473,6 +585,7 @@ def set_map_igm_p3d(pars_chain, store_p1d=False):
         "pivot_scalar": 0.05,
         "w": -1.0,
     }
+    fid_cosmo = cosmology.Cosmology(cosmo_params_dict=fid_cosmo)
     model_Arinyo = ArinyoModel(fid_cosmo)
 
     pars = pars_chain.keys()
@@ -480,6 +593,34 @@ def set_map_igm_p3d(pars_chain, store_p1d=False):
     out_ari = {}
     for par in emulator.Arinyo_params:
         out_ari[par] = np.zeros_like(pars_chain["mF"])
+
+    if store_p1d:
+        out_ari["p1d"] = np.zeros(
+            (
+                out_ari[par].shape[0],
+                out_ari[par].shape[1],
+                k_Mpc.shape[0],
+            )
+        )
+
+    if store_p3d:
+        out_ari["plin"] = np.zeros(
+            (
+                out_ari[par].shape[0],
+                out_ari[par].shape[1],
+                knew3d.shape[0],
+            )
+        )
+        out_ari["p3d"] = np.zeros(
+            (
+                out_ari[par].shape[0],
+                out_ari[par].shape[1],
+                knew3d.shape[0],
+                knew3d.shape[1],
+            )
+        )
+
+    print("Starting loop over samples", pars_chain["mF"].shape[0], "samples")
 
     for ii in range(pars_chain["mF"].shape[0]):
         if ii % 100 == 0:
@@ -491,9 +632,7 @@ def set_map_igm_p3d(pars_chain, store_p1d=False):
             "omch2": 0.119,
             "ombh2": 0.0224,
             "omk": 0,
-            # 'As': 2.105e-09,
             "As": pars_chain["As"][ii],
-            # 'ns': 0.9665,
             "ns": pars_chain["ns"][ii],
             "nrun": 0.0,
             "pivot_scalar": 0.05,
@@ -508,27 +647,49 @@ def set_map_igm_p3d(pars_chain, store_p1d=False):
                     continue
                 input_emu[par] = pars_chain[par][ii, jj]
 
-            par_ari = emulator.predict_Arinyos(emu_params=input_emu)
+            if old_emu:
+                arr_par_ari = emulator.predict_Arinyos(emu_params=input_emu)
+                par_ari = {}
+                for kk, par in enumerate(emulator.Arinyo_params):
+                    par_ari[par] = arr_par_ari[kk]
+            else:
+                par_ari = emulator.predict_Arinyos(emu_params=input_emu)
+
             for par in par_ari:
                 out_ari[par][ii, jj] = par_ari[par]
 
             if store_p1d:
-                _ = pars_chain["k_kms"][jj] != 0
+                # _ = pars_chain["k_kms"][jj] != 0
                 # we can use this one because we only chage the priordial power
-                k_Mpc = pars_chain["k_kms"][jj, _] * dkms_dMpc_zs[jj]
+                # k_Mpc = pars_chain["k_kms"][jj, _] * dkms_dMpc_zs[jj]
                 P1D_Mpc = model_Arinyo.P1D_Mpc(
-                    pars_chain["z"][jj],
+                    pars_chain["zs"][jj],
                     k_Mpc,
                     par_ari,
-                    cosmo_new=new_cosmo,
+                    new_cosmo_params=new_cosmo,
                 )
-                out_ari["p1d"][ii, jj, : np.sum(_)] = P1D_Mpc * dkms_dMpc_zs[jj]
+                # out_ari["p1d"][ii, jj, : np.sum(_)] = P1D_Mpc * dkms_dMpc_zs[jj]
+                out_ari["p1d"][ii, jj, :] = P1D_Mpc
+
+            if store_p3d:
+                out_ari["p3d"][ii, jj, ...] = model_Arinyo._P3D_Mpc(
+                    pars_chain["zs"][jj],
+                    knew3d,
+                    munew3d,
+                    par_ari,
+                    new_cosmo_params=new_cosmo,
+                )
+                out_ari["plin"][ii, jj, :] = model_Arinyo.linP_Mpc(
+                    pars_chain["zs"][jj],
+                    knew3d[:, 0],
+                    new_cosmo_params=new_cosmo,
+                )
 
     dict_out_all = {}
     dict_out_all["emu_params"] = pars_chain
     dict_out_all["forest_out"] = out_ari
     dict_out_all["zs"] = pars_chain["zs"]
-    np.save("int_data_figs/arinyo_from_desi_p1d.npy", dict_out_all)
+    np.save("int_data_figs/arinyo_from_" + lab_sample + "_p1d.npy", dict_out_all)
 
     dict_save_file = {
         "zs": dict_out_all["zs"],
@@ -539,6 +700,6 @@ def set_map_igm_p3d(pars_chain, store_p1d=False):
 
     folder = os.path.join(os.path.dirname(forestflow.__path__[0]), "data", "priors")
 
-    np.save(folder + "priors_arinyo_from_p1d.npy", dict_save_file)
+    np.save(folder + "_" + lab_sample + "_priors_arinyo_from_p1d.npy", dict_save_file)
 
     return

@@ -172,12 +172,30 @@ plt.ylabel(r'$P/P_{\rm lin}$')
 plt.legend(loc='upper left')
 
 # %%
-plt.plot(kpar, kpar * p1d/np.pi)
+model_Arinyo.fid_cosmo.background_params
+
+# %%
+
+# %%
+new_cosmo = {
+    "H0": 67.66,
+    "mnu": 0,
+    "omch2": 0.11933,
+    "ombh2": 0.02242,
+    "omk": 0,
+    "As": 2.105e-09 / np.sqrt(1.02),
+    "ns": 0.9665,
+    "nrun": 0.0,
+    "pivot_scalar": 0.05,
+    "w": -1.0,
+}
+p1d_2 = model_Arinyo.P1D_Mpc(z, kpar, par_ari, new_cosmo_params=new_cosmo)
+
+# %%
+plt.plot(kpar, p1d/p1d_2)
 plt.xlabel(r'$k$ [Mpc]')
 plt.ylabel(r'$P_{\rm 1D}(k)$')
 plt.xscale('log')
-
-# %%
 
 # %% [markdown]
 # ## For developers, train emulator

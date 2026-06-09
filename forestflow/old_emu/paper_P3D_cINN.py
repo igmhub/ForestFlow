@@ -1,6 +1,6 @@
 # torch modules
 import torch
-from torch.utils.data import DataLoader, dataset, TensorDataset
+from torch.utils.data import DataLoader, TensorDataset
 from torch import nn, optim
 
 # FrEIA imports
@@ -14,13 +14,12 @@ import lace
 # forestflow models
 import forestflow
 from forestflow.model_p3d_arinyo import ArinyoModel
-from forestflow.archive import GadgetArchive3D, get_camb_interp
-from forestflow.likelihood import Likelihood
+
+# from forestflow.likelihood import Likelihood
 from forestflow.utils import (
     get_covariance,
     sort_dict,
     params_numpy2dict,
-    transform_arinyo_params,
 )
 from forestflow.rebin_p3d import p3d_allkmu
 
@@ -32,10 +31,7 @@ import random
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
 import corner
-import gc
 import psutil
-from functools import lru_cache
-
 
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
@@ -60,9 +56,7 @@ def print_memory_usage(step_description):
         print(
             f"GPU memory allocated: {torch.cuda.memory_allocated() / (1024 ** 2):.2f} MB"
         )
-        print(
-            f"GPU memory cached: {torch.cuda.memory_reserved() / (1024 ** 2):.2f} MB"
-        )
+        print(f"GPU memory cached: {torch.cuda.memory_reserved() / (1024 ** 2):.2f} MB")
 
 
 class P3DEmulator:
@@ -169,9 +163,6 @@ class P3DEmulator:
             "nrun",
             "w",
         ]
-        self.folder_interp = (
-            os.path.dirname(forestflow.__path__[0]) + "/data/plin_interp/"
-        )
         self.model_path = model_path
         self.save_path = save_path
 
@@ -192,8 +183,8 @@ class P3DEmulator:
         self.k_Mpc_masked = k_Mpc[self.k_mask]
         self.mu_masked = mu[self.k_mask]
 
-        self.pk_fid = self.archive.pk_fid
-        self.pk_fid_p1d = self.archive.pk_fid_p1d
+        # self.pk_fid = self.archive.pk_fid
+        # self.pk_fid_p1d = self.archive.pk_fid_p1d
 
         self._train_Arinyo()
 
@@ -223,8 +214,7 @@ class P3DEmulator:
 
         # Convert the sorted training data to a list of lists
         training_data = [
-            list(training_data[i].values())
-            for i in range(len(self.training_data))
+            list(training_data[i].values()) for i in range(len(self.training_data))
         ]
 
         # Convert the training data to a numpy array
@@ -293,9 +283,7 @@ class P3DEmulator:
         training_label = [
             {
                 key: value
-                for key, value in self.training_data[i][
-                    self.training_type
-                ].items()
+                for key, value in self.training_data[i][self.training_type].items()
                 if key in self.Arinyo_params
             }
             for i in range(len(self.training_data))
@@ -306,8 +294,7 @@ class P3DEmulator:
 
         # Convert the sorted Arinyo parameters to a list of lists
         training_label = [
-            list(training_label[i].values())
-            for i in range(len(self.training_data))
+            list(training_label[i].values()) for i in range(len(self.training_data))
         ]
 
         # Convert the Arinyo parameters to a numpy array
@@ -377,9 +364,7 @@ class P3DEmulator:
 
             # Get Delta2p and np from cosmology
             sim_cosmo = camb_cosmo.get_cosmology(**cosmo)
-            linP_zs = fit_linP.get_linP_Mpc_zs(
-                sim_cosmo, [info_power["z"]], kp_Mpc
-            )[0]
+            linP_zs = fit_linP.get_linP_Mpc_zs(sim_cosmo, [info_power["z"]], kp_Mpc)[0]
 
             # add these to emu_params
             emu_params["Delta2_p"] = linP_zs["Delta2_p"]
@@ -482,13 +467,13 @@ class P3DEmulator:
             k_Mpc = info_power["k3d_Mpc"]
             mu = info_power["mu"]
         except:
-            msg = "info_power must contain 'k3d_Mpc', 'mu', and (if needed) 'kmu_modes'."
+            msg = (
+                "info_power must contain 'k3d_Mpc', 'mu', and (if needed) 'kmu_modes'."
+            )
             raise ValueError(msg)
 
         if (len(k_Mpc.shape) == 2) & (len(mu.shape) == 2):
-            if (k_Mpc.shape[0] != mu.shape[0]) or (
-                k_Mpc.shape[1] != mu.shape[1]
-            ):
+            if (k_Mpc.shape[0] != mu.shape[0]) or (k_Mpc.shape[1] != mu.shape[1]):
                 raise ValueError("k and mu must have the same shape.")
             else:
                 nd1 = k_Mpc.shape[0]
@@ -536,13 +521,13 @@ class P3DEmulator:
             k_Mpc = info_power["k3d_Mpc"]
             mu = info_power["mu"]
         except:
-            msg = "info_power must contain 'k3d_Mpc', 'mu', and (if needed) 'kmu_modes'."
+            msg = (
+                "info_power must contain 'k3d_Mpc', 'mu', and (if needed) 'kmu_modes'."
+            )
             raise ValueError(msg)
 
         if (len(k_Mpc.shape) == 2) & (len(mu.shape) == 2):
-            if (k_Mpc.shape[0] != mu.shape[0]) or (
-                k_Mpc.shape[1] != mu.shape[1]
-            ):
+            if (k_Mpc.shape[0] != mu.shape[0]) or (k_Mpc.shape[1] != mu.shape[1]):
                 raise ValueError("k and mu must have the same shape.")
             else:
                 nd1 = k_Mpc.shape[0]
@@ -669,9 +654,7 @@ class P3DEmulator:
         # Check if we can exit now
         if info_power is None:
             return out_dict
-        elif ("return_p3d" not in info_power) & (
-            "return_p1d" not in info_power
-        ):
+        elif ("return_p3d" not in info_power) & ("return_p1d" not in info_power):
             return out_dict
 
         # Redshift
@@ -703,13 +686,10 @@ class P3DEmulator:
                 raise ValueError("cosmo must contain:", self.cosmo_fields)
 
         # rescale cosmology to Delta2_p and n_p in orig_params if present
-        if ("Delta2_p" in orig_emu_params.keys()) | (
-            "n_p" in orig_emu_params.keys()
-        ):
+        if ("Delta2_p" in orig_emu_params.keys()) | ("n_p" in orig_emu_params.keys()):
             cosmo = self._rescale_cosmo(orig_emu_params, cosmo, info_power["z"])
 
-        pk_interp = get_camb_interp({"cosmo_params": cosmo}, "a")
-        model_Arinyo = ArinyoModel(camb_pk_interp=pk_interp)
+        model_Arinyo = ArinyoModel()
 
         if "return_p3d" in info_power:
             out_dict = self._get_p3d(info_power, out_dict, model_Arinyo)
@@ -816,9 +796,7 @@ class P3DEmulator:
             )
 
         # Learning rate scheduler
-        scheduler = torch.optim.lr_scheduler.StepLR(
-            optimizer, step_size=self.step_size
-        )
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=self.step_size)
 
         # Training loop
         self.loss_arr = []
@@ -832,9 +810,7 @@ class P3DEmulator:
 
                 # Sample from the chains if use_chains is True
                 if self.use_chains == True:
-                    idx = np.random.choice(
-                        self.chain_samp, size=2_000, replace=False
-                    )
+                    idx = np.random.choice(self.chain_samp, size=2_000, replace=False)
                     coeffs = coeffs[:, idx, :].mean(axis=1)
 
                 # Forward pass through the cINN
@@ -1030,9 +1006,7 @@ class P3DEmulator:
 
         # Generate predictions
         with torch.no_grad():
-            z_test = torch.randn(
-                Nrealizations, self.dim_inputSpace, generator=g
-            )
+            z_test = torch.randn(Nrealizations, self.dim_inputSpace, generator=g)
             # print(z_test)
             Arinyo_preds, _ = self.emulator(z_test, condition, rev=True)
 
@@ -1095,12 +1069,12 @@ class P3DEmulator:
         else:
             return Arinyo_mean
 
-    def get_p1d_sim(self, dict_sim):
-        like = Likelihood(
-            dict_sim[0], self.archive.rel_err_p3d, self.archive.rel_err_p1d
-        )
-        k1d_mask = like.like.ind_fit1d.copy()
-        p1d_sim = like.like.data["p1d"][k1d_mask]
-        p1d_k = dict_sim[0]["k_Mpc"][k1d_mask]
+    # def get_p1d_sim(self, dict_sim):
+    #     like = Likelihood(
+    #         dict_sim[0], self.archive.rel_err_p3d, self.archive.rel_err_p1d
+    #     )
+    #     k1d_mask = like.like.ind_fit1d.copy()
+    #     p1d_sim = like.like.data["p1d"][k1d_mask]
+    #     p1d_k = dict_sim[0]["k_Mpc"][k1d_mask]
 
-        return p1d_sim, p1d_k
+    #     return p1d_sim, p1d_k

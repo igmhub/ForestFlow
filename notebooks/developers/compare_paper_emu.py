@@ -1,21 +1,22 @@
 # ---
 # jupyter:
 #   jupytext:
-#     formats: ipynb,py
+#     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
-#       format_name: light
-#       format_version: '1.5'
-#       jupytext_version: 1.16.1
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.19.1
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: lace
 #     language: python
 #     name: python3
 # ---
 
+# %% [markdown]
 # # Compare paper emu
 
-# +
+# %%
 # %load_ext autoreload
 # %autoreload 2
 
@@ -26,35 +27,34 @@ import numpy as np
 
 import forestflow
 from forestflow.archive import GadgetArchive3D
-from forestflow.plots_v0 import plot_test_p3d
 from forestflow.P3D_cINN import P3DEmulator
-from forestflow.old_code.paper_P3D_cINN import P3DEmulator as old_P3DEmulator
+from forestflow.old_emu.paper_P3D_cINN import P3DEmulator as old_P3DEmulator
 
 path_program = os.path.dirname(forestflow.__path__[0]) + '/'
 path_program
-# -
 
+# %% [markdown]
 # #### Load new emu
 
+# %%
 p3d_emu = P3DEmulator(
-    model_path=path_program+"/data/emulator_models/new_emu.pt",
+    model_path=os.path.join(
+        os.path.dirname(forestflow.__path__[0]),
+        "data",
+        "emulator_models",
+        "forest_mpg",
+    )
 )
 
+# %% [markdown]
 # #### Load old emu
 
-# +
+# %%
 # %%time
-folder_lya_data = path_program + "/data/best_arinyo/"
-
-Archive3D = GadgetArchive3D(
-    base_folder=path_program[:-1],
-    folder_data=folder_lya_data,
-    force_recompute_plin=False,
-    average="both",
-)
+Archive3D = GadgetArchive3D()
 print(len(Archive3D.training_data))
-# -
 
+# %%
 old_p3d_emu = old_P3DEmulator(
     Archive3D.training_data,
     Archive3D.emu_params,
@@ -72,6 +72,26 @@ old_p3d_emu = old_P3DEmulator(
     model_path=path_program+"/data/emulator_models/mpg_hypercube.pt",
 )
 
+# %%
+old_p3d_emu = old_P3DEmulator(
+    Archive3D.training_data,
+    Archive3D.emu_params,
+    nLayers_inn=12,
+    Archive=Archive3D,
+    Nrealizations=2000,
+    training_type='Arinyo_min',
+    model_path=os.path.join(
+        os.path.dirname(forestflow.__path__[0]),
+        "data",
+        "emulator_models",
+        "mpg_hypercube.pt",
+    )
+)
+
+# %%
+old_p3d_emu.Arinyo_params
+
+# %%
 list_input_params = [
     {'Delta2_p': 0.18489945277410613,
       'n_p': -2.331713201486465,
@@ -87,6 +107,7 @@ list_input_params = [
       'kF_Mpc': 13.177851268715806},
 ]
 
+# %%
 # %%time
 coeffs_all, coeffs_mean = p3d_emu.predict_Arinyos(
     emu_params=list_input_params,
@@ -96,7 +117,7 @@ coeffs_all, coeffs_mean = p3d_emu.predict_Arinyos(
 )
 coeffs_mean
 
-# +
+# %%
 # %%time
 
 for ii in range(2):
@@ -107,6 +128,4 @@ for ii in range(2):
         seed=0
     )
     print(coeffs_mean)
-# -
-
-
+# %%

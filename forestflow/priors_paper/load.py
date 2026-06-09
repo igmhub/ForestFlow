@@ -3,12 +3,13 @@ import sys
 import numpy as np
 from getdist import loadMCSamples
 from vega import FitResults
-from forestflow.priors_paper import set_samples
+from forestflow.priors_paper.set_samples import set_process_p1d_chain, set_map_igm_p3d
+from astropy.io import fits
 
 from lace.cosmo import cosmology
 
 
-def load_BAO_data():
+def load_BAO_data(nn=10000):
 
     zeff = 2.33
     class_planck = cosmology.Cosmology(cosmo_label="Planck18_noBAO")
@@ -49,7 +50,6 @@ def load_BAO_data():
     # load high SNR, HCD prior
 
     # number of realizations to sample the covariance of the fitter
-    n = 10000
     basedir = "/home/jchaves/Proyectos/projects/lya/data/lya_bao/fits_andreu/"
     fit_file_dr1 = basedir + "fit_output_dr1_mid_prior.fits"
     fit_file_dr2 = basedir + "fit_output_mid_prior.fits"
@@ -68,7 +68,7 @@ def load_BAO_data():
         mean = np.array([params[k] for k in names])
 
         # draw samples
-        samples = np.random.multivariate_normal(mean, cov, size=n)
+        samples = np.random.multivariate_normal(mean, cov, size=nn)
 
         # dictionary of arrays (each array has length n)
         samples_dict = {name: samples[:, i] for i, name in enumerate(names)}
@@ -85,15 +85,21 @@ def load_BAO_data():
         BAO[labels[ii]]["beta"] = samples_dict["beta_LYA"]
         BAO[labels[ii]]["bias_hcd"] = samples_dict["bias_hcd"]
 
+    zhist, hist_smooth = load_bao_weights()
+    BAO["dr2"]["zhist"] = zhist
+    BAO["dr2"]["smooth_weights"] = hist_smooth
+    BAO["dr2_hsnr"]["zhist"] = zhist
+    BAO["dr2_hsnr"]["smooth_weights"] = hist_smooth
+
     return BAO
 
 
-def load_p1d_data(zeff=2.33):
+def load_p1d_data(lab_sample="desi", zeff=2.33):
 
     class_planck = cosmology.Cosmology(cosmo_label="Planck18")
     planck_f = class_planck.get_growth_rate(zeff)
 
-    dict_out_all = load_map_igm_p3d()
+    dict_out_all = load_map_igm_p3d(lab_sample=lab_sample, zeff=zeff)
     dict_out_all["forest_out"]["bias"] = -np.abs(dict_out_all["forest_out"]["bias"])
 
     P1D = {}
@@ -126,29 +132,42 @@ def load_p1d_data(zeff=2.33):
     return P1D
 
 
-def load_p1d_chain_for_forestflow():
+def load_p1d_chain_for_forestflow(lab_sample="desi"):
     try:
         data = np.load(
-            "int_data_figs/priors_cosmo_IGM_from_p1d.npy", allow_pickle=True
+            "int_data_figs/" + lab_sample + "_priors_cosmo_IGM_from_p1d.npy",
+            allow_pickle=True,
         ).item()
     except:
-        set_samples.set_process_p1d_chain()
+        set_process_p1d_chain(lab_sample=lab_sample)
         data = np.load(
-            "int_data_figs/priors_cosmo_IGM_from_p1d.npy", allow_pickle=True
+            "int_data_figs/" + lab_sample + "_priors_cosmo_IGM_from_p1d.npy",
+            allow_pickle=True,
         ).item()
     return data
 
 
-def load_map_igm_p3d(zeff=2.33):
+def load_map_igm_p3d(lab_sample, zeff=2.33):
     try:
         data = np.load(
-            "int_data_figs/arinyo_from_desi_p1d.npy", allow_pickle=True
+            "int_data_figs/arinyo_from_" + lab_sample + "_p1d.npy", allow_pickle=True
         ).item()
     except:
-        pars_data = load_p1d_chain_for_forestflow()
-        set_samples.set_map_igm_p3d(pars_chain)
+        pars_chain = load_p1d_chain_for_forestflow(lab_sample=lab_sample)
+        if lab_sample == "desi":
+            store_p3d = False
+            store_p1d = False
+        else:
+            store_p3d = True
+            store_p1d = True
+        set_map_igm_p3d(
+            lab_sample=lab_sample,
+            pars_chain=pars_chain,
+            store_p3d=store_p3d,
+            store_p1d=store_p1d,
+        )
         data = np.load(
-            "int_data_figs/arinyo_from_desi_p1d.npy", allow_pickle=True
+            "int_data_figs/arinyo_from_" + lab_sample + "_p1d.npy", allow_pickle=True
         ).item()
 
     class_planck = cosmology.Cosmology(cosmo_label="Planck18")
@@ -160,3 +179,26 @@ def load_map_igm_p3d(zeff=2.33):
     )
 
     return data
+
+
+def load_bao_weights():
+
+    from scipy.signal import savgol_filter
+
+    folder = "/home/jchaves/Proyectos/projects/lya/data/lya_bao/dr2/"
+    # Open the compressed FITS file
+    filename = folder + "delta_attributes.fits.gz"
+
+    hdul = fits.open(filename)
+
+    # Compute z
+    zhist = 10 ** (hdul[1].data["LOGLAM"]) / 1215.67 - 1
+
+    # Normalize histogram/weights
+    weights = hdul[1].data["WEIGHT"] ** 2
+    hist = weights / np.max(weights)
+
+    # Smooth the curve
+    hist_smooth = savgol_filter(hist, window_length=101, polyorder=3)
+
+    return zhist, hist_smooth

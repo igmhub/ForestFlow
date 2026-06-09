@@ -64,25 +64,21 @@ np.__version__
 #
 # biaseta * f(z) * sig8(z) = beta * biasdelta * sig8(z)
 
-# %% [markdown]
-# ### Setup fiducial cosmology
-
 # %%
-zeff = 2.33
-class_planck = cosmology.Cosmology(cosmo_label="Planck18_noBAO")
-planck_sig8 = class_planck.get_sigma8(zeff)
-planck_sig8_z0 = class_planck.get_sigma8(0)
-planck_f = class_planck.get_growth_rate(zeff)
-planck_fsig8 = planck_f * planck_sig8
-print(planck_sig8_z0, planck_sig8, planck_fsig8)
+# zeff = 2.33
+# class_planck = cosmology.Cosmology(cosmo_label="Planck18_noBAO")
+# planck_sig8 = class_planck.get_sigma8(zeff)
+# planck_sig8_z0 = class_planck.get_sigma8(0)
+# planck_f = class_planck.get_growth_rate(zeff)
+# planck_fsig8 = planck_f * planck_sig8
+# print(planck_sig8_z0, planck_sig8, planck_fsig8)
 
 # %% [markdown]
 # ### Read chains from the DESI DR2 Lya BAO analysis
 
 # %%
-BAO = load.load_BAO_data(planck_sig8, planck_f)
-
-P1D = load.load_p1d_data(planck_f)
+BAO = load.load_BAO_data()
+P1D = load.load_p1d_data()
 
 # %%
 print("P1D", "dr1_hsnr", "dr2_hsnr")
@@ -124,7 +120,7 @@ label_sample = {
     "dr1": "P1D + BAO DR1 low SNR",
     "dr2": "P1D + BAO DR2 low SNR",
     "dr1_hsnr": "P1D + BAO DR1",
-    "dr2_hsnr": "P1D + BAO DR2",
+    "dr2_hsnr": r"DESI $P_\mathrm{1D}$ + BAO",
 }
 
 
@@ -156,7 +152,20 @@ all_plots.plot_bao_biases(samples)
 samples.keys()
 
 # %%
+for p in samples["p1d_dr2"].getParamNames().names:
+    print(p.name, " -> ", p.label)
+
+# %%
+all_plots.plot_comb_bd_be_beta(samples)
+
+# %%
+
+# %%
 all_plots.plot_comb_bdsig8_befsig8(samples)
+
+# %%
+
+# %%
 
 # %%
 all_plots.plot_sig8(samples)
