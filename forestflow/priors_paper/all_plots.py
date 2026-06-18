@@ -68,19 +68,17 @@ def plot_bao_biases(samples, ftsize=22):
     g.settings.legend_fontsize = ftsize
     g.settings.num_plot_contours = 2  # 68%, 95%
 
-    samples["dr1"].label = "DR1 BAO (original)"
-    samples["dr2"].label = "DR2 BAO (original)"
-    samples["dr1_hsnr"].label = "DR1 BAO (reanalysis)"
-    samples["dr2_hsnr"].label = "DR2 BAO (reanalysis)"
+    samples["dr1"].label = "DR1 BAO, baseline"
+    samples["dr2"].label = "DR2 BAO, baseline"
+    samples["dr1_hsnr"].label = "DR1 BAO, reanalysis"
+    samples["dr2_hsnr"].label = "DR2 BAO, reanalysis"
 
     for lab in ["dr1", "dr2", "dr1_hsnr", "dr2_hsnr"]:
         samples[lab].paramNames.parWithName(
             "bias_delta"
         ).label = "b_\\delta \sigma_8/ \sigma^\mathrm{fid}_8"
 
-        samples[lab].paramNames.parWithName(
-            "beta"
-        ).label = "\\beta \sigma_8/ \sigma^\mathrm{fid}_8"
+        samples[lab].paramNames.parWithName("beta").label = "\\beta"
 
         samples[lab].paramNames.parWithName(
             "bias_hcd"
@@ -656,7 +654,7 @@ def plot_bias_beta_zev(bao_data, dict_mapping, plot_bias_eta=False, z0=3, ftsize
         params_labels = ["bias_delta", "beta"]
     params_labels_latex = [
         r"$b_\delta$, $b_\delta \sigma_8/\sigma_8^\mathrm{fid}$",
-        r"$\beta$, $\beta \sigma_8/\sigma_8^\mathrm{fid}$",
+        r"$\beta$",
         r"$b_\eta$",
     ]
 
