@@ -35,7 +35,9 @@ from forestflow.P3D_cINN import P3DEmulator
 
 # %%
 emulator = P3DEmulator(
-    model_path=os.path.join(os.path.dirname(forestflow.__path__[0]), "data", "emulator_models", "forest_mpg")
+    model_path=os.path.join(
+        os.path.dirname(forestflow.__path__[0]), "data", "emulator_models", "forest_mpg"
+    )
 )
 
 # %% [markdown]

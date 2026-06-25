@@ -22,7 +22,7 @@ class ArinyoModel(object):
         self,
         fid_cosmo=None,
         default_bias=-0.18,
-        default_beta=1.3,
+        default_bias_eta=-0.23,
         default_q1=0.4,
         default_q2=0.0,
         default_kvav=0.58,
@@ -36,7 +36,7 @@ class ArinyoModel(object):
         Parameters:
             fid_cosmo (Cosmology, optional): object defining the fiducial cosmology.
             default_bias (float, optional): Linear bias. Defaults to -0.18.
-            default_beta (float, optional): Linear RSD. Defaults to 1.3.
+            default_bias_eta (float, optional): Linear bias. Defaults to -0.23.
             default_q1 (float, optional): Nonlinear growth. Defaults to 0.4.
             default_q2 (float, optional): Nonlinear growth. Defaults to 0.0.
             default_kvav (float, optional): Nonlinear RSD. Defaults to 0.58.
@@ -53,7 +53,7 @@ class ArinyoModel(object):
         # store bias parameters
         self.default_params = {
             "bias": default_bias,
-            "beta": default_beta,
+            "bias_eta": default_bias_eta,
             "q1": default_q1,
             "q2": default_q2,
             "kvav": default_kvav,
@@ -61,7 +61,6 @@ class ArinyoModel(object):
             "bv": default_bv,
             "kp": default_kp,
         }
-
 
     def linP_Mpc(self, z, k_Mpc, new_cosmo_params=None):
         """
@@ -78,13 +77,16 @@ class ArinyoModel(object):
 
         if self.fid_cosmo.same_background(cosmo_params=new_cosmo_params):
             # get cosmology model using fiducial cosmo and input params
-            cosmo = rescale_cosmology.RescaledCosmology(self.fid_cosmo, new_cosmo_params)
+            cosmo = rescale_cosmology.RescaledCosmology(
+                self.fid_cosmo, new_cosmo_params
+            )
         else:
-            print('WARNING: computing CAMB again')
+            print("WARNING: computing CAMB again")
             cosmo = cosmology.Cosmology(cosmo_params_dict=new_cosmo_params)
 
-        return cosmo.get_linP_Mpc(z, k_Mpc)
+        self.fz = cosmo.compute_growth_rate(z)
 
+        return cosmo.get_linP_Mpc(z, k_Mpc)
 
     @coordinates("kpar_kperp")
     def P3D_Mpc_kpar_kperp(self, z, kpar, kperp, ari_pp, new_cosmo_params=None):
@@ -153,10 +155,11 @@ class ArinyoModel(object):
                 ari_pp[par] = self.default_params[par]
 
         # Evaluate the linear power spectrum at the given (z, k)
+        # self.fz is recomputed
         linP = self.linP_Mpc(z, k, new_cosmo_params=new_cosmo_params)
 
         # Model the large-scale biasing for the flux field
-        lowk_bias = ari_pp["bias"] * (1 + ari_pp["beta"] * mu**2)
+        lowk_bias = ari_pp["bias"] + ari_pp["bias_eta"] * self.fz * mu**2
 
         # Model the small-scale correction (D_NL in Arinyo-i-Prats 2015)
         delta2 = (1 / (2 * np.pi**2)) * k**3 * linP
@@ -183,7 +186,9 @@ class ArinyoModel(object):
             array-like: Computed values of the one-dimensional power spectrum (P1D) for the given `k_par` values.
         """
 
-        p1d = compute_P1D(z, k_par, self.P3D_Mpc_k_mu, ari_pp, new_cosmo_params=new_cosmo_params)
+        p1d = compute_P1D(
+            z, k_par, self.P3D_Mpc_k_mu, ari_pp, new_cosmo_params=new_cosmo_params
+        )
 
         return p1d
 

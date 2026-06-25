@@ -48,14 +48,18 @@ class P3DEmulator:
         training_data=None,
         emu_input_names=None,
         train=False,
+        drop_sim=None,
         save_path=None,
         model_path=None,
-        nLayers_inn=12,
-        nepochs=300,
-        batch_size=100,
-        lr=0.001,
-        weight_decay=0,
-        step_size=200,
+        nLayers_inn=5,
+        dims_int=16,
+        nepochs=1000,
+        batch_size=16,
+        lr=5e-4,
+        step_size=200,  # not used
+        gamma=0.7,  # not used
+        weight_decay=1e-4,
+        use_val_set=False,
         adamw=True,
         use_chains=False,
         Nrealizations=3000,
@@ -72,10 +76,11 @@ class P3DEmulator:
 
         # Initialize class attributes with provided arguments
         self.Nrealizations = Nrealizations
+        self.emu_input_names = emu_input_names
 
         self.Arinyo_params = [
             "bias",
-            "beta",
+            "bias_eta",
             "q1",
             "kvav",
             "av",
@@ -108,19 +113,25 @@ class P3DEmulator:
                 step_size=step_size,
                 use_chains=use_chains,
                 train_seed=32,
+                gamma=gamma,
+                dims_int=dims_int,
+                drop_sim=drop_sim,
                 weight_decay=weight_decay,
                 nLayers_inn=nLayers_inn,
                 batch_size=batch_size,
                 dim_inputSpace=dim_inputSpace,
                 training_type=training_type,
                 save_path=save_path,
+                use_val_set=use_val_set,
             )
         elif model_path is not None:
             self._load_emu(model_path=model_path)
         else:
             raise ValueError("Either train or model_path must be provided.")
 
-    def _get_training_data(self, training_data, emu_input_names, training_type):
+    def _get_training_data(
+        self, training_data, emu_input_names, training_type, drop_sim=None
+    ):
         """
         Retrieve and preprocess training data for the emulator.
 
@@ -132,7 +143,10 @@ class P3DEmulator:
         # Extract relevant parameters from the training data
         input_emu = np.zeros((len(training_data), len(emu_input_names)))
         output_emu = np.zeros((len(training_data), len(self.Arinyo_params)))
+        keep = np.ones(len(training_data), dtype=bool)
         for ii in range(len(training_data)):
+            if (drop_sim is not None) and (training_data[ii]["sim_label"] == drop_sim):
+                keep[ii] = 0
             for jj, par in enumerate(emu_input_names):
                 input_emu[ii, jj] = training_data[ii][par]
             for jj, par in enumerate(self.Arinyo_params):
@@ -145,6 +159,10 @@ class P3DEmulator:
         self.output_param_lims_max = output_emu.max(axis=0)
         self.output_param_lims_min = output_emu.min(axis=0)
 
+        # drop simulation if needed (note that we computed the limits with all sims)
+        input_emu = input_emu[keep, :]
+        output_emu = output_emu[keep, :]
+
         for ipar in [0]:
             input_emu[:, ipar] = np.log(input_emu[:, ipar])
 
@@ -153,7 +171,7 @@ class P3DEmulator:
             self.input_param_lims_max - self.input_param_lims_min
         )
 
-        for ipar in [0, 2, 3, 7]:
+        for ipar in [2, 3, 6, 7]:
             output_emu[:, ipar] = np.log(output_emu[:, ipar])
 
         # some special transformations applied to the output data
@@ -167,30 +185,7 @@ class P3DEmulator:
 
         return input_emu, output_emu
 
-    # def _rescale_cosmo(self, target_params, cosmo, z, kp_Mpc=0.7, ks_Mpc=0.05):
-    #     sim_cosmo = camb_cosmo.get_cosmology(**cosmo)
-    #     linP_zs = fit_linP.get_linP_Mpc_zs(sim_cosmo, [z], kp_Mpc)[0]
-
-    #     fid_Ap = linP_zs["Delta2_p"]
-    #     ratio_Ap = target_params["Delta2_p"] / fid_Ap
-
-    #     fid_np = linP_zs["n_p"]
-    #     delta_np = target_params["n_p"] - fid_np
-
-    #     # logarithm of ratio of pivot points
-    #     ln_kp_ks = np.log(kp_Mpc / ks_Mpc)
-
-    #     # compute scalings
-    #     delta_ns = delta_np
-    #     ln_ratio_As = np.log(ratio_Ap) - delta_np * ln_kp_ks
-
-    #     rescaled_cosmo = cosmo.copy()
-    #     rescaled_cosmo["As"] = np.exp(ln_ratio_As) * cosmo["As"]
-    #     rescaled_cosmo["ns"] = delta_ns + cosmo["ns"]
-
-    #     return rescaled_cosmo
-
-    def _define_cINN_Arinyo(self, nLayers_inn, batch_size, dim_inputSpace):
+    def _define_cINN_Arinyo(self, nLayers_inn, batch_size, dim_inputSpace, dims_int=16):
         """
         Define a conditional invertible neural network (cINN) for Arinyo model.
 
@@ -206,13 +201,13 @@ class P3DEmulator:
 
         def subnet_fc(dims_in, dims_out):
             return torch.nn.Sequential(
-                torch.nn.Linear(dims_in, 64),
+                torch.nn.Linear(dims_in, dims_int),
                 torch.nn.ReLU(),
                 torch.nn.Dropout(0),
-                torch.nn.Linear(64, 128),
+                torch.nn.Linear(dims_int, dims_int * 2),
                 torch.nn.ReLU(),
                 torch.nn.Dropout(0),
-                torch.nn.Linear(128, dims_out),
+                torch.nn.Linear(dims_int * 2, dims_out),
             )
 
         self.nLayers_inn = nLayers_inn
@@ -239,9 +234,7 @@ class P3DEmulator:
         """
 
         # load metadata
-        metadata = np.load(
-            model_path + "_metadata.npy", allow_pickle=True
-        ).item()
+        metadata = np.load(model_path + "_metadata.npy", allow_pickle=True).item()
 
         self.training_type = metadata["training_type"]
         self.input_param_lims_min = metadata["input_param_lims_min"]
@@ -265,18 +258,22 @@ class P3DEmulator:
         training_data,
         emu_input_names,
         adamw=True,
-        lr=1e-3,
-        nepochs=300,
+        lr=5e-4,
+        nepochs=1000,
         step_size=200,
         use_chains=False,
         chain_samp=100_000,
-        weight_decay=0,
+        weight_decay=1e-4,
         dim_inputSpace=8,
-        nLayers_inn=12,
-        batch_size=100,
+        nLayers_inn=5,
+        dims_int=16,
+        batch_size=16,
         training_type="Arinyo_min",
         save_path=None,
         train_seed=32,
+        gamma=0.7,
+        drop_sim=None,
+        use_val_set=False,
     ):
         """
         Train the Arinyo model emulator using conditional invertible neural network (cINN).
@@ -295,10 +292,13 @@ class P3DEmulator:
 
         # Get the training data and define the cINN model
         emu_input, emu_output = self._get_training_data(
-            training_data, emu_input_names, training_type
+            training_data,
+            emu_input_names,
+            training_type,
+            drop_sim=drop_sim,
         )
         self.emulator = self._define_cINN_Arinyo(
-            nLayers_inn, batch_size, dim_inputSpace
+            nLayers_inn, batch_size, dim_inputSpace, dims_int=dims_int
         )
 
         # store metadata
@@ -313,7 +313,7 @@ class P3DEmulator:
             "training_type": training_type,
             "lr": lr,
             "nepochs": nepochs,
-            "step_size": step_size,
+            # "step_size": step_size,
             "use_chains": use_chains,
             "chain_samp": chain_samp,
             "weight_decay": weight_decay,
@@ -329,12 +329,35 @@ class P3DEmulator:
 
         # Create a PyTorch dataset and loader for training
         trainig_dataset = TensorDataset(emu_input, emu_output)
-        loader = DataLoader(
-            trainig_dataset,
-            batch_size=batch_size,
-            shuffle=True,
-            drop_last=True,
-        )
+
+        if use_val_set:
+            n_val = int(0.2 * len(trainig_dataset))
+            n_train = len(trainig_dataset) - n_val
+
+            train_dataset, val_dataset = torch.utils.data.random_split(
+                trainig_dataset, [n_train, n_val]
+            )
+
+            loader = DataLoader(
+                train_dataset,
+                batch_size=batch_size,
+                shuffle=True,
+                drop_last=True,
+            )
+
+            val_loader = DataLoader(
+                val_dataset,
+                batch_size=batch_size,
+                shuffle=False,
+                drop_last=True,
+            )
+        else:
+            loader = DataLoader(
+                trainig_dataset,
+                batch_size=batch_size,
+                shuffle=True,
+                drop_last=True,
+            )
 
         # Choose the optimizer (Adam or AdamW)
         if adamw:
@@ -350,17 +373,29 @@ class P3DEmulator:
                 weight_decay=weight_decay,
             )
 
+        # early stopping
+        best_val = np.inf
+        patience = 50
+        counter = 0
+
         # Learning rate scheduler
-        scheduler = torch.optim.lr_scheduler.StepLR(
-            optimizer, step_size=step_size, gamma=0.7
+        # scheduler = torch.optim.lr_scheduler.StepLR(
+        #     optimizer, step_size=step_size, gamma=gamma
+        # )
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            mode="min",
+            factor=0.5,
+            patience=25,
+            threshold=5e-5,
+            verbose=True,
         )
 
         # Training loop
         self.loss_arr = []
+        self.val_loss_arr = []
         t0 = time.time()
         for i in range(nepochs):
-            if i % 25 == 0:
-                print(f"Epoch {i}/{nepochs}")
             _loss_arr = []
             _latent_space = []
 
@@ -369,9 +404,7 @@ class P3DEmulator:
 
                 # Sample from the chains if use_chains is True
                 if use_chains:
-                    idx = np.random.choice(
-                        chain_samp, size=2_000, replace=False
-                    )
+                    idx = np.random.choice(chain_samp, size=2_000, replace=False)
                     coeffs = coeffs[:, idx, :].mean(axis=1)
 
                 # Forward pass through the cINN
@@ -388,12 +421,41 @@ class P3DEmulator:
                 _loss_arr.append(loss.item())
                 _latent_space.append(z)
 
-            scheduler.step()
-            self.loss_arr.append(np.mean(_loss_arr))
+            train_loss = np.mean(_loss_arr)
+            self.loss_arr.append(train_loss)
+
+            if use_val_set:
+                val_loss = compute_val_loss(self.emulator, val_loader)
+                self.val_loss_arr.append(val_loss)
+
+                scheduler.step(val_loss)
+
+                if val_loss < best_val - 1e-6:
+                    best_val = val_loss
+                    counter = 0
+                    self._latent_space = _latent_space
+                else:
+                    counter += 1
+
+                if counter > patience:
+                    print(f"Early stopping {np.round(best_val, 2)}")
+                    break
+            else:
+                scheduler.step(train_loss)
 
             # Store latent space for the last epoch
             if i == (nepochs - 1):
                 self._latent_space = _latent_space
+
+            if i % 25 == 0:
+                if use_val_set:
+                    string2 = f", val loss {np.round(self.val_loss_arr[-1],2)}, best {np.round(best_val,2)}"
+                else:
+                    string2 = ""
+                print(
+                    f"Epoch {i}/{nepochs}, train loss {np.round(self.loss_arr[-1],2)}"
+                    + string2
+                )
 
         print(f"Emulator optimized in {time.time() - t0} seconds")
 
@@ -481,15 +543,15 @@ class P3DEmulator:
             z_test = torch.randn(
                 neval * Nrealizations, self.dim_inputSpace, generator=g
             )
+
             Arinyo_preds, _ = self.emulator(z_test, condition, rev=True)
 
             # Transform the predictions back to the original space
             Arinyo_preds = (
-                Arinyo_preds
-                * (self.output_param_lims_max - self.output_param_lims_min)
+                Arinyo_preds * (self.output_param_lims_max - self.output_param_lims_min)
                 + self.output_param_lims_min
             )
-            for ipar in [0, 2, 3, 7]:
+            for ipar in [2, 3, 6, 7]:
                 Arinyo_preds[:, ipar] = torch.exp(Arinyo_preds[:, ipar])
 
         # Reshape the predictions and calculate the mean
@@ -519,3 +581,23 @@ class P3DEmulator:
             return all_realizations, Arinyo_mean
         else:
             return Arinyo_mean
+
+
+def compute_val_loss(model, loader):
+    model.eval()
+    total_loss = 0.0
+    n_batches = 0
+
+    with torch.no_grad():
+        for cond, coeffs in loader:
+
+            z, log_jac_det = model(coeffs, cond)
+
+            loss = 0.5 * torch.sum(z**2, 1) - log_jac_det
+            loss = loss.mean()
+
+            total_loss += loss.item()
+            n_batches += 1
+
+    model.train()
+    return total_loss / n_batches
