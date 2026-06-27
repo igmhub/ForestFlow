@@ -130,6 +130,44 @@ class ArinyoModel(object):
         """
         return self._P3D_Mpc(z, k, mu, ari_pp, new_cosmo_params=new_cosmo_params)
 
+    @coordinates("kpar_kperp")
+    def P3D_Mpc_kpar_kperp_Gaussian_noise(
+        self, z, kpar, kperp, ari_pp, seed=0, Lbox_Mpc=100, new_cosmo_params=None
+    ):
+        """
+        Compute the 3D flux power spectrum for inputs given as k (magnitude) and mu (cosine of angle).
+
+        Parameters:
+            z (float): Redshift (scalar). It modifies the linear power spectrum but not the value of the Arinyo parameters
+            k (float or array-like): Magnitude of the wavevector (Mpc^-1).
+            mu (float or array-like): Cosine of the angle between the wavevector and the line-of-sight
+                (mu = k_parallel / k).
+            ari_pp (dict): Arinyo model parameters (missing keys will use defaults).
+            new_cosmo_params (dict, optional): Optional cosmology override passed through to `P3D_Mpc`.
+
+        Returns:
+            float or array-like: 3D flux power spectrum in units of Mpc^3 with the same shape as the inputs.
+            The returned value is the same object produced by `P3D_Mpc` but with the attribute
+            `coordinates` set to `'k_mu'`.
+        """
+
+        # Evaluate P3D
+        P3D = self.P3D_Mpc_kpar_kperp(
+            z, kpar, kperp, ari_pp, new_cosmo_params=new_cosmo_params
+        )
+        _P3D = P3D.reshape(-1)
+
+        vol = Lbox_Mpc**3
+        sigma = compute_Gaussian_cov(kpar, kperp, _P3D, vol)
+
+        # realization
+        rng = np.random.default_rng(seed)
+        P3D_err = _P3D + rng.normal(scale=sigma)
+
+        P3D_err = P3D_err.reshape(kpar.shape[0], kpar.shape[1])
+
+        return P3D_err
+
     def _P3D_Mpc(self, z, k, mu, ari_pp, new_cosmo_params=None):
         """
         Compute the model for the 3D flux power spectrum in units of Mpc^3.
@@ -192,6 +230,34 @@ class ArinyoModel(object):
 
         return p1d
 
+    def P1D_Mpc_Gaussian_noise(
+        self, z, k_par, ari_pp, seed=0, Lbox_Mpc=100, new_cosmo_params=None
+    ):
+        """
+        Compute the one-dimensional power spectrum (P1D) for the specified values of parallel wavenumber (k_par).
+
+        Parameters:
+            z (float): Redshift at which to compute the P1D. It modifies the linear power spectrum but not the value of the Arinyo parameters
+            k_par (array-like): Array or list of values for the parallel wavenumber (k_par) for which the P1D should be computed.
+            ari_pp (dict, optional): Additional parameters for the model. Defaults to an empty dictionary `{}`.
+            new_cosmo_params (dict, optional): New cosmology parameters. Defaults to `None`, which means the existing cosmology will be used.
+
+        Returns:
+            array-like: Computed values of the one-dimensional power spectrum (P1D) for the given `k_par` values.
+        """
+
+        p1d = compute_P1D(
+            z,
+            k_par,
+            self.P3D_Mpc_kpar_kperp_Gaussian_noise,
+            ari_pp,
+            new_cosmo_params=new_cosmo_params,
+            seed=seed,
+            Lbox_Mpc=Lbox_Mpc,
+        )
+
+        return p1d
+
     def Px_Mpc(self, z, kpar_iMpc, rperp_Mpc, ari_pp, new_cosmo_params=None):
         """
         Compute P-cross for the P3D model.
@@ -217,3 +283,19 @@ class ArinyoModel(object):
             new_cosmo_params=new_cosmo_params,
         )
         return Px_Mpc
+
+
+def compute_Gaussian_cov(kpar, kperp, P3D, vol):
+
+    # linear
+    dkpar = kpar[1, 0] - kpar[0, 0]
+
+    # logarithmic
+    dkperp = kperp[0, 1:] - kperp[0, :-1]
+    dkperp = np.append(dkperp, dkperp[-1] ** 2 / dkperp[-2])
+
+    # get Gaussian covariance
+    Nmodes = (vol / (2 * np.pi) ** 2) * kperp * dkperp[np.newaxis, :] * dkpar
+    sigma = np.sqrt(2.0 * P3D**2 / Nmodes.reshape(-1))
+
+    return sigma

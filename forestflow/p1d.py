@@ -11,6 +11,7 @@ def P1D_Mpc(
     k_perp_min=0.001,
     k_perp_max=100,
     n_k_perp=99,
+    **kwargs,
 ):
     """
     Returns P1D for specified values of k_par, with the option to specify values of k_perp to be integrated over.
@@ -33,13 +34,21 @@ def P1D_Mpc(
     ln_k_perp = np.linspace(np.log(k_perp_min), np.log(k_perp_max), n_k_perp)
 
     p1d = _P1D_lnkperp_fast(
-        z, ln_k_perp, k_par, p3d_fun, p3d_params, new_cosmo_params=new_cosmo_params
+        z,
+        ln_k_perp,
+        k_par,
+        p3d_fun,
+        p3d_params,
+        new_cosmo_params=new_cosmo_params,
+        **kwargs,
     )
 
     return p1d
 
 
-def _P1D_lnkperp_fast(z, ln_k_perp, kpars, p3d_fun, p3d_params={}, new_cosmo_params=None):
+def _P1D_lnkperp_fast(
+    z, ln_k_perp, kpars, p3d_fun, p3d_params={}, new_cosmo_params=None, **kwargs
+):
     """
     Compute P1D by integrating P3D in terms of ln(k_perp) using a fast method.
 
@@ -70,11 +79,19 @@ def _P1D_lnkperp_fast(z, ln_k_perp, kpars, p3d_fun, p3d_params={}, new_cosmo_par
     mu = mu.swapaxes(0, 1)
 
     if p3d_fun.coordinates == "k_mu":
-        p3d_fix_k_par = p3d_fun(z, k, mu, p3d_params, new_cosmo_params=new_cosmo_params) * fact
+        p3d_fix_k_par = (
+            p3d_fun(z, k, mu, p3d_params, new_cosmo_params=new_cosmo_params, **kwargs)
+            * fact
+        )
     elif p3d_fun.coordinates == "kpar_kperp":
         kpar = k * mu
         kperp = k * np.sqrt(1 - mu**2)
-        p3d_fix_k_par = p3d_fun(z, kpar, kperp, p3d_params, new_cosmo_params=new_cosmo_params) * fact
+        p3d_fix_k_par = (
+            p3d_fun(
+                z, kpar, kperp, p3d_params, new_cosmo_params=new_cosmo_params, **kwargs
+            )
+            * fact
+        )
     else:
         raise ValueError(
             "p3d_fun must have coordinates attribute set to 'k_mu' or 'kpar_kperp'"
@@ -118,7 +135,9 @@ def _P1D_lnkperp_fast_smooth(
 
     fact = (1 / (2 * np.pi)) * k_perp[:, np.newaxis] ** 2
     fact = fact.swapaxes(0, 1)
-    p3d_fix_k_par = p3d_fun(z, k, mu, p3d_params, new_cosmo_params=new_cosmo_params) * fact
+    p3d_fix_k_par = (
+        p3d_fun(z, k, mu, p3d_params, new_cosmo_params=new_cosmo_params) * fact
+    )
 
     # perform numerical integration
     kernel = np.sinc(k3d_smooth * np.exp(ln_k_perp))

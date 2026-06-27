@@ -53,6 +53,94 @@ from forestflow.archive import GadgetArchive3D
 Archive3D = GadgetArchive3D(addcentral=True)
 
 # %%
+Compute covariance from random realizations
+
+# %%
+# load data of the simulation we removed
+sim_label = "mpg_central"
+ztar = 3
+testing_data = []
+ii = 0
+for sim in Archive3D.training_data:
+    if sim["sim_label"] == sim_label:
+        testing_data.append(sim)
+
+        if sim["z"] == ztar:
+            ind_z3 = ii
+
+        ii += 1
+
+# set Arinyo for fiducial cosmo
+sim = testing_data[ind_z3]
+cosmo_params_dict = {}
+for par in sim["cosmo_params"]:
+    if par != "omk":
+        cosmo_params_dict[par] = sim["cosmo_params"][par]
+    else:
+        cosmo_params_dict[par] = 0.0
+
+n3d = 50
+n1d = 100
+
+# mu3d
+ari_mu = np.zeros((n3d, 2))
+ari_mu[:, 1] = 1
+ari_mu = ari_mu.T.reshape(-1)
+
+# k3d
+_ari_k3d_Mpc = np.geomspace(k3d_Mpc.min(), k3d_Mpc.max(), n3d)
+ari_k3d_Mpc = np.zeros((n3d, 2))
+ari_k3d_Mpc[:, 0] = _ari_k3d_Mpc
+ari_k3d_Mpc[:, 1] = _ari_k3d_Mpc
+ari_k3d_Mpc = ari_k3d_Mpc.T.reshape(-1)
+
+
+# k1d
+ari_k1d_Mpc = np.linspace(k1d_Mpc.min(), k1d_Mpc.max(), n1d)
+
+fid_cosmo = cosmology.Cosmology(cosmo_params_dict=cosmo_params_dict)
+model_Arinyo = ArinyoModel(fid_cosmo)
+
+p3d_central_z3 = model_Arinyo.P3D_Mpc_k_mu(
+    sim["z"], ari_k3d_Mpc, ari_mu, sim["Arinyo_min"]
+)
+
+plin_central_z3 = model_Arinyo.linP_Mpc(sim["z"], ari_k3d_Mpc[:n3d])
+
+p1d_central_z3 = model_Arinyo.P1D_Mpc(sim["z"], ari_k1d_Mpc, sim["Arinyo_min"])
+
+# %%
+p1d_no_noise = model_Arinyo.P1D_Mpc(sim["z"], ari_k1d_Mpc, sim["Arinyo_min"])
+
+ncov = 1000
+p1d_noise = np.zeros((ncov, ari_k1d_Mpc.shape[0]))
+for ii in range(ncov):
+    p1d_noise[ii] = model_Arinyo.P1D_Mpc_Gaussian_noise(sim["z"], ari_k1d_Mpc, sim["Arinyo_min"], seed=ii)
+
+# %%
+
+plt.errorbar(
+    ari_k1d_Mpc,
+    ari_k1d_Mpc * np.mean(p1d_noise, axis=0),
+    ari_k1d_Mpc * np.std(p1d_noise, axis=0),
+)
+plt.plot(ari_k1d_Mpc, ari_k1d_Mpc * p1d_no_noise)
+
+# %%
+plt.imshow(np.cov(p1d_noise))
+
+# %%
+plt.plot(ari_k3d_Mpc[:n3d], p3d_central_z3[:n3d]/plin_central_z3)
+plt.plot(ari_k3d_Mpc[n3d:], p3d_central_z3[n3d:]/plin_central_z3)
+
+plt.xscale("log")
+
+
+# %%
+def fisher_standarize(params, derivatives, covariance)
+
+
+# %%
 Covariance P1D and P3D
 
 # %%
@@ -225,10 +313,6 @@ for par1 in par_ari:
         par_ari_var_top[par2] = par_ari[par2] + 0.001 * hh
         par_ari_var_bot[par2] = par_ari[par2] - 0.001 * hh
 
-    # print(par1)
-    # print(par_ari_var_top)
-    # print(par_ari_var_bot)
-
     hh = diff_pars_ari[par1]
 
     all_p3d_der_top = model_Arinyo.P3D_Mpc_k_mu(
@@ -270,14 +354,124 @@ for jj, par in enumerate(par_ari):
 plt.xscale("log")
 
 # %%
+fig, ax = plt.subplots(len(par_ari)-1, sharex=True, figsize=(8, 20))
 
+ii = 0
+for jj, par in enumerate(par_ari):
+    if par == "beta":
+        continue
+    ax[ii].plot(ari_k1d_Mpc, all_p1d_der[par], label=par)
+    ax[ii].legend()
+    ii += 1
+plt.xscale("log")
+
+# %%
+fisher = {}
+
+for par1 in par_ari:
+
+    if par1 == "beta":
+        continue
+    fisher[par1] = {}
+
+    for par2 in par_ari:
+        if par2 == "beta":
+            continue
+
+        # prod = np.dot(all_both_der[par1], np.dot(icov_both, all_both_der[par2]))
+        prod = np.sum(all_both_der[par1]*all_both_der[par2]/np.diag(cov_both))
+        fisher[par1][par2] = prod
+        # print(par1, par2, np.sqrt(np.abs(fisher[par1][par2])))
+
+
+# %%
+arinyo_params = []
 for par in par_ari:
     if par == "beta":
         continue
-    prod = np.dot(all_both_der[par], np.dot(icov_both, all_both_der[par]))
-    print(par, prod)
+    arinyo_params.append(par)
+arinyo_params
 
 # %%
+nari = len(arinyo_params)
+fisher_matrix = np.zeros((nari, nari))
+for ii, par1 in enumerate(arinyo_params): 
+    for jj, par2 in enumerate(arinyo_params):
+        fisher_matrix[ii, jj] = fisher[par1][par2]
+
+
+
+# %%
+
+# %%
+F_reg = F_std + 1e-6 * np.trace(F_std)/F_std.shape[0] * np.eye(F_std.shape[0])
+L = np.linalg.cholesky(F_reg)
+
+np.ones((nari)) @ L.T
+
+# %%
+arinyo_params
+
+# %%
+eigval = np.linalg.eigvalsh(L)
+
+print("min =", eigval.min())
+print("max =", eigval.max())
+print("condition number =", eigval.max()/eigval.min())
+
+# %%
+# standarize
+F_std = fisher_matrix * 1
+
+# Eigen decomposition
+eigval, eigvec = np.linalg.eigh(F_std)
+
+# Regularize tiny eigenvalues
+eigval = np.maximum(eigval, 1e-8)
+
+# Whitening matrix
+W = np.diag(np.sqrt(eigval)) @ eigvec.T
+
+# %%
+np.ones((nari)) @ W.T
+
+
+# %%
+def whiten(theta, mu, sigma, W):
+    theta_std = (theta - mu) / sigma
+    return theta_std @ W.T
+
+def unwhiten(theta_white, mu, sigma, W):
+    theta_std = theta_white @ np.linalg.inv(W).T
+    return theta_std * sigma + mu
+
+
+# %%
+# withen fisher
+import numpy as np
+
+# Mean and standard deviation from training set
+mu = theta.mean(axis=0)
+sigma = theta.std(axis=0)
+
+# Standardize parameters
+theta_std = (theta - mu) / sigma
+
+# Fisher matrix in standardized coordinates
+D = np.diag(sigma)
+F_std = D @ F @ D
+
+# Eigen decomposition
+eigval, eigvec = np.linalg.eigh(F_std)
+
+# Regularize tiny eigenvalues
+eigval = np.maximum(eigval, 1e-8)
+
+# Whitening matrix
+W = np.diag(np.sqrt(eigval)) @ eigvec.T
+
+# Whitened parameters
+theta_white = theta_std @ W.T
 
 # %%
 par_ari_var_bot
