@@ -112,7 +112,8 @@ p1d_central_z3 = model_Arinyo.P1D_Mpc(sim["z"], ari_k1d_Mpc, sim["Arinyo_min"])
 # %%
 p1d_no_noise = model_Arinyo.P1D_Mpc(sim["z"], ari_k1d_Mpc, sim["Arinyo_min"])
 
-ncov = 1000
+ncov = 10000
+
 p1d_noise = np.zeros((ncov, ari_k1d_Mpc.shape[0]))
 for ii in range(ncov):
     p1d_noise[ii] = model_Arinyo.P1D_Mpc_Gaussian_noise(sim["z"], ari_k1d_Mpc, sim["Arinyo_min"], seed=ii)
