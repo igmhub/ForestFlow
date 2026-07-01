@@ -60,126 +60,20 @@ for ii, sim in enumerate(sim_mpg_central):
     if sim["z"] == ztar:
         ind_z3 = ii
 
-
 # %%
-# compute power for Arinyo model
-def get_arinyo_power(
-    sim,
-    n3d=50,
-    n1d=100,
-    kmax_1d_fit=4,
-    kmax_3d_fit=5,
-    noise={"n_noise": 0, "keep_all_noise": False, "Lbox_Mpc": 100},
-):
+from forestflow.play_with_power import get_arinyo_power
 
-    data = {}
-
-    mask_1d = (sim["k_Mpc"] <= kmax_1d_fit) & (sim["k_Mpc"] > 0)
-    k1d_Mpc = sim["k_Mpc"][mask_1d]
-    p1d_Mpc = sim["p1d_Mpc"][mask_1d]
-    data["sim_k1d_Mpc"] = k1d_Mpc
-    data["sim_p1d_Mpc"] = p1d_Mpc
-
-    mask_3d = (sim["k3d_Mpc"] <= kmax_3d_fit) & np.isfinite(sim["p3d_Mpc"])
-    k3d_Mpc = sim["k3d_Mpc"][mask_3d]
-    p3d_Mpc = sim["p3d_Mpc"][mask_3d]
-    mu3d = sim["mu3d"][mask_3d]
-    data["sim_k3d_Mpc"] = k3d_Mpc
-    data["sim_p3d_Mpc"] = p3d_Mpc
-    data["sim_mu3d"] = mu3d
-
-    # mu3d
-    ari_mu = np.zeros((n3d, 2))
-    ari_mu[:, 1] = 1
-    ari_mu = ari_mu.T.reshape(-1)
-    data["model_mu3d"] = ari_mu
-
-    # k3d
-    # min_k3d = 0.01
-    # max_k3d = 0.3
-    min_k3d = k3d_Mpc.min()
-    max_k3d = k3d_Mpc.max()
-    _ari_k3d_Mpc = np.geomspace(min_k3d, max_k3d, n3d)
-    ari_k3d_Mpc = np.zeros((n3d, 2))
-    ari_k3d_Mpc[:, 0] = _ari_k3d_Mpc
-    ari_k3d_Mpc[:, 1] = _ari_k3d_Mpc
-    ari_k3d_Mpc = ari_k3d_Mpc.T.reshape(-1)
-    data["model_k3d_Mpc"] = ari_k3d_Mpc
-
-    # k1d
-    ari_k1d_Mpc = np.linspace(k1d_Mpc.min(), k1d_Mpc.max(), n1d)
-    data["model_k1d_Mpc"] = ari_k1d_Mpc
-
-    # set Arinyo at z3
-    sim = sim_mpg_central[ind_z3]
-    cosmo_params_dict = {}
-    for par in sim["cosmo_params"]:
-        if par != "omk":
-            cosmo_params_dict[par] = sim["cosmo_params"][par]
-        else:
-            cosmo_params_dict[par] = 0.0
-
-    fid_cosmo = cosmology.Cosmology(cosmo_params_dict=cosmo_params_dict)
-    model_Arinyo = ArinyoModel(fid_cosmo)
-
-    sim = sim_mpg_central[ind_z3]
-    plin_central_z3 = model_Arinyo.linP_Mpc(sim["z"], ari_k3d_Mpc[:n3d])
-    data["Plin_Mpc"] = plin_central_z3
-
-    pars_use = {}
-    for par in sim["Arinyo_min"]:
-        pars_use[par] = sim["Arinyo_min"][par]
-
-    p3d_central_z3 = model_Arinyo.P3D_Mpc_k_mu(sim["z"], ari_k3d_Mpc, ari_mu, pars_use)
-    data["ari_P3D_Mpc"] = p3d_central_z3
-    p1d_central_z3 = model_Arinyo.P1D_Mpc(sim["z"], ari_k1d_Mpc, pars_use)
-    data["ari_P1D_Mpc"] = p1d_central_z3
-
-    # get kaiser
-    pars_use = {}
-    for par in sim["Arinyo_min"]:
-        if par in ["q1", "q2"]:
-            pars_use[par] = 0
-        elif par == "kp":
-            pars_use[par] = 1e6
-        else:
-            pars_use[par] = sim["Arinyo_min"][par]
-
-    p3d_central_z3_kai = model_Arinyo.P3D_Mpc_k_mu(
-        sim["z"], ari_k3d_Mpc, ari_mu, pars_use
-    )
-    p1d_central_z3_kai = model_Arinyo.P1D_Mpc(sim["z"], ari_k1d_Mpc, pars_use)
-    data["kai_P3D_Mpc"] = p3d_central_z3_kai
-    data["kai_P1D_Mpc"] = p1d_central_z3_kai
-
-    if noise["n_noise"] > 0:
-        ari_noise_P1D_Mpc = np.zeros((noise["n_noise"], ari_k1d_Mpc.shape[0]))
-        for ii in range(noise["n_noise"]):
-            ari_noise_P1D_Mpc[ii] = model_Arinyo.P1D_Mpc_Gaussian_noise(
-                sim["z"],
-                ari_k1d_Mpc,
-                sim["Arinyo_min"],
-                seed=ii,
-                Lbox_Mpc=noise["Lbox_Mpc"],
-            )
-
-        if noise["keep_all_noise"]:
-            data["ari_noise_P1D_Mpc"] = ari_noise_P1D_Mpc
-
-        data["ari_std_P1D_Mpc"] = np.std(ari_noise_P1D_Mpc, axis=0)
-
-    return data
-
-
-# %%
 sim = sim_mpg_central[ind_z3]
 
-# noise = {"n_noise": 1000, "keep_all_noise": False, "Lbox_Mpc": 100}
-# power = get_arinyo_power(sim, noise=noise)
+# Assuming a Gaussian box of thrice the size of our simulations, L=67.5 Mpc
+# In reality, we have f&p with 3 axes
+Lbox_Mpc = 67.5 * 3
 
-noise = {"n_noise": 1000, "keep_all_noise": False, "Lbox_Mpc": 1000}
-power2 = get_arinyo_power(sim, noise=noise)
-power2.keys()
+noise = {"n_noise": 1000, "keep_all_noise": False, "Lbox_Mpc": Lbox_Mpc}
+power = get_arinyo_power(sim, noise=noise)
+
+# %% [markdown]
+# Ratio of Arinyo to Kaiser
 
 # %%
 n3d = int(power["model_k3d_Mpc"].shape[0]/2.)
@@ -201,138 +95,26 @@ plt.xlabel(r"$k$ [1/Mpc]")
 plt.ylabel(r"$P_\mathrm{Arinyo}/P_\mathrm{Kaiser}$")
 plt.xscale("log")
 
-# %%
-k1d = power["model_k1d_Mpc"]
-plt.errorbar(
-    k1d,
-    k1d * power["ari_P1D_Mpc"],
-    k1d * power["ari_std_P1D_Mpc"],
-    alpha=0.5
-)
+# %% [markdown]
+# Zoom in on error
 
 # %%
-
 plt.errorbar(
     k1d,
-    power["ari_P1D_Mpc"]/power["ari_P1D_Mpc"],
+    power["ari_P1D_Mpc"]/power["ari_P1D_Mpc"]-1,
     power["ari_std_P1D_Mpc"]/power["ari_P1D_Mpc"],
     alpha=0.5
 )
 
-
-# %%
-Lbox_Mpc2 = 1000.
-Lbox_Mpc = 100.
-fact = (Lbox_Mpc2/Lbox_Mpc)**(3/2)
-
-plt.plot(
-    k1d,
-    power["ari_std_P1D_Mpc"],
-    alpha=0.5,
-)
-
-
-plt.plot(
-    k1d,
-    power2["ari_std_P1D_Mpc"],
-    alpha=0.5
-)
-
-plt.plot(
-    k1d,
-    power2["ari_std_P1D_Mpc"]*fact,
-    alpha=0.5
-)
-
-plt.yscale("log")
-
-# %%
-cov = np.cov(power["ari_noise_P1D_Mpc"], rowvar=False)
-cov.shape
-
-# %%
-# uncorrelated noise from cosmic variance
-
-corr = np.zeros_like(cov)
-for ii in range(cov.shape[0]):
-    for jj in range(cov.shape[0]):
-        corr[ii, jj] = cov[ii, jj] / np.sqrt(cov[ii, ii] * cov[jj, jj])
-
-# %%
-plt.imshow(corr)
-plt.colorbar()
-
-# %%
-plt.plot(ari_k3d_Mpc[:n3d], p3d_central_z3[:n3d]/plin_central_z3)
-plt.plot(ari_k3d_Mpc[n3d:], p3d_central_z3[n3d:]/plin_central_z3)
-
-plt.xscale("log")
+plt.ylim(-0.01, 0.01)
 
 
 # %%
-def fisher_standarize(params, derivatives, covariance)
+def fisher_standarize(params, derivatives, covariance):
 
 
 # %%
-Covariance P1D and P3D
-
-# %%
-# Get power
-kmax_1d_fit = 4
-kmax_3d_fit = 5
-
-sim = Archive3D.training_data[0]
-mask_1d = (sim['k_Mpc'] <= kmax_1d_fit) & (sim['k_Mpc'] > 0)
-k1d_Mpc = sim['k_Mpc'][mask_1d]
-p1d_Mpc = sim['p1d_Mpc'][mask_1d]
-
-mask_3d = (sim['k3d_Mpc'] <= kmax_3d_fit) & np.isfinite(sim['p3d_Mpc'])
-k3d_Mpc = sim['k3d_Mpc'][mask_3d]
-p3d_Mpc = sim['p3d_Mpc'][mask_3d]
-mu3d = sim['mu3d'][mask_3d]
-
-nsims = len(Archive3D.training_data)
-all_p3d = np.zeros((nsims, k3d_Mpc.shape[0]))
-all_p1d = np.zeros((nsims, k1d_Mpc.shape[0]))
-all_both  = np.zeros((nsims, k3d_Mpc.shape[0] + k1d_Mpc.shape[0]))
-
-for ii, sim in enumerate(Archive3D.training_data):
-
-    all_p3d[ii] = sim['p3d_Mpc'][mask_3d]
-    all_p1d[ii] = sim['p1d_Mpc'][mask_1d]
-    all_both[ii, :k3d_Mpc.shape[0]] = all_p3d[ii]
-    all_both[ii, k3d_Mpc.shape[0]:] = all_p1d[ii]
-
-# %%
-n3d = 50
-n1d = 100
-
-# mu3d
-ari_mu = np.zeros((n3d, 2))
-ari_mu[:, 1] = 1
-ari_mu = ari_mu.T.reshape(-1)
-
-# k3d
-_ari_k3d_Mpc = np.geomspace(k3d_Mpc.min(), k3d_Mpc.max(), n3d)
-ari_k3d_Mpc = np.zeros((n3d, 2))
-ari_k3d_Mpc[:, 0] = _ari_k3d_Mpc
-ari_k3d_Mpc[:, 1] = _ari_k3d_Mpc
-ari_k3d_Mpc = ari_k3d_Mpc.T.reshape(-1)
-
-# k1d
-ari_k1d_Mpc = np.linspace(k1d_Mpc.min(), k1d_Mpc.max(), n1d)
-
-nsims = len(Archive3D.training_data)
-all_p3d = np.zeros((nsims, ari_k3d_Mpc.shape[0]))
-all_p1d = np.zeros((nsims, ari_k1d_Mpc.shape[0]))
-all_both = np.zeros((nsims, ari_k3d_Mpc.shape[0] + ari_k1d_Mpc.shape[0]))
-
-pars_ari = {}
-for par in sim["Arinyo_min"]:
-    pars_ari[par] = np.zeros((nsims))
-
-# set Arinyo for fiducial cosmo
-sim = Archive3D.training_data[0]
+# set Arinyo at z3
 cosmo_params_dict = {}
 for par in sim["cosmo_params"]:
     if par != "omk":
@@ -343,100 +125,25 @@ for par in sim["cosmo_params"]:
 fid_cosmo = cosmology.Cosmology(cosmo_params_dict=cosmo_params_dict)
 model_Arinyo = ArinyoModel(fid_cosmo)
 
-for ii, sim in enumerate(Archive3D.training_data):
-
-    for par in sim["Arinyo_min"]:
-        pars_ari[par][ii] = sim["Arinyo_min"][par]
-
-    new_cosmo_params = {}
-    for par in ["As", "ns"]:
-        new_cosmo_params[par] = sim["cosmo_params"][par]
-
-    all_p3d[ii] = model_Arinyo.P3D_Mpc_k_mu(
-        sim["z"], ari_k3d_Mpc, ari_mu, sim["Arinyo_min"], new_cosmo_params=new_cosmo_params
-    )
-
-    all_p1d[ii] = model_Arinyo.P1D_Mpc(
-        sim["z"], ari_k1d_Mpc, sim["Arinyo_min"], new_cosmo_params=new_cosmo_params
-    )
-
-    all_both[ii, :ari_k3d_Mpc.shape[0]] = all_p3d[ii]
-    all_both[ii, ari_k3d_Mpc.shape[0]:] = all_p1d[ii]
-
-
-# %%
-cov_p1d = np.cov(all_p1d.T)
-cov_p3d = np.cov(all_p3d.T)
-cov_both = np.cov(all_both.T)
-
-icov_both = np.linalg.inv(cov_both)
-
-# %%
-corr_both = np.zeros_like(cov_both)
-for ii in range(cov_both.shape[0]):
-    for jj in range(cov_both.shape[0]):
-        corr_both[ii, jj] = cov_both[ii, jj]/np.sqrt(cov_both[ii, ii] * cov_both[jj, jj])
-
-icorr_both = np.zeros_like(icov_both)
-for ii in range(icov_both.shape[0]):
-    for jj in range(icov_both.shape[0]):
-        icorr_both[ii, jj] = icov_both[ii, jj]/np.sqrt(icov_both[ii, ii] * icov_both[jj, jj])
-
-# %%
-plt.imshow(corr_both)
-
-# %%
-plt.imshow(icov_both)
-
-# %%
-
-for ii in range(2):
-    _ = (ari_mu == ii)
-
-    plt.plot(ari_k3d_Mpc[_], np.diag(cov_p3d)[_], label="P1D mu=" + str(np.mean(ari_mu[_])))
-
-plt.plot(ari_k1d_Mpc, np.diag(cov_p1d), label="P1D")
-plt.legend()
-plt.yscale("log")
-plt.xscale("log")
-
-# %%
-Derivatives
-
-# %%
-sim_label = "mpg_central"
-testing_data = []
-for sim in Archive3D.training_data:
-    if (sim["sim_label"] == sim_label) & (sim["z"] == 3):
-        sim_der = sim
-
-new_cosmo_params = {}
-for par in ["As", "ns"]:
-    new_cosmo_params[par] = sim_der["cosmo_params"][par]
-
-
-# %%
-diff_pars_ari = {}
-
-for par in sim["Arinyo_min"]:
-    diff_pars_ari[par] = pars_ari[par].max() - pars_ari[par].min()
-
-diff_pars_ari
-
-# %%
 par_ari = {}
-par_ari_var_top = {}
-par_ari_var_bot = {}
 for par in sim["Arinyo_min"]:
     par_ari[par] = sim["Arinyo_min"][par]
+
+# %%
+par_ari_var_top = {}
+par_ari_var_bot = {}
 
 all_p3d_der = {}
 all_p1d_der = {}
 all_both_der = {}
 
+n3d = power["model_k3d_Mpc"].shape[0]
+n1d = power["model_k1d_Mpc"].shape[0]
 
 for par1 in par_ari:
-    all_both_der[par1] = np.zeros((ari_k3d_Mpc.shape[0] + ari_k1d_Mpc.shape[0]))
+    all_both_der[par1] = np.zeros(
+        (power["model_k3d_Mpc"].shape[0] + power["model_k1d_Mpc"].shape[0])
+    )
 
     for par2 in par_ari:
         if par1 == par2:
@@ -449,28 +156,37 @@ for par1 in par_ari:
     hh = diff_pars_ari[par1]
 
     all_p3d_der_top = model_Arinyo.P3D_Mpc_k_mu(
-        sim["z"], ari_k3d_Mpc, ari_mu, par_ari_var_top, new_cosmo_params=new_cosmo_params
+        sim["z"],
+        power["model_k3d_Mpc"],
+        power["model_mu3d"],
+        par_ari_var_top,
     )
 
     all_p3d_der_bot = model_Arinyo.P3D_Mpc_k_mu(
-        sim["z"], ari_k3d_Mpc, ari_mu, par_ari_var_bot, new_cosmo_params=new_cosmo_params
+        sim["z"],
+        power["model_k3d_Mpc"],
+        power["model_mu3d"],
+        par_ari_var_bot,
     )
 
-    all_p3d_der[par1] = (all_p3d_der_top - all_p3d_der_bot)/2/hh
+    all_p3d_der[par1] = (all_p3d_der_top - all_p3d_der_bot) / 2 / hh
 
     all_p1d_der_top = model_Arinyo.P1D_Mpc(
-        sim["z"], ari_k1d_Mpc, par_ari_var_top, new_cosmo_params=new_cosmo_params
+        sim["z"],
+        power["model_k1d_Mpc"],
+        par_ari_var_top,
     )
 
     all_p1d_der_bot = model_Arinyo.P1D_Mpc(
-        sim["z"], ari_k1d_Mpc, par_ari_var_bot, new_cosmo_params=new_cosmo_params
+        sim["z"],
+        power["model_k1d_Mpc"],
+        par_ari_var_bot,
     )
 
-    all_p1d_der[par1] = (all_p1d_der_top - all_p1d_der_bot)/2/hh
+    all_p1d_der[par1] = (all_p1d_der_top - all_p1d_der_bot) / 2 / hh
 
-    all_both_der[par1][:ari_k3d_Mpc.shape[0]] = all_p3d_der[par1]
-    all_both_der[par1][ari_k3d_Mpc.shape[0]:] = all_p1d_der[par1]
-
+    all_both_der[par1][:n3d] = all_p3d_der[par1]
+    all_both_der[par1][n3d:] = all_p1d_der[par1]
 
 # %%
 fig, ax = plt.subplots(len(par_ari)-1, sharex=True, figsize=(8, 20))
