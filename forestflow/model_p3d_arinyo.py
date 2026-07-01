@@ -236,6 +236,10 @@ class ArinyoModel(object):
         """
         Compute the one-dimensional power spectrum (P1D) for the specified values of parallel wavenumber (k_par).
 
+        The error between simulations with Lbox_Mpc2 and Lbox_Mpc scales like fact = (Lbox_Mpc2/Lbox_Mpc)**(3/2).
+
+        The covariance matrix is fully uncorrelated
+
         Parameters:
             z (float): Redshift at which to compute the P1D. It modifies the linear power spectrum but not the value of the Arinyo parameters
             k_par (array-like): Array or list of values for the parallel wavenumber (k_par) for which the P1D should be computed.
