@@ -174,7 +174,6 @@ for ii in range(10):
 # %%
 import forestflow
 from forestflow.P3D_cINN import P3DEmulator
-from lace.cosmo import camb_cosmo, fit_linP
 
 # %%
 path_repo = os.path.dirname(forestflow.__path__[0]) + '/'
