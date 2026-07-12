@@ -46,7 +46,6 @@ class P3DEmulator:
     def __init__(
         self,
         training_data=None,
-        emu_input_names=None,
         train=False,
         drop_sim=None,
         save_path=None,
@@ -63,7 +62,6 @@ class P3DEmulator:
         adamw=True,
         use_chains=False,
         Nrealizations=3000,
-        training_type="Arinyo_min",
     ):
         if train and ((save_path is None) | (training_data is None)):
             raise ValueError(
@@ -76,37 +74,13 @@ class P3DEmulator:
 
         # Initialize class attributes with provided arguments
         self.Nrealizations = Nrealizations
-        self.emu_input_names = emu_input_names
-
-        self.Arinyo_params = [
-            "bias",
-            "bias_eta",
-            "q1",
-            "kvav",
-            "av",
-            "bv",
-            "kp",
-        ]
-        if training_type == "Arinyo_min":
-            self.Arinyo_params.append("q2")
-        dim_inputSpace = len(self.Arinyo_params)
-
-        self.cosmo_fields = [
-            "H0",
-            "omch2",
-            "ombh2",
-            "mnu",
-            "omk",
-            "As",
-            "ns",
-            "nrun",
-            "w",
-        ]
+        self.input_labels = list(training_data["input_par"].keys())
+        self.output_labels = list(training_data["output_par"].keys())
+        dim_inputSpace = len(self.output_labels)
 
         if train:
             self._train_emu(
                 training_data,
-                emu_input_names,
                 adamw=adamw,
                 lr=lr,
                 nepochs=nepochs,
@@ -120,7 +94,6 @@ class P3DEmulator:
                 nLayers_inn=nLayers_inn,
                 batch_size=batch_size,
                 dim_inputSpace=dim_inputSpace,
-                training_type=training_type,
                 save_path=save_path,
                 use_val_set=use_val_set,
             )
@@ -128,62 +101,6 @@ class P3DEmulator:
             self._load_emu(model_path=model_path)
         else:
             raise ValueError("Either train or model_path must be provided.")
-
-    def _get_training_data(
-        self, training_data, emu_input_names, training_type, drop_sim=None
-    ):
-        """
-        Retrieve and preprocess training data for the emulator.
-
-        This function obtains the training data from the provided archive
-
-        Returns:
-            torch.Tensor: Preprocessed training data.
-        """
-        # Extract relevant parameters from the training data
-        input_emu = np.zeros((len(training_data), len(emu_input_names)))
-        output_emu = np.zeros((len(training_data), len(self.Arinyo_params)))
-        keep = np.ones(len(training_data), dtype=bool)
-        for ii in range(len(training_data)):
-            if (drop_sim is not None) and (training_data[ii]["sim_label"] == drop_sim):
-                keep[ii] = 0
-            for jj, par in enumerate(emu_input_names):
-                input_emu[ii, jj] = training_data[ii][par]
-            for jj, par in enumerate(self.Arinyo_params):
-                output_emu[ii, jj] = training_data[ii][training_type][par]
-
-        # Calculate and store the maximum and minimum values for parameter scaling
-        self.input_param_lims_max = input_emu.max(axis=0)
-        self.input_param_lims_min = input_emu.min(axis=0)
-
-        self.output_param_lims_max = output_emu.max(axis=0)
-        self.output_param_lims_min = output_emu.min(axis=0)
-
-        # drop simulation if needed (note that we computed the limits with all sims)
-        input_emu = input_emu[keep, :]
-        output_emu = output_emu[keep, :]
-
-        for ipar in [0]:
-            input_emu[:, ipar] = np.log(input_emu[:, ipar])
-
-        # Scale the training data based on the parameter limits
-        input_emu = (input_emu - self.input_param_lims_min) / (
-            self.input_param_lims_max - self.input_param_lims_min
-        )
-
-        for ipar in [2, 3, 6, 7]:
-            output_emu[:, ipar] = np.log(output_emu[:, ipar])
-
-        # some special transformations applied to the output data
-        output_emu = (output_emu - self.output_param_lims_min) / (
-            self.output_param_lims_max - self.output_param_lims_min
-        )
-
-        # Convert the scaled training data to a torch.Tensor object
-        input_emu = torch.Tensor(input_emu)
-        output_emu = torch.Tensor(output_emu)
-
-        return input_emu, output_emu
 
     def _define_cINN_Arinyo(self, nLayers_inn, batch_size, dim_inputSpace, dims_int=16):
         """
@@ -241,7 +158,7 @@ class P3DEmulator:
         self.input_param_lims_max = metadata["input_param_lims_max"]
         self.output_param_lims_min = metadata["output_param_lims_min"]
         self.output_param_lims_max = metadata["output_param_lims_max"]
-        self.emu_input_names = metadata["emu_input_names"]
+        self.input_labels = metadata["emu_input_names"]
 
         self.emulator = self._define_cINN_Arinyo(
             metadata["nLayers_inn"],
@@ -256,7 +173,6 @@ class P3DEmulator:
     def _train_emu(
         self,
         training_data,
-        emu_input_names,
         adamw=True,
         lr=5e-4,
         nepochs=1000,
@@ -268,7 +184,6 @@ class P3DEmulator:
         nLayers_inn=5,
         dims_int=16,
         batch_size=16,
-        training_type="Arinyo_min",
         save_path=None,
         train_seed=32,
         gamma=0.7,
@@ -291,12 +206,20 @@ class P3DEmulator:
         torch.cuda.manual_seed_all(train_seed)
 
         # Get the training data and define the cINN model
-        emu_input, emu_output = self._get_training_data(
-            training_data,
-            emu_input_names,
-            training_type,
-            drop_sim=drop_sim,
-        )
+
+        for label in ["input_par", "output_par"]:
+            key = list(training_data[label].keys())[0]
+            nelem = training_data[label][key].shape[0]
+            npar = len(training_data[label])
+            arr_data = np.zeros((nelem, npar))
+            for ii, par in enumerate(training_data[label]):
+                arr_data[:, ii] = training_data[label][par]
+
+            if label == "input_par":
+                emu_input = torch.tensor(arr_data)
+            else:
+                emu_output = torch.tensor(arr_data)
+
         self.emulator = self._define_cINN_Arinyo(
             nLayers_inn, batch_size, dim_inputSpace, dims_int=dims_int
         )
@@ -306,11 +229,11 @@ class P3DEmulator:
             "nLayers_inn": nLayers_inn,
             "batch_size": batch_size,
             "dim_inputSpace": dim_inputSpace,
-            "input_param_lims_min": self.input_param_lims_min,
-            "input_param_lims_max": self.input_param_lims_max,
-            "output_param_lims_min": self.output_param_lims_min,
-            "output_param_lims_max": self.output_param_lims_max,
-            "training_type": training_type,
+            # "input_param_lims_min": self.input_param_lims_min,
+            # "input_param_lims_max": self.input_param_lims_max,
+            # "output_param_lims_min": self.output_param_lims_min,
+            # "output_param_lims_max": self.output_param_lims_max,
+            # "training_type": training_type,
             "lr": lr,
             "nepochs": nepochs,
             # "step_size": step_size,
@@ -318,7 +241,7 @@ class P3DEmulator:
             "chain_samp": chain_samp,
             "weight_decay": weight_decay,
             "adamw": adamw,
-            "emu_input_names": emu_input_names,
+            # "emu_input_names": emu_input_names,
             "train_seed": train_seed,
         }
         if save_path is not None:
@@ -519,7 +442,7 @@ class P3DEmulator:
         condition = np.zeros((neval * Nrealizations, ninpt_pars))
         for jj in range(neval):
             input_emu = []
-            for par in self.emu_input_names:
+            for par in self.input_labels:
                 input_emu.append(emu_params[jj][par])
             input_emu = np.array(input_emu)
             for ipar in [0]:
@@ -565,7 +488,7 @@ class P3DEmulator:
             _Arinyo_mean = []
             for ii in range(Arinyo_mean.shape[0]):
                 _dict_int = {}
-                for jj, par in enumerate(self.Arinyo_params):
+                for jj, par in enumerate(self.output_labels):
                     _dict_int[par] = Arinyo_mean[ii, jj]
                 _Arinyo_mean.append(_dict_int)
             Arinyo_mean = _Arinyo_mean

@@ -635,14 +635,14 @@ def table_cosmo_igm(dict_out_all):
     return
 
 
-def plot_bias_beta_zev(bao_data, dict_mapping, plot_bias_eta=False, z0=3, ftsize=24):
+def plot_bias_beta_zev(bao_data, dict_mapping, plot_bias_eta=False, z0=3.0, ftsize=24):
 
     # from mpl_toolkits.axes_grid1.inset_locator import inset_axes
     from scipy.optimize import curve_fit
 
-    # def fit_pow(z, a, b):
-    #     x = (1 + z) / (1 + z0)
-    #     return a * x**b
+    def fit_pow(z, a, b):
+        x = (1 + z) / (1 + z0)
+        return a * x**b
 
     def fit_pol(z, a, b, c, d):
         x = (1 + z) / (1 + z0)
@@ -701,15 +701,18 @@ def plot_bias_beta_zev(bao_data, dict_mapping, plot_bias_eta=False, z0=3, ftsize
         )
 
         mean = np.mean(param, axis=0)
+
         if ii == 0:
-            fit_func = fit_pol
-        else:
-            fit_func = fit_pol
-        fit_val = curve_fit(fit_func, dict_mapping["zs"], mean)[0]
+            std = np.std(param, axis=0)
+            popt, pcov = curve_fit(fit_pow, dict_mapping["zs"], mean, sigma=std)
+            print("fit a:", popt[0], pcov[0, 0])
+            print("fit b:", popt[1], pcov[1, 1])
+
+        fit_val = curve_fit(fit_pol, dict_mapping["zs"], mean)[0]
         data[params_labels_latex[ii]] = fit_val
 
         # data[params_latex[ii]] = fit_val
-        ax[ii].plot(zfit, fit_func(zfit, *fit_val), color="C0", ls="--")
+        ax[ii].plot(zfit, fit_pol(zfit, *fit_val), color="C0", ls="--")
 
         for jj, key in enumerate(bao_plot):
             dumm = np.zeros(2)

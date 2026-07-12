@@ -15,7 +15,9 @@
 # ---
 
 # %% [markdown]
-# # Compute l1O cov matrix for emulator
+# # Train full and l1O emulators
+#
+# Before training the emulators, we will transform the input parameters using the square root of the Fisher matrix in standarized coordinates. See the explanation below
 
 # %%
 # %load_ext autoreload
@@ -34,6 +36,579 @@ from forestflow.model_p3d_arinyo import ArinyoModel
 from lace.cosmo import cosmology
 
 # %% [markdown]
+# ## Fisher-weighted input parameterization
+#
+# The goal is to transform the emulator input parameters so that distances in parameter space reflect their impact on the predicted observable (e.g. $P_{\rm 3D}$ or $P_{\rm 1D}$), rather than their raw numerical values.
+#
+# 1. **Standardize the input and output parameters**
+#
+# $$
+# \boldsymbol{\theta}' = D^{-1}(\boldsymbol{\theta}-\boldsymbol{\mu}),
+# $$
+#
+# where $D$ contains the parameter standard deviations (or another appropriate scaling).
+#
+
+# %%
+# load training data
+from forestflow.archive import GadgetArchive3D
+Archive3D = GadgetArchive3D(addcentral=True)
+
+# %% [markdown]
+# #### Get data for training the emulator
+#
+# - input_par: cosmology and IGM
+# - other_par: z, As, ns
+# - output_par: Arinyo
+
+# %%
+from forestflow.set_training import get_training_data
+emu_data = get_training_data(Archive3D.training_data)
+
+# %% [markdown]
+# Standarize and modify input data
+
+# %%
+from forestflow.set_training import Transf_data
+transf_data = Transf_data(emu_data)
+
+# %%
+stand_input_par = transf_data.transf_stand(
+    emu_data["input_par"], type_stand="input", direct=True
+)
+
+fig, ax = plt.subplots(3, 2, figsize=(10, 8), sharex=True, sharey=True)
+ax = ax.flatten()
+for ii, par in enumerate(stand_input_par):
+    ax[ii].hist(stand_input_par[par], bins=20)
+    ax[ii].set_title(par)
+plt.tight_layout()
+
+# %%
+inv_input_par = transf_data.transf_stand(
+    stand_input_par, type_stand="input", direct=False
+)
+
+fig, ax = plt.subplots(3, 2, figsize=(10, 8), sharex=False, sharey=False)
+ax = ax.flatten()
+for ii, par in enumerate(stand_input_par):
+    ax[ii].hist(emu_data["input_par"][par], bins=20)
+    ax[ii].hist(inv_input_par[par], bins=20, alpha=0.5)
+    ax[ii].set_title(par)
+plt.tight_layout()
+
+# %%
+stand_output_par = transf_data.transf_stand(
+    emu_data["output_par"], type_stand="output", direct=True
+)
+
+fig, ax = plt.subplots(4, 2, figsize=(10, 10), sharex=True, sharey=True)
+ax = ax.flatten()
+for ii, par in enumerate(stand_output_par):
+    ax[ii].hist(stand_output_par[par], bins=20)
+    ax[ii].set_title(par)
+plt.tight_layout()
+
+# %%
+inv_output_par = transf_data.transf_stand(
+    stand_output_par, type_stand="output", direct=False
+)
+
+fig, ax = plt.subplots(4, 2, figsize=(10, 8), sharex=False, sharey=False)
+ax = ax.flatten()
+for ii, par in enumerate(stand_output_par):
+    ax[ii].hist(emu_data["output_par"][par], bins=20)
+    ax[ii].hist(inv_output_par[par], bins=20, alpha=0.5)
+    ax[ii].set_title(par)
+plt.tight_layout()
+
+# %% [markdown]
+#
+# 2. **Compute the Fisher matrix**
+#
+# $$
+# F_{ij} =
+# \frac{\partial P}{\partial\theta_i}^{\rm T}
+# C^{-1}
+# \frac{\partial P}{\partial\theta_j},
+# $$
+#
+# where $P$ is the observable and $C$ is its covariance.
+#
+# We compute the Fisher matrix for the output parameters, and we will evaluate the Fisher matrix for the mpg-central simulation at z=3
+#
+
+# %% [markdown]
+# #### First, compute covariance for P1D and P3D
+
+# %% [markdown]
+# Get output parameters and set Arinyo model
+
+# %%
+sim_mpg_central = Archive3D.get_testing_data("mpg_central")
+
+ztar = 3.0
+for ii, sim in enumerate(sim_mpg_central):
+    if sim["z"] == ztar:
+        ind_z3 = ii
+
+sim = sim_mpg_central[ind_z3]
+
+pars_model = {}
+pars_model["z"] = sim["z"]
+pars_model["Arinyo"] = {}
+for par in emu_data["output_par"]:
+    pars_model["Arinyo"][par] = sim["Arinyo_min"][par]
+
+# set Arinyo model
+cosmo_params_dict = {}
+for par in sim["cosmo_params"]:
+    if par != "omk":
+        cosmo_params_dict[par] = sim["cosmo_params"][par]
+    else:
+        cosmo_params_dict[par] = 0.0
+
+fid_cosmo = cosmology.Cosmology(cosmo_params_dict=cosmo_params_dict)
+model_Arinyo = ArinyoModel(fid_cosmo)
+
+# %% [markdown]
+# Compute covariance matrices
+
+# %%
+from forestflow.play_with_power import compute_arinyo_power
+
+# it takes 30 s
+
+# Assuming a Gaussian box of twice the size of our simulations, L=67.5 Mpc
+# In reality, we have f&p with 3 axes
+Lbox_Mpc = 150
+
+noise = {"n_noise": 10000, "keep_all_noise": False, "Lbox_Mpc": Lbox_Mpc}
+power = compute_arinyo_power(pars_model, model_Arinyo, noise=noise)
+
+# %%
+pars_model["kpar_Mpc"] = power["model_kpar_Mpc"]
+pars_model["kper_Mpc"] = power["model_kper_Mpc"]
+pars_model["P3D_Mpc"] = power["ari_P3D_Mpc"]
+pars_model["std_P3D_Mpc"] = power["ari_std_P3D_Mpc"]
+
+pars_model["k1D_Mpc"] = power["model_k1d_Mpc"]
+pars_model["P1D_Mpc"] = power["ari_P1D_Mpc"]
+pars_model["std_P1D_Mpc"] = power["ari_std_P1D_Mpc"]
+
+# %% [markdown]
+# Plot diag of 3D cov
+
+# %%
+from matplotlib.colors import LogNorm
+
+k = np.sqrt(power["model_kpar_Mpc"]**2 + power["model_kper_Mpc"]**2)
+mu = power["model_kpar_Mpc"]/k
+
+mu_coord = False
+
+if mu_coord:
+    xplot = k
+    yplot = mu
+else:
+    xplot = power["model_kpar_Mpc"]
+    yplot = power["model_kper_Mpc"]
+
+plt.pcolormesh(
+    xplot,
+    yplot,
+    power["ari_std_P3D_Mpc"],
+    shading="auto",
+    norm=LogNorm(),
+)
+plt.colorbar()
+
+# %% [markdown]
+# Plot diag of 1D cov
+
+# %%
+plt.loglog(
+    power["model_k1d_Mpc"],
+    power["ari_std_P1D_Mpc"],
+)
+
+# %% [markdown]
+# Relative difference of Arinyo to Kaiser
+
+# %%
+k = np.sqrt(power["model_kpar_Mpc"]**2 + power["model_kper_Mpc"]**2)
+mu = power["model_kpar_Mpc"]/k
+
+mu_coord = False
+
+if mu_coord:
+    xplot = k
+    yplot = mu
+else:
+    xplot = power["model_kpar_Mpc"]
+    yplot = power["model_kper_Mpc"]
+
+plt.pcolormesh(
+    xplot,
+    yplot,
+    power["ari_P3D_Mpc"]/power["kai_P3D_Mpc"]-1,
+    shading="auto",
+    # norm=LogNorm(),
+)
+plt.colorbar()
+
+# %% [markdown]
+# Second, compute the derivatives
+
+# %%
+pars_model.keys()
+
+# %%
+from forestflow.play_with_power import compute_arinyo_derivatives
+
+der_data = compute_arinyo_derivatives(transf_data, pars_model, model_Arinyo)
+
+# %%
+pars_model["P3D_der"] = der_data["P3D_der"]
+pars_model["P1D_der"] = der_data["P1D_der"]
+
+# %% [markdown]
+# Plot 1D derivatives
+
+# %%
+fig, ax = plt.subplots(len(pars_model["Arinyo"]), sharex=True, figsize=(8, 20))
+
+for jj, par in enumerate(pars_model["Arinyo"]):
+    if par == "beta":
+        continue
+    ax[jj].plot(pars_model["k1D_Mpc"], der_data["P1D_der"][par], label=par)
+    ax[jj].legend()
+plt.xscale("log")
+
+# %% [markdown]
+# Plot 3D derivatives
+
+# %%
+k = np.sqrt(power["model_kpar_Mpc"]**2 + power["model_kper_Mpc"]**2)
+mu = power["model_kpar_Mpc"]/k
+
+mu_coord = False
+
+if mu_coord:
+    xplot = k
+    yplot = mu
+else:
+    xplot = power["model_kpar_Mpc"]
+    yplot = power["model_kper_Mpc"]
+
+plt.pcolormesh(
+    xplot,
+    yplot,
+    power["ari_P3D_Mpc"]/power["kai_P3D_Mpc"]-1,
+    shading="auto",
+    # norm=LogNorm(),
+)
+plt.colorbar()
+
+# %%
+from matplotlib.colors import LogNorm
+from matplotlib.colors import TwoSlopeNorm
+from matplotlib.colors import SymLogNorm
+
+
+mu_coord = False
+k = np.sqrt(power["model_kpar_Mpc"]**2 + power["model_kper_Mpc"]**2)
+mu = power["model_kpar_Mpc"]/k
+
+if mu_coord:
+    xplot = k
+    yplot = mu
+else:
+    xplot = power["model_kpar_Mpc"]
+    yplot = power["model_kper_Mpc"]
+
+fig, ax = plt.subplots(3, 3, sharex=True, sharey=True, figsize=(8, 8))
+ax = ax.reshape(-1)
+
+for jj, par in enumerate(pars_model["Arinyo"]):
+
+    if par == "beta":
+        continue
+
+    vmax = np.nanmax(np.abs(der_data["P3D_der"][par]))
+    # norm = TwoSlopeNorm(vmin=-vmax, vcenter=0, vmax=vmax)
+
+    norm = SymLogNorm(
+        linthresh=1e-3,  # linear around zero
+        linscale=1,
+        vmin=-vmax,
+        vmax=vmax,
+        base=10,
+    )
+
+    ax[jj].pcolormesh(
+        xplot,
+        yplot,
+        der_data["P3D_der"][par],
+        shading="auto",
+        # norm=LogNorm(),
+        cmap="RdBu_r",
+        norm=norm,
+    )
+    ax[jj].set_title(par)
+
+
+# %% [markdown]
+# Fisher matrix combining derivatives and covariance
+
+# %%
+from forestflow.play_with_power import compute_fisher
+
+fisher = compute_fisher(pars_model)
+
+# %%
+arr_fisher = np.zeros((len(fisher), len(fisher)))
+
+for ii, key1 in enumerate(fisher):
+    for jj, key2 in enumerate(fisher):
+        arr_fisher[ii, jj] = fisher[key1][key2]
+
+# %%
+from matplotlib.colors import LogNorm
+
+labs = list(fisher.keys())
+
+fig, ax = plt.subplots()
+
+vmax = np.nanmax(np.abs(arr_fisher))
+norm = SymLogNorm(
+    linthresh=1e3,   # linear region around zero
+    linscale=1,
+    vmin=-vmax,
+    vmax=vmax,
+    base=10,
+)
+
+im = ax.imshow(
+    arr_fisher,
+    origin="lower",
+    cmap="RdBu_r",
+    norm=norm,
+)
+
+ax.set_xticks(np.arange(len(labs)))
+ax.set_yticks(np.arange(len(labs)))
+
+ax.set_xticklabels(labs, rotation=45, ha="right")
+ax.set_yticklabels(labs)
+
+ax.set_aspect("equal")
+
+plt.colorbar(im)
+plt.tight_layout()
+
+# %% [markdown]
+#
+# 3. **Transform the parameters using the square root of the Fisher matrix**
+#
+# $$
+# \tilde{\boldsymbol{\theta}} = L\,\boldsymbol{\theta}',
+# \qquad
+# L^{\rm T}L = F',
+# $$
+#
+# where $F' = D^{\rm T}FD$ is the Fisher matrix in the standardized coordinates, which is how we compute it.
+#
+# The transformed coordinates satisfy
+#
+# $$
+# \|\Delta\tilde{\boldsymbol{\theta}}\|^2
+# =
+# \Delta\boldsymbol{\theta}^{\rm T}
+# F
+# \Delta\boldsymbol{\theta},
+# $$
+#
+# so Euclidean distances correspond to differences in the predicted observable. Directions that strongly affect the prediction are stretched, while insensitive directions are compressed.
+#
+# This approach leaves the normalizing flow unchanged and instead modifies the geometry of the input space. It provides a physically motivated metric for interpolation and may improve emulator performance by making the mapping from inputs to observables more isotropic.
+
+# %% [markdown]
+# Set withening
+
+# %%
+transf_data.set_whitening(fisher, type_stand="output")
+
+# %% [markdown]
+# Check it works both ways
+
+# %%
+tfw_params = transf_data.transf_stand_white(
+    emu_data["output_par"], direct=True, type_stand="output"
+)
+
+inv_tfw_params = transf_data.transf_stand_white(
+    tfw_params, type_stand="output", direct=False
+)
+
+fig, ax = plt.subplots(4, 2, figsize=(10, 10), sharex=True, sharey=True)
+ax = ax.flatten()
+for ii, par in enumerate(inv_tfw_params):
+    ax[ii].hist(emu_data["output_par"][par], bins=20)
+    ax[ii].hist(inv_tfw_params[par], bins=20, alpha=0.5)
+    ax[ii].set_title(par)
+plt.tight_layout()
+
+# %% [markdown]
+# Set global norm
+
+# %%
+tfw_params = transf_data.transf_stand_white(
+    emu_data["output_par"], direct=True, type_stand="output"
+)
+transf_data.set_global_norm(tfw_params, type_stand="output")
+
+# %%
+tfwn_params = transf_data.transf_stand_white_norm(
+    emu_data["output_par"], type_stand="output", direct=True
+)
+
+tf_params = transf_data.transf_stand(
+    emu_data["output_par"], type_stand="output", direct=True
+)
+
+fig, ax = plt.subplots(4, 2, figsize=(10, 10), sharex=True, sharey=True)
+ax = ax.flatten()
+for ii, par in enumerate(tfwn_params):
+    ax[ii].hist(tfwn_params[par], bins=20)
+    ax[ii].hist(tf_params[par], bins=20, alpha=0.5)
+    ax[ii].set_title(par)
+plt.tight_layout()
+
+# %% [markdown]
+# Check it works both ways
+
+# %%
+tfwn_params = transf_data.transf_stand_white_norm(
+    emu_data["output_par"], direct=True, type_stand="output"
+)
+
+inv_tfwn_params = transf_data.transf_stand_white_norm(
+    tfwn_params, type_stand="output", direct=False
+)
+
+fig, ax = plt.subplots(4, 2, figsize=(10, 10), sharex=True, sharey=True)
+ax = ax.flatten()
+for ii, par in enumerate(inv_tfwn_params):
+    ax[ii].hist(emu_data["output_par"][par], bins=20)
+    ax[ii].hist(inv_tfwn_params[par], bins=20, alpha=0.5)
+    ax[ii].set_title(par)
+plt.tight_layout()
+
+# %% [markdown]
+# ## Train emulator
+#
+# Datasets:
+# - input stand_input_par: cosmology + IGM physics. Tranform, standarize
+# - fisher_output_par: Arinyo parameters. Tranform, standarize, Fisher whitening, and global scaling. 
+#
+
+# %%
+# %load_ext autoreload
+# %autoreload 2
+
+import sys
+import os
+import matplotlib.pyplot as plt
+import numpy as np
+
+
+# %%
+# load training data
+from forestflow.archive import GadgetArchive3D
+Archive3D = GadgetArchive3D(addcentral=True)
+
+# %%
+from forestflow.set_training import get_training_data
+emu_data = get_training_data(Archive3D.training_data)
+
+# %%
+sim_mpg_central = Archive3D.get_testing_data("mpg_central")
+
+ztar = 3.0
+for ii, sim in enumerate(sim_mpg_central):
+    if sim["z"] == ztar:
+        ind_z3 = ii
+
+sim_cen = sim_mpg_central[ind_z3]
+
+# %%
+from forestflow.set_training import Transf_data
+transf_data = Transf_data(emu_data, sim_cen)
+
+# %% [markdown]
+# Input (cosmo IGM)
+
+# %%
+ts_input = transf_data.transf_stand(
+    emu_data["input_par"], type_stand="input", direct=True
+)
+
+fig, ax = plt.subplots(3, 2, figsize=(10, 8), sharex=True, sharey=True)
+ax = ax.flatten()
+for ii, par in enumerate(ts_input):
+    ax[ii].hist(emu_data["input_par"][par], bins=20)
+    ax[ii].hist(ts_input[par], bins=20, alpha=0.5)
+    ax[ii].set_title(par)
+plt.tight_layout()
+ax[-1].set_xlim(-2, 2)
+
+# %% [markdown]
+# Output
+
+# %%
+tswn_output = transf_data.transf_stand_white_norm(
+    emu_data["output_par"], type_stand="output", direct=True
+)
+
+
+fig, ax = plt.subplots(4, 2, figsize=(10, 8), sharex=True, sharey=True)
+ax = ax.flatten()
+for ii, par in enumerate(tswn_output):
+    ax[ii].hist(emu_data["output_par"][par], bins=20)
+    ax[ii].hist(tswn_output[par], bins=20, alpha=0.5)
+    ax[ii].set_title(par)
+plt.tight_layout()
+ax[-1].set_xlim(-2, 2)
+
+# %%
+input_training = {}
+input_training["input_par"] = ts_input
+input_training["output_par"] = tswn_output
+
+# %%
+save_path = os.path.join(
+    os.path.dirname(forestflow.__path__[0]), "data", "emulator_models", "test"
+)
+emulator = P3DEmulator(
+    training_data=input_training,
+    train=True,
+    nLayers_inn=5,
+    # nepochs=1250,
+    nepochs=100,
+    batch_size=16,
+    lr=5e-4,
+    dims_int=16,
+    use_val_set=True,
+    # use_val_set=False,
+    Nrealizations=10000,
+    save_path=save_path,
+)
+
+# %% [markdown]
+#
+
+# %% [markdown]
 # ## Load emulator
 #
 # Here to directly load the emulator
@@ -47,283 +622,6 @@ full_emulator = P3DEmulator(
 
 # %% [markdown]
 # ### Train l1O emulators
-
-# %%
-from forestflow.archive import GadgetArchive3D
-Archive3D = GadgetArchive3D(addcentral=True)
-
-# %%
-sim_mpg_central = Archive3D.get_testing_data("mpg_central")
-
-ztar = 3.0
-for ii, sim in enumerate(sim_mpg_central):
-    if sim["z"] == ztar:
-        ind_z3 = ii
-
-# %%
-from forestflow.play_with_power import get_arinyo_power
-
-sim = sim_mpg_central[ind_z3]
-
-# Assuming a Gaussian box of thrice the size of our simulations, L=67.5 Mpc
-# In reality, we have f&p with 3 axes
-Lbox_Mpc = 67.5 * 3
-
-noise = {"n_noise": 1000, "keep_all_noise": False, "Lbox_Mpc": Lbox_Mpc}
-power = get_arinyo_power(sim, noise=noise)
-
-# %% [markdown]
-# Ratio of Arinyo to Kaiser
-
-# %%
-n3d = int(power["model_k3d_Mpc"].shape[0]/2.)
-
-plt.plot(
-    power["model_k3d_Mpc"][:n3d],
-    power["ari_P3D_Mpc"][:n3d] / power["kai_P3D_Mpc"][:n3d],
-    label=r"$\mu=0$",
-)
-
-plt.plot(
-    power["model_k3d_Mpc"][n3d:],
-    power["ari_P3D_Mpc"][n3d:] / power["kai_P3D_Mpc"][n3d:],
-    label=r"$\mu=1$",
-)
-
-plt.legend()
-plt.xlabel(r"$k$ [1/Mpc]")
-plt.ylabel(r"$P_\mathrm{Arinyo}/P_\mathrm{Kaiser}$")
-plt.xscale("log")
-
-# %% [markdown]
-# Zoom in on error
-
-# %%
-plt.errorbar(
-    k1d,
-    power["ari_P1D_Mpc"]/power["ari_P1D_Mpc"]-1,
-    power["ari_std_P1D_Mpc"]/power["ari_P1D_Mpc"],
-    alpha=0.5
-)
-
-plt.ylim(-0.01, 0.01)
-
-
-# %%
-def fisher_standarize(params, derivatives, covariance):
-
-
-# %%
-# set Arinyo at z3
-cosmo_params_dict = {}
-for par in sim["cosmo_params"]:
-    if par != "omk":
-        cosmo_params_dict[par] = sim["cosmo_params"][par]
-    else:
-        cosmo_params_dict[par] = 0.0
-
-fid_cosmo = cosmology.Cosmology(cosmo_params_dict=cosmo_params_dict)
-model_Arinyo = ArinyoModel(fid_cosmo)
-
-par_ari = {}
-for par in sim["Arinyo_min"]:
-    par_ari[par] = sim["Arinyo_min"][par]
-
-# %%
-par_ari_var_top = {}
-par_ari_var_bot = {}
-
-all_p3d_der = {}
-all_p1d_der = {}
-all_both_der = {}
-
-n3d = power["model_k3d_Mpc"].shape[0]
-n1d = power["model_k1d_Mpc"].shape[0]
-
-for par1 in par_ari:
-    all_both_der[par1] = np.zeros(
-        (power["model_k3d_Mpc"].shape[0] + power["model_k1d_Mpc"].shape[0])
-    )
-
-    for par2 in par_ari:
-        if par1 == par2:
-            hh = diff_pars_ari[par1]
-        else:
-            hh = 0
-        par_ari_var_top[par2] = par_ari[par2] + 0.001 * hh
-        par_ari_var_bot[par2] = par_ari[par2] - 0.001 * hh
-
-    hh = diff_pars_ari[par1]
-
-    all_p3d_der_top = model_Arinyo.P3D_Mpc_k_mu(
-        sim["z"],
-        power["model_k3d_Mpc"],
-        power["model_mu3d"],
-        par_ari_var_top,
-    )
-
-    all_p3d_der_bot = model_Arinyo.P3D_Mpc_k_mu(
-        sim["z"],
-        power["model_k3d_Mpc"],
-        power["model_mu3d"],
-        par_ari_var_bot,
-    )
-
-    all_p3d_der[par1] = (all_p3d_der_top - all_p3d_der_bot) / 2 / hh
-
-    all_p1d_der_top = model_Arinyo.P1D_Mpc(
-        sim["z"],
-        power["model_k1d_Mpc"],
-        par_ari_var_top,
-    )
-
-    all_p1d_der_bot = model_Arinyo.P1D_Mpc(
-        sim["z"],
-        power["model_k1d_Mpc"],
-        par_ari_var_bot,
-    )
-
-    all_p1d_der[par1] = (all_p1d_der_top - all_p1d_der_bot) / 2 / hh
-
-    all_both_der[par1][:n3d] = all_p3d_der[par1]
-    all_both_der[par1][n3d:] = all_p1d_der[par1]
-
-# %%
-fig, ax = plt.subplots(len(par_ari)-1, sharex=True, figsize=(8, 20))
-
-ii = 0
-for jj, par in enumerate(par_ari):
-    if par == "beta":
-        continue
-    ax[ii].plot(ari_k3d_Mpc[:50], all_p3d_der[par][:50], label=par)
-    ax[ii].plot(ari_k3d_Mpc[50:], all_p3d_der[par][50:])
-    ax[ii].plot(ari_k1d_Mpc, all_p1d_der[par])
-    ax[ii].legend()
-    ii += 1
-plt.xscale("log")
-
-# %%
-fig, ax = plt.subplots(len(par_ari)-1, sharex=True, figsize=(8, 20))
-
-ii = 0
-for jj, par in enumerate(par_ari):
-    if par == "beta":
-        continue
-    ax[ii].plot(ari_k1d_Mpc, all_p1d_der[par], label=par)
-    ax[ii].legend()
-    ii += 1
-plt.xscale("log")
-
-# %%
-fisher = {}
-
-for par1 in par_ari:
-
-    if par1 == "beta":
-        continue
-    fisher[par1] = {}
-
-    for par2 in par_ari:
-        if par2 == "beta":
-            continue
-
-        # prod = np.dot(all_both_der[par1], np.dot(icov_both, all_both_der[par2]))
-        prod = np.sum(all_both_der[par1]*all_both_der[par2]/np.diag(cov_both))
-        fisher[par1][par2] = prod
-        # print(par1, par2, np.sqrt(np.abs(fisher[par1][par2])))
-
-
-# %%
-arinyo_params = []
-for par in par_ari:
-    if par == "beta":
-        continue
-    arinyo_params.append(par)
-arinyo_params
-
-# %%
-nari = len(arinyo_params)
-fisher_matrix = np.zeros((nari, nari))
-for ii, par1 in enumerate(arinyo_params): 
-    for jj, par2 in enumerate(arinyo_params):
-        fisher_matrix[ii, jj] = fisher[par1][par2]
-
-
-
-# %%
-
-# %%
-F_reg = F_std + 1e-6 * np.trace(F_std)/F_std.shape[0] * np.eye(F_std.shape[0])
-L = np.linalg.cholesky(F_reg)
-
-np.ones((nari)) @ L.T
-
-# %%
-arinyo_params
-
-# %%
-eigval = np.linalg.eigvalsh(L)
-
-print("min =", eigval.min())
-print("max =", eigval.max())
-print("condition number =", eigval.max()/eigval.min())
-
-# %%
-# standarize
-F_std = fisher_matrix * 1
-
-# Eigen decomposition
-eigval, eigvec = np.linalg.eigh(F_std)
-
-# Regularize tiny eigenvalues
-eigval = np.maximum(eigval, 1e-8)
-
-# Whitening matrix
-W = np.diag(np.sqrt(eigval)) @ eigvec.T
-
-# %%
-np.ones((nari)) @ W.T
-
-
-# %%
-def whiten(theta, mu, sigma, W):
-    theta_std = (theta - mu) / sigma
-    return theta_std @ W.T
-
-def unwhiten(theta_white, mu, sigma, W):
-    theta_std = theta_white @ np.linalg.inv(W).T
-    return theta_std * sigma + mu
-
-
-# %%
-# withen fisher
-import numpy as np
-
-# Mean and standard deviation from training set
-mu = theta.mean(axis=0)
-sigma = theta.std(axis=0)
-
-# Standardize parameters
-theta_std = (theta - mu) / sigma
-
-# Fisher matrix in standardized coordinates
-D = np.diag(sigma)
-F_std = D @ F @ D
-
-# Eigen decomposition
-eigval, eigvec = np.linalg.eigh(F_std)
-
-# Regularize tiny eigenvalues
-eigval = np.maximum(eigval, 1e-8)
-
-# Whitening matrix
-W = np.diag(np.sqrt(eigval)) @ eigvec.T
-
-# Whitened parameters
-theta_white = theta_std @ W.T
-
-# %%
-par_ari_var_bot
 
 # %%
 save_path = os.path.join(
