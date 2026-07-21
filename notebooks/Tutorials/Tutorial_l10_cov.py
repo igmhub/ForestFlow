@@ -181,10 +181,20 @@ from forestflow.play_with_power import compute_arinyo_power
 
 # Assuming a Gaussian box of twice the size of our simulations, L=67.5 Mpc
 # In reality, we have f&p with 3 axes
-Lbox_Mpc = 150
+Lbox_Mpc = 10000.
 
-noise = {"n_noise": 10000, "keep_all_noise": False, "Lbox_Mpc": Lbox_Mpc}
-power = compute_arinyo_power(pars_model, model_Arinyo, noise=noise)
+noise = {"n_noise": 2, "keep_all_noise": False, "Lbox_Mpc": Lbox_Mpc}
+power = compute_arinyo_power(
+    pars_model,
+    model_Arinyo,
+    noise=noise,
+    n3d=20,
+    n1d=10,
+    kmin_1d_Mpc=0.7,
+    kmax_1d_Mpc=0.8,
+    kmin_3d_Mpc=0.5,
+    kmax_3d_Mpc=2.5,
+)
 
 # %%
 pars_model["kpar_Mpc"] = power["model_kpar_Mpc"]
@@ -195,6 +205,295 @@ pars_model["std_P3D_Mpc"] = power["ari_std_P3D_Mpc"]
 pars_model["k1D_Mpc"] = power["model_k1d_Mpc"]
 pars_model["P1D_Mpc"] = power["ari_P1D_Mpc"]
 pars_model["std_P1D_Mpc"] = power["ari_std_P1D_Mpc"]
+
+# %%
+z = 3.0
+seed = 0
+nelem3d = len(power["model_kpar_Mpc"])
+nelem1d = len(power["model_k1d_Mpc"])
+
+
+p3d = model_Arinyo.P3D_Mpc_kpar_kperp(
+    z,
+    power["model_kpar_Mpc"],
+    power["model_kper_Mpc"],
+    pars_model["Arinyo"],
+)
+
+p1d = compute_P1D(
+    z,
+    power["model_kpar_Mpc"][:, 1],
+    model_Arinyo.P3D_Mpc_kpar_kperp,
+    pars_model["Arinyo"],
+)
+
+nrand = 1000
+p3d_noise = np.zeros((nrand, nelem3d, nelem3d))
+p1d_noise = np.zeros((nrand, nelem1d))
+
+for ii in range(nrand):
+    p3d_noise[ii] = model_Arinyo.P3D_Mpc_kpar_kperp_Gaussian_noise(
+        z,
+        power["model_kpar_Mpc"],
+        power["model_kper_Mpc"],
+        pars_model["Arinyo"],
+        seed=ii,
+        Lbox_Mpc=Lbox_Mpc,
+    )
+
+    p1d_noise[ii] = compute_P1D(
+        z,
+        power["model_k1d_Mpc"],
+        model_Arinyo.P3D_Mpc_kpar_kperp_Gaussian_noise,
+        pars_model["Arinyo"],
+        seed=ii,
+        Lbox_Mpc=Lbox_Mpc,
+    )
+
+# %%
+from forestflow.p1d import p1d_from_p3d, get_sigma
+
+# %%
+nelem_par = 30
+nelem_per = 100
+# nrand = 1
+nrand = 20000
+z = 3.0
+vol = 200.0**3
+
+kpar_3d = np.linspace(0.1, 5.0, nelem_par)
+kper_3d = np.logspace(-3, 2, nelem_per)
+# kper_3d = np.linspace(0.1, 1., nelem3d)
+kpar2d_3D, kperp2d_3D = np.meshgrid(kpar_3d, kper_3d, indexing="ij")
+kk_3d = np.sqrt(kpar2d_3D**2 + kperp2d_3D**2)
+mu_3d = kpar2d_3D / kk_3d
+
+
+res = p1d_from_p3d(
+    kpar_3d,
+    model_Arinyo.P3D_Mpc_kpar_kperp,
+    z,
+    pars_model["Arinyo"],
+    vol=vol,
+    niter=nrand,
+    seed=0,
+)
+
+# %%
+p3d = res["p3d"]
+p1d = res["p1d"]
+p3d_noise = res["rea_p3d"]
+p1d_noise = res["rea_p1d"]
+
+# %%
+for ii in range(100):
+    plt.plot(kpar_3d, p1d_noise[ii]/p1d-1)
+
+plt.xscale("log")
+
+# %%
+for ii in range(10):
+    plt.scatter(kperp2d_3D.reshape(-1), p3d_noise[ii, :, :].reshape(-1)/p3d.reshape(-1), alpha=0.5)
+
+plt.xscale("log")
+
+# %%
+nmax = nelem_par * nelem_per + nelem_par
+
+both = np.zeros((nrand, nmax))
+for ii in range(nrand):
+    both[ii, : nelem_par * nelem_per] = p3d_noise[ii].reshape(-1)
+    both[ii, nelem_par * nelem_per:] = p1d_noise[ii]
+
+
+# %%
+cov_both = np.cov(both.T)
+cov_both.shape
+
+# %%
+diag = np.sqrt(np.diag(cov_both))
+corr_both = cov_both / np.outer(diag, diag)
+
+# %%
+kpar_3d.shape
+
+# %%
+kpar3D sim kpar1D
+kper/kpar1D = 0.66
+mu = 0.78
+
+# %%
+1/np.sqrt(1 + 0.66**2)
+
+# %%
+sc_all = []
+
+for ii in range(kpar_3d.shape[0]):
+# for ii in range(2):
+    x = kpar2d_3D.reshape(-1) / kpar_3d[ii]
+    y = corr_both[nmax - nelem_par + ii, : nmax - nelem_par]
+    # _ = (x > 0.9) & (x < 1.1) & (y > 0.05)
+    _ = (y > 0.05)
+    col = kperp2d_3D.reshape(-1) / kpar_3d[ii]
+    # col2 = kk_3d.reshape(-1)/ kpar_3d[ii]
+    # col2 = mu_3d.reshape(-1)
+    col2 = kpar2d_3D.reshape(-1)
+    sc = plt.scatter(col[_], y[_], c=col2[_], alpha=0.6)
+    sc_all.append(sc)
+
+vmin = min(sc.get_array().min() for sc in sc_all)
+vmax = max(sc.get_array().max() for sc in sc_all)
+
+norm = plt.Normalize(vmin, vmax)
+
+for sc in sc_all:
+    sc.set_norm(norm)
+
+plt.axvline(0.66)
+plt.xscale("log")
+plt.ylim(0.05, 0.4)
+plt.colorbar()
+
+# %%
+
+# %%
+
+# %%
+plt.imshow(corr_both)
+plt.colorbar()
+
+# %%
+# plt.figure(figsize=(8, 8))
+
+x_edges = kpar2d_3D.reshape(-1)
+
+# kpar2d_3D, kperp2d_3D = np.meshgrid(kpar_3d, kper_3d, indexing="ij")
+# kk_3d = np.sqrt(kpar2d_3D**2 + kperp2d_3D**2)
+# mu_3d = kpar2d_3D / kk_3d
+
+mat = corr_both[nmax - nelem_par :, : nmax - nelem_par]
+ind = np.argsort(x_edges)
+
+fig, ax = plt.subplots(figsize=(8, 6))
+
+fontsize = 18
+ticksize = 18
+sc = ax.pcolormesh(x_edges[ind], kpar_3d, mat[:, ind], shading="auto", rasterized=True)
+ax.set_ylabel(r"$k^\mathrm{1D}_\parallel[\mathrm{Mpc}^{-1}]$", fontsize=fontsize)
+ax.set_xlabel(r"$k^\mathrm{3D}_\parallel[\mathrm{Mpc}^{-1}]$", fontsize=fontsize)
+ax.tick_params(axis="both", labelsize=ticksize)
+
+cbar = fig.colorbar(sc)
+cbar.set_label(r"Correlation $P_\mathrm{3D}$ and $P_\mathrm{1D}$", fontsize=fontsize)
+cbar.ax.tick_params(labelsize=ticksize)
+plt.tight_layout()
+plt.savefig("figs/corr_p1d_p3d.pdf")
+plt.savefig("figs/corr_p1d_p3d.png")
+
+# %%
+
+# %%
+# plt.figure(figsize=(8, 8))
+
+
+mat = corr_both[nmax - nelem1d :, :nmax - nelem1d]
+
+plt.pcolormesh(mat, shading="auto")
+plt.colorbar()
+
+# %%
+inds = np.argwhere(mat > 0.2)
+
+res = np.zeros((inds.shape[0], 3))
+res[:, 0] = kpar_1d[inds[:, 0]]
+# res[:, 1] = kk_3d.reshape(-1)[inds[:, 1]]
+res[:, 1] = kpar2d_3D.reshape(-1)[inds[:, 1]]
+res[:, 2] = mat[inds[:, 0], inds[:, 1]]
+
+# %%
+from corner import corner
+
+# %%
+corner(res);
+
+# %%
+# plt.figure(figsize=(8, 8))
+
+x_edges = kperp2d_3D.reshape(-1)
+mat = corr_both[nmax - nelem1d :, :nmax - nelem1d]
+ind = np.argsort(x_edges)
+
+plt.pcolormesh(x_edges[ind], kpar_1d, mat[:,ind], shading="auto")
+plt.colorbar()
+
+# %%
+x_edges[ind].shape
+
+# %%
+# k = np.sqrt(power["model_kpar_Mpc"]**2 + power["model_kper_Mpc"]**2)
+# mu = power["model_kpar_Mpc"] / k
+
+# %%
+
+# %%
+
+# %%
+corr_both.shape
+
+# %%
+val = []
+rat = []
+rat2 = []
+rat3 = []
+
+for jj in range(nelem1d):
+    _ = corr_both[nmax - nelem1d + jj, : nmax - nelem1d] > 0.2
+    if sum(_) == 0:
+        continue
+    # print()
+    # print(jj, corr_both[nmax - nelem1d + jj, : nmax - nelem1d][_])
+
+    # print(
+    #     np.round(kpar1d[jj], 2),
+    # )
+    # print(
+    #     np.round(kpar[_]/kpar1d[jj], 2),
+    #     np.round(kper[_]/kpar1d[jj], 2),
+    #     np.round(kk[_]/kpar1d[jj], 2),
+    # )
+    val.append(corr_both[nmax - nelem1d + jj, : nmax - nelem1d][_])
+    rat.append(kk[_]/kpar1d[jj])
+    rat2.append(kpar[_]/kpar1d[jj])
+    rat3.append(kper[_]/kpar1d[jj])
+    # plt.scatter(kpar.reshape(-1)[jj], kper.reshape(-1)[jj], c=kpar1d[_][0]/5.)
+    # break
+
+# %%
+plt.plot(np.concatenate(rat), np.concatenate(val), ".")
+# plt.plot(np.concatenate(rat2), np.concatenate(val), ".")
+# plt.plot(np.concatenate(rat3), np.concatenate(val), ".")
+
+# %% [markdown]
+# Peak of the correlation between P3D and P1D for the wavelength where kpar3D/kpar1D = 3.33
+
+# %%
+y.shape
+
+# %%
+
+# %%
+
+# %%
+
+# %%
+
+plt.pcolormesh(
+    power["model_kpar_Mpc"],
+    power["model_kper_Mpc"],
+    p3d_noise[0]/p3d-1,
+    shading="auto",
+)
+plt.colorbar()
 
 # %% [markdown]
 # Plot diag of 3D cov
@@ -587,15 +886,21 @@ input_training["input_par"] = ts_input
 input_training["output_par"] = tswn_output
 
 # %%
+import forestflow
+from forestflow.P3D_cINN import P3DEmulator
+
 save_path = os.path.join(
     os.path.dirname(forestflow.__path__[0]), "data", "emulator_models", "test"
 )
+
+# %%
+
 emulator = P3DEmulator(
     training_data=input_training,
     train=True,
     nLayers_inn=5,
     # nepochs=1250,
-    nepochs=100,
+    nepochs=2,
     batch_size=16,
     lr=5e-4,
     dims_int=16,

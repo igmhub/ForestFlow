@@ -658,6 +658,8 @@ def plot_bias_beta_zev(bao_data, dict_mapping, plot_bias_eta=False, z0=3.0, ftsi
         r"$b_\eta$",
     ]
 
+    data_fig = {}
+
     fig, ax = plt.subplots(len(params_labels), 1, sharex=True, figsize=(8, 8))
 
     bao_plot = {}
@@ -700,6 +702,11 @@ def plot_bias_beta_zev(bao_data, dict_mapping, plot_bias_eta=False, z0=3.0, ftsi
             label=r"DESI $P_\mathrm{1D}$",
         )
 
+        # zenodo
+        data_fig["P1D " + lab + " x"] = dict_mapping["zs"]
+        data_fig["P1D " + lab + " ylow"] = percen[0]
+        data_fig["P1D " + lab + " yhigh"] = percen[1]
+
         mean = np.mean(param, axis=0)
 
         if ii == 0:
@@ -712,7 +719,12 @@ def plot_bias_beta_zev(bao_data, dict_mapping, plot_bias_eta=False, z0=3.0, ftsi
         data[params_labels_latex[ii]] = fit_val
 
         # data[params_latex[ii]] = fit_val
-        ax[ii].plot(zfit, fit_pol(zfit, *fit_val), color="C0", ls="--")
+        yfit = fit_pol(zfit, *fit_val)
+        ax[ii].plot(zfit, yfit, color="C0", ls="--")
+
+        # zenodo
+        data_fig["P1D fit " + lab + " x"] = zfit
+        data_fig["P1D fit " + lab + " y"] = yfit
 
         for jj, key in enumerate(bao_plot):
             dumm = np.zeros(2)
@@ -725,6 +737,20 @@ def plot_bias_beta_zev(bao_data, dict_mapping, plot_bias_eta=False, z0=3.0, ftsi
                 color="C" + str(jj + 1),
             )
 
+            # zenodo
+            if key == "dr2_hsnr":
+                key_lab = "BAO DR2"
+            else:
+                key_lab = "BAO DR1"
+
+            data_fig[key_lab + " " + lab + " x"] = (
+                dumm + bao_plot[key]["zeff"] + xdisp[jj]
+            )
+            data_fig[key_lab + " " + lab + " y mean"] = (
+                dumm + bao_plot[key][lab]["mean"]
+            )
+            data_fig[key_lab + " " + lab + " y std"] = dumm + bao_plot[key][lab]["std"]
+
             if key == "dr2_hsnr":
                 b1 = bao_plot[key][lab]["mean"] - bao_plot[key][lab]["std"]
                 b2 = bao_plot[key][lab]["mean"] + bao_plot[key][lab]["std"]
@@ -734,6 +760,12 @@ def plot_bias_beta_zev(bao_data, dict_mapping, plot_bias_eta=False, z0=3.0, ftsi
                     expo = 0
                 bz = ((1 + zbao) / (1 + bao_plot[key]["zeff"])) ** expo
                 ax[ii].fill_between(zbao, b1 * bz, b2 * bz, color="C2", alpha=0.2)
+
+                # zenodo
+
+                data_fig["BAO DR2 zev " + lab + " x"] = zbao
+                data_fig["BAO DR2 zev " + lab + " y low"] = b1 * bz
+                data_fig["BAO DR2 zev " + lab + " y high"] = b2 * bz
 
     ax[0].legend(fontsize=ftsize - 2)
 
@@ -750,6 +782,10 @@ def plot_bias_beta_zev(bao_data, dict_mapping, plot_bias_eta=False, z0=3.0, ftsi
         alpha=0.5,
         color="grey",
     )
+    # zenodo
+    data_fig["BAO weights x"] = bao_data["dr2"]["zhist"]
+    data_fig["BAO weights y"] = bao_data["dr2"]["smooth_weights"]
+
     ax[ii].text(
         bao_data["dr2"]["zhist"].min() + 0.05,
         ypos + 0.05,
@@ -769,9 +805,12 @@ def plot_bias_beta_zev(bao_data, dict_mapping, plot_bias_eta=False, z0=3.0, ftsi
     plt.tight_layout()
     plt.savefig("figs/bias_beta_BAOvsP1D.png")
     plt.savefig("figs/bias_beta_BAOvsP1D.pdf")
+    np.save("figs/bias_beta_BAOvsP1D.npy", data_fig)
 
 
 def plot_bias_beta_zev_val(dict_mapping, plot_bias_eta=False, ftsize=24):
+
+    fig_data = {}
 
     params_sim = {
         "z": np.array([4.0, 3.6, 3.0, 2.6, 2.0]),
@@ -837,6 +876,10 @@ def plot_bias_beta_zev_val(dict_mapping, plot_bias_eta=False, ftsize=24):
             label=r"Model",
         )
 
+        fig_data["Model " + lab + " x"] = dict_mapping["zs"][ind_data]
+        fig_data["Model " + lab + " y low"] = percen[0][ind_data]
+        fig_data["Model " + lab + " y high"] = percen[1][ind_data]
+
         ind_sim = params_sim["z"] >= 2.6
 
         ax[ii].errorbar(
@@ -849,6 +892,10 @@ def plot_bias_beta_zev_val(dict_mapping, plot_bias_eta=False, ftsize=24):
             linestyle="-",
             lw=2,
         )
+
+        fig_data["Sim " + lab + " x"] = params_sim["z"][ind_sim]
+        fig_data["Sim " + lab + " y"] = params_sim[lab]["value"][ind_sim]
+        fig_data["Sim " + lab + " y error"] = params_sim[lab]["error"][ind_sim]
 
     ax[0].legend(fontsize=ftsize)
 
@@ -867,6 +914,7 @@ def plot_bias_beta_zev_val(dict_mapping, plot_bias_eta=False, ftsize=24):
 
     plt.savefig("figs/bias_beta_accel2.png")
     plt.savefig("figs/bias_beta_accel2.pdf")
+    np.save("figs/bias_beta_accel2.npy", fig_data)
 
 
 def plot_p3d_small_z(dict_mapping, z0=3, ftsize=24):
@@ -876,6 +924,8 @@ def plot_p3d_small_z(dict_mapping, z0=3, ftsize=24):
     def fit_func(z, a, b, c, d):
         x = (1 + z) / (1 + z0)
         return a + b * x + c * x**2 + d * x**3
+
+    data_fig = {}
 
     params = ["q1", "q2", "av", "bv", "kvav", "kp"]
     params_latex = [
@@ -901,9 +951,14 @@ def plot_p3d_small_z(dict_mapping, z0=3, ftsize=24):
             )
         percen = np.nanpercentile(val_par, [16, 84], axis=0)
         ax[ii].fill_between(dict_mapping["zs"], percen[0], percen[1], alpha=0.3)
+
+        # zenodo
+        data_fig[params_latex[ii] + " x"] = dict_mapping["zs"]
+        data_fig[params_latex[ii] + " y low"] = percen[0]
+        data_fig[params_latex[ii] + " y high"] = percen[1]
+
         mean = np.nanmean(val_par, axis=0)
         fit_val = curve_fit(fit_func, dict_mapping["zs"], mean)[0]
-
         data[params_latex[ii]] = fit_val
         zplot = np.linspace(np.min(dict_mapping["zs"]), np.max(dict_mapping["zs"]), 100)
         ax[ii].plot(
@@ -912,6 +967,11 @@ def plot_p3d_small_z(dict_mapping, z0=3, ftsize=24):
             color="C0",
             ls="--",
         )
+
+        # zenodo
+        data_fig[params_latex[ii] + " fit x"] = zplot
+        data_fig[params_latex[ii] + " fit y"] = fit_func(zplot, *fit_val)
+
         ax[ii].set_ylabel(params_latex[ii], fontsize=ftsize)
         ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
 
@@ -929,11 +989,14 @@ def plot_p3d_small_z(dict_mapping, z0=3, ftsize=24):
     plt.tight_layout()
     plt.savefig("figs/Arinyo_with_z.pdf")
     plt.savefig("figs/Arinyo_with_z.png")
+    np.save("figs/Arinyo_with_z.npy", data_fig)
 
 
 def plot_p3d_validation(knew3d, munew3d, data_pip, data_sim, ftsize=24):
 
     from matplotlib.patches import Patch
+
+    data_fig = {}
 
     p3d = data_pip["forest_out"]["p3d"]
     plin = data_pip["forest_out"]["plin"]
@@ -977,6 +1040,11 @@ def plot_p3d_validation(knew3d, munew3d, data_pip, data_sim, ftsize=24):
                 label=label,
             )
 
+            # zenodo
+            data_fig["Model z=" + str(zz[ii]) + " mu" + str(jj) + " x"] = knew3d[_, 0]
+            data_fig["Model z=" + str(zz[ii]) + " mu" + str(jj) + " y low"] = yybot[_]
+            data_fig["Model z=" + str(zz[ii]) + " mu" + str(jj) + " y high"] = yytop[_]
+
             if (ii == 2) and (jj == 0):
                 label = "Simulation"
             else:
@@ -985,6 +1053,11 @@ def plot_p3d_validation(knew3d, munew3d, data_pip, data_sim, ftsize=24):
             ind2 = np.argmin(np.abs(zz[ii] - data_sim["z"]))
             yy = (p3d_accel2[ind2, :, jj] / np.median(plin[:, ii, :], axis=0))[_]
             ax[ii - 2].plot(knew3d[_, 0], yy, "C" + str(jj) + "-", label=label)
+
+            data_fig["Simulation z=" + str(zz[ii]) + " mu" + str(jj) + " x"] = knew3d[
+                _, 0
+            ]
+            data_fig["Simulation z=" + str(zz[ii]) + " mu" + str(jj) + " y"] = yy
 
     ax[0].legend(fontsize=ftsize)
 
@@ -1021,3 +1094,4 @@ def plot_p3d_validation(knew3d, munew3d, data_pip, data_sim, ftsize=24):
     plt.tight_layout()
     plt.savefig("figs/forestflow_p3d_accel2.png")
     plt.savefig("figs/forestflow_p3d_accel2.pdf")
+    np.save("figs/forestflow_p3d_accel2.npy", data_fig)

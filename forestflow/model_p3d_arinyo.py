@@ -132,7 +132,15 @@ class ArinyoModel(object):
 
     @coordinates("kpar_kperp")
     def P3D_Mpc_kpar_kperp_Gaussian_noise(
-        self, z, kpar, kperp, ari_pp, seed=0, Lbox_Mpc=100, new_cosmo_params=None
+        self,
+        z,
+        kpar,
+        kperp,
+        ari_pp,
+        seed=0,
+        Lbox_Mpc=100,
+        new_cosmo_params=None,
+        epsilon=0.0,
     ):
         """
         Compute the 3D flux power spectrum for inputs given as k (magnitude) and mu (cosine of angle).
@@ -162,7 +170,7 @@ class ArinyoModel(object):
 
         # realization
         rng = np.random.default_rng(seed)
-        P3D_err = _P3D + rng.normal(scale=sigma)
+        P3D_err = _P3D + rng.normal(scale=sigma) + epsilon
 
         P3D_err = P3D_err.reshape(kpar.shape[0], kpar.shape[1])
 

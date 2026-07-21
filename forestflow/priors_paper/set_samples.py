@@ -402,7 +402,7 @@ def sample_cosmo_dict(base, n_samples=1, rng=None):
 
 
 def load_k_mu_accel2():
-    from cup1d.p1ds.data_accel2 import load_data
+    from cup1d.p1ds.simulations.data_accel2 import load_data
 
     folder = "/home/jchaves/Proyectos/projects/lya/data/accel2/frontier_grid/"
     data_accel2 = load_data(folder)

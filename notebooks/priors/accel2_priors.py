@@ -63,9 +63,6 @@ plt.plot(k1d_Mpc, k1d_Mpc * np.median(data["forest_out"]["p1d"][:, ind_data, ind
 # plt.xscale("log")
 
 # %%
-data["forest_out"]["p1d"].shape
-
-# %%
 plot_p3d_validation(knew3d, munew3d, data, data_accel2)
 
 # %%

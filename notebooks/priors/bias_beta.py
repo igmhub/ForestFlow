@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.4
+#       jupytext_version: 1.19.1
 #   kernelspec:
 #     display_name: lace
 #     language: python
@@ -53,8 +53,6 @@ all_plots.plot_bias_beta_zev(bao_data, dict_mapping)
 
 # %%
 all_plots.plot_p3d_small_z(dict_mapping)
-
-# %%
 
 # %% [markdown]
 # Check consistency of P1D from lace and forestflow
