@@ -53,16 +53,17 @@ class Transf_data(object):
     """Class transf data"""
 
     def __init__(self, dict_all_params, sim_central):
+        """
+
+        1. Set standarize for the input and output parameters (self.stand_input and self.stand_output)
+        2. Get Fisher matrix for the transf + stand output parameters
+        3. Set whitening for the output parameters (self.white_output)
+        4. Set global norm for the output parameters (self.alpha_output)
+
+        """
 
         self.set_standarize(dict_all_params["input_par"], type_stand="input")
         self.set_standarize(dict_all_params["output_par"], type_stand="output")
-
-        # if fisher_in is not None:
-        #     self.set_whitening(fisher_in, type_stand="input")
-        #     tfw_params = self.transf_stand_white(
-        #         dict_all_params["input_par"], direct=True, type_stand="input"
-        #     )
-        #     self.set_global_norm(tfw_params, type_stand="input")
 
         # for output data, whitening and global norm
         pars_model = {}
