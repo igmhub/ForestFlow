@@ -12,6 +12,8 @@ from torch.utils.data import DataLoader, TensorDataset
 import FrEIA.framework as Ff
 import FrEIA.modules as Fm
 
+from forestflow.set_training import Transf_data
+
 
 def init_xavier(m):
     """Initialization of the NN.
@@ -50,6 +52,7 @@ class P3DEmulator:
         drop_sim=None,
         save_path=None,
         model_path=None,
+        transf_file=None,
         nLayers_inn=5,
         dims_int=16,
         nepochs=1000,
@@ -72,13 +75,11 @@ class P3DEmulator:
                 "If train is true, model_path must not be provided. Use save_path instead."
             )
 
-        # Initialize class attributes with provided arguments
-        self.Nrealizations = Nrealizations
-        self.input_labels = list(training_data["input_par"].keys())
-        self.output_labels = list(training_data["output_par"].keys())
-        dim_inputSpace = len(self.output_labels)
-
         if train:
+
+            self.input_labels = list(training_data["input_par"].keys())
+            self.output_labels = list(training_data["output_par"].keys())
+
             self._train_emu(
                 training_data,
                 adamw=adamw,
@@ -93,11 +94,13 @@ class P3DEmulator:
                 weight_decay=weight_decay,
                 nLayers_inn=nLayers_inn,
                 batch_size=batch_size,
-                dim_inputSpace=dim_inputSpace,
+                dim_inputSpace=len(self.output_labels),
                 save_path=save_path,
                 use_val_set=use_val_set,
             )
         elif model_path is not None:
+            self.Nrealizations = Nrealizations
+            self.transf_data = Transf_data(preload_file=transf_file)
             self._load_emu(model_path=model_path)
         else:
             raise ValueError("Either train or model_path must be provided.")
@@ -153,12 +156,8 @@ class P3DEmulator:
         # load metadata
         metadata = np.load(model_path + "_metadata.npy", allow_pickle=True).item()
 
-        self.training_type = metadata["training_type"]
-        self.input_param_lims_min = metadata["input_param_lims_min"]
-        self.input_param_lims_max = metadata["input_param_lims_max"]
-        self.output_param_lims_min = metadata["output_param_lims_min"]
-        self.output_param_lims_max = metadata["output_param_lims_max"]
-        self.input_labels = metadata["emu_input_names"]
+        self.input_labels = metadata["input_labels"]
+        self.output_labels = metadata["output_labels"]
 
         self.emulator = self._define_cINN_Arinyo(
             metadata["nLayers_inn"],
@@ -208,6 +207,8 @@ class P3DEmulator:
         # Get the training data and define the cINN model
 
         for label in ["input_par", "output_par"]:
+
+            # move training data to arrays
             key = list(training_data[label].keys())[0]
             nelem = training_data[label][key].shape[0]
             npar = len(training_data[label])
@@ -215,10 +216,11 @@ class P3DEmulator:
             for ii, par in enumerate(training_data[label]):
                 arr_data[:, ii] = training_data[label][par]
 
+            # native type for numpy is float64, for torch it is float32
             if label == "input_par":
-                emu_input = torch.tensor(arr_data)
+                emu_input = torch.tensor(arr_data, dtype=torch.float32)
             else:
-                emu_output = torch.tensor(arr_data)
+                emu_output = torch.tensor(arr_data, dtype=torch.float32)
 
         self.emulator = self._define_cINN_Arinyo(
             nLayers_inn, batch_size, dim_inputSpace, dims_int=dims_int
@@ -226,6 +228,8 @@ class P3DEmulator:
 
         # store metadata
         metadata = {
+            "input_labels": self.input_labels,
+            "output_labels": self.output_labels,
             "nLayers_inn": nLayers_inn,
             "batch_size": batch_size,
             "dim_inputSpace": dim_inputSpace,
@@ -386,7 +390,7 @@ class P3DEmulator:
         if save_path is not None:
             torch.save(self.emulator.state_dict(), save_path + ".pt")
 
-    def predict_Arinyos(
+    def evaluate(
         self,
         emu_params,
         Nrealizations=None,
@@ -441,18 +445,13 @@ class P3DEmulator:
         # Normalize the input data and arrange it along the first axis
         condition = np.zeros((neval * Nrealizations, ninpt_pars))
         for jj in range(neval):
-            input_emu = []
-            for par in self.input_labels:
-                input_emu.append(emu_params[jj][par])
-            input_emu = np.array(input_emu)
-            for ipar in [0]:
-                if input_emu.ndim == 1:
-                    input_emu[ipar] = np.log(input_emu[ipar])
-                else:
-                    input_emu[:, ipar] = np.log(input_emu[:, ipar])
-            condition[jj * Nrealizations : (jj + 1) * Nrealizations, :] = (
-                input_emu - self.input_param_lims_min
-            ) / (self.input_param_lims_max - self.input_param_lims_min)
+            dict_input = self.transf_data.transf_stand(
+                emu_params[jj], type_stand="input", direct=True
+            )
+            arr_input = np.zeros((ninpt_pars))
+            for ii, par in enumerate(self.input_labels):
+                arr_input[ii] = dict_input[par]
+            condition[jj * Nrealizations : (jj + 1) * Nrealizations, :] = arr_input
         condition = torch.Tensor(condition)
 
         # Prepare the conditions for the cINN
@@ -467,43 +466,31 @@ class P3DEmulator:
                 neval * Nrealizations, self.dim_inputSpace, generator=g
             )
 
-            Arinyo_preds, _ = self.emulator(z_test, condition, rev=True)
-
-            # Transform the predictions back to the original space
-            Arinyo_preds = (
-                Arinyo_preds * (self.output_param_lims_max - self.output_param_lims_min)
-                + self.output_param_lims_min
-            )
-            for ipar in [2, 3, 6, 7]:
-                Arinyo_preds[:, ipar] = torch.exp(Arinyo_preds[:, ipar])
+            out_emu, _ = self.emulator(z_test, condition, rev=True)
 
         # Reshape the predictions and calculate the mean
         all_realizations = np.array(
-            Arinyo_preds.reshape(neval, Nrealizations, self.dim_inputSpace)
+            out_emu.reshape(neval, Nrealizations, self.dim_inputSpace)
         )
-        Arinyo_mean = np.mean(all_realizations, axis=1)
+        arr_tswn_output = np.mean(all_realizations, axis=1)
 
-        # Format the output as a dictionary or a numpy array
-        if return_dict:
-            _Arinyo_mean = []
-            for ii in range(Arinyo_mean.shape[0]):
-                _dict_int = {}
-                for jj, par in enumerate(self.output_labels):
-                    _dict_int[par] = Arinyo_mean[ii, jj]
-                _Arinyo_mean.append(_dict_int)
-            Arinyo_mean = _Arinyo_mean
-            if len(Arinyo_mean) == 1:
-                Arinyo_mean = Arinyo_mean[0]
-        else:
-            if Arinyo_mean.shape[0] == 1:
-                Arinyo_mean = Arinyo_mean[0]
-                all_realizations = all_realizations[0]
+        dict_tswn_output = {}
+        for ii, par in enumerate(self.output_labels):
+            dict_tswn_output[par] = arr_tswn_output[:, ii]
 
-        # Return the results
-        if return_all_realizations == True:
-            return all_realizations, Arinyo_mean
-        else:
-            return Arinyo_mean
+        # Transform the predictions back to the original space
+        output = self.transf_data.transf_stand(
+            dict_tswn_output, type_stand="output", direct=False
+        )
+        # output = self.transf_data.transf_stand_white_norm(
+        #     dict_tswn_output, type_stand="output", direct=False
+        # )
+
+        for par in output:
+            if len(output[par].shape) == 1:
+                output[par] = output[par][0]
+
+        return output
 
 
 def compute_val_loss(model, loader):

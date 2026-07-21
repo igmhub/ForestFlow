@@ -6,13 +6,16 @@ from lace.cosmo import cosmology
 from forestflow.play_with_power import get_fisher
 
 
-def get_training_data(list_sims):
+def get_training_data(list_sims, zmin=0, zmax=10):
 
     input_params = ["Delta2_p", "n_p", "mF", "sigT_Mpc", "gamma", "kF_Mpc"]
     other_params = ["z", "As", "ns"]
     output_params = ["bias", "bias_eta", "q1", "kvav", "av", "bv", "kp", "q2"]
 
-    nn_train = len(list_sims)
+    nn_train = 0
+    for ii in range(len(list_sims)):
+        if (list_sims[ii]["z"] > zmin) and (list_sims[ii]["z"] < zmax):
+            nn_train += 1
 
     # cosmo + IGM
     all_input_par = {}
@@ -30,6 +33,8 @@ def get_training_data(list_sims):
         all_output_par[par] = np.zeros((nn_train))
 
     for ii, sim in enumerate(list_sims):
+        if (sim["z"] < zmin) or (sim["z"] > zmax):
+            continue
         for par in input_params:
             all_input_par[par][ii] = sim[par]
         for par in other_params:
@@ -52,7 +57,9 @@ def get_training_data(list_sims):
 class Transf_data(object):
     """Class transf data"""
 
-    def __init__(self, dict_all_params, sim_central):
+    def __init__(
+        self, dict_all_params=None, sim_model=None, preload_file=None, save_file=None
+    ):
         """
 
         1. Set standarize for the input and output parameters (self.stand_input and self.stand_output)
@@ -62,34 +69,69 @@ class Transf_data(object):
 
         """
 
-        self.set_standarize(dict_all_params["input_par"], type_stand="input")
-        self.set_standarize(dict_all_params["output_par"], type_stand="output")
+        if preload_file is None:
+            if (dict_all_params is None) or (sim_model is None):
+                raise ValueError(
+                    "If preload_file is not None, dict_all_params and sim_model must be provided."
+                )
+            if save_file is None:
+                print("Not saving data,save_file is None")
 
-        # for output data, whitening and global norm
-        pars_model = {}
-        pars_model["z"] = sim_central["z"]
-        pars_model["Arinyo"] = {}
-        for par in dict_all_params["output_par"]:
-            pars_model["Arinyo"][par] = sim_central["Arinyo_min"][par]
+            self.set_standarize(dict_all_params["input_par"], type_stand="input")
+            self.set_standarize(dict_all_params["output_par"], type_stand="output")
 
-        # set Arinyo model
-        cosmo_params_dict = {}
-        for par in sim_central["cosmo_params"]:
-            if par != "omk":
-                cosmo_params_dict[par] = sim_central["cosmo_params"][par]
-            else:
-                cosmo_params_dict[par] = 0.0
+            # for output data, whitening and global norm
+            pars_model = {}
+            pars_model["z"] = sim_model["z"]
+            pars_model["Arinyo"] = {}
+            for par in dict_all_params["output_par"]:
+                pars_model["Arinyo"][par] = sim_model["Arinyo_min"][par]
 
-        fid_cosmo = cosmology.Cosmology(cosmo_params_dict=cosmo_params_dict)
-        model_Arinyo = ArinyoModel(fid_cosmo)
+            # set Arinyo model
+            cosmo_params_dict = {}
+            for par in sim_model["cosmo_params"]:
+                if par != "omk":
+                    cosmo_params_dict[par] = sim_model["cosmo_params"][par]
+                else:
+                    cosmo_params_dict[par] = 0.0
 
-        fisher_output = get_fisher(self, pars_model, model_Arinyo)
+            fid_cosmo = cosmology.Cosmology(cosmo_params_dict=cosmo_params_dict)
+            model_Arinyo = ArinyoModel(fid_cosmo)
 
-        self.set_whitening(fisher_output, type_stand="output")
-        tfw_params = self.transf_stand_white(
-            dict_all_params["output_par"], direct=True, type_stand="output"
-        )
-        self.set_global_norm(tfw_params, type_stand="output")
+            fisher_output = get_fisher(self, pars_model, model_Arinyo)
+
+            self.set_whitening(fisher_output, type_stand="output")
+            tfw_params = self.transf_stand_white(
+                dict_all_params["output_par"], direct=True, type_stand="output"
+            )
+            self.set_global_norm(tfw_params, type_stand="output")
+
+            if save_file is not None:
+                np.save(
+                    save_file,
+                    {
+                        "stand_input": self.stand_input,
+                        "stand_output": self.stand_output,
+                        "white_output": self.white_output,
+                        "alpha_output": self.alpha_output,
+                    },
+                )
+        else:
+            if (
+                (dict_all_params is not None)
+                or (sim_model is not None)
+                or (save_file is not None)
+            ):
+                print(
+                    "If preload_file is None, dict_all_params, sim_model, and save_file are ignored."
+                )
+
+            preload_data = np.load(preload_file, allow_pickle=True).item()
+
+            self.stand_input = preload_data["stand_input"]
+            self.stand_output = preload_data["stand_output"]
+            self.white_output = preload_data["white_output"]
+            self.alpha_output = preload_data["alpha_output"]
 
         return
 
@@ -160,20 +202,20 @@ class Transf_data(object):
                     t_params[par] = np.log(dict_params[par])
                 else:
                     t_params[par] = np.exp(dict_params[par])
-            elif par in ["q1"]:
-                if direct:
-                    t_params[par] = np.log(dict_params["q1"] + dict_params["q2"])
-                else:
-                    q1pq2 = np.exp(dict_params["q1"])
-                    q1mq2 = dict_params["q2"]
-                    t_params[par] = 0.5 * (q1pq2 + q1mq2)
-            elif par in ["q2"]:
-                if direct:
-                    t_params[par] = dict_params["q1"] - dict_params["q2"]
-                else:
-                    q1pq2 = np.exp(dict_params["q1"])
-                    q1mq2 = dict_params["q2"]
-                    t_params[par] = 0.5 * (q1pq2 - q1mq2)
+            # elif par in ["q1"]:
+            #     if direct:
+            #         t_params[par] = np.log(dict_params["q1"] + dict_params["q2"])
+            #     else:
+            #         q1pq2 = np.exp(dict_params["q1"])
+            #         q1mq2 = dict_params["q2"]
+            #         t_params[par] = 0.5 * (q1pq2 + q1mq2)
+            # elif par in ["q2"]:
+            #     if direct:
+            #         t_params[par] = dict_params["q1"] - dict_params["q2"]
+            #     else:
+            #         q1pq2 = np.exp(dict_params["q1"])
+            #         q1mq2 = dict_params["q2"]
+            #         t_params[par] = 0.5 * (q1pq2 - q1mq2)
             else:
                 t_params[par] = dict_params[par]
 
@@ -260,7 +302,7 @@ class Transf_data(object):
 
         return out_params
 
-    def transf_stand_white(self, dict_params, direct=True, type_stand="input"):
+    def transf_stand_white(self, dict_params, direct=True, type_stand="output"):
 
         if direct:
             dir_ts_params = self.transf_stand(
@@ -282,7 +324,7 @@ class Transf_data(object):
 
         return out_params
 
-    def transf_stand_white_norm(self, dict_params, direct=True, type_stand="input"):
+    def transf_stand_white_norm(self, dict_params, direct=True, type_stand="output"):
 
         if direct:
             dir_tsw_params = self.transf_stand_white(

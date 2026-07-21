@@ -29,7 +29,6 @@ import numpy as np
 import forestflow
 from forestflow.P3D_cINN import P3DEmulator
 
-
 from forestflow.model_p3d_arinyo import ArinyoModel
 from lace.cosmo import cosmology
 
@@ -69,48 +68,25 @@ mpg_central_z3 = mpg_central[ind_z3]
 
 # %%
 from forestflow.set_training import Transf_data
-transf_data = Transf_data(emu_data, mpg_central_z3)
 
-# %% [markdown]
-# ## Train emulator
-#
-# Datasets:
-# - input stand_input_par: cosmology + IGM physics. Tranform, standarize
-# - fisher_output_par: Arinyo parameters. Tranform, standarize, Fisher whitening, and global scaling. 
-#
-
-# %%
-# %load_ext autoreload
-# %autoreload 2
-
-import sys
-import os
-import matplotlib.pyplot as plt
-import numpy as np
-
+save_file = os.path.join(
+    os.path.dirname(forestflow.__path__[0]),
+    "data",
+    "emulator_models",
+    "test_transf.npy",
+)
+transf_data = Transf_data(
+    dict_all_params=emu_data, sim_model=mpg_central_z3, save_file=save_file
+)
 
 # %%
-# load training data
-from forestflow.archive import GadgetArchive3D
-Archive3D = GadgetArchive3D(addcentral=True)
-
-# %%
-from forestflow.set_training import get_training_data
-emu_data = get_training_data(Archive3D.training_data)
-
-# %%
-sim_mpg_central = Archive3D.get_testing_data("mpg_central")
-
-ztar = 3.0
-for ii, sim in enumerate(sim_mpg_central):
-    if sim["z"] == ztar:
-        ind_z3 = ii
-
-sim_cen = sim_mpg_central[ind_z3]
-
-# %%
-from forestflow.set_training import Transf_data
-transf_data = Transf_data(emu_data, sim_cen)
+transf_file = os.path.join(
+    os.path.dirname(forestflow.__path__[0]),
+    "data",
+    "emulator_models",
+    "test_transf.npy",
+)
+transf_data = Transf_data(preload_file=transf_file)
 
 # %% [markdown]
 # Input (cosmo IGM)
@@ -148,13 +124,39 @@ plt.tight_layout()
 ax[-1].set_xlim(-2, 2)
 
 # %%
-input_training = {}
-input_training["input_par"] = ts_input
-input_training["output_par"] = tswn_output
+ts_output = transf_data.transf_stand(
+    emu_data["output_par"], type_stand="output", direct=True
+)
+
+
+fig, ax = plt.subplots(4, 2, figsize=(10, 8), sharex=True, sharey=True)
+ax = ax.flatten()
+for ii, par in enumerate(ts_output):
+    ax[ii].hist(emu_data["output_par"][par], bins=20)
+    ax[ii].hist(ts_output[par], bins=20, alpha=0.5)
+    ax[ii].set_title(par)
+plt.tight_layout()
+ax[-1].set_xlim(-2, 2)
+
+# %% [markdown]
+# ## Train emulator
+#
+# Datasets:
+# - input stand_input_par: cosmology + IGM physics. Tranform, standarize
+# - fisher_output_par: Arinyo parameters. Tranform, standarize, Fisher whitening, and global scaling. 
+#
 
 # %%
-import forestflow
-from forestflow.P3D_cINN import P3DEmulator
+ts_output = transf_data.transf_stand(
+    emu_data["output_par"], type_stand="output", direct=True
+)
+
+# %%
+input_training = {}
+input_training["input_par"] = ts_input
+# input_training["output_par"] = tswn_output
+input_training["output_par"] = ts_output
+
 
 save_path = os.path.join(
     os.path.dirname(forestflow.__path__[0]), "data", "emulator_models", "test"
@@ -166,16 +168,54 @@ emulator = P3DEmulator(
     training_data=input_training,
     train=True,
     nLayers_inn=5,
-    # nepochs=1250,
-    nepochs=2,
+    nepochs=1000,
     batch_size=16,
     lr=5e-4,
     dims_int=16,
     use_val_set=True,
     # use_val_set=False,
-    Nrealizations=10000,
+    Nrealizations=5000,
     save_path=save_path,
 )
+
+# %%
+Produce plots with precision for validation data and training data
+
+Check precision when:
+- output o, t, ts, tsw, tswn
+- input o t, ts
+
+# %%
+n = 100
+
+plt.plot(-np.array(emulator.loss_arr)[n:])
+plt.plot(-np.array(emulator.val_loss_arr)[n:])
+
+# %% [markdown]
+#
+
+# %% [markdown]
+# Epoch 800/3000, train loss -39.95, val loss -39.31, best -39.33, 225 s
+
+# %%
+Old emu
+
+# takes forever
+4 layers, batch 32 went to -24 for 1000, go longer!
+4 layers, batch 16 went to -24.5 for 1000, go longer!
+    
+# sweet spot
+dims_int=16
+5 layers, batch 16 went to -30, 1000 is good
+# anything better??? stop a little bit longer than when using
+# the validation sample
+dims_int=32
+way worse
+dims_int=8
+worse
+
+# bad
+6 layers, batch 16 went to -24.84, stop
 
 # %% [markdown]
 #
@@ -184,6 +224,170 @@ emulator = P3DEmulator(
 # ## Load emulator
 #
 # Here to directly load the emulator
+
+# %%
+load_path = os.path.join(
+    os.path.dirname(forestflow.__path__[0]), "data", "emulator_models", "test"
+)
+
+transf_file = os.path.join(
+    os.path.dirname(forestflow.__path__[0]),
+    "data",
+    "emulator_models",
+    "test_transf.npy",
+)
+
+emulator = P3DEmulator(
+    Nrealizations=5000, model_path=load_path, transf_file=transf_file
+)
+
+# %%
+
+par_ari = {}
+par_ari2 = {}
+par_emu = {}
+for par in emulator.output_labels:
+    par_ari[par] = np.zeros(len(mpg_central))
+    par_ari2[par] = np.zeros(len(mpg_central))
+    par_emu[par] = np.zeros(len(mpg_central))
+
+zz = []
+for ii, sim in enumerate(mpg_central):
+    zz.append(mpg_central[ii]["z"])
+
+    in_emu = {}
+    for par in emulator.input_labels:
+        in_emu[par] = sim[par]
+    out_emu = emulator.evaluate(in_emu)
+
+    for par in emulator.output_labels:
+        par_emu[par][ii] = out_emu[par]
+        par_ari[par][ii] = sim["Arinyo_min"][par]
+        if par not in sim["Arinyo_minz"]:
+            continue
+        elif par == "bias":
+            sign = -1
+        else:
+            sign = 1
+        par_ari2[par][ii] = sign * sim["Arinyo_minz"][par]
+
+zz = np.array(zz)
+
+# %%
+fig, ax = plt.subplots(4, 2, figsize=(10, 8), sharex=True)
+ax = ax.flatten()
+
+for ii, par in enumerate(emulator.output_labels):
+    col = "C" + str(ii)
+    ax[ii].plot(zz, par_ari[par], col, label=par)
+    ax[ii].plot(zz, par_emu[par], col + "--")
+    # ax[ii].plot(zz, par_ari2[par], col + ":")
+
+    ax[ii].legend()
+
+# %%
+from forestflow.play_with_power import get_sim_power
+
+# %%
+cosmo_params_dict = mpg_central_z3["cosmo_params"]
+fid_cosmo = cosmology.Cosmology(cosmo_params_dict=cosmo_params_dict)
+model_Arinyo = ArinyoModel(fid_cosmo)
+
+# %%
+ii0 = 0
+for ii in range(2, 11):
+    sim = mpg_central[ii]
+    print(ii, sim["z"])
+    print()
+
+    power_sim = get_sim_power(sim)
+    x = power_sim["sim_k1d_Mpc"]
+    p1d_data = power_sim["sim_p1d_Mpc"]
+
+    par_ari = {}
+    for par in emulator.output_labels:
+        par_ari[par] = sim["Arinyo_min"][par]
+
+    p1d_fit = model_Arinyo.P1D_Mpc(sim["z"], power_sim["sim_k1d_Mpc"], par_ari)
+
+    in_emu = {}
+    for par in emulator.input_labels:
+        in_emu[par] = sim[par]
+    out_emu = emulator.evaluate(in_emu)
+
+    p1d_emu = model_Arinyo.P1D_Mpc(sim["z"], power_sim["sim_k1d_Mpc"], out_emu)
+
+    for par in emulator.output_labels:
+        print(par, np.round(par_ari[par], 3), np.round(out_emu[par], 3))
+
+    # plt.plot(x, x * p1d_data / np.pi, "C"+str(ii0) + ':')
+    # plt.plot(x, x * p1d_fit / np.pi, "C"+str(ii0) + '-')
+    # plt.plot(x, x * p1d_emu / np.pi, "C"+str(ii0) + '--'
+             
+    # plt.plot(x, p1d_data / p1d_fit - 1, "C"+str(ii0) + ':')
+    plt.plot(x, p1d_emu / p1d_fit - 1, "C"+str(ii0) + '-', label=np.round(sim["z"],2))
+    ii0 += 1
+
+plt.legend()
+
+# %%
+ii0 = 0
+for ii in range(2, 11):
+    sim = mpg_central[ii]
+    print(ii, sim["z"])
+    print()
+
+    power_sim = get_sim_power(sim)
+    x = power_sim["sim_k3d_Mpc"]
+    p3d_data = power_sim["sim_p3d_Mpc"]
+    mu3d = power_sim["sim_mu3d"]
+
+    nk = 20
+    nmu = 2
+    k3D_compare = np.zeros((nk, nmu))
+    k3D_compare[:, 0] = np.linspace(0.1, 5, nk)
+    k3D_compare[:, 1] = np.linspace(0.1, 5, nk)
+    mu3d_compare = np.zeros((nk, nmu))
+    mu3d_compare[:, 0] = 0
+    mu3d_compare[:, 1] = 1
+
+    par_ari = {}
+    for par in emulator.output_labels:
+        par_ari[par] = sim["Arinyo_min"][par]
+
+    p3d_fit = model_Arinyo.P3D_Mpc_k_mu(sim["z"], k3D_compare, mu3d_compare, par_ari)
+
+    in_emu = {}
+    for par in emulator.input_labels:
+        in_emu[par] = sim[par]
+    out_emu = emulator.evaluate(in_emu)
+
+    p3d_emu = model_Arinyo.P3D_Mpc_k_mu(sim["z"], k3D_compare, mu3d_compare, out_emu)
+
+    for par in emulator.output_labels:
+        print(par, np.round(par_ari[par], 3), np.round(out_emu[par], 3))
+
+    # mu_range = np.linspace(0, 1, 6)
+    # # for imu in range(len(mu_range)-1):
+    # for imu in range(1):
+    #     _ = (mu3d > mu_range[imu]) & (mu3d <= mu_range[imu + 1])
+
+    #     plt.plot(x[_], p3d_data[_], "C" + str(ii0) + ":")
+    #     plt.plot(x[_], p3d_fit[_], "C" + str(ii0) + "-")
+    #     plt.plot(x[_], p3d_emu[_], "C" + str(ii0) + "--")
+
+    ls = ["-", "--"]
+    for imu in range(2):
+        plt.plot(k3D_compare[:, imu], p3d_fit[:, imu]/p3d_emu[:, imu]-1, "C" + str(ii0) + ls[imu])
+    ii0 += 1
+# plt.xscale("log")
+# plt.yscale("log")
+
+# %%
+p1d_data.shape
+
+# %%
+np.linspace(0, 1, 5)
 
 # %%
 full_emulator = P3DEmulator(
@@ -308,16 +512,6 @@ for sim in Archive3D.training_data:
 # result from the simulation
 
 
-
-# %%
-add central to training data?
-
-# %%
-
-# %%
-
-# %%
-sim['cosmo_params']
 
 # %%
 # Get power

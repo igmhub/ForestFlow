@@ -4,6 +4,8 @@ from forestflow.model_p3d_arinyo import compute_Gaussian_cov
 
 def get_sim_power(sim, kmax_1d_Mpc=4, kmax_3d_Mpc=5):
 
+    data = {}
+
     mask_1d = (sim["k_Mpc"] <= kmax_1d_Mpc) & (sim["k_Mpc"] > 0)
     k1d_Mpc = sim["k_Mpc"][mask_1d]
     p1d_Mpc = sim["p1d_Mpc"][mask_1d]
@@ -201,7 +203,7 @@ def get_fisher(
     model_Arinyo,
     weight_3d=1.0,
     weight_1d=1.0,
-    noise={"n_noise": 10000, "keep_all_noise": False, "Lbox_Mpc": 150},
+    noise={"n_noise": 10000, "keep_all_noise": False, "Lbox_Mpc": 1000},
 ):
 
     power = compute_arinyo_power(pars_model, model_Arinyo, noise=noise)
