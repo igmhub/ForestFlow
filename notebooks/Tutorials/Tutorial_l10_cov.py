@@ -7,7 +7,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.1
+#       jupytext_version: 1.19.4
 #   kernelspec:
 #     display_name: lace
 #     language: python
@@ -41,7 +41,7 @@ data = {}
 data["cosmo"] = {}
 cosmo_labs = ["ombh2", "omch2", "ns", "As", "H0"]
 
-file = "/home/jchaves/Proyectos/projects/lya/P3d_lya_ASTRID.hdf5"
+file = "/home/jchaves/Proyectos/projects/lya/P3d+P1d_lya_ASTRID.hdf5"
 
 with h5py.File(file, "r") as f:
 
@@ -77,6 +77,14 @@ for ii in range(data["p3d_lya_Mpc"].shape[1]):
     plt.errorbar(kk, sig, err, label=lab)
     # plt.plot(kk, sig, label=lab)
 # plt.legend()
+plt.xscale("log")
+plt.yscale("log")
+
+# %%
+data.keys()
+
+# %%
+plt.plot(data["klos_Mpc"], data["klos_Mpc"] * data["p1d_lya_Mpc"] / 3.14)
 plt.xscale("log")
 plt.yscale("log")
 
@@ -222,7 +230,7 @@ emulator = P3DEmulator(
     dims_int=12,
     # use_val_set=True,
     use_val_set=False,
-    Nrealizations=5000,
+    Nrealizations=3000,
     save_path=save_path,
 )
 
@@ -232,6 +240,8 @@ Partial nepoch 325
 Full nepoch 1000 -21.99 889s
 Full nepoch 500 -21.05 379s
 Full nepoch 300 -19.37 170s
+
+Fullz nepoch 1000 -22.3 566s
 
 # %%
 -21 1000 full
@@ -294,39 +304,20 @@ plt.plot(-np.array(emulator.val_loss_arr)[n:])
 #
 
 # %% [markdown]
-# Epoch 800/3000, train loss -39.95, val loss -39.31, best -39.33, 225 s
-
-# %% [markdown]
-#
-
-# %% [markdown]
 # ## Load emulator
 #
 # Here to directly load the emulator
 
 # %%
-load_path = os.path.join(
-    os.path.dirname(forestflow.__path__[0]), "data", "emulator_models", "test"
-)
-
-transf_file = os.path.join(
-    os.path.dirname(forestflow.__path__[0]),
-    "data",
-    "emulator_models",
-    "test_transf.npy",
-)
-
-emulator = P3DEmulator(
-    Nrealizations=5000, model_path=load_path, transf_file=transf_file
-)
+emulator = P3DEmulator(key="forest_mpg")
 
 # %%
 500 everything within 3%
 1000 everything within 2.5%, removing 3 outliers 1%
 
 # %%
-check_p1d(emulator)
-plt.savefig("base_ts_new_1000.png")
+check_p1d(emulator, Nrealizations=3000)
+# plt.savefig("base_ts_newzmax_1000e.png")
 
 # %%
 
@@ -382,8 +373,7 @@ model_Arinyo = ArinyoModel(fid_cosmo)
 
 
 # %%
-
-def check_p1d(emulator):
+def check_p1d(emulator, Nrealizations=5000):
     ii0 = 0
     for ii in range(2, 11):
         sim = mpg_central[ii]
@@ -403,7 +393,7 @@ def check_p1d(emulator):
         in_emu = {}
         for par in emulator.input_labels:
             in_emu[par] = sim[par]
-        out_emu = emulator.evaluate(in_emu)
+        out_emu = emulator.evaluate(in_emu, Nrealizations=Nrealizations)
 
         p1d_emu = model_Arinyo.P1D_Mpc(sim["z"], power_sim["sim_k1d_Mpc"], out_emu)
 
@@ -413,12 +403,16 @@ def check_p1d(emulator):
         # plt.plot(x, x * p1d_data / np.pi, "C"+str(ii0) + ':')
         # plt.plot(x, x * p1d_fit / np.pi, "C"+str(ii0) + '-')
         # plt.plot(x, x * p1d_emu / np.pi, "C"+str(ii0) + '--'
-                
+
         # plt.plot(x, p1d_data / p1d_fit - 1, "C"+str(ii0) + ':')
-        plt.plot(x, p1d_emu / p1d_fit - 1, "C"+str(ii0) + '-', label=np.round(sim["z"],2))
+        plt.plot(
+            x, p1d_emu / p1d_fit - 1, "C" + str(ii0) + "-", label=np.round(sim["z"], 2)
+        )
         ii0 += 1
 
+    plt.ylim(-0.02, 0.02)
     plt.legend()
+
 
 check_p1d(emulator)
 
