@@ -69,39 +69,16 @@ data["cosmo"]["omk"] = 0.0
     
 
 # %%
-250/0.5
-
-# %%
-for ii in range(10):
+for ii in range(data["p3d_lya_Mpc"].shape[1]):
     lab = "mu = %.2f" % np.nanmean(data["mu"][:, ii])
-    kk = data["k_hMpc"][:, ii]
-    sig = kk**2*data["p3d_lya_Mpch"][:, ii]
-    err = kk**2*data["p3d_lya_std_Mpch"][:, ii] * np.sqrt(2)
+    kk = data["k_Mpc"][:, ii]
+    sig = kk**2*data["p3d_lya_Mpc"][:, ii]
+    err = kk**2*data["p3d_lya_std_Mpc"][:, ii] * np.sqrt(2)
     plt.errorbar(kk, sig, err, label=lab)
-plt.legend()
+    # plt.plot(kk, sig, label=lab)
+# plt.legend()
 plt.xscale("log")
 plt.yscale("log")
-
-# %%
-mpg_central_z3["mu3d"].shape
-
-# %%
-2 * np.pi/65.*768/3
-
-# %%
-2 * np.pi/250 * 500/3
-
-# %%
-mpg_central_z3["k3d_Mpc"][:,0]
-
-# %%
-np.geomspace(0.09, 23, 20)
-
-# %%
-np.geomspace(0.025, 21, 40)
-
-# %%
-data["k_hMpc"][:,0]
 
 # %% [markdown]
 # ## Training data
@@ -123,7 +100,7 @@ Archive3D = GadgetArchive3D(addcentral=True)
 # %%
 from forestflow.set_training import get_training_data
 zmax = 4.1
-emu_data = get_training_data(Archive3D.training_data)
+emu_data = get_training_data(Archive3D.training_data, zmax=zmax)
 
 # %%
 mpg_central = Archive3D.get_testing_data("mpg_central")
@@ -239,7 +216,7 @@ emulator = P3DEmulator(
     training_data=input_training,
     train=True,
     nLayers_inn=6,
-    nepochs=300,
+    nepochs=1000,
     batch_size=8,
     lr=10e-4,
     dims_int=12,
@@ -252,6 +229,7 @@ emulator = P3DEmulator(
 # %%
 Partial nepoch 325 
 
+Full nepoch 1000 -21.99 889s
 Full nepoch 500 -21.05 379s
 Full nepoch 300 -19.37 170s
 
@@ -348,7 +326,7 @@ emulator = P3DEmulator(
 
 # %%
 check_p1d(emulator)
-plt.savefig("base_ts_new_500.png")
+plt.savefig("base_ts_new_1000.png")
 
 # %%
 

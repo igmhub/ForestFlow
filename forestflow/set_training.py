@@ -32,7 +32,8 @@ def get_training_data(list_sims, zmin=0, zmax=10):
     for par in output_params:
         all_output_par[par] = np.zeros((nn_train))
 
-    for ii, sim in enumerate(list_sims):
+    ii = 0
+    for sim in list_sims:
         if (sim["z"] < zmin) or (sim["z"] > zmax):
             continue
         for par in input_params:
@@ -44,6 +45,7 @@ def get_training_data(list_sims, zmin=0, zmax=10):
                 all_other_par[par][ii] = sim[par]
         for par in output_params:
             all_output_par[par][ii] = sim["Arinyo_min"][par]
+        ii += 1
 
     data = {
         "input_par": all_input_par,
