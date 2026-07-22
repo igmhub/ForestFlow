@@ -163,6 +163,7 @@ class P3DEmulator:
             metadata["nLayers_inn"],
             metadata["batch_size"],
             metadata["dim_inputSpace"],
+            dims_int=metadata["dims_int"],
         )
 
         # Load a pre-trained model if model_path is provided
@@ -233,6 +234,7 @@ class P3DEmulator:
             "nLayers_inn": nLayers_inn,
             "batch_size": batch_size,
             "dim_inputSpace": dim_inputSpace,
+            "dims_int": dims_int,
             # "input_param_lims_min": self.input_param_lims_min,
             # "input_param_lims_max": self.input_param_lims_max,
             # "output_param_lims_min": self.output_param_lims_min,
@@ -330,9 +332,9 @@ class P3DEmulator:
                 optimizer.zero_grad()
 
                 # Sample from the chains if use_chains is True
-                if use_chains:
-                    idx = np.random.choice(chain_samp, size=2_000, replace=False)
-                    coeffs = coeffs[:, idx, :].mean(axis=1)
+                # if use_chains:
+                #     idx = np.random.choice(chain_samp, size=2_000, replace=False)
+                #     coeffs = coeffs[:, idx, :].mean(axis=1)
 
                 # Forward pass through the cINN
                 z, log_jac_det = self.emulator(coeffs, cond)

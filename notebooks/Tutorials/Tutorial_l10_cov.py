@@ -32,6 +32,77 @@ from forestflow.P3D_cINN import P3DEmulator
 from forestflow.model_p3d_arinyo import ArinyoModel
 from lace.cosmo import cosmology
 
+# %%
+
+# %%
+import h5py
+
+data = {}
+data["cosmo"] = {}
+cosmo_labs = ["ombh2", "omch2", "ns", "As", "H0"]
+
+file = "/home/jchaves/Proyectos/projects/lya/P3d_lya_ASTRID.hdf5"
+
+with h5py.File(file, "r") as f:
+
+    def load_dataset(name, obj):
+        if isinstance(obj, h5py.Dataset):
+            data[name] = obj[()]    # or obj[:] for array datasets
+
+    f.visititems(load_dataset)
+
+    data["z"] = f.attrs["z"]
+    for par in cosmo_labs:
+        if par == "H0":
+            par2 = "hubble"
+        else:
+            par2 = par
+        data["cosmo"][par] = f.attrs[par2]
+
+    for att in f.attrs:
+        print(att, f.attrs[att])
+
+data["cosmo"]["w"] = -1.0
+data["cosmo"]["mnu"] = 0.0
+data["cosmo"]["nrun"] = 0.0
+data["cosmo"]["omk"] = 0.0
+    
+
+# %%
+250/0.5
+
+# %%
+for ii in range(10):
+    lab = "mu = %.2f" % np.nanmean(data["mu"][:, ii])
+    kk = data["k_hMpc"][:, ii]
+    sig = kk**2*data["p3d_lya_Mpch"][:, ii]
+    err = kk**2*data["p3d_lya_std_Mpch"][:, ii] * np.sqrt(2)
+    plt.errorbar(kk, sig, err, label=lab)
+plt.legend()
+plt.xscale("log")
+plt.yscale("log")
+
+# %%
+mpg_central_z3["mu3d"].shape
+
+# %%
+2 * np.pi/65.*768/3
+
+# %%
+2 * np.pi/250 * 500/3
+
+# %%
+mpg_central_z3["k3d_Mpc"][:,0]
+
+# %%
+np.geomspace(0.09, 23, 20)
+
+# %%
+np.geomspace(0.025, 21, 40)
+
+# %%
+data["k_hMpc"][:,0]
+
 # %% [markdown]
 # ## Training data
 #
@@ -51,6 +122,7 @@ Archive3D = GadgetArchive3D(addcentral=True)
 
 # %%
 from forestflow.set_training import get_training_data
+zmax = 4.1
 emu_data = get_training_data(Archive3D.training_data)
 
 # %%
@@ -163,20 +235,69 @@ save_path = os.path.join(
 )
 
 # %%
-
 emulator = P3DEmulator(
     training_data=input_training,
     train=True,
-    nLayers_inn=5,
-    nepochs=1000,
-    batch_size=16,
-    lr=5e-4,
-    dims_int=16,
-    use_val_set=True,
-    # use_val_set=False,
+    nLayers_inn=6,
+    nepochs=300,
+    batch_size=8,
+    lr=10e-4,
+    dims_int=12,
+    # use_val_set=True,
+    use_val_set=False,
     Nrealizations=5000,
     save_path=save_path,
 )
+
+# %%
+Partial nepoch 325 
+
+Full nepoch 500 -21.05 379s
+Full nepoch 300 -19.37 170s
+
+# %%
+-21 1000 full
+-20 val
+
+
+batch
+-16.8 batch 16
+-16.2 batch 32
+-15.67 batch 64
+
+lr
+-15.96 lr 1e-3
+-15.67 lr 5e-4
+-15.79 lr 3e-4
+-13.85 lr 1e-4
+
+nlayers
+-16.55 n 6
+-15.96 n 5
+
+ndim
+-15.03 n 8
+-15.96 n 16
+-14.97 n 32
+
+n 6, batch 16, lr 1e-3 -17.37
+
+n 6, batch 64, lr 1e-3, ndim 8 -15.98
+n 6, batch 64, lr 1e-3, ndim 12 -16.97
+n 6, batch 64, lr 1e-3, ndim 16 -16.55
+n 6, batch 64, lr 1e-3, ndim 20 -16.45
+
+n 7, batch 64, lr 1e-3, ndim 12 -16.09
+
+
+n 6, batch 64, lr 20e-4, ndim 12 -17.1 30s
+n 6, batch 64, lr 10e-4, ndim 12 -16.97
+n 6, batch 64, lr 5e-4, ndim 12 -16.53
+
+n 6, batch 12, lr 20e-4, ndim 12 -17.84 116s 300 epochs
+n 6, batch 16, lr 20e-4, ndim 12 -17.78 142s 350 epochs
+n 6, batch 8, lr 40e-4, ndim 12 -17.99 162s 200 epochs
+n 6, batch 8, lr 10e-4, ndim 12 -18.33 199s 325 epochs
 
 # %%
 Produce plots with precision for validation data and training data
@@ -186,7 +307,7 @@ Check precision when:
 - input o t, ts
 
 # %%
-n = 100
+n = 50
 
 plt.plot(-np.array(emulator.loss_arr)[n:])
 plt.plot(-np.array(emulator.val_loss_arr)[n:])
@@ -196,26 +317,6 @@ plt.plot(-np.array(emulator.val_loss_arr)[n:])
 
 # %% [markdown]
 # Epoch 800/3000, train loss -39.95, val loss -39.31, best -39.33, 225 s
-
-# %%
-Old emu
-
-# takes forever
-4 layers, batch 32 went to -24 for 1000, go longer!
-4 layers, batch 16 went to -24.5 for 1000, go longer!
-    
-# sweet spot
-dims_int=16
-5 layers, batch 16 went to -30, 1000 is good
-# anything better??? stop a little bit longer than when using
-# the validation sample
-dims_int=32
-way worse
-dims_int=8
-worse
-
-# bad
-6 layers, batch 16 went to -24.84, stop
 
 # %% [markdown]
 #
@@ -240,6 +341,14 @@ transf_file = os.path.join(
 emulator = P3DEmulator(
     Nrealizations=5000, model_path=load_path, transf_file=transf_file
 )
+
+# %%
+500 everything within 3%
+1000 everything within 2.5%, removing 3 outliers 1%
+
+# %%
+check_p1d(emulator)
+plt.savefig("base_ts_new_500.png")
 
 # %%
 
@@ -293,42 +402,47 @@ cosmo_params_dict = mpg_central_z3["cosmo_params"]
 fid_cosmo = cosmology.Cosmology(cosmo_params_dict=cosmo_params_dict)
 model_Arinyo = ArinyoModel(fid_cosmo)
 
+
 # %%
-ii0 = 0
-for ii in range(2, 11):
-    sim = mpg_central[ii]
-    print(ii, sim["z"])
-    print()
 
-    power_sim = get_sim_power(sim)
-    x = power_sim["sim_k1d_Mpc"]
-    p1d_data = power_sim["sim_p1d_Mpc"]
+def check_p1d(emulator):
+    ii0 = 0
+    for ii in range(2, 11):
+        sim = mpg_central[ii]
+        print(ii, sim["z"])
+        print()
 
-    par_ari = {}
-    for par in emulator.output_labels:
-        par_ari[par] = sim["Arinyo_min"][par]
+        power_sim = get_sim_power(sim)
+        x = power_sim["sim_k1d_Mpc"]
+        p1d_data = power_sim["sim_p1d_Mpc"]
 
-    p1d_fit = model_Arinyo.P1D_Mpc(sim["z"], power_sim["sim_k1d_Mpc"], par_ari)
+        par_ari = {}
+        for par in emulator.output_labels:
+            par_ari[par] = sim["Arinyo_min"][par]
 
-    in_emu = {}
-    for par in emulator.input_labels:
-        in_emu[par] = sim[par]
-    out_emu = emulator.evaluate(in_emu)
+        p1d_fit = model_Arinyo.P1D_Mpc(sim["z"], power_sim["sim_k1d_Mpc"], par_ari)
 
-    p1d_emu = model_Arinyo.P1D_Mpc(sim["z"], power_sim["sim_k1d_Mpc"], out_emu)
+        in_emu = {}
+        for par in emulator.input_labels:
+            in_emu[par] = sim[par]
+        out_emu = emulator.evaluate(in_emu)
 
-    for par in emulator.output_labels:
-        print(par, np.round(par_ari[par], 3), np.round(out_emu[par], 3))
+        p1d_emu = model_Arinyo.P1D_Mpc(sim["z"], power_sim["sim_k1d_Mpc"], out_emu)
 
-    # plt.plot(x, x * p1d_data / np.pi, "C"+str(ii0) + ':')
-    # plt.plot(x, x * p1d_fit / np.pi, "C"+str(ii0) + '-')
-    # plt.plot(x, x * p1d_emu / np.pi, "C"+str(ii0) + '--'
-             
-    # plt.plot(x, p1d_data / p1d_fit - 1, "C"+str(ii0) + ':')
-    plt.plot(x, p1d_emu / p1d_fit - 1, "C"+str(ii0) + '-', label=np.round(sim["z"],2))
-    ii0 += 1
+        # for par in emulator.output_labels:
+        #     print(par, np.round(par_ari[par], 3), np.round(out_emu[par], 3))
 
-plt.legend()
+        # plt.plot(x, x * p1d_data / np.pi, "C"+str(ii0) + ':')
+        # plt.plot(x, x * p1d_fit / np.pi, "C"+str(ii0) + '-')
+        # plt.plot(x, x * p1d_emu / np.pi, "C"+str(ii0) + '--'
+                
+        # plt.plot(x, p1d_data / p1d_fit - 1, "C"+str(ii0) + ':')
+        plt.plot(x, p1d_emu / p1d_fit - 1, "C"+str(ii0) + '-', label=np.round(sim["z"],2))
+        ii0 += 1
+
+    plt.legend()
+
+check_p1d(emulator)
 
 # %%
 ii0 = 0
