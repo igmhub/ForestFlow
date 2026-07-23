@@ -48,9 +48,6 @@ model_Arinyo = ArinyoModel(fid_cosmo)
 # %%
 fid_cosmo.background_params
 
-# %%
-fid_cosmo.CAMBparams.InitPower.As
-
 # %% [markdown]
 # ### Compute P3D & P1D
 #
@@ -97,7 +94,7 @@ for ii in range(p3d.shape[1]):
         lab = None
     plt.loglog(k, p3d[:, ii]/plin, col, label=lab)
     plt.plot(k, p3d[0, ii]/plin[0]+k[:]*0, col+'--')
-plt.xlabel(r'$k$ [Mpc]')
+plt.xlabel(r'$k$ [1/Mpc]')
 plt.ylabel(r'$P/P_{\rm lin}$')
 plt.legend(loc='upper left')
 
@@ -106,7 +103,7 @@ plt.legend(loc='upper left')
 
 # %%
 plt.plot(kpar, kpar * p1d/np.pi)
-plt.xlabel(r'$k$ [Mpc]')
+plt.xlabel(r'$k$ [1/Mpc]')
 plt.ylabel(r'$P_{\rm 1D}(k)$')
 plt.xscale('log')
 
@@ -123,8 +120,10 @@ p3d_new = model_Arinyo.P3D_Mpc_k_mu(zs, k2d, mu2d, arinyo_pars, new_cosmo_params
 p1d_new = model_Arinyo.P1D_Mpc(zs, kpar, arinyo_pars, new_cosmo_params=new_cosmo_params) # get P1D at target z
 
 # %%
-plt.loglog(k, plin)
-plt.loglog(k, plin_new)
+plt.loglog(k, k**2*plin)
+plt.loglog(k, k**2*plin_new)
+plt.xlabel(r'$k$ [1/Mpc]')
+plt.ylabel(r'$k^2 P(k)$')
 
 # %% [markdown]
 # #### Typically, we only change As or ns during fits, and it takes almost the same time
@@ -172,20 +171,16 @@ for ii in range(10):
 # We need the value of Delta2p and np to be consistent with the cosmology provided to the Arinyo model
 
 # %%
-import forestflow
 from forestflow.P3D_cINN import P3DEmulator
 
 # %%
-path_repo = os.path.dirname(forestflow.__path__[0]) + '/'
-emulator = P3DEmulator(
-    model_path = path_repo + "/data/emulator_models/forest_mpg",
-)
+emulator = P3DEmulator(key="forest_mpg")
 
 # %%
 # P3D
 nn_k = 200 # number of k bins
 nn_mu = 10 # number of mu bins
-k = np.logspace(-1.5, 1.05, nn_k)
+k = np.logspace(-1.5, np.log10(5), nn_k)
 mu = np.linspace(0, 1, nn_mu)
 k2d = np.tile(k[:, np.newaxis], nn_mu) # k grid for P3D
 mu2d = np.tile(mu[:, np.newaxis], nn_k).T # mu grid for P3D
@@ -209,7 +204,7 @@ input_emu = {
 
 # %%
 # evaluate emulator to get the Arinyo parameters
-par_ari = emulator.predict_Arinyos(input_emu, return_dict=True)
+par_ari = emulator.evaluate(input_emu)
 par_ari
 
 # %%

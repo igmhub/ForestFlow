@@ -23,8 +23,8 @@
 # Then, we explain how to evaluate the best-fitting Arinyo model to each simulation, which I already precomputed 
 
 # %%
-# %load_ext autoreload
-# %autoreload 2
+# # %load_ext autoreload
+# # %autoreload 2
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -104,10 +104,14 @@ for ii in range(n_mubins):
     _ = np.isfinite(rebin_p3d_sim[:, ii])
     plt.plot(knew[_, ii], knew[_, ii]**2*rebin_p3d_sim[_, ii])
 plt.xscale('log')
+plt.xlabel(r"$k$ [1/Mpc]")
+plt.ylabel(r"$k^2 P(k, \mu)$")
 
 # %%
 plt.plot(k1d_Mpc, p1d_sim)
 plt.xscale('log')
+plt.xlabel(r"$k_\parallel$ [1/Mpc]")
+plt.ylabel(r"$k_\parallel P_\mathrm{1D}(k_\parallel)$")
 
 # %% [markdown]
 # ## Evaluate Arinyo model
@@ -153,7 +157,6 @@ p1d_sim = k1d_Mpc/np.pi * p1d_Mpc
 # %%
 from lace.cosmo import cosmology
 
-# %%
 fid_cosmo = cosmology.Cosmology(sim["cosmo_params"])
 model_Arinyo = ArinyoModel(fid_cosmo)
 
@@ -177,12 +180,14 @@ for ii in range(n_mubins):
     plt.plot(knew[_, ii], knew[_, ii]**2 * rebin_p3d_sim[_, ii], col)
     plt.plot(knew[_, ii], knew[_, ii]**2 * rebin_p3d_model[_, ii], col+"--")
 plt.xscale('log')
+plt.xlabel(r"$k$ [1/Mpc]")
+plt.ylabel(r"$k^2 P(k, \mu)$")
 
 # %%
 plt.plot(k1d_Mpc, p1d_sim)
 plt.plot(k1d_Mpc, p1d_model, "--")
 plt.xscale('log')
-
-# %%
+plt.xlabel(r"$k_\parallel$ [1/Mpc]")
+plt.ylabel(r"$k_\parallel P_\mathrm{1D}(k_\parallel)$")
 
 # %%

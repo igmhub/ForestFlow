@@ -7,7 +7,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.4
+#       jupytext_version: 1.19.1
 #   kernelspec:
 #     display_name: lace
 #     language: python
@@ -31,6 +31,8 @@ from forestflow.P3D_cINN import P3DEmulator
 
 from forestflow.model_p3d_arinyo import ArinyoModel
 from lace.cosmo import cosmology
+
+from forestflow.set_training import Transf_data
 
 # %% [markdown]
 # ## Training data
@@ -71,7 +73,7 @@ mpg_central_z3 = mpg_central[ind_z3]
 name_emu = "test"
 
 # %%
-from forestflow.set_training import Transf_data
+
 
 save_file = os.path.join(
     os.path.dirname(forestflow.__path__[0]),
@@ -332,6 +334,8 @@ nepochs = 1000 # 1000 better choice, 1 so it runs fast
 use_val_set = False # use validation sample
 
 for isim, sim in enumerate(Archive3D.list_sim_cube):
+    if isim < 12:
+        continue
     print(sim)
     print()
 

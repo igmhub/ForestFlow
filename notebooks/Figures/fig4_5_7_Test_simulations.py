@@ -6,9 +6,9 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.19.4
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: lace
 #     language: python
 #     name: python3
 # ---
@@ -59,68 +59,15 @@ sys.path.append(path_program)
 # ## LOAD P3D ARCHIVE
 
 # %%
-# %%time
-folder_lya_data = path_program + "/data/best_arinyo/"
-folder_interp = path_program + "/data/plin_interp/"
-
-Archive3D = GadgetArchive3D(
-    base_folder=path_program[:-1],
-    folder_data=folder_lya_data,
-    force_recompute_plin=False,
-    average="both",
-)
-print(len(Archive3D.training_data))
+from forestflow.archive import GadgetArchive3D
+Archive3D = GadgetArchive3D()
 
 
 # %% [markdown]
 # ## Load emulator
 
 # %%
-# training_type = "Arinyo_min_q1"
-# training_type = "Arinyo_min_q1_q2"
-# training_type = "Arinyo_minz"
-
-# if (training_type == "Arinyo_min_q1"):
-#     nparams = 7
-#     model_path = path_program+"/data/emulator_models/mpg_q1/mpg_hypercube.pt"
-# elif(training_type == "Arinyo_min"):
-#     nparams = 8
-#     # model_path = path_program+"/data/emulator_models/mpg_q1_q2/mpg_hypercube.pt"
-#     model_path=path_program+"/data/emulator_models/mpg_joint.pt"
-# elif(training_type == "Arinyo_minz"):
-#     nparams = 8
-#     # model_path = path_program+"/data/emulator_models/mpg_q1_q2/mpg_hypercube.pt"
-#     model_path=path_program+"/data/emulator_models/mpg_jointz.pt"
-
-
-
-# load_old 
-# training_type = "Arinyo_min"
-# model_path=path_program+"/data/emulator_models/mpg_hypercube.pt"
-
-# emulator = P3DEmulator(
-#     Archive3D.training_data,
-#     Archive3D.emu_params,
-#     nepochs=300,
-#     lr=0.001,  # 0.005
-#     batch_size=20,
-#     step_size=200,
-#     gamma=0.1,
-#     weight_decay=0,
-#     adamw=True,
-#     nLayers_inn=12,  # 15
-#     Archive=Archive3D,
-#     Nrealizations=10000,
-#     training_type=training_type,
-#     model_path=model_path,
-#     # save_path=model_path,
-# )
-
-emulator = P3DEmulator(
-    # model_path=path_program+"/data/emulator_models/new_emu",
-    # model_path=path_program+"/data/emulator_models/new_emu2",
-    model_path=path_program+"/data/emulator_models/new_emu3",
-)
+emulator = P3DEmulator(key="forest_mpg")
 
 # %% [markdown]
 # #### General stuff
@@ -157,8 +104,6 @@ p1d_Mpc = sim['p1d_Mpc'][mask_1d]
 # ### Central simulation
 
 # %%
-# %%time
-
 zcen = 3
 
 info_power = {
@@ -174,38 +119,50 @@ info_power = {
 }
 
 sim_label = info_power["sim_label"]
-test_sim = Archive3D.get_testing_data(
-    sim_label, force_recompute_plin=False
-)
+test_sim = Archive3D.get_testing_data(sim_label)
 test_sim_z = [d for d in test_sim if d["z"] == info_power["z"]]
 emu_params = test_sim_z[0]
 
 input_emu = {}
-for par in emulator.emu_input_names:
+for par in emulator.input_labels:
     input_emu[par] = emu_params[par]
 
 
-out = emulator.evaluate(
-    emu_params=input_emu,
-    info_power=info_power,
-    # Nrealizations=2
-    Nrealizations=3000
+out = emulator.evaluate(emu_params=input_emu)
+
+# %%
+from lace.cosmo import cosmology
+
+# %%
+cosmo_params_dict = test_sim_z[0]["cosmo_params"]
+fid_cosmo = cosmology.Cosmology(cosmo_params_dict=cosmo_params_dict)
+model_Arinyo = ArinyoModel(fid_cosmo)
+
+# %%
+p3d_emu = model_Arinyo.P3D_Mpc_k_mu(
+    info_power["z"], info_power["k3d_Mpc"], info_power["mu"], out
 )
+
+p1d_emu = model_Arinyo.P1D_Mpc(
+    info_power["z"], info_power["k1d_Mpc"], out
+)
+
+Plin = model_Arinyo.linP_Mpc(info_power["z"], info_power["k3d_Mpc"])
 
 # %% [markdown]
 # #### Rebin data
 
 # %%
-_ = p3d_rebin_mu(out["k_Mpc"], out["mu"], test_sim_z[0]["p3d_Mpc"][mask_3d], kmu_modes, n_mubins=n_mubins)
+_ = p3d_rebin_mu(info_power["k3d_Mpc"], info_power["mu"], test_sim_z[0]["p3d_Mpc"][mask_3d], kmu_modes, n_mubins=n_mubins)
 knew, munew, rebin_p3d_sim, mu_bins = _
 
-_ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["p3d"], kmu_modes, n_mubins=n_mubins)
+_ = p3d_rebin_mu(info_power["k3d_Mpc"], info_power["mu"], p3d_emu, kmu_modes, n_mubins=n_mubins)
 knew, munew, rebin_p3d_emu, mu_bins = _
 
 # _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["p3d_std"], kmu_modes, n_mubins=n_mubins)
 # knew, munew, rebin_p3d_std_emu, mu_bins = _
 
-_ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["Plin"], kmu_modes, n_mubins=n_mubins)
+_ = p3d_rebin_mu(info_power["k3d_Mpc"], info_power["mu"], Plin, kmu_modes, n_mubins=n_mubins)
 knew, munew, rebin_plin, mu_bins = _
 
 # %% [markdown]
@@ -218,8 +175,8 @@ y = np.percentile(rat, [50, 16, 84])
 print(y[0]*100, 0.5*(y[2]-y[1])*100, np.std(rat)*100)
 
 # %%
-norm_p1d = out["k1d_Mpc"]/np.pi
-p1d_emu = norm_p1d * out["p1d"]
+norm_p1d = k1d_Mpc/np.pi
+p1d_emu = norm_p1d * p1d_emu
 # p1d_std_emu = norm_p1d * out["p1d_std"]
 p1d_sim = norm_p1d * test_sim_z[0]["p1d_Mpc"][mask_1d]
 
@@ -230,11 +187,15 @@ y = np.percentile(rat, [50, 16, 84])
 print(y[0]*100, 0.5*(y[2]-y[1])*100, np.std(rat)*100)
 
 # %%
+-0.06754606032882138 0.5683503941141976 0.7118840295325852
+
+# %%
 rebin_p3d_std_emu = rebin_p3d_emu * 0.001
 
 # %%
 # folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
-folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures_new/"
+# folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures_new/"
+folder = "."
 plot_p3d_snap(
     folder, 
     knew, 
@@ -250,7 +211,7 @@ plot_p3d_snap(
 p1d_std_emu = p1d_emu * 0.001
 plot_p1d_snap(
     folder, 
-    out["k1d_Mpc"], 
+    k1d_Mpc, 
     p1d_sim,
     p1d_emu,
     p1d_std_emu,
@@ -334,10 +295,8 @@ arr_p1d_emu = np.zeros((len(sim_labels), Nz, np.sum(mask_1d)))
 params_sim = np.zeros((len(sim_labels), Nz, 3))
 params_emu = np.zeros((len(sim_labels), Nz, 3))
 
-for isim, sim_label in enumerate(sim_labels):    
-    test_sim = Archive3D.get_testing_data(
-        sim_label, force_recompute_plin=False
-    )
+for isim, sim_label in enumerate(sim_labels):
+    test_sim = Archive3D.get_testing_data(sim_label)
 
     z_grid = [d["z"] for d in test_sim]
     for iz, z in enumerate(z_grid):
@@ -356,50 +315,58 @@ for isim, sim_label in enumerate(sim_labels):
             "z": z,
         }
 
-        input_pars = {}
-        for par in emulator.emu_input_names:
-            input_pars[par] = test_sim_z[0][par]
-        
-        out = emulator.evaluate(
-            emu_params=input_pars,
-            info_power=info_power,
-            return_bias_eta=True,
-            Nrealizations=3000
+        if iz == 0:
+            cosmo_params_dict = test_sim_z[0]["cosmo_params"]
+            fid_cosmo = cosmology.Cosmology(cosmo_params_dict=cosmo_params_dict)
+            model_Arinyo = ArinyoModel(fid_cosmo)
+
+        input_emu = {}
+        for par in emulator.input_labels:
+            input_emu[par] = test_sim_z[0][par]
+
+        out = emulator.evaluate(emu_params=input_emu)
+
+        p3d_emu = model_Arinyo.P3D_Mpc_k_mu(
+            info_power["z"], info_power["k3d_Mpc"], info_power["mu"], out
         )
-        
-        _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], test_sim_z[0]["p3d_Mpc"][mask_3d], kmu_modes, n_mubins=n_mubins)
+        p1d_emu = model_Arinyo.P1D_Mpc(info_power["z"], info_power["k1d_Mpc"], out)
+
+        _ = p3d_rebin_mu(
+            info_power["k3d_Mpc"],
+            info_power["mu"],
+            test_sim_z[0]["p3d_Mpc"][mask_3d],
+            kmu_modes,
+            n_mubins=n_mubins,
+        )
         knew, munew, arr_p3d_sim[isim, iz], mu_bins = _
-        
-        _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["p3d"], kmu_modes, n_mubins=n_mubins)
+        _ = p3d_rebin_mu(
+            info_power["k3d_Mpc"],
+            info_power["mu"],
+            p3d_emu,
+            kmu_modes,
+            n_mubins=n_mubins,
+        )
         knew, munew, arr_p3d_emu[isim, iz], mu_bins = _
-        
-        arr_p1d_emu[isim, iz] = out["p1d"]
+
+        arr_p1d_emu[isim, iz] = p1d_emu
         arr_p1d_sim[isim, iz] = test_sim_z[0]["p1d_Mpc"][mask_1d]
 
         params_sim[isim, iz, 0] = test_sim_z[0]["Arinyo_min"]["bias"]
-        params_sim[isim, iz, 1] = test_sim_z[0]["Arinyo_min"]["bias"] * test_sim_z[0]["Arinyo_min"]["beta"] / out['coeffs_Arinyo']["f_p"]
+        params_sim[isim, iz, 1] = test_sim_z[0]["Arinyo_min"]["bias_eta"]
         params_sim[isim, iz, 2] = test_sim_z[0]["Arinyo_min"]["beta"]
-        # _ = new_params = transform_arinyo_params(
-        #     test_sim_z[0]["Arinyo_min"], 
-        #     test_sim_z[0]["f_p"]
-        # )
-        # params_sim[isim, iz, 1] = _["bias_eta"]
 
-        params_emu[isim, iz, 0] = out["coeffs_Arinyo"]["bias"]        
-        params_emu[isim, iz, 1] = out["coeffs_Arinyo"]["bias_eta"]
-        params_emu[isim, iz, 2] = out["coeffs_Arinyo"]["beta"]        
-        # _ = new_params = transform_arinyo_params(
-        #     out["coeffs_Arinyo"], 
-        #     test_sim_z[0]["f_p"]
-        # )
-        # params_emu[isim, iz, 1] = _["bias_eta"]
+        params_emu[isim, iz, 0] = out["bias"]
+        params_emu[isim, iz, 1] = out["bias_eta"]
+        params_emu[isim, iz, 2] = 0
+    # break
 
 # %%
 # folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
 folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures_new/"
 np.savez(
     # folder + "temporal_central", 
-    folder + "temporal_all", 
+    # folder + "temporal_all", 
+    folder + "forest_mpg", 
     arr_p3d_sim=arr_p3d_sim, 
     arr_p3d_emu=arr_p3d_emu, 
     arr_p1d_sim=arr_p1d_sim, 
@@ -415,7 +382,8 @@ np.savez(
 # folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
 folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures_new/"
 # fil = np.load(folder + "temporal_central.npz")
-fil = np.load(folder + "temporal_all.npz")
+# fil = np.load(folder + "temporal_all.npz")
+fil = np.load(folder + "forest_mpg.npz")
 arr_p3d_sim=fil["arr_p3d_sim"]
 arr_p3d_emu=fil["arr_p3d_emu"]
 arr_p1d_sim=fil["arr_p1d_sim"]
@@ -432,26 +400,26 @@ cmap = cm.get_cmap('rainbow', arr_p3d_sim.shape[1])
 fig, ax = plt.subplots(5, 1, sharex=True, figsize=(8, 10))
 mu_use = [0, 1, 2, 3]
 for i0 in mu_use:
-    for iz in range(arr_p3d_sim.shape[1]):
-        y = arr_p3d_emu[0, iz, :, i0]/arr_p3d_sim[0, iz, :, i0]-1
+    for iz in range(1, arr_p3d_sim.shape[1]):
+        y = arr_p3d_emu[0, iz, :, i0] / arr_p3d_sim[0, iz, :, i0] - 1
         if (i0 == 0) and (iz < 4):
-            label = "z="+str(zs[iz])
+            label = "z=" + str(zs[iz])
         elif (i0 == 1) and (iz >= 4) and (iz < 8):
-            label = "z="+str(zs[iz])
+            label = "z=" + str(zs[iz])
         elif (i0 == 2) and (iz >= 8) and (iz < 12):
-            label = "z="+str(zs[iz])
+            label = "z=" + str(zs[iz])
         else:
             label = ""
         _ = np.isfinite(knew[:, i0])
         ax[i0].plot(knew[_, i0], y[_], color=cmap(iz), label=label)
 
 i0 = 4
-for iz in range(arr_p3d_sim.shape[1]):
-    y = arr_p1d_emu[0, iz, :]/arr_p1d_sim[0, iz, :]-1
-    ax[i0].plot(out["k1d_Mpc"], y, color=cmap(iz))
+for iz in range(1, arr_p3d_sim.shape[1]):
+    y = arr_p1d_emu[0, iz, :] / arr_p1d_sim[0, iz, :] - 1
+    ax[i0].plot(info_power["k1d_Mpc"], y, color=cmap(iz))
 
 
-ftsize=20
+ftsize = 20
 
 ax[0].set_xscale("log")
 for ii in range(len(mu_use)):
@@ -461,9 +429,11 @@ for ii in range(len(mu_use)):
     ax[ii].axhline(0.1, color="k", linestyle="--")
     ax[ii].axhline(-0.1, color="k", linestyle="--")
     ax[ii].axvline(5, color="k", linestyle="--")
-    ax[ii].set_ylabel(r"$P_\mathrm{3D}^\mathrm{emu}/P_\mathrm{3D}^\mathrm{sim}-1$", fontsize=ftsize)
+    ax[ii].set_ylabel(
+        r"$P_\mathrm{3D}^\mathrm{emu}/P_\mathrm{3D}^\mathrm{sim}-1$", fontsize=ftsize
+    )
     if ii < 3:
-        ax[ii].legend(loc="lower right", ncols=4, fontsize=ftsize-4)
+        ax[ii].legend(loc="lower right", ncols=4, fontsize=ftsize - 4)
 
 _x = 1.6
 _y = 0.15
@@ -479,7 +449,9 @@ ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
 ax[ii].axhline(0.01, color="k", linestyle="--")
 ax[ii].axhline(-0.01, color="k", linestyle="--")
 ax[ii].axvline(4, color="k", linestyle="--")
-ax[ii].set_ylabel(r"$P_\mathrm{1D}^\mathrm{emu}/P_\mathrm{1D}^\mathrm{sim}-1$", fontsize=ftsize)
+ax[ii].set_ylabel(
+    r"$P_\mathrm{1D}^\mathrm{emu}/P_\mathrm{1D}^\mathrm{sim}-1$", fontsize=ftsize
+)
 ax[ii].set_xlabel(r"$k_\parallel[\mathrm{Mpc}^{-1}]$", fontsize=ftsize)
 
 
@@ -528,18 +500,23 @@ res = np.load(folder + "fig5.npy", allow_pickle=True).item()
 res.keys()
 
 # %%
+params_emu.shape
 
 # %%
+rat
 
 # %%
 for ii in range(2):
-    rat = params_emu[:, ii] / params_sim[:, ii] - 1
+    rat = params_emu[:, :2, ii] / params_sim[:,:2, ii] - 1
     y = np.percentile(rat, [50, 16, 84])
     print(y[0]*100, 0.5*(y[2] - y[1])*100, np.std(rat)*100)
 
 # %%
 -0.45957032745254645 3.191817004384772 3.7438390752616506
 0.7252962428330623 1.7373130418359652 1.7993740510349334
+
+-0.41371219977162643 3.25479903382587 3.9302576626797
+0.1374971900982902 2.8782932442128137 2.406507485480081
 
 # %%
 kaiser_emu = np.zeros((params_emu.shape[1], 2))
@@ -559,8 +536,11 @@ for ii in range(2):
 -3.63433277615558 2.294513731329036 2.1590873480292876
 
 # %%
+arr_p3d_emu.shape
+
+# %%
 _ = np.isfinite(knew) & (knew > 0.3) & (knew < 5)
-rat = arr_p3d_emu[0, :, _]/arr_p3d_sim[0, :, _] - 1
+rat = arr_p3d_emu[0, 1:, _]/arr_p3d_sim[0, 1:, _] - 1
 y = np.percentile(rat, [50, 16, 84])
 print(y[0]*100, 0.5*(y[2]-y[1])*100, np.std(rat)*100)
 
@@ -569,7 +549,7 @@ print(y[0]*100, 0.5*(y[2]-y[1])*100, np.std(rat)*100)
 
 # %%
 _ = np.isfinite(k1d_Mpc) & (k1d_Mpc < 4) & (k1d_Mpc > 0)
-rat = arr_p1d_emu[0, :, _]/arr_p1d_sim[0, :, _] - 1
+rat = arr_p1d_emu[0, 1:, _]/arr_p1d_sim[0, 1:, _] - 1
 y = np.percentile(rat, [50, 16, 84])
 print(y[0]*100, 0.5*(y[2]-y[1])*100, np.std(rat)*100)
 
@@ -591,8 +571,11 @@ params_sim=fil["params_sim"]
 params_emu=fil["params_emu"]
 
 # %%
-rat_p3d = arr_p3d_emu/arr_p3d_sim - 1
-rat_p1d = arr_p1d_emu/arr_p1d_sim - 1
+arr_p1d_emu.shape
+
+# %%
+rat_p3d = arr_p3d_emu[:, 1:, :, :]/arr_p3d_sim[:, 1:, :, :] - 1
+rat_p1d = arr_p1d_emu[:, 1:, :]/arr_p1d_sim[:, 1:, :] - 1
 
 # %%
 # folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
@@ -617,7 +600,7 @@ savename = folder + "test_cosmo/test_cosmo_P1D"
 for ext in [".png", ".pdf"]:
     plot_p1d_test_sims(
         sim_labels,
-        out["k1d_Mpc"],
+        info_power["k1d_Mpc"],
         rat_p1d,
         savename=savename+ext,
         fontsize=20,
