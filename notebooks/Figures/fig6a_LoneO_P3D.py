@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.4
+#       jupytext_version: 1.19.1
 #   kernelspec:
 #     display_name: lace
 #     language: python
@@ -161,8 +161,7 @@ for isim in range(Nsim):
     print(f"Starting simulation {isim}")
     print()
 
-    isime = 0
-    name_emu = "l1O/forest_mpg_l1O_" + str(isime)
+    name_emu = "l1O/forest_mpg_l1O_" + str(isim)
     emulator = P3DEmulator(key=name_emu)
 
     for iz, z in enumerate(zs):

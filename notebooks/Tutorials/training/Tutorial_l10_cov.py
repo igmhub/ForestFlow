@@ -334,7 +334,7 @@ nepochs = 1000 # 1000 better choice, 1 so it runs fast
 use_val_set = False # use validation sample
 
 for isim, sim in enumerate(Archive3D.list_sim_cube):
-    if isim < 12:
+    if isim < 25:
         continue
     print(sim)
     print()
