@@ -6,7 +6,7 @@ from lace.cosmo import cosmology
 from forestflow.play_with_power import get_fisher
 
 
-def get_training_data(list_sims, zmin=0, zmax=10):
+def get_training_data(list_sims, zmin=0, zmax=10, drop_sim=None):
 
     input_params = ["Delta2_p", "n_p", "mF", "sigT_Mpc", "gamma", "kF_Mpc"]
     other_params = ["z", "As", "ns"]
@@ -14,7 +14,9 @@ def get_training_data(list_sims, zmin=0, zmax=10):
 
     nn_train = 0
     for ii in range(len(list_sims)):
-        if (list_sims[ii]["z"] > zmin) and (list_sims[ii]["z"] < zmax):
+        if (drop_sim is not None) and (list_sims[ii]["sim_label"] == drop_sim):
+            continue
+        if (list_sims[ii]["z"] >= zmin) and (list_sims[ii]["z"] <= zmax):
             nn_train += 1
 
     # cosmo + IGM
@@ -34,6 +36,8 @@ def get_training_data(list_sims, zmin=0, zmax=10):
 
     ii = 0
     for sim in list_sims:
+        if (drop_sim is not None) and (sim["sim_label"] == drop_sim):
+            continue
         if (sim["z"] < zmin) or (sim["z"] > zmax):
             continue
         for par in input_params:
@@ -60,7 +64,12 @@ class Transf_data(object):
     """Class transf data"""
 
     def __init__(
-        self, dict_all_params=None, sim_model=None, preload_file=None, save_file=None
+        self,
+        dict_all_params=None,
+        sim_model=None,
+        preload_file=None,
+        save_file=None,
+        compute_fisher=False,
     ):
         """
 
@@ -72,41 +81,49 @@ class Transf_data(object):
         """
 
         if preload_file is None:
-            if (dict_all_params is None) or (sim_model is None):
+            if dict_all_params is None:
                 raise ValueError(
-                    "If preload_file is not None, dict_all_params and sim_model must be provided."
+                    "If preload_file is not None, dict_all_params must be provided."
                 )
             if save_file is None:
-                print("Not saving data,save_file is None")
+                print("Not saving data, save_file is None")
 
             self.set_standarize(dict_all_params["input_par"], type_stand="input")
             self.set_standarize(dict_all_params["output_par"], type_stand="output")
 
-            # for output data, whitening and global norm
-            pars_model = {}
-            pars_model["z"] = sim_model["z"]
-            pars_model["Arinyo"] = {}
-            for par in dict_all_params["output_par"]:
-                pars_model["Arinyo"][par] = sim_model["Arinyo_min"][par]
+            if compute_fisher:
+                if sim_model is None:
+                    raise ValueError(
+                        "If compute_fisher is True, sim_model must be provided."
+                    )
+                # for output data, whitening and global norm
+                pars_model = {}
+                pars_model["z"] = sim_model["z"]
+                pars_model["Arinyo"] = {}
+                for par in dict_all_params["output_par"]:
+                    pars_model["Arinyo"][par] = sim_model["Arinyo_min"][par]
 
-            # set Arinyo model
-            cosmo_params_dict = {}
-            for par in sim_model["cosmo_params"]:
-                if par != "omk":
-                    cosmo_params_dict[par] = sim_model["cosmo_params"][par]
-                else:
-                    cosmo_params_dict[par] = 0.0
+                # set Arinyo model
+                cosmo_params_dict = {}
+                for par in sim_model["cosmo_params"]:
+                    if par != "omk":
+                        cosmo_params_dict[par] = sim_model["cosmo_params"][par]
+                    else:
+                        cosmo_params_dict[par] = 0.0
 
-            fid_cosmo = cosmology.Cosmology(cosmo_params_dict=cosmo_params_dict)
-            model_Arinyo = ArinyoModel(fid_cosmo)
+                fid_cosmo = cosmology.Cosmology(cosmo_params_dict=cosmo_params_dict)
+                model_Arinyo = ArinyoModel(fid_cosmo)
 
-            fisher_output = get_fisher(self, pars_model, model_Arinyo)
+                fisher_output = get_fisher(self, pars_model, model_Arinyo)
 
-            self.set_whitening(fisher_output, type_stand="output")
-            tfw_params = self.transf_stand_white(
-                dict_all_params["output_par"], direct=True, type_stand="output"
-            )
-            self.set_global_norm(tfw_params, type_stand="output")
+                self.set_whitening(fisher_output, type_stand="output")
+                tfw_params = self.transf_stand_white(
+                    dict_all_params["output_par"], direct=True, type_stand="output"
+                )
+                self.set_global_norm(tfw_params, type_stand="output")
+            else:
+                self.white_output = None
+                self.alpha_output = None
 
             if save_file is not None:
                 np.save(

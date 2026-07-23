@@ -117,7 +117,6 @@ ts_output = transf_data.transf_stand(
     emu_data["output_par"], type_stand="output", direct=True
 )
 
-
 fig, ax = plt.subplots(4, 2, figsize=(10, 8), sharex=True, sharey=True)
 ax = ax.flatten()
 for ii, par in enumerate(ts_output):
@@ -327,206 +326,58 @@ for ii in range(2, 11):
 # ### Train l1O emulators
 
 # %%
-save_path = os.path.join(
-    os.path.dirname(forestflow.__path__[0]), "data", "emulator_models", "test"
-)
-emulator = P3DEmulator(
-    training_data=Archive3D.training_data,
-    emu_input_names=Archive3D.emu_params,
-    training_type="Arinyo_min",
-    train=True,
-    nLayers_inn=5,
-    nepochs=1250,
-    batch_size=16,
-    lr=5e-4,
-    dims_int=16,
-    use_val_set=True,
-    # use_val_set=False,
-    Nrealizations=10000,
-    save_path=save_path,
-)
+zmax = 4.1 # better performance, the results of the Arinyo fit are noisy at z>4 (?!)
 
-# %%
-# takes forever
-4 layers, batch 32 went to -24 for 1000, go longer!
-4 layers, batch 16 went to -24.5 for 1000, go longer!
-    
-# sweet spot
-dims_int=16
-5 layers, batch 16 went to -30, 1000 is good
-# anything better??? stop a little bit longer than when using
-# the validation sample
-dims_int=32
-way worse
-dims_int=8
-worse
+nepochs = 1000 # 1000 better choice, 1 so it runs fast
+use_val_set = False # use validation sample
 
-# bad
-6 layers, batch 16 went to -24.84, stop
-
-# %%
-n = 25
-
-plt.plot(-np.array(emulator.loss_arr)[n:])
-plt.plot(-np.array(emulator.val_loss_arr)[n:])
-
-# %%
-emulator = P3DEmulator(
-    model_path=os.path.join(
-        os.path.dirname(forestflow.__path__[0]), "data", "emulator_models", "test"
-    )
-)
-
-# %%
-
-# %%
-len(Archive3D.training_data)
-
-# %%
 for isim, sim in enumerate(Archive3D.list_sim_cube):
-    if isim != 0:
-        continue
     print(sim)
     print()
-    save_path = os.path.join(
-        os.path.dirname(forestflow.__path__[0]), "data", "emulator_models", "l1O", sim
+
+    name_emu = "forest_mpg_l1O_" + str(isim)
+
+    save_file_transf = os.path.join(
+        os.path.dirname(forestflow.__path__[0]),
+        "data",
+        "emulator_models",
+        "l1O",
+        name_emu + "_transf.npy",
     )
+    save_path_emu = os.path.join(
+        os.path.dirname(forestflow.__path__[0]), "data", "emulator_models", "l1O", name_emu
+    )
+
+    # training data
+    emu_data = get_training_data(Archive3D.training_data, zmax=zmax, drop_sim=sim)
+    transf_data = Transf_data(
+        dict_all_params=emu_data, save_file=save_file_transf, compute_fisher=False
+    )
+    ts_input = transf_data.transf_stand(
+        emu_data["input_par"], type_stand="input", direct=True
+    )
+    ts_output = transf_data.transf_stand(
+        emu_data["output_par"], type_stand="output", direct=True
+    )
+    input_training = {}
+    input_training["input_par"] = ts_input
+    input_training["output_par"] = ts_output
+
     emulator = P3DEmulator(
-        training_data=Archive3D.training_data,
-        emu_input_names=Archive3D.emu_params,
-        training_type="Arinyo_min",
+        training_data=input_training,
         train=True,
-        drop_sim=sim,
-        # nepochs=4000,
-        nepochs=10,
-        batch_size=20,
-        step_size=200,
-        weight_decay=0.01,
-        Nrealizations=6000,
-        save_path=save_path,
+        nLayers_inn=6,
+        nepochs=nepochs,
+        batch_size=8,
+        lr=1e-3,
+        dims_int=12,
+        use_val_set=use_val_set,
+        save_path=save_path_emu,
     )
+
     # break
 
 # %%
-plt.plot(np.log(-np.array(emulator.loss_arr)))
+plt.plot(-np.array(emulator.loss_arr[25:]))
 
 # %%
-emulator.Arinyo_params
-
-# %% [markdown]
-# ## Stop
-
-# %%
-p1d_Mpc_sm from evaluating ForestFlow 
-for the best-fitting parameters of the 
-model, this is in the training data?
-
-apply binning before comparing data?
-
-out = data_for_l10(Archive3D)
-
-# %%
-# load data of the simulation we removed
-sim_label = "mpg_central"
-testing_data = []
-for sim in Archive3D.training_data:
-    if sim["sim_label"] == sim_label:
-        testing_data.append(sim)
-# evaluate emulator for this simulation
-
-# store the results from the emulator, 
-# the smooth result from Arinyo, and the actual
-# result from the simulation
-
-
-
-# %%
-# Get power
-kmax_1d_fit = 4
-kmax_1d_plot = kmax_1d_fit + 1
-kp_Mpc = 0.7
-
-sim = Archive3D.training_data[0]
-mask_1d = (sim['k_Mpc'] <= kmax_1d_plot) & (sim['k_Mpc'] > 0)
-k1d_Mpc = sim['k_Mpc'][mask_1d]
-p1d_Mpc = sim['p1d_Mpc'][mask_1d]
-
-# %%
-cosmo_params_dict = {}
-for par in sim['cosmo_params']:
-    if par != "omk":
-        cosmo_params_dict[par] = sim['cosmo_params'][par]
-    else:
-        cosmo_params_dict[par] = 0.0
-
-fid_cosmo = cosmology.Cosmology(cosmo_params_dict=cosmo_params_dict)
-model_Arinyo = ArinyoModel(fid_cosmo)
-
-
-
-# %%
-# emulator = P3DEmulator(
-#     model_path=os.path.join(
-#         os.path.dirname(forestflow.__path__[0]), "data", "emulator_models", "l1O", "mpg_0"
-#     )
-# )
-
-# %%
-# emulator = full_emulator
-
-
-
-for sim in testing_data:
-    emu_params = {}
-    for param in Archive3D.emu_params:
-        emu_params[param] = sim[param]
-    model3d_coeffs = emulator.predict_Arinyos(emu_params=emu_params)
-
-    new_cosmo_params = {}
-    for par in ["As", "ns"]:
-        new_cosmo_params[par] = sim["cosmo_params"][par]
-
-    p1d_emu = model_Arinyo.P1D_Mpc(
-        sim["z"], k1d_Mpc, model3d_coeffs, new_cosmo_params=new_cosmo_params
-    )
-    # p1d_emu_l10 = model_Arinyo.P1D_Mpc(
-    #     sim["z"], k1d_Mpc, model3d_coeffs, new_cosmo_params=new_cosmo_params
-    # )
-
-    p1d_fit = model_Arinyo.P1D_Mpc(
-        sim["z"], k1d_Mpc, sim["Arinyo_min"], new_cosmo_params=new_cosmo_params
-    )
-
-    _mask_1d = (sim['k_Mpc'] <= kmax_1d_plot) & (sim['k_Mpc'] > 0)
-    p1d_sim = sim["p1d_Mpc"][_mask_1d]
-
-    plt.plot(k1d_Mpc, p1d_emu/p1d_fit, label=np.round(sim["z"],2))
-
-    if sim["z"] == 3:
-        break
-
-plt.legend()
-
-# %% [markdown]
-#
-
-# %%
-plt.plot(k1d_Mpc, p1d_emu/p1d_fit)
-# plt.plot(k1d_Mpc, p1d_emu_l10/p1d_fit, ":")
-plt.plot(k1d_Mpc, p1d_sim/p1d_fit, "--")
-plt.axhline(1, color="black", ls=":")
-plt.xlabel(r'$k$ [Mpc]')
-plt.ylabel(r'$P_{\rm 1D}(k)$')
-plt.xscale('log')
-
-# %%
-# emulator = full_emulator
-
-model3d_coeffs = emulator.predict_Arinyos(emu_params=emu_params)
-model3d_coeffs
-
-# %%
-sim["Arinyo_min"]
-
-# %% [markdown]
-#
