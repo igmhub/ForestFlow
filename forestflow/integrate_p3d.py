@@ -1,13 +1,18 @@
 import numpy as np
+from scipy.integrate import simpson
 
 
-def compute_px_from_p3d_kmu_Mpc(kp_Mpc, rt_Mpc, p3d_func_kmu_Mpc,
-                        hankl_kt_Mpc_min=10.0**-7,
-                        hankl_kt_Mpc_max=10.0**3,
-                        hankl_nkt=2**11,
-                        interp_rt_Mpc_min=0.005,
-                        interp_rt_Mpc_max=0.2,
-                        p3d_k_Mpc_max=200):
+def compute_px_from_p3d_kmu_Mpc(
+    kp_Mpc,
+    rt_Mpc,
+    p3d_func_kmu_Mpc,
+    hankl_kt_Mpc_min=10.0**-7,
+    hankl_kt_Mpc_max=10.0**3,
+    hankl_nkt=2**11,
+    interp_rt_Mpc_min=0.005,
+    interp_rt_Mpc_max=0.2,
+    p3d_k_Mpc_max=200,
+):
     """Given P3D(k, mu) function, use Hankl to compute Px(rt, kp)
 
     This is the user-friendly interface to `Px_Mpc_detailed`, used in cupix.
@@ -47,7 +52,7 @@ def compute_px_from_p3d_kmu_Mpc(kp_Mpc, rt_Mpc, p3d_func_kmu_Mpc,
         return p3d_func_kmu_Mpc(k, mu)
 
     dummy_z = 123456789
-    dummy_p3d_params = {'dummy': 123456789}
+    dummy_p3d_params = {"dummy": 123456789}
     Px = Px_Mpc_detailed(
         z=dummy_z,
         kpar_iMpc=kp_Mpc,
@@ -59,7 +64,98 @@ def compute_px_from_p3d_kmu_Mpc(kp_Mpc, rt_Mpc, p3d_func_kmu_Mpc,
         interpmin=interp_rt_Mpc_min,
         interpmax=interp_rt_Mpc_max,
         p3d_params=dummy_p3d_params,
-        max_k_for_p3d=p3d_k_Mpc_max)
+        max_k_for_p3d=p3d_k_Mpc_max,
+    )
 
     return Px
 
+
+class P1DIntegrator:
+    """
+    Fast computation of the one-dimensional power spectrum from a 3D model.
+
+    The integration grid in k_perp is built once. The evaluation is fully
+    vectorized over both redshift and k_parallel.
+
+    Parameters
+    ----------
+    k_perp_min : float
+        Minimum perpendicular wavenumber.
+    k_perp_max : float
+        Maximum perpendicular wavenumber.
+    n_k_perp : int
+        Number of logarithmically-spaced k_perp points.
+    """
+
+    def __init__(self, k_perp_min=1e-3, k_perp_max=100, n_k_perp=99):
+
+        self.ln_k_perp = np.linspace(np.log(k_perp_min), np.log(k_perp_max), n_k_perp)
+
+        self.dlnk = self.ln_k_perp[1] - self.ln_k_perp[0]
+
+        self.k_perp = np.exp(self.ln_k_perp)
+
+        # shape (1,1,Nkperp)
+        self.k_perp3 = self.k_perp[None, None, :]
+
+        # shape (1,1,Nkperp)
+        self.prefactor = self.k_perp3**2 / (2 * np.pi)
+
+    def __call__(self, linear, z, k_par, p3d_fun, p3d_params):
+        """
+        Compute P1D.
+
+        Parameters
+        ----------
+        z : (Nz,) array_like or float
+
+        k_par : (Nz,Nk) array_like
+
+        Returns
+        -------
+        p1d : (Nz,Nk) ndarray
+        """
+
+        z = np.asarray(z)
+        k_par = np.asarray(k_par)
+
+        if z.ndim == 0:
+            # One redshift
+            if k_par.ndim == 1:
+                k_par = k_par[None, :]
+        else:
+            # Multiple redshifts
+
+            if k_par.ndim == 1:
+                # Same k_parallel grid for every redshift
+                k_par = np.broadcast_to(
+                    k_par,
+                    (len(z), len(k_par)),
+                )
+
+            elif k_par.shape[0] != len(z):
+                raise ValueError("Leading dimension of k_par must match len(z).")
+
+        # (Nz,Nk,1)
+        k_par3 = k_par[..., None]
+
+        k = np.hypot(
+            k_par3,
+            self.k_perp3,
+        )
+
+        mu = k_par3 / k
+
+        p3d = p3d_fun(linear, z, k, mu, p3d_params)
+
+        integrate = simpson(p3d * self.prefactor, dx=self.dlnk, axis=-1)
+
+        return integrate
+
+
+_P1D_integrator = P1DIntegrator()
+
+
+def P1D_Mpc(linear, zs, k_par, p3d_fun, p3d_params):
+
+    return _P1D_integrator(linear, zs, k_par, p3d_fun, p3d_params)

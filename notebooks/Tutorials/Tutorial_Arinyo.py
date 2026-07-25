@@ -54,18 +54,25 @@ fid_cosmo.background_params
 # for the same cosmology
 
 # %%
-zs = 3. # redshift
+zs = np.linspace(2.2, 4.2, 5) # redshift
 
 # P3D
 nn_k = 200 # number of k bins
 nn_mu = 10 # number of mu bins
-k = np.logspace(-1.5, 1, nn_k)
+
+k_Mpc_min = 0.1
+k_Mpc_max = 10
+k = np.geomspace(k_Mpc_min, k_Mpc_max, nn_k)
 mu = np.linspace(0, 1, nn_mu)
 k2d = np.tile(k[:, np.newaxis], nn_mu) # k grid for P3D
 mu2d = np.tile(mu[:, np.newaxis], nn_k).T # mu grid for P3D
 
+zmin = 2
+zmax = 4.2
+linear = model_Arinyo.linear_theory(zs)
+
 #P1D
-kpar = np.logspace(-1, np.log10(5), nn_k) # kpar for P1D
+kpar = np.geomspace(k_Mpc_min, 5., nn_k) # kpar for P1D
 
 arinyo_pars = {
     'bias': -0.18,
@@ -78,31 +85,34 @@ arinyo_pars = {
     'kp': 10.5
 }
 
-plin = model_Arinyo.linP_Mpc(zs, k) # get linear power spectrum at target zmodel_Arinyo
-p3d = model_Arinyo.P3D_Mpc_k_mu(zs, k2d, mu2d, arinyo_pars) # get P3D at target z
-p1d = model_Arinyo.P1D_Mpc(zs, kpar, arinyo_pars) # get P1D at target z
+linP_Mpc = model_Arinyo.linP_Mpc(linear, zs, k)
+p3d = model_Arinyo.P3D_Mpc_k_mu(linear, zs, k2d, mu2d, arinyo_pars) # get P3D at target z
+p1d = model_Arinyo.P1D_Mpc(linear, zs, kpar, arinyo_pars)
 
 # %% [markdown]
 # #### Plot P3D
 
 # %%
-for ii in range(p3d.shape[1]):
-    col = 'C'+str(ii)
+iz = 0
+for ii in range(k2d.shape[1]):
+    col = "C" + str(ii)
     if ii % 3 == 0:
-        lab = r'$<\mu>=$'+str(np.round(mu[ii], 2))
+        lab = r"$<\mu>=$" + str(np.round(mu[ii], 2))
     else:
         lab = None
-    plt.loglog(k, p3d[:, ii]/plin, col, label=lab)
-    plt.plot(k, p3d[0, ii]/plin[0]+k[:]*0, col+'--')
-plt.xlabel(r'$k$ [1/Mpc]')
-plt.ylabel(r'$P/P_{\rm lin}$')
-plt.legend(loc='upper left')
+    plt.loglog(k2d[:, ii], p3d[iz, :, ii] / linP_Mpc[iz], col, label=lab)
+    plt.plot(k2d[:, ii], p3d[iz, 0, ii] / linP_Mpc[iz, 0] + k2d[:, ii] * 0, col + "--")
+plt.xlabel(r"$k$ [1/Mpc]")
+plt.ylabel(r"$P/P_{\rm lin}$")
+plt.legend(loc="upper left")
 
 # %% [markdown]
 # #### Plot P1D
 
 # %%
-plt.plot(kpar, kpar * p1d/np.pi)
+for ii in range(zs.shape[0]):
+    plt.plot(kpar, kpar * p1d[ii]/np.pi, label=r"$z=$"+str(np.round(zs[ii], 2)))
+plt.legend()
 plt.xlabel(r'$k$ [1/Mpc]')
 plt.ylabel(r'$P_{\rm 1D}(k)$')
 plt.xscale('log')
