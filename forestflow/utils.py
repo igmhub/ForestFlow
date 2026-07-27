@@ -1,7 +1,6 @@
 import numpy as np
 import torch
 import functools
-from pyDOE2 import lhs
 
 
 def print_memory_usage(step_description):
@@ -16,9 +15,7 @@ def print_memory_usage(step_description):
         print(
             f"GPU memory allocated: {torch.cuda.memory_allocated() / (1024 ** 2):.2f} MB"
         )
-        print(
-            f"GPU memory cached: {torch.cuda.memory_reserved() / (1024 ** 2):.2f} MB"
-        )
+        print(f"GPU memory cached: {torch.cuda.memory_reserved() / (1024 ** 2):.2f} MB")
 
 
 def params_numpy2dict(params):
@@ -132,9 +129,7 @@ def purge_chains(ln_prop_chains, nsplit=5, abs_diff=5, minval=-1000):
     # step-dependence convergence
     # check that average logprob does not vary much with step
     # compute difference between chunks and median of each chain
-    keep1 = (np.abs(split_res - split_res_med[:, np.newaxis]) < abs_diff).all(
-        axis=1
-    )
+    keep1 = (np.abs(split_res - split_res_med[:, np.newaxis]) < abs_diff).all(axis=1)
     # total-dependence convergence
     # check that average logprob is close to minimum logprob of all chains
     # check that all chunks are above a target minimum value
@@ -150,20 +145,19 @@ def init_chains(
     parameters,
     nwalkers,
     bounds,
-    criterion="c",
     seed=0,
     attraction=1,
     min_attraction=0.05,
 ):
+
+    from scipy.stats import qmc
+
     parameter_names = list(parameters.keys())
     parameter_values = np.array(list(parameters.values()))
     nparams = len(parameter_names)
-    design = lhs(
-        nparams,
-        samples=nwalkers,
-        criterion=criterion,
-        random_state=seed,
-    )
+
+    lhs_sampler = qmc.LatinHypercube(d=nparams, seed=seed)
+    design = lhs_sampler.random(n=nwalkers)
 
     if attraction > 1:
         attraction = 1
@@ -176,9 +170,7 @@ def init_chains(
 
         # design sample using lh as input, attracted to best-fitting solution
         design[:, ii] = (
-            lbox * (design[:, ii] - 0.5)
-            + buse[0] * attraction
-            + parameter_values[ii]
+            lbox * (design[:, ii] - 0.5) + buse[0] * attraction + parameter_values[ii]
         )
 
         # make sure that samples do not get out of prior range
@@ -242,8 +234,7 @@ def memoize_numpy_arrays(func, max_history=2):
     def wrapper(*args, **kwargs):
         # Convert NumPy arrays to a tuple of their shapes and contents
         key = tuple(
-            (a.shape, tuple(a.flat)) if isinstance(a, np.ndarray) else a
-            for a in args
+            (a.shape, tuple(a.flat)) if isinstance(a, np.ndarray) else a for a in args
         )
 
         # Check if the key is in the cache
@@ -271,15 +262,15 @@ def memoize_pytorch(func):
     def wrapper(*args, **kwargs):
         # Convert PyTorch tensors to tuples of their shapes and contents
         args_key = tuple(
-            (a.shape, tuple(a.flatten().tolist()))
-            if isinstance(a, torch.Tensor)
-            else a
+            (a.shape, tuple(a.flatten().tolist())) if isinstance(a, torch.Tensor) else a
             for a in args
         )
         kwargs_key = tuple(
-            (key, value.shape, tuple(value.flatten().tolist()))
-            if isinstance(value, torch.Tensor)
-            else (key, value)
+            (
+                (key, value.shape, tuple(value.flatten().tolist()))
+                if isinstance(value, torch.Tensor)
+                else (key, value)
+            )
             for key, value in kwargs.items()
         )
 
@@ -337,9 +328,7 @@ def sort_dict(dct, keys):
             k: d[k] for k in keys
         }  # create a new dictionary with only the specified keys
         d.clear()  # remove all items from the original dictionary
-        d.update(
-            sorted_d
-        )  # update the original dictionary with the sorted dictionary
+        d.update(sorted_d)  # update the original dictionary with the sorted dictionary
     return dct
 
 
@@ -353,9 +342,7 @@ def get_covariance(x, y, return_corr=False):
     x = x[mask_within_sigma.all(axis=1)]
 
     cov = (
-        1
-        / (len(x) - 1)
-        * np.einsum("ij,jk ->ik", (x - y[None, :]).T, (x - y[None, :]))
+        1 / (len(x) - 1) * np.einsum("ij,jk ->ik", (x - y[None, :]).T, (x - y[None, :]))
     )
     corr = np.corrcoef(cov)
     if return_corr:
@@ -388,8 +375,7 @@ def get_covariance(x, y, return_corr=False):
 
 def sigma68(data):
     return 0.5 * (
-        np.nanquantile(data, q=0.84, axis=0)
-        - np.nanquantile(data, q=0.16, axis=0)
+        np.nanquantile(data, q=0.84, axis=0) - np.nanquantile(data, q=0.16, axis=0)
     )
 
 
@@ -464,9 +450,7 @@ def load_Arinyo_chains(
 
     else:
         if z is None:
-            raise ValueError(
-                "If sim_label is not None, a redshift must be provided."
-            )
+            raise ValueError("If sim_label is not None, a redshift must be provided.")
 
         scale_tau = 1.0
         ind_z = z

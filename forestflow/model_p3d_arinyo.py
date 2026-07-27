@@ -1,16 +1,22 @@
 import types
+import time
 import numpy as np
+from scipy.interpolate import RectBivariateSpline, CubicSpline
 from lace.cosmo import cosmology, rescale_cosmology
 from forestflow import pcross
-from forestflow.p1d import P1D_Mpc as compute_P1D
+
+# from forestflow.p1d import P1D_Mpc as compute_P1D
+from forestflow.integrate_p3d import P1D_Mpc as compute_P1D
+
+from dataclasses import dataclass
 
 
-def coordinates(name):
-    def decorator(func):
-        func.coordinates = name
-        return func
-
-    return decorator
+@dataclass(slots=True)
+class LinearTheoryGrid:
+    z: np.ndarray  # (Nz,)
+    logk: np.ndarray  # (Nk,)
+    loglinP: np.ndarray  # (Nz, Nk)
+    fz: np.ndarray  # (Nz,)
 
 
 class ArinyoModel(object):
@@ -22,7 +28,7 @@ class ArinyoModel(object):
         self,
         fid_cosmo=None,
         default_bias=-0.18,
-        default_beta=1.3,
+        default_bias_eta=-0.23,
         default_q1=0.4,
         default_q2=0.0,
         default_kvav=0.58,
@@ -36,7 +42,7 @@ class ArinyoModel(object):
         Parameters:
             fid_cosmo (Cosmology, optional): object defining the fiducial cosmology.
             default_bias (float, optional): Linear bias. Defaults to -0.18.
-            default_beta (float, optional): Linear RSD. Defaults to 1.3.
+            default_bias_eta (float, optional): Linear bias. Defaults to -0.23.
             default_q1 (float, optional): Nonlinear growth. Defaults to 0.4.
             default_q2 (float, optional): Nonlinear growth. Defaults to 0.0.
             default_kvav (float, optional): Nonlinear RSD. Defaults to 0.58.
@@ -53,7 +59,7 @@ class ArinyoModel(object):
         # store bias parameters
         self.default_params = {
             "bias": default_bias,
-            "beta": default_beta,
+            "bias_eta": default_bias_eta,
             "q1": default_q1,
             "q2": default_q2,
             "kvav": default_kvav,
@@ -62,32 +68,101 @@ class ArinyoModel(object):
             "kp": default_kp,
         }
 
-
-    def linP_Mpc(self, z, k_Mpc, new_cosmo_params=None):
+    def linear_theory(self, zs, k_Mpc_min=1e-3, k_Mpc_max=100, new_cosmo_params=None):
         """
-        Get the linear power spectrum at the input redshift and wavenumber.
-
-        Parameters:
-            z (float): Redshift
-            k_Mpc (float): Wavenumber in Mpc^-1.
-            new_cosmo_params (dictionary): modify fiducial cosmo
-
-        Returns:
-            linP (float): Linear power spectrum value.
+        Compute all linear-theory quantities required by the model.
         """
 
         if self.fid_cosmo.same_background(cosmo_params=new_cosmo_params):
             # get cosmology model using fiducial cosmo and input params
-            cosmo = rescale_cosmology.RescaledCosmology(self.fid_cosmo, new_cosmo_params)
+            cosmo = rescale_cosmology.RescaledCosmology(
+                self.fid_cosmo, new_cosmo_params
+            )
         else:
-            print('WARNING: computing CAMB again')
+            print("WARNING: computing CAMB again")
             cosmo = cosmology.Cosmology(cosmo_params_dict=new_cosmo_params)
 
-        return cosmo.get_linP_Mpc(z, k_Mpc)
+        logk = np.linspace(
+            np.log(k_Mpc_min),
+            np.log(k_Mpc_max),
+            200,
+        )
 
+        zs = np.atleast_1d(zs)
 
-    @coordinates("kpar_kperp")
-    def P3D_Mpc_kpar_kperp(self, z, kpar, kperp, ari_pp, new_cosmo_params=None):
+        return LinearTheoryGrid(
+            z=zs,
+            logk=logk,
+            loglinP=np.log(cosmo.get_linP_Mpc(zs, np.exp(logk))),
+            fz=cosmo.compute_growth_rate(zs),
+        )
+
+    def linP_Mpc(self, linear, z, k_Mpc):
+        """
+        Evaluate the linear power spectrum.
+        """
+
+        def get_iz(zi):
+            matches = np.where(np.isclose(linear.z, zi, atol=1e-3, rtol=0))[0]
+
+            if len(matches) == 0:
+                raise ValueError(
+                    f"Requested z={zi} is not available in the linear theory grid."
+                )
+
+            return matches[0]
+
+        z = np.asarray(z, dtype=float)
+        k_Mpc = np.asarray(k_Mpc, dtype=float)
+        logk = np.log(k_Mpc)
+
+        # Scalar z
+        if z.ndim == 0:
+            iz = get_iz(z)
+            return np.exp(np.interp(logk, linear.logk, linear.loglinP[iz]))
+
+        # (Nz,) z and (Nk,) k -> (Nz,Nk)
+        elif z.ndim == 1 and k_Mpc.ndim == 1:
+            out = np.empty((len(z), len(k_Mpc)))
+            for i, zi in enumerate(z):
+                iz = get_iz(zi)
+                out[i] = np.exp(np.interp(logk, linear.logk, linear.loglinP[iz]))
+            return out
+
+        elif z.ndim == 1 and k_Mpc.shape[0] == len(z):
+
+            out = np.empty_like(k_Mpc)
+
+            for i, zi in enumerate(z):
+                iz = get_iz(zi)
+
+                out[i] = np.exp(
+                    np.interp(
+                        logk[i].ravel(),
+                        linear.logk,
+                        linear.loglinP[iz],
+                    ).reshape(k_Mpc.shape[1:])
+                )
+
+            return out
+
+        else:
+            raise NotImplementedError(
+                f"Unsupported shapes: z={z.shape}, k_Mpc={k_Mpc.shape}"
+            )
+
+    def fz(self, linear, z):
+        """
+        Evaluate the linear growth rate.
+        """
+
+        return np.interp(
+            np.asarray(z, dtype=float),
+            linear.z,
+            linear.fz,
+        )
+
+    def P3D_Mpc_kpar_kperp(self, linear, z, kpar, kperp, ari_pp):
         """
         Compute the 3D flux power spectrum for inputs given as k_parallel and k_perp.
 
@@ -100,16 +175,14 @@ class ArinyoModel(object):
 
         Returns:
             float or array-like: 3D flux power spectrum in units of Mpc^3 with the same shape as the broadcasted
-            inputs. The returned value is the same object produced by `P3D_Mpc` but with the attribute
-            `coordinates` set to `'kpar_kperp'`.
+            inputs.
         """
 
-        k = np.sqrt(kpar**2 + kperp**2)
-        mu = kpar / k
-        return self._P3D_Mpc(z, k, mu, ari_pp, new_cosmo_params=new_cosmo_params)
+        k_Mpc = np.sqrt(kpar**2 + kperp**2)
+        mu = kpar / k_Mpc
+        return self._P3D_Mpc(linear, z, k_Mpc, mu, ari_pp)
 
-    @coordinates("k_mu")
-    def P3D_Mpc_k_mu(self, z, k, mu, ari_pp, new_cosmo_params=None):
+    def P3D_Mpc_k_mu(self, linear, z, k_Mpc, mu, ari_pp):
         """
         Compute the 3D flux power spectrum for inputs given as k (magnitude) and mu (cosine of angle).
 
@@ -123,12 +196,94 @@ class ArinyoModel(object):
 
         Returns:
             float or array-like: 3D flux power spectrum in units of Mpc^3 with the same shape as the inputs.
-            The returned value is the same object produced by `P3D_Mpc` but with the attribute
-            `coordinates` set to `'k_mu'`.
         """
-        return self._P3D_Mpc(z, k, mu, ari_pp, new_cosmo_params=new_cosmo_params)
+        return self._P3D_Mpc(linear, z, k_Mpc, mu, ari_pp)
 
-    def _P3D_Mpc(self, z, k, mu, ari_pp, new_cosmo_params=None):
+    def P3D_Mpc_kpar_kperp_Gaussian_noise(
+        self,
+        linear,
+        z,
+        kpar,
+        kperp,
+        ari_pp,
+        seed=0,
+        Lbox_Mpc=100,
+        epsilon=0.0,
+    ):
+        """
+        Compute the 3D flux power spectrum for inputs given as k (magnitude) and mu (cosine of angle).
+
+        Parameters:
+            z (float): Redshift (scalar). It modifies the linear power spectrum but not the value of the Arinyo parameters
+            k (float or array-like): Magnitude of the wavevector (Mpc^-1).
+            mu (float or array-like): Cosine of the angle between the wavevector and the line-of-sight
+                (mu = k_parallel / k).
+            ari_pp (dict): Arinyo model parameters (missing keys will use defaults).
+            new_cosmo_params (dict, optional): Optional cosmology override passed through to `P3D_Mpc`.
+
+        Returns:
+            float or array-like: 3D flux power spectrum in units of Mpc^3 with the same shape as the inputs.
+        """
+
+        # Evaluate P3D
+        P3D = self.P3D_Mpc_kpar_kperp(linear, z, kpar, kperp, ari_pp)
+        _P3D = P3D.reshape(-1)
+
+        vol = Lbox_Mpc**3
+        sigma = compute_Gaussian_cov(kpar, kperp, _P3D, vol)
+
+        # realization
+        rng = np.random.default_rng(seed)
+        P3D_err = _P3D + rng.normal(scale=sigma) + epsilon
+
+        P3D_err = P3D_err.reshape(kpar.shape[0], kpar.shape[1])
+
+        return P3D_err
+
+    def _arinyo_kernel(self, linP_Mpc, fz, k_Mpc, mu, ari_pp):
+        """
+        Compute the nonlinear correction to the flux power spectrum.
+
+        Parameters
+        ----------
+        linP : ndarray
+            Linear matter power spectrum.
+        fz : float or ndarray
+            Linear growth rate.
+        k : ndarray
+        mu : ndarray
+        ari_pp : dict
+
+        Returns
+        -------
+        ndarray
+            Flux power spectrum.
+        """
+
+        bias = _bcast(ari_pp["bias"], k_Mpc)
+        bias_eta = _bcast(ari_pp["bias_eta"], k_Mpc)
+        q1 = _bcast(ari_pp["q1"], k_Mpc)
+        q2 = _bcast(ari_pp["q2"], k_Mpc)
+        av = _bcast(ari_pp["av"], k_Mpc)
+        kvav = _bcast(ari_pp["kvav"], k_Mpc)
+        bv = _bcast(ari_pp["bv"], k_Mpc)
+        kp = _bcast(ari_pp["kp"], k_Mpc)
+
+        lowk_bias = bias + bias_eta * fz * mu**2
+
+        delta2 = k_Mpc**3 * linP_Mpc / (2 * np.pi**2)
+
+        nonlin = delta2 * (q1 + q2 * delta2)
+
+        vel = k_Mpc**av / kvav * mu**bv
+
+        press = (k_Mpc / kp) ** 2
+
+        dnl = np.exp(nonlin * (1 - vel) - press)
+
+        return linP_Mpc * lowk_bias**2 * dnl
+
+    def _P3D_Mpc(self, linear, z, k_Mpc, mu, ari_pp):
         """
         Compute the model for the 3D flux power spectrum in units of Mpc^3.
 
@@ -142,36 +297,64 @@ class ArinyoModel(object):
             float: Computed value of the 3D flux power spectrum.
         """
 
-        # Check if all the default parameters are present in the ari_pp dictionary
-        for par in self.default_params:
-            if par not in ari_pp:
-                print(
-                    par,
-                    " not in ari_pp, using default value, ",
-                    self.default_params[par],
+        z = np.asarray(z)
+        k_Mpc = np.asarray(k_Mpc)
+        mu = np.asarray(mu)
+
+        scalar_z = z.ndim == 0
+
+        if not scalar_z:
+            # Add a redshift axis only if it is missing.
+            if k_Mpc.ndim == z.ndim + 1:
+                k_Mpc = np.broadcast_to(
+                    k_Mpc,
+                    (len(z),) + k_Mpc.shape,
                 )
-                ari_pp[par] = self.default_params[par]
+                mu = np.broadcast_to(
+                    mu,
+                    (len(z),) + mu.shape,
+                )
 
-        # Evaluate the linear power spectrum at the given (z, k)
-        linP = self.linP_Mpc(z, k, new_cosmo_params=new_cosmo_params)
+        # Check if all the default parameters are present in the ari_pp dictionary
+        params = self.default_params | ari_pp
 
-        # Model the large-scale biasing for the flux field
-        lowk_bias = ari_pp["bias"] * (1 + ari_pp["beta"] * mu**2)
+        linP_Mpc = self.linP_Mpc(linear, z, k_Mpc)
+        fz = self.fz(linear, z)
 
-        # Model the small-scale correction (D_NL in Arinyo-i-Prats 2015)
-        delta2 = (1 / (2 * np.pi**2)) * k**3 * linP
-        nonlin = delta2 * (ari_pp["q1"] + ari_pp["q2"] * delta2)
-        vel = k ** ari_pp["av"] / ari_pp["kvav"] * mu ** ari_pp["bv"]
-        press = (k / ari_pp["kp"]) ** 2
+        while fz.ndim < k_Mpc.ndim:
+            fz = fz[..., None]
 
-        D_NL = np.exp(nonlin * (1 - vel) - press)
+        res = self._arinyo_kernel(linP_Mpc, fz, k_Mpc, mu, params)
 
-        # Compute the final 3D flux power spectrum
-        return linP * lowk_bias**2 * D_NL
+        return res
 
-    def P1D_Mpc(self, z, k_par, ari_pp, new_cosmo_params=None):
+    def P1D_Mpc(self, linear, z, k_par, ari_pp):
+        """
+        Compute the one-dimensional flux power spectrum.
+        """
+
+        scalar_z = np.ndim(z) == 0
+
+        p1d = compute_P1D(
+            linear,
+            z,
+            k_par,
+            self.P3D_Mpc_k_mu,
+            ari_pp,
+        )
+
+        if scalar_z:
+            return p1d[0]
+
+        return p1d
+
+    def P1D_Mpc_Gaussian_noise(self, linear, z, k_par, ari_pp, seed=0, Lbox_Mpc=100):
         """
         Compute the one-dimensional power spectrum (P1D) for the specified values of parallel wavenumber (k_par).
+
+        The error between simulations with Lbox_Mpc2 and Lbox_Mpc scales like fact = (Lbox_Mpc2/Lbox_Mpc)**(3/2).
+
+        The covariance matrix is fully uncorrelated
 
         Parameters:
             z (float): Redshift at which to compute the P1D. It modifies the linear power spectrum but not the value of the Arinyo parameters
@@ -183,9 +366,15 @@ class ArinyoModel(object):
             array-like: Computed values of the one-dimensional power spectrum (P1D) for the given `k_par` values.
         """
 
-        p1d = compute_P1D(z, k_par, self.P3D_Mpc_k_mu, ari_pp, new_cosmo_params=new_cosmo_params)
-
-        return p1d
+        return compute_P1D(
+            linear,
+            z,
+            k_par,
+            self.P3D_Mpc_kpar_kperp_Gaussian_noise,
+            ari_pp,
+            seed=seed,
+            Lbox_Mpc=Lbox_Mpc,
+        )
 
     def Px_Mpc(self, z, kpar_iMpc, rperp_Mpc, ari_pp, new_cosmo_params=None):
         """
@@ -198,6 +387,8 @@ class ArinyoModel(object):
             rperp (array-like): values (float) of separation in Mpc
             Px_per_kpar (array-like): values (float) of Px for each k parallel and rperp. Shape: (len(k_par), len(rperp)).
         """
+
+        # NEEDS TO BE UPDATED!!!
 
         # check kmax in the fiducial cosmology
         camb_kmax_Mpc = self.fid_cosmo.camb_kmax_Mpc
@@ -212,3 +403,24 @@ class ArinyoModel(object):
             new_cosmo_params=new_cosmo_params,
         )
         return Px_Mpc
+
+
+def compute_Gaussian_cov(kpar, kperp, P3D, vol):
+
+    # linear
+    dkpar = kpar[1, 0] - kpar[0, 0]
+
+    # logarithmic
+    dkperp = kperp[0, 1:] - kperp[0, :-1]
+    dkperp = np.append(dkperp, dkperp[-1] ** 2 / dkperp[-2])
+
+    # get Gaussian covariance
+    Nmodes = (vol / (2 * np.pi) ** 2) * kperp * dkperp[np.newaxis, :] * dkpar
+    sigma = np.sqrt(2.0 * P3D**2 / Nmodes.reshape(-1))
+
+    return sigma
+
+
+def _bcast(x, target):
+    x = np.asarray(x)
+    return x.reshape(x.shape + (1,) * (target.ndim - x.ndim))

@@ -6,9 +6,9 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.19.1
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: lace
 #     language: python
 #     name: python3
 # ---
@@ -64,21 +64,14 @@ sys.path.append(path_program)
 # # LOAD DATA
 
 # %%
-# %%time
-folder_interp = path_program + "/data/plin_interp/"
-folder_lya_data = path_program + "/data/best_arinyo/"
-
-Archive3D = GadgetArchive3D(
-    base_folder=path_program,
-    folder_data=folder_lya_data,
-    force_recompute_plin=False,
-    average="both",
-)
-print(len(Archive3D.training_data))
+from forestflow.archive import GadgetArchive3D
+Archive3D = GadgetArchive3D()
 
 
 # %% [markdown]
 # ### Train L1Os
+#
+# Trained in Tutorial l1O_cov
 
 # %%
 do_training = False
@@ -116,10 +109,11 @@ if do_training:
 
 # %%
 training_type = "Arinyo_min"
-model_path = path_program+"/data/emulator_models/"
+model_path = path_program + "/data/emulator_models/"
 
 Nsim = 30
 zs = np.flip(np.arange(2, 4.6, 0.25))
+zs = zs[1:]
 Nz = zs.shape[0]
 
 n_mubins = 4
@@ -130,26 +124,35 @@ kmax_1d_plot = kmax_1d_fit + 1
 
 sim = Archive3D.training_data[0]
 
-k3d_Mpc = sim['k3d_Mpc']
-mu3d = sim['mu3d']
-p3d_Mpc = sim['p3d_Mpc']
+k3d_Mpc = sim["k3d_Mpc"]
+mu3d = sim["mu3d"]
+p3d_Mpc = sim["p3d_Mpc"]
 kmu_modes = get_p3d_modes(kmax_3d_plot)
 
 mask_3d = k3d_Mpc[:, 0] <= kmax_3d_plot
 
-mask_1d = (sim['k_Mpc'] <= kmax_1d_plot) & (sim['k_Mpc'] > 0)
-k1d_Mpc = sim['k_Mpc'][mask_1d]
-p1d_Mpc = sim['p1d_Mpc'][mask_1d]
+mask_1d = (sim["k_Mpc"] <= kmax_1d_plot) & (sim["k_Mpc"] > 0)
+k1d_Mpc = sim["k_Mpc"][mask_1d]
+p1d_Mpc = sim["p1d_Mpc"][mask_1d]
 
 sim = Archive3D.training_data[0]
-_ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], sim['p3d_Mpc'][mask_3d], kmu_modes, n_mubins=n_mubins)
+_ = p3d_rebin_mu(
+    k3d_Mpc[mask_3d],
+    mu3d[mask_3d],
+    sim["p3d_Mpc"][mask_3d],
+    kmu_modes,
+    n_mubins=n_mubins,
+)
 knew, munew, p3d_measured, mu_bins = _
 
 # %%
-# arr_p3d_sim = np.zeros((Nsim, Nz, np.sum(mask_3d), n_mubins))
-# arr_p3d_emu = np.zeros((Nsim, Nz, np.sum(mask_3d), n_mubins))
-# arr_p1d_sim = np.zeros((Nsim, Nz, np.sum(mask_1d)))
-# arr_p1d_emu = np.zeros((Nsim, Nz, np.sum(mask_1d)))
+from lace.cosmo import cosmology
+
+# %%
+arr_p3d_sim = np.zeros((Nsim, Nz, np.sum(mask_3d), n_mubins))
+arr_p3d_emu = np.zeros((Nsim, Nz, np.sum(mask_3d), n_mubins))
+arr_p1d_sim = np.zeros((Nsim, Nz, np.sum(mask_1d)))
+arr_p1d_emu = np.zeros((Nsim, Nz, np.sum(mask_1d)))
 params_sim = np.zeros((Nsim, Nz, 3))
 params_emu = np.zeros((Nsim, Nz, 3))
 
@@ -158,82 +161,77 @@ for isim in range(Nsim):
     print(f"Starting simulation {isim}")
     print()
 
-    training_data = [
-        d for d in Archive3D.training_data if d["sim_label"] != sim_label
-    ]
+    name_emu = "l1O/forest_mpg_l1O_" + str(isim)
+    emulator = P3DEmulator(key=name_emu)
 
-    p3d_emu = P3DEmulator(
-        training_data,
-        Archive3D.emu_params,
-        nepochs=300,
-        lr=0.001,  # 0.005
-        batch_size=20,
-        step_size=200,
-        gamma=0.1,
-        weight_decay=0,
-        adamw=True,
-        nLayers_inn=12,  # 15
-        Nrealizations=200,
-        Archive=Archive3D,
-        training_type=training_type,
-        model_path=model_path + "mpg_drop"+str(isim)+".pt",
-    )
-    
     for iz, z in enumerate(zs):
         print(z)
         # define test sim
         dict_sim = [
             d
             for d in Archive3D.training_data
-            if d["z"] == z
-            and d["sim_label"] == sim_label
-            and d["val_scaling"] == 1
+            if d["z"] == z and d["sim_label"] == sim_label and d["val_scaling"] == 1
         ]
 
         info_power = {
             "sim_label": sim_label,
-            # "k3d_Mpc": k3d_Mpc[mask_3d, :],
-            # "mu": mu3d[mask_3d, :],
-            # "kmu_modes": kmu_modes,
-            # "k1d_Mpc": k1d_Mpc,
-            # "return_p3d": True,
-            # "return_p1d": True,
             "z": z,
+            "k3d_Mpc": k3d_Mpc[mask_3d, :],
+            "mu": mu3d[mask_3d, :],
+            "kmu_modes": kmu_modes,
+            "k1d_Mpc": k1d_Mpc,
         }
-        
-        out = p3d_emu.evaluate(
-            emu_params=dict_sim[0],
-            info_power=info_power,
-            # natural_params=True,
-            Nrealizations=1000,
-            # Nrealizations=100
-        )
-        
-        # # p1d and p3d from sim
-        # _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], dict_sim[0]["p3d_Mpc"][mask_3d], kmu_modes, n_mubins=n_mubins)
-        # knew, munew, arr_p3d_sim[isim, iz], mu_bins = _
-        
-        # _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["p3d"], kmu_modes, n_mubins=n_mubins)
-        # knew, munew, arr_p3d_emu[isim, iz], mu_bins = _
 
-        # arr_p1d_emu[isim, iz] = out["p1d"]
-        # arr_p1d_sim[isim, iz] = dict_sim[0]["p1d_Mpc"][mask_1d]
+        input_emu = {}
+        for par in emulator.input_labels:
+            input_emu[par] = dict_sim[0][par]
+        out = emulator.evaluate(emu_params=input_emu)
 
-        params_emu[isim, iz, 0] = out['coeffs_Arinyo']["bias"]
-        params_emu[isim, iz, 2] = out['coeffs_Arinyo']["beta"]
-        _ = transform_arinyo_params(out['coeffs_Arinyo'], dict_sim[0]["f_p"])
-        params_emu[isim, iz, 1] = _["bias_eta"]
+        params_emu[isim, iz, 0] = out["bias"]
+        params_emu[isim, iz, 1] = out["bias_eta"]
+        params_emu[isim, iz, 2] = 0
 
         params_sim[isim, iz, 0] = dict_sim[0][training_type]["bias"]
+        params_sim[isim, iz, 1] = dict_sim[0][training_type]["bias_eta"]
         params_sim[isim, iz, 2] = dict_sim[0][training_type]["beta"]
-        _ = transform_arinyo_params(dict_sim[0][training_type], dict_sim[0]["f_p"])
-        params_sim[isim, iz, 1] = _["bias_eta"]
-        
+
+        if iz == 0:
+            cosmo_params_dict = dict_sim[0]["cosmo_params"]
+            fid_cosmo = cosmology.Cosmology(cosmo_params_dict=cosmo_params_dict)
+            model_Arinyo = ArinyoModel(fid_cosmo)
+
+        p3d_emu = model_Arinyo.P3D_Mpc_k_mu(
+            info_power["z"], info_power["k3d_Mpc"], info_power["mu"], out
+        )
+        p1d_emu = model_Arinyo.P1D_Mpc(info_power["z"], info_power["k1d_Mpc"], out)
+
+        _ = p3d_rebin_mu(
+            info_power["k3d_Mpc"],
+            info_power["mu"],
+            dict_sim[0]["p3d_Mpc"][mask_3d],
+            kmu_modes,
+            n_mubins=n_mubins,
+        )
+        knew, munew, arr_p3d_sim[isim, iz], mu_bins = _
+        _ = p3d_rebin_mu(
+            info_power["k3d_Mpc"],
+            info_power["mu"],
+            p3d_emu,
+            kmu_modes,
+            n_mubins=n_mubins,
+        )
+        knew, munew, arr_p3d_emu[isim, iz], mu_bins = _
+
+        arr_p1d_emu[isim, iz] = p1d_emu
+        arr_p1d_sim[isim, iz] = dict_sim[0]["p1d_Mpc"][mask_1d]
+
     p3d_emu = 0
+    # break
 
 
 # %%
-folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+# folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures_new/"
 np.savez(
     folder + "temporal_l1O", 
     arr_p3d_sim=arr_p3d_sim, 
@@ -245,7 +243,8 @@ np.savez(
 )
 
 # %%
-folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+# folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
+folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures_new/"
 fil = np.load(folder + "temporal_l1O.npz")
 params_emu = fil["params_emu"]
 params_sim = fil["params_sim"]
@@ -290,8 +289,8 @@ print(y[0]*100, 0.5*(y[2]-y[1])*100)
 # ## PLOTTING
 
 # %%
-folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
-z_use = np.arange(2, 4.5, 0.5)[::-1]
+folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures_new/"
+z_use = np.arange(2, 4.25, 0.5)[::-1]
 
 mask_z = np.zeros(len(z_use), dtype=int)
 for ii in range(len(z_use)):

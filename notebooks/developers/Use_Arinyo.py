@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.19.1
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -35,30 +35,6 @@ from matplotlib import rcParams
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
-
-# %%
-# from lace.cosmo import camb_cosmo
-# import forestflow
-# from forestflow.model_p3d_arinyo import get_linP_interp, ArinyoModel
-# from forestflow.fit_p3d import FitPk
-# from forestflow.fit_p3dz import FitPkz
-# from pyDOE2.doe_lhs import lhs
-# from forestflow.rebin_p3d import p3d_allkmu, get_p3d_modes, p3d_rebin_mu
-
-
-# from forestflow.archive import GadgetArchive3D
-# from forestflow.P3D_cINN import P3DEmulator
-
-# def ls_level(folder, nlevels):
-#     for ii in range(nlevels):
-#         folder = os.path.dirname(folder)
-#     folder += "/"
-#     return folder
-
-
-# path_program = ls_level(os.getcwd(), 2)
-# print(path_program)
-# sys.path.append(path_program)
 
 # %% [markdown]
 # ## Arinyo model from default cosmo and params

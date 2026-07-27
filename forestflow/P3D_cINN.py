@@ -1,218 +1,260 @@
+"""
+Conditional Invertible Neural Network (cINN) Emulator for the Arinyo P3D Model.
+
+This module provides a flexible emulator for the Arinyo P3D model using conditional
+invertible neural networks. It supports training new emulators from simulation data
+or loading pre-trained models for rapid predictions.
+
+The emulator generates Monte Carlo realizations of model parameters by sampling
+the latent space and returns mean predictions.
+"""
+
 import numpy as np
 import os
 import time
 import random
 from warnings import warn
+from typing import Optional, Dict, List, Union, Tuple, Any
 
-# torch modules
 import torch
-from torch.utils.data import DataLoader, TensorDataset
-
-# FrEIA imports
+from torch.utils.data import DataLoader, TensorDataset, random_split
 import FrEIA.framework as Ff
 import FrEIA.modules as Fm
 
+import forestflow
+from forestflow.set_training import Transf_data
 
-def init_xavier(m):
-    """Initialization of the NN.
-    This is quite important for a faster training
+
+def init_xavier(m: torch.nn.Module) -> None:
     """
-    if type(m) == torch.nn.Linear:
+    Initialize neural network weights using Xavier uniform initialization.
+
+    This function applies Xavier initialization to Linear layers, setting weights
+    from a uniform distribution with variance based on the number of input units.
+    Biases are initialized to a small constant value.
+
+    Parameters
+    ----------
+    m : torch.nn.Module
+        The neural network module to initialize. Only Linear layers are modified.
+
+    Returns
+    -------
+    None
+        The module is modified in-place.
+
+    Examples
+    --------
+    >>> model = torch.nn.Sequential(torch.nn.Linear(10, 5))
+    >>> model.apply(init_xavier)
+    """
+    if isinstance(m, torch.nn.Linear):
         torch.nn.init.xavier_uniform_(m.weight)
         m.bias.data.fill_(0.01)
 
 
 class P3DEmulator:
-    """A class for training an emulator.
+    """
+    Conditional invertible neural network (cINN) emulator for the Arinyo P3D model.
 
-    Args:
-        training_data (Type): Description of training data.
-        paramList (Type): Description of emulator parameters.
-        nLayers_inn (int): Number of layers in the inner network. Default is 8.
-        nepochs (int): The number of epochs to train for. Default is 100.
-        batch_size (int): Size of batches during training. Default is 100.
-        lr (float): Learning rate for the optimizer. Default is 1e-3.
-        weight_decay (float): L2 regularization term for the optimizer. Default is 1e-4.
-        step_size (int): Step size for learning rate scheduler. Default is 75.
-        adamw (bool): Whether to use the AdamW optimizer. Default is False.
-        train (bool): Whether to train the emulator. Default is True.
-        save_path (str): Path to save the trained model. Default is None.
-        model_path (str): Path to a pretrained model. Default is None.
-        Archive: Archive3D object
-        chain_samp (int): Chain sampling size. Default is 100000.
-        Nrealizations (int): Number of realizations. Default is 100.
+    This class provides a flexible interface for training and using a cINN-based
+    emulator for the Arinyo P3D model. It supports both training from simulation
+    data and loading pre-trained models.
+
+    Attributes
+    ----------
+    input_labels : List[str]
+        Names of input parameters used by the emulator.
+    output_labels : List[str]
+        Names of output parameters predicted by the emulator.
+    emulator : Ff.SequenceINN
+        The underlying cINN model.
+    transf_data : Transf_data
+        Data transformation object for normalization/de-normalization.
+    Nrealizations : int
+        Default number of latent space realizations for evaluation.
+    loss_arr : List[float]
+        Training loss history.
+    val_loss_arr : List[float]
+        Validation loss history (if validation was used during training).
+    nLayers_inn : int
+        Number of invertible layers in the cINN.
+    batch_size : int
+        Training batch size.
+    dim_inputSpace : int
+        Dimension of the input/output space.
     """
 
     def __init__(
         self,
-        training_data=None,
-        emu_input_names=None,
-        train=False,
-        save_path=None,
-        model_path=None,
-        nLayers_inn=12,
-        nepochs=300,
-        batch_size=100,
-        lr=0.001,
-        weight_decay=0,
-        step_size=200,
-        adamw=True,
-        use_chains=False,
-        Nrealizations=3000,
-        training_type="Arinyo_min",
-    ):
-        if train and ((save_path is None) | (training_data is None)):
+        key: str = "forest_mpg",
+        training_data: Optional[Dict[str, Dict[str, np.ndarray]]] = None,
+        train: bool = False,
+        save_path: Optional[str] = None,
+        model_path: Optional[str] = None,
+        transf_file: Optional[str] = None,
+        nLayers_inn: int = 6,
+        dims_int: int = 12,
+        nepochs: int = 1000,
+        batch_size: int = 8,
+        lr: float = 1e-3,
+        weight_decay: float = 1e-4,
+        use_val_set: bool = False,
+        adamw: bool = True,
+        Nrealizations: int = 3000,
+    ) -> None:
+        """
+        Initialize the P3D emulator.
+
+        Parameters
+        ----------
+        key : str, default="forest_mpg"
+            Name identifier for pre-trained emulator models.
+        training_data : dict, optional
+            Dictionary containing training data with 'input_par' and 'output_par' keys.
+            Required when `train=True`.
+        train : bool, default=False
+            Whether to train a new emulator. If False, loads a pre-trained model.
+        save_path : str, optional
+            Path prefix for saving trained model and metadata. Required when `train=True`.
+        model_path : str, optional
+            Path prefix for loading a pre-trained emulator.
+        transf_file : str, optional
+            File path containing normalization transformations.
+        nLayers_inn : int, default=6
+            Number of invertible blocks in the cINN.
+        dims_int : int, default=12
+            Width of hidden layers in each subnet.
+        nepochs : int, default=1000
+            Number of training epochs.
+        batch_size : int, default=8
+            Training batch size.
+        lr : float, default=1e-3
+            Learning rate for the optimizer.
+        weight_decay : float, default=1e-4
+            Weight decay (L2 regularization) for the optimizer.
+        use_val_set : bool, default=False
+            Whether to reserve 20% of training data for validation.
+        adamw : bool, default=True
+            If True use AdamW optimizer, otherwise use Adam.
+        Nrealizations : int, default=3000
+            Default number of latent space realizations for evaluation.
+
+        Raises
+        ------
+        ValueError
+            If training is requested without required parameters, or if neither
+            training nor a model path is provided.
+        """
+
+        if train == True:
+            key = None
+        # Load default emulator configuration if using a pre-defined key
+        if key is not None:
+            model_path = os.path.join(
+                os.path.dirname(forestflow.__path__[0]),
+                "data",
+                "emulator_models",
+                key,
+            )
+            transf_file = os.path.join(
+                os.path.dirname(forestflow.__path__[0]),
+                "data",
+                "emulator_models",
+                key + "_transf.npy",
+            )
+
+        # Validate training arguments
+        if train and ((save_path is None) or (training_data is None)):
             raise ValueError(
-                "If train is true, save_path and training_data must be provided."
+                "When train=True, both save_path and training_data must be provided."
             )
         if train and (model_path is not None):
             raise ValueError(
-                "If train is true, model_path must not be provided. Use save_path instead."
+                "When train=True, model_path must be None. Use save_path instead."
             )
 
-        # Initialize class attributes with provided arguments
-        self.Nrealizations = Nrealizations
-
-        self.Arinyo_params = [
-            "bias",
-            "beta",
-            "q1",
-            "kvav",
-            "av",
-            "bv",
-            "kp",
-        ]
-        if training_type == "Arinyo_min":
-            self.Arinyo_params.append("q2")
-        dim_inputSpace = len(self.Arinyo_params)
-
-        self.cosmo_fields = [
-            "H0",
-            "omch2",
-            "ombh2",
-            "mnu",
-            "omk",
-            "As",
-            "ns",
-            "nrun",
-            "w",
-        ]
-
         if train:
-            self._train_emu(
+            self.input_labels = list(training_data["input_par"].keys())
+            self.output_labels = list(training_data["output_par"].keys())
+            self._train_emulator(
                 training_data,
-                emu_input_names,
                 adamw=adamw,
                 lr=lr,
                 nepochs=nepochs,
-                step_size=step_size,
-                use_chains=use_chains,
                 train_seed=32,
+                dims_int=dims_int,
                 weight_decay=weight_decay,
                 nLayers_inn=nLayers_inn,
                 batch_size=batch_size,
-                dim_inputSpace=dim_inputSpace,
-                training_type=training_type,
+                dim_inputSpace=len(self.output_labels),
                 save_path=save_path,
+                use_val_set=use_val_set,
             )
         elif model_path is not None:
-            self._load_emu(model_path=model_path)
+            self.Nrealizations = Nrealizations
+            self.transf_data = Transf_data(preload_file=transf_file)
+            self._load_emulator(model_path=model_path)
         else:
-            raise ValueError("Either train or model_path must be provided.")
+            raise ValueError(
+                "Either train=True with required parameters, or model_path must be provided."
+            )
 
-    def _get_training_data(self, training_data, emu_input_names, training_type):
+    def _define_cINN_Arinyo(
+        self, nLayers_inn: int, batch_size: int, dim_inputSpace: int, dims_int: int = 16
+    ) -> Ff.SequenceINN:
         """
-        Retrieve and preprocess training data for the emulator.
+        Define the architecture of the conditional invertible neural network.
 
-        This function obtains the training data from the provided archive
+        This method constructs a cINN with the specified number of invertible blocks,
+        each containing a fully-connected subnet with ReLU activations.
 
-        Returns:
-            torch.Tensor: Preprocessed training data.
-        """
-        # Extract relevant parameters from the training data
-        input_emu = np.zeros((len(training_data), len(emu_input_names)))
-        output_emu = np.zeros((len(training_data), len(self.Arinyo_params)))
-        for ii in range(len(training_data)):
-            for jj, par in enumerate(emu_input_names):
-                input_emu[ii, jj] = training_data[ii][par]
-            for jj, par in enumerate(self.Arinyo_params):
-                output_emu[ii, jj] = training_data[ii][training_type][par]
+        Parameters
+        ----------
+        nLayers_inn : int
+            Number of invertible AllInOneBlocks.
+        batch_size : int
+            Batch size used for training/evaluation.
+        dim_inputSpace : int
+            Dimension of the input/output space.
+        dims_int : int, default=16
+            Width of hidden layers in the subnets.
 
-        # Calculate and store the maximum and minimum values for parameter scaling
-        self.input_param_lims_max = input_emu.max(axis=0)
-        self.input_param_lims_min = input_emu.min(axis=0)
+        Returns
+        -------
+        Ff.SequenceINN
+            The constructed cINN model ready for training or inference.
 
-        self.output_param_lims_max = output_emu.max(axis=0)
-        self.output_param_lims_min = output_emu.min(axis=0)
-
-        for ipar in [0]:
-            input_emu[:, ipar] = np.log(input_emu[:, ipar])
-
-        # Scale the training data based on the parameter limits
-        input_emu = (input_emu - self.input_param_lims_min) / (
-            self.input_param_lims_max - self.input_param_lims_min
-        )
-
-        for ipar in [0, 2, 3, 7]:
-            output_emu[:, ipar] = np.log(output_emu[:, ipar])
-
-        # some special transformations applied to the output data
-        output_emu = (output_emu - self.output_param_lims_min) / (
-            self.output_param_lims_max - self.output_param_lims_min
-        )
-
-        # Convert the scaled training data to a torch.Tensor object
-        input_emu = torch.Tensor(input_emu)
-        output_emu = torch.Tensor(output_emu)
-
-        return input_emu, output_emu
-
-    # def _rescale_cosmo(self, target_params, cosmo, z, kp_Mpc=0.7, ks_Mpc=0.05):
-    #     sim_cosmo = camb_cosmo.get_cosmology(**cosmo)
-    #     linP_zs = fit_linP.get_linP_Mpc_zs(sim_cosmo, [z], kp_Mpc)[0]
-
-    #     fid_Ap = linP_zs["Delta2_p"]
-    #     ratio_Ap = target_params["Delta2_p"] / fid_Ap
-
-    #     fid_np = linP_zs["n_p"]
-    #     delta_np = target_params["n_p"] - fid_np
-
-    #     # logarithm of ratio of pivot points
-    #     ln_kp_ks = np.log(kp_Mpc / ks_Mpc)
-
-    #     # compute scalings
-    #     delta_ns = delta_np
-    #     ln_ratio_As = np.log(ratio_Ap) - delta_np * ln_kp_ks
-
-    #     rescaled_cosmo = cosmo.copy()
-    #     rescaled_cosmo["As"] = np.exp(ln_ratio_As) * cosmo["As"]
-    #     rescaled_cosmo["ns"] = delta_ns + cosmo["ns"]
-
-    #     return rescaled_cosmo
-
-    def _define_cINN_Arinyo(self, nLayers_inn, batch_size, dim_inputSpace):
-        """
-        Define a conditional invertible neural network (cINN) for Arinyo model.
-
-        This function defines the architecture of a conditional invertible neural network (cINN) for the Arinyo model.
-        It specifies the structure of the neural network, including the number of layers, dropout, and activation functions.
-
-        Args:
-            dim_inputSpace (int): Dimension of the input space. Default is 8.
-
-        Returns:
-            Ff.SequenceINN: Conditional invertible neural network for Arinyo model.
+        Notes
+        -----
+        The subnet architecture uses two hidden layers with ReLU activations.
+        Dropout is currently disabled (rate=0) but can be enabled if needed.
         """
 
-        def subnet_fc(dims_in, dims_out):
+        def subnet_fc(dims_in: int, dims_out: int) -> torch.nn.Sequential:
+            """
+            Create a fully-connected subnet with two hidden layers.
+
+            Parameters
+            ----------
+            dims_in : int
+                Input dimension of the subnet.
+            dims_out : int
+                Output dimension of the subnet.
+
+            Returns
+            -------
+            torch.nn.Sequential
+                The subnet module.
+            """
             return torch.nn.Sequential(
-                torch.nn.Linear(dims_in, 64),
+                torch.nn.Linear(dims_in, dims_int),
+                torch.nn.ReLU(),
+                torch.nn.Dropout(0),  # Dropout disabled, keep for potential future use
+                torch.nn.Linear(dims_int, dims_int * 2),
                 torch.nn.ReLU(),
                 torch.nn.Dropout(0),
-                torch.nn.Linear(64, 128),
-                torch.nn.ReLU(),
-                torch.nn.Dropout(0),
-                torch.nn.Linear(128, dims_out),
+                torch.nn.Linear(dims_int * 2, dims_out),
             )
 
         self.nLayers_inn = nLayers_inn
@@ -222,8 +264,8 @@ class P3DEmulator:
         # Initialize the cINN model
         emulator = Ff.SequenceINN(self.dim_inputSpace)
 
-        # Append AllInOneBlocks to the cINN model based on the specified number of layers
-        for l in range(self.nLayers_inn):
+        # Append AllInOneBlocks with conditioning
+        for _ in range(self.nLayers_inn):
             emulator.append(
                 Fm.AllInOneBlock,
                 cond=[i for i in range(self.batch_size)],
@@ -233,289 +275,643 @@ class P3DEmulator:
 
         return emulator
 
-    def _load_emu(self, model_path):
+    def _load_emulator(self, model_path: str) -> None:
         """
-        Load a pre-trained Arinyo model emulator.
+        Load a pre-trained emulator model from disk.
+
+        Parameters
+        ----------
+        model_path : str
+            Path prefix for the saved model and metadata files.
+            Expects `model_path.pt` for weights and `model_path_metadata.npy`
+            for metadata.
+
+        Notes
+        -----
+        The metadata file must contain 'input_labels', 'output_labels',
+        'nLayers_inn', 'batch_size', 'dim_inputSpace', and 'dims_int' keys.
         """
+        # Load metadata
+        metadata = np.load(model_path + "_metadata.npy", allow_pickle=True).item()
 
-        # load metadata
-        metadata = np.load(
-            model_path + "_metadata.npy", allow_pickle=True
-        ).item()
+        self.input_labels = metadata["input_labels"]
+        self.output_labels = metadata["output_labels"]
 
-        self.training_type = metadata["training_type"]
-        self.input_param_lims_min = metadata["input_param_lims_min"]
-        self.input_param_lims_max = metadata["input_param_lims_max"]
-        self.output_param_lims_min = metadata["output_param_lims_min"]
-        self.output_param_lims_max = metadata["output_param_lims_max"]
-        self.emu_input_names = metadata["emu_input_names"]
-
+        # Reconstruct the cINN architecture
         self.emulator = self._define_cINN_Arinyo(
             metadata["nLayers_inn"],
             metadata["batch_size"],
             metadata["dim_inputSpace"],
+            dims_int=metadata["dims_int"],
         )
 
-        # Load a pre-trained model if model_path is provided
+        # Load pre-trained weights
         warn("Loading a pre-trained emulator")
         self.emulator.load_state_dict(torch.load(model_path + ".pt"))
 
-    def _train_emu(
+    def _train_emulator(
         self,
-        training_data,
-        emu_input_names,
-        adamw=True,
-        lr=1e-3,
-        nepochs=300,
-        step_size=200,
-        use_chains=False,
-        chain_samp=100_000,
-        weight_decay=0,
-        dim_inputSpace=8,
-        nLayers_inn=12,
-        batch_size=100,
-        training_type="Arinyo_min",
-        save_path=None,
-        train_seed=32,
-    ):
+        training_data: Dict[str, Dict[str, np.ndarray]],
+        adamw: bool = True,
+        lr: float = 5e-4,
+        nepochs: int = 1000,
+        weight_decay: float = 1e-4,
+        dim_inputSpace: int = 8,
+        nLayers_inn: int = 5,
+        dims_int: int = 16,
+        batch_size: int = 16,
+        save_path: Optional[str] = None,
+        train_seed: int = 32,
+        use_val_set: bool = False,
+    ) -> None:
         """
-        Train the Arinyo model emulator using conditional invertible neural network (cINN).
+        Train the cINN emulator on the provided dataset.
 
-        This function trains the Arinyo model emulator by optimizing the cINN parameters.
-        It supports loading a pre-trained model if a model_path is provided.
+        This method handles data preparation, model initialization, training loop,
+        validation, early stopping, and model saving.
 
-        Returns:
-            None
+        Parameters
+        ----------
+        training_data : dict
+            Dictionary with 'input_par' and 'output_par' keys, each containing
+            parameter arrays.
+        adamw : bool, default=True
+            If True use AdamW optimizer, otherwise use Adam.
+        lr : float, default=5e-4
+            Learning rate for the optimizer.
+        nepochs : int, default=1000
+            Maximum number of training epochs.
+        weight_decay : float, default=1e-4
+            Weight decay regularization strength.
+        dim_inputSpace : int, default=8
+            Dimension of the input/output space.
+        nLayers_inn : int, default=5
+            Number of invertible layers.
+        dims_int : int, default=16
+            Width of hidden layers in subnets.
+        batch_size : int, default=16
+            Training batch size.
+        save_path : str, optional
+            Path prefix for saving the trained model and metadata.
+        train_seed : int, default=32
+            Random seed for reproducibility.
+        use_val_set : bool, default=False
+            Whether to use a validation set (20% split).
+
+        Notes
+        -----
+        The training uses negative log-likelihood loss and implements early stopping
+        with a patience of 50 epochs when validation is used.
         """
-
+        # Set random seeds for reproducibility
         random.seed(train_seed)
         np.random.seed(train_seed)
         torch.manual_seed(train_seed)
         torch.cuda.manual_seed_all(train_seed)
 
-        # Get the training data and define the cINN model
-        emu_input, emu_output = self._get_training_data(
-            training_data, emu_input_names, training_type
-        )
+        # Convert training data to PyTorch tensors
+        emu_input, emu_output = self._prepare_training_data(training_data)
+
+        # Define the cINN architecture
         self.emulator = self._define_cINN_Arinyo(
-            nLayers_inn, batch_size, dim_inputSpace
+            nLayers_inn, batch_size, dim_inputSpace, dims_int=dims_int
         )
 
-        # store metadata
+        # Store metadata
         metadata = {
+            "input_labels": self.input_labels,
+            "output_labels": self.output_labels,
             "nLayers_inn": nLayers_inn,
             "batch_size": batch_size,
             "dim_inputSpace": dim_inputSpace,
-            "input_param_lims_min": self.input_param_lims_min,
-            "input_param_lims_max": self.input_param_lims_max,
-            "output_param_lims_min": self.output_param_lims_min,
-            "output_param_lims_max": self.output_param_lims_max,
-            "training_type": training_type,
+            "dims_int": dims_int,
             "lr": lr,
             "nepochs": nepochs,
-            "step_size": step_size,
-            "use_chains": use_chains,
-            "chain_samp": chain_samp,
             "weight_decay": weight_decay,
             "adamw": adamw,
-            "emu_input_names": emu_input_names,
             "train_seed": train_seed,
         }
         if save_path is not None:
             np.save(save_path + "_metadata.npy", metadata)
 
-        # Initialize the cINN model with Xavier initialization
+        # Apply Xavier initialization
         self.emulator.apply(init_xavier)
 
-        # Create a PyTorch dataset and loader for training
-        trainig_dataset = TensorDataset(emu_input, emu_output)
-        loader = DataLoader(
-            trainig_dataset,
-            batch_size=batch_size,
-            shuffle=True,
-            drop_last=True,
+        # Create data loaders
+        train_loader, val_loader = self._create_data_loaders(
+            emu_input, emu_output, batch_size, use_val_set, train_seed
         )
 
-        # Choose the optimizer (Adam or AdamW)
-        if adamw:
-            optimizer = torch.optim.AdamW(
-                self.emulator.parameters(),
-                lr=lr,
-                weight_decay=weight_decay,
-            )
-        else:
-            optimizer = torch.optim.Adam(
-                self.emulator.parameters(),
-                lr=lr,
-                weight_decay=weight_decay,
-            )
+        # Setup optimizer
+        optimizer = self._setup_optimizer(adamw, lr, weight_decay)
 
-        # Learning rate scheduler
-        scheduler = torch.optim.lr_scheduler.StepLR(
-            optimizer, step_size=step_size, gamma=0.7
+        # Setup learning rate scheduler
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            mode="min",
+            factor=0.5,
+            patience=25,
+            threshold=5e-5,
+            verbose=True,
         )
 
         # Training loop
         self.loss_arr = []
+        self.val_loss_arr = []
+        best_val = np.inf
+        patience = 50
+        counter = 0
+
         t0 = time.time()
-        for i in range(nepochs):
-            if i % 25 == 0:
-                print(f"Epoch {i}/{nepochs}")
-            _loss_arr = []
-            _latent_space = []
+        for epoch in range(nepochs):
+            train_loss = self._train_epoch(optimizer, train_loader)
+            self.loss_arr.append(train_loss)
 
-            for cond, coeffs in loader:
-                optimizer.zero_grad()
+            # Validation and early stopping
+            if use_val_set and val_loader is not None:
+                val_loss = self._compute_validation_loss(val_loader)
+                self.val_loss_arr.append(val_loss)
+                scheduler.step(val_loss)
 
-                # Sample from the chains if use_chains is True
-                if use_chains:
-                    idx = np.random.choice(
-                        chain_samp, size=2_000, replace=False
+                if val_loss < best_val - 1e-6:
+                    best_val = val_loss
+                    counter = 0
+                else:
+                    counter += 1
+
+                if counter > patience:
+                    print(
+                        f"Early stopping at epoch {epoch}, best val loss: {np.round(best_val, 2)}"
                     )
-                    coeffs = coeffs[:, idx, :].mean(axis=1)
+                    break
+            else:
+                scheduler.step(train_loss)
 
-                # Forward pass through the cINN
-                z, log_jac_det = self.emulator(coeffs, cond)
+            # Periodic logging
+            if epoch % 25 == 0:
+                self._log_training_progress(epoch, nepochs, use_val_set)
 
-                # Calculate the negative log-likelihood
-                loss = 0.5 * torch.sum(z**2, 1) - log_jac_det
-                loss = loss.mean()
+        print(f"Emulator optimized in {time.time() - t0:.2f} seconds")
 
-                # Backpropagate and update the weights
-                loss.backward()
-                optimizer.step()
-
-                _loss_arr.append(loss.item())
-                _latent_space.append(z)
-
-            scheduler.step()
-            self.loss_arr.append(np.mean(_loss_arr))
-
-            # Store latent space for the last epoch
-            if i == (nepochs - 1):
-                self._latent_space = _latent_space
-
-        print(f"Emulator optimized in {time.time() - t0} seconds")
-
-        # Save the model if save_path is provided
+        # Save the trained model
         if save_path is not None:
             torch.save(self.emulator.state_dict(), save_path + ".pt")
 
-    def predict_Arinyos(
+    def _prepare_training_data(
+        self, training_data: Dict[str, Dict[str, np.ndarray]]
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Convert training data from dictionary format to PyTorch tensors.
+
+        Parameters
+        ----------
+        training_data : dict
+            Dictionary with 'input_par' and 'output_par' keys.
+
+        Returns
+        -------
+        Tuple[torch.Tensor, torch.Tensor]
+            Input tensor and output tensor for training.
+
+        Raises
+        ------
+        ValueError
+            If the required keys are missing from training_data.
+        """
+        emu_input = None
+        emu_output = None
+
+        for label in ["input_par", "output_par"]:
+            if label not in training_data:
+                raise ValueError(f"Missing '{label}' key in training_data")
+
+            param_dict = training_data[label]
+            key = list(param_dict.keys())[0]
+            nelem = param_dict[key].shape[0]
+            npar = len(param_dict)
+            arr_data = np.zeros((nelem, npar))
+
+            for ii, par in enumerate(param_dict):
+                arr_data[:, ii] = param_dict[par]
+
+            tensor = torch.tensor(arr_data, dtype=torch.float32)
+            if label == "input_par":
+                emu_input = tensor
+            else:
+                emu_output = tensor
+
+        return emu_input, emu_output
+
+    def _create_data_loaders(
         self,
-        emu_params,
-        Nrealizations=None,
-        return_all_realizations=False,
-        seed=0,
-        return_dict=True,
-    ):
+        emu_input: torch.Tensor,
+        emu_output: torch.Tensor,
+        batch_size: int,
+        use_val_set: bool,
+        seed: int,
+    ) -> Tuple[DataLoader, Optional[DataLoader]]:
+        """
+        Create training and optional validation data loaders.
+
+        Parameters
+        ----------
+        emu_input : torch.Tensor
+            Input parameter tensor.
+        emu_output : torch.Tensor
+            Output parameter tensor.
+        batch_size : int
+            Batch size for data loaders.
+        use_val_set : bool
+            Whether to create a validation set.
+        seed : int
+            Random seed for splitting.
+
+        Returns
+        -------
+        Tuple[DataLoader, Optional[DataLoader]]
+            Training data loader and optional validation data loader.
+        """
+        dataset = TensorDataset(emu_input, emu_output)
+
+        if use_val_set:
+            n_val = int(0.2 * len(dataset))
+            n_train = len(dataset) - n_val
+
+            train_dataset, val_dataset = random_split(
+                dataset, [n_train, n_val], generator=torch.Generator().manual_seed(seed)
+            )
+
+            train_loader = DataLoader(
+                train_dataset,
+                batch_size=batch_size,
+                shuffle=True,
+                drop_last=True,
+            )
+            val_loader = DataLoader(
+                val_dataset,
+                batch_size=batch_size,
+                shuffle=False,
+                drop_last=True,
+            )
+        else:
+            train_loader = DataLoader(
+                dataset,
+                batch_size=batch_size,
+                shuffle=True,
+                drop_last=True,
+            )
+            val_loader = None
+
+        return train_loader, val_loader
+
+    def _setup_optimizer(
+        self, adamw: bool, lr: float, weight_decay: float
+    ) -> torch.optim.Optimizer:
+        """
+        Setup the optimizer for training.
+
+        Parameters
+        ----------
+        adamw : bool
+            If True use AdamW, otherwise use Adam.
+        lr : float
+            Learning rate.
+        weight_decay : float
+            Weight decay factor.
+
+        Returns
+        -------
+        torch.optim.Optimizer
+            Configured optimizer.
+        """
+        if adamw:
+            return torch.optim.AdamW(
+                self.emulator.parameters(),
+                lr=lr,
+                weight_decay=weight_decay,
+            )
+        else:
+            return torch.optim.Adam(
+                self.emulator.parameters(),
+                lr=lr,
+                weight_decay=weight_decay,
+            )
+
+    def _train_epoch(
+        self, optimizer: torch.optim.Optimizer, loader: DataLoader
+    ) -> float:
+        """
+        Perform one training epoch.
+
+        Parameters
+        ----------
+        optimizer : torch.optim.Optimizer
+            The optimizer for updating weights.
+        loader : DataLoader
+            Training data loader.
+
+        Returns
+        -------
+        float
+            Average loss for this epoch.
+        """
+        epoch_losses = []
+
+        for cond, coeffs in loader:
+            optimizer.zero_grad()
+
+            # Forward pass through the cINN
+            z, log_jac_det = self.emulator(coeffs, cond)
+
+            # Calculate negative log-likelihood loss
+            loss = 0.5 * torch.sum(z**2, 1) - log_jac_det
+            loss = loss.mean()
+
+            # Backpropagation
+            loss.backward()
+            optimizer.step()
+
+            epoch_losses.append(loss.item())
+
+        return np.mean(epoch_losses)
+
+    def _compute_validation_loss(self, loader: DataLoader) -> float:
+        """
+        Compute validation loss.
+
+        Parameters
+        ----------
+        loader : DataLoader
+            Validation data loader.
+
+        Returns
+        -------
+        float
+            Average validation loss.
+        """
+        self.emulator.eval()
+        total_loss = 0.0
+        n_batches = 0
+
+        with torch.no_grad():
+            for cond, coeffs in loader:
+                z, log_jac_det = self.emulator(coeffs, cond)
+
+                loss = 0.5 * torch.sum(z**2, 1) - log_jac_det
+                loss = loss.mean()
+
+                total_loss += loss.item()
+                n_batches += 1
+
+        self.emulator.train()
+        return total_loss / n_batches
+
+    def _log_training_progress(
+        self, epoch: int, nepochs: int, use_val_set: bool
+    ) -> None:
+        """
+        Log training progress information.
+
+        Parameters
+        ----------
+        epoch : int
+            Current epoch number.
+        nepochs : int
+            Total number of epochs.
+        use_val_set : bool
+            Whether validation set is being used.
+        """
+        progress_str = (
+            f"Epoch {epoch}/{nepochs}, train loss {np.round(self.loss_arr[-1], 2)}"
+        )
+
+        if use_val_set and len(self.val_loss_arr) > 0:
+            progress_str += f", val loss {np.round(self.val_loss_arr[-1], 2)}"
+
+            if len(self.val_loss_arr) > 1:
+                progress_str += f", best {np.round(np.min(self.val_loss_arr), 2)}"
+
+        print(progress_str)
+
+    def evaluate(
+        self,
+        emu_params: Union[Dict[str, float], List[Dict[str, float]]],
+        Nrealizations: Optional[int] = None,
+        seed: int = 0,
+    ) -> Dict[str, np.ndarray]:
         """
         Predict Arinyo coefficients using the trained emulator.
 
-        Args:
-            emu_params (list of dict): List of dictionaries containing the
-                cosmo + IGM input parameters.
-            Nrealizations (int): Number of realizations to generate. Default is None.
-            return_all_realizations (bool): Whether to return all realizations
-                or just the mean. Default is False.
-            seed (int): Seed for the random number generator. Default is 0.
-            return_dict (bool): Whether to return the mean Arinyo coefficients
-                as a dictionary or as a numpy array. Default is True.
+        This method generates Monte Carlo realizations from the latent space and
+        returns the mean predictions for the given input parameters.
 
-        Returns:
-            dict or numpy.ndarray: Depending on the value of `return_dict`,
-                this function returns either a dictionary with the mean Arinyo
-                coefficient predictions or a numpy array with all realizations
-                and the mean.
+        Parameters
+        ----------
+        emu_params : dict or list of dict
+            Input parameter dictionaries containing cosmo + IGM parameters.
+            If a single dict is provided, it's automatically converted to a list.
+        Nrealizations : int, optional
+            Number of latent space realizations to generate.
+            If None, uses the default value from initialization.
+        seed : int, default=0
+            Random seed for reproducibility.
+
+        Returns
+        -------
+        dict
+            Dictionary containing the predicted output parameters for each input.
+
+        Raises
+        ------
+        ValueError
+            If the emulator hasn't been trained or loaded properly.
         """
+        # Check if emulator is initialized
+        if not hasattr(self, "emulator"):
+            raise ValueError(
+                "Emulator not initialized. Please train or load a model first."
+            )
 
-        # Check if emu_params is a single dictionary and convert it to a list
+        # Convert single input to list
         if isinstance(emu_params, dict):
             emu_params = [emu_params]
 
-        # Warn the user if the number of emu_params is too large
+        # Warn if too many inputs (memory warning)
         if len(emu_params) > 250:
-            print(
-                "WARNING: More than 500 instances of emu_params will take too much memory. "
-                "Please use a smaller number of emu_params at a time. "
-                "Returning None"
+            warn(
+                "More than 250 instances of emu_params may consume significant memory. "
+                "Consider processing in smaller batches."
             )
-            return
 
-        # Use the default number of realizations if not specified
+        # Set default number of realizations
         if Nrealizations is None:
             Nrealizations = self.Nrealizations
 
-        # Set the random seed
-        g = torch.Generator().manual_seed(seed)
+        # Setup random generator
+        generator = torch.Generator().manual_seed(seed)
 
-        # Calculate the number of combinations of input parameters and the number of input parameters
+        # Prepare conditioned inputs
         neval = len(emu_params)
+        condition = self._prepare_condition_tensor(emu_params, neval, Nrealizations)
+
+        # Generate predictions
+        all_realizations = self._generate_predictions(
+            condition, neval, Nrealizations, generator
+        )
+
+        # Process and transform predictions
+        return self._process_predictions(all_realizations, neval)
+
+    def _prepare_condition_tensor(
+        self, emu_params: List[Dict[str, float]], neval: int, Nrealizations: int
+    ) -> torch.Tensor:
+        """
+        Prepare the condition tensor for the cINN.
+
+        Parameters
+        ----------
+        emu_params : list of dict
+            Input parameter dictionaries.
+        neval : int
+            Number of evaluation points.
+        Nrealizations : int
+            Number of realizations per point.
+
+        Returns
+        -------
+        torch.Tensor
+            Condition tensor for the cINN.
+        """
         ninpt_pars = len(emu_params[0])
-
-        # Normalize the input data and arrange it along the first axis
         condition = np.zeros((neval * Nrealizations, ninpt_pars))
+
         for jj in range(neval):
-            input_emu = []
-            for par in self.emu_input_names:
-                input_emu.append(emu_params[jj][par])
-            input_emu = np.array(input_emu)
-            for ipar in [0]:
-                if input_emu.ndim == 1:
-                    input_emu[ipar] = np.log(input_emu[ipar])
-                else:
-                    input_emu[:, ipar] = np.log(input_emu[:, ipar])
-            condition[jj * Nrealizations : (jj + 1) * Nrealizations, :] = (
-                input_emu - self.input_param_lims_min
-            ) / (self.input_param_lims_max - self.input_param_lims_min)
-        condition = torch.Tensor(condition)
+            # Normalize input parameters
+            dict_input = self.transf_data.transf_stand(
+                emu_params[jj], type_stand="input", direct=True
+            )
 
-        # Prepare the conditions for the cINN
+            # Create array of normalized parameters
+            arr_input = np.array([dict_input[par] for par in self.input_labels])
+            condition[jj * Nrealizations : (jj + 1) * Nrealizations, :] = arr_input
+
+        return torch.tensor(condition, dtype=torch.float32)
+
+    def _generate_predictions(
+        self,
+        condition: torch.Tensor,
+        neval: int,
+        Nrealizations: int,
+        generator: torch.Generator,
+    ) -> np.ndarray:
+        """
+        Generate predictions from the cINN model.
+
+        Parameters
+        ----------
+        condition : torch.Tensor
+            Condition tensor for the cINN.
+        neval : int
+            Number of evaluation points.
+        Nrealizations : int
+            Number of realizations per point.
+        generator : torch.Generator
+            Random generator for reproducibility.
+
+        Returns
+        -------
+        np.ndarray
+            Array of all realizations with shape (neval, Nrealizations, dim_inputSpace).
+        """
+        # Setup conditions for the cINN
         aran = np.arange(neval * Nrealizations)
-        self.emulator.conditions = []
-        for ii in range(self.nLayers_inn):
-            self.emulator.conditions.append(aran)
+        self.emulator.conditions = [aran] * self.nLayers_inn
 
-        # Generate the Arinyo coefficient predictions
+        # Generate predictions
         with torch.no_grad():
             z_test = torch.randn(
-                neval * Nrealizations, self.dim_inputSpace, generator=g
+                neval * Nrealizations, self.dim_inputSpace, generator=generator
             )
-            Arinyo_preds, _ = self.emulator(z_test, condition, rev=True)
+            out_emu, _ = self.emulator(z_test, condition, rev=True)
 
-            # Transform the predictions back to the original space
-            Arinyo_preds = (
-                Arinyo_preds
-                * (self.output_param_lims_max - self.output_param_lims_min)
-                + self.output_param_lims_min
-            )
-            for ipar in [0, 2, 3, 7]:
-                Arinyo_preds[:, ipar] = torch.exp(Arinyo_preds[:, ipar])
+        return np.array(out_emu.reshape(neval, Nrealizations, self.dim_inputSpace))
 
-        # Reshape the predictions and calculate the mean
-        all_realizations = np.array(
-            Arinyo_preds.reshape(neval, Nrealizations, self.dim_inputSpace)
+    def _process_predictions(
+        self, all_realizations: np.ndarray, neval: int
+    ) -> Dict[str, np.ndarray]:
+        """
+        Process and transform predictions back to the original space.
+
+        Parameters
+        ----------
+        all_realizations : np.ndarray
+            Array of all realizations.
+        neval : int
+            Number of evaluation points.
+
+        Returns
+        -------
+        dict
+            Dictionary of processed predictions.
+        """
+        # Calculate mean across realizations
+        arr_tswn_output = np.mean(all_realizations, axis=1)
+
+        # Convert to dictionary format
+        dict_tswn_output = {
+            par: arr_tswn_output[:, ii] for ii, par in enumerate(self.output_labels)
+        }
+
+        # Transform back to original space
+        output = self.transf_data.transf_stand(
+            dict_tswn_output, type_stand="output", direct=False
         )
-        Arinyo_mean = np.mean(all_realizations, axis=1)
 
-        # Format the output as a dictionary or a numpy array
-        if return_dict:
-            _Arinyo_mean = []
-            for ii in range(Arinyo_mean.shape[0]):
-                _dict_int = {}
-                for jj, par in enumerate(self.Arinyo_params):
-                    _dict_int[par] = Arinyo_mean[ii, jj]
-                _Arinyo_mean.append(_dict_int)
-            Arinyo_mean = _Arinyo_mean
-            if len(Arinyo_mean) == 1:
-                Arinyo_mean = Arinyo_mean[0]
-        else:
-            if Arinyo_mean.shape[0] == 1:
-                Arinyo_mean = Arinyo_mean[0]
-                all_realizations = all_realizations[0]
+        # Ensure 1D arrays are converted to scalars for single values
+        for par in output:
+            if output[par].ndim == 1 and output[par].shape[0] == 1:
+                output[par] = output[par][0]
 
-        # Return the results
-        if return_all_realizations == True:
-            return all_realizations, Arinyo_mean
-        else:
-            return Arinyo_mean
+        return output
+
+
+def compute_val_loss(model: Ff.SequenceINN, loader: DataLoader) -> float:
+    """
+    Compute validation loss for a cINN model.
+
+    This function evaluates the model on a validation dataset and returns the
+    average negative log-likelihood loss.
+
+    Parameters
+    ----------
+    model : Ff.SequenceINN
+        The cINN model to evaluate.
+    loader : DataLoader
+        Validation data loader providing conditioned inputs and outputs.
+
+    Returns
+    -------
+    float
+        Average validation loss.
+
+    Notes
+    -----
+    The model is temporarily set to evaluation mode during computation and
+    restored to training mode after completion.
+    """
+    model.eval()
+    total_loss = 0.0
+    n_batches = 0
+
+    with torch.no_grad():
+        for cond, coeffs in loader:
+            z, log_jac_det = model(coeffs, cond)
+
+            loss = 0.5 * torch.sum(z**2, 1) - log_jac_det
+            loss = loss.mean()
+
+            total_loss += loss.item()
+            n_batches += 1
+
+    model.train()
+    return total_loss / n_batches if n_batches > 0 else 0.0

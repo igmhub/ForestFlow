@@ -147,7 +147,7 @@ def load_p1d_chain_for_forestflow(lab_sample="desi"):
     return data
 
 
-def load_map_igm_p3d(lab_sample, zeff=2.33):
+def load_map_igm_p3d(lab_sample="desi", zeff=2.33):
     try:
         data = np.load(
             "int_data_figs/arinyo_from_" + lab_sample + "_p1d.npy", allow_pickle=True

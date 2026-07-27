@@ -6,9 +6,9 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.19.1
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: lace
 #     language: python
 #     name: python3
 # ---
@@ -52,14 +52,11 @@ from forestflow.rebin_p3d import p3d_allkmu, get_p3d_modes, p3d_rebin_mu
 
 # %%
 path_forestflow= os.path.dirname(forestflow.__path__[0]) + "/"
-Archive3D = GadgetArchive3D(
-    base_folder=path_forestflow,
-    folder_data=path_forestflow+"/data/best_arinyo/",
-)
+Archive3D = GadgetArchive3D()
 
 # %%
 test_sim = Archive3D.get_testing_data(
-    "mpg_central", force_recompute_plin=False
+    "mpg_central"
 )
 z_grid = [d["z"] for d in test_sim]
 zs = 3

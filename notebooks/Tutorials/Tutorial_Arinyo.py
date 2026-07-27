@@ -48,27 +48,27 @@ model_Arinyo = ArinyoModel(fid_cosmo)
 # %%
 fid_cosmo.background_params
 
-# %%
-fid_cosmo.CAMBparams.InitPower.As
-
 # %% [markdown]
 # ### Compute P3D & P1D
 #
 # for the same cosmology
 
 # %%
-zs = 3. # redshift
+zs = np.linspace(2.2, 4.2, 5) # redshift
 
 # P3D
 nn_k = 200 # number of k bins
 nn_mu = 10 # number of mu bins
-k = np.logspace(-1.5, 1, nn_k)
+
+k_Mpc_min = 0.1
+k_Mpc_max = 10
+k = np.geomspace(k_Mpc_min, k_Mpc_max, nn_k)
 mu = np.linspace(0, 1, nn_mu)
 k2d = np.tile(k[:, np.newaxis], nn_mu) # k grid for P3D
 mu2d = np.tile(mu[:, np.newaxis], nn_k).T # mu grid for P3D
 
 #P1D
-kpar = np.logspace(-1, np.log10(5), nn_k) # kpar for P1D
+kpar = np.geomspace(k_Mpc_min, 5., nn_k) # kpar for P1D
 
 arinyo_pars = {
     'bias': -0.18,
@@ -81,32 +81,36 @@ arinyo_pars = {
     'kp': 10.5
 }
 
-plin = model_Arinyo.linP_Mpc(zs, k) # get linear power spectrum at target zmodel_Arinyo
-p3d = model_Arinyo.P3D_Mpc_k_mu(zs, k2d, mu2d, arinyo_pars) # get P3D at target z
-p1d = model_Arinyo.P1D_Mpc(zs, kpar, arinyo_pars) # get P1D at target z
+linear = model_Arinyo.linear_theory(zs)
+linP_Mpc = model_Arinyo.linP_Mpc(linear, zs, k)
+p3d = model_Arinyo.P3D_Mpc_k_mu(linear, zs, k2d, mu2d, arinyo_pars) # get P3D at target z
+p1d = model_Arinyo.P1D_Mpc(linear, zs, kpar, arinyo_pars)
 
 # %% [markdown]
 # #### Plot P3D
 
 # %%
-for ii in range(p3d.shape[1]):
-    col = 'C'+str(ii)
+iz = 0
+for ii in range(k2d.shape[1]):
+    col = "C" + str(ii)
     if ii % 3 == 0:
-        lab = r'$<\mu>=$'+str(np.round(mu[ii], 2))
+        lab = r"$<\mu>=$" + str(np.round(mu[ii], 2))
     else:
         lab = None
-    plt.loglog(k, p3d[:, ii]/plin, col, label=lab)
-    plt.plot(k, p3d[0, ii]/plin[0]+k[:]*0, col+'--')
-plt.xlabel(r'$k$ [Mpc]')
-plt.ylabel(r'$P/P_{\rm lin}$')
-plt.legend(loc='upper left')
+    plt.loglog(k2d[:, ii], p3d[iz, :, ii] / linP_Mpc[iz], col, label=lab)
+    plt.plot(k2d[:, ii], p3d[iz, 0, ii] / linP_Mpc[iz, 0] + k2d[:, ii] * 0, col + "--")
+plt.xlabel(r"$k$ [1/Mpc]")
+plt.ylabel(r"$P/P_{\rm lin}$")
+plt.legend(loc="upper left")
 
 # %% [markdown]
 # #### Plot P1D
 
 # %%
-plt.plot(kpar, kpar * p1d/np.pi)
-plt.xlabel(r'$k$ [Mpc]')
+for ii in range(zs.shape[0]):
+    plt.plot(kpar, kpar * p1d[ii]/np.pi, label=r"$z=$"+str(np.round(zs[ii], 2)))
+plt.legend()
+plt.xlabel(r'$k$ [1/Mpc]')
 plt.ylabel(r'$P_{\rm 1D}(k)$')
 plt.xscale('log')
 
@@ -118,13 +122,19 @@ plt.xscale('log')
 # %%
 new_cosmo_params = {"ns": 0.8665} # only change ns compared to the value for the fiducial cosmology
 
-plin_new = model_Arinyo.linP_Mpc(zs, k, new_cosmo_params=new_cosmo_params) # get linear power spectrum at target zmodel_Arinyo
-p3d_new = model_Arinyo.P3D_Mpc_k_mu(zs, k2d, mu2d, arinyo_pars, new_cosmo_params=new_cosmo_params) # get P3D at target z
-p1d_new = model_Arinyo.P1D_Mpc(zs, kpar, arinyo_pars, new_cosmo_params=new_cosmo_params) # get P1D at target z
+linear_new = model_Arinyo.linear_theory(zs, new_cosmo_params=new_cosmo_params)
+
+linP_Mpc_new = model_Arinyo.linP_Mpc(linear_new, zs, k)
+p3d_new = model_Arinyo.P3D_Mpc_k_mu(linear_new, zs, k2d, mu2d, arinyo_pars) # get P3D at target z
+p1d_new = model_Arinyo.P1D_Mpc(linear_new, zs, kpar, arinyo_pars)
 
 # %%
-plt.loglog(k, plin)
-plt.loglog(k, plin_new)
+for ii in range(zs.shape[0]):
+    col = "C" + str(ii)
+    plt.loglog(k, k**2*linP_Mpc[ii], col+"-")
+    plt.loglog(k, k**2*linP_Mpc_new[ii], col+"--")
+plt.xlabel(r'$k$ [1/Mpc]')
+plt.ylabel(r'$k^2 P(k)$')
 
 # %% [markdown]
 # #### Typically, we only change As or ns during fits, and it takes almost the same time
@@ -135,7 +145,7 @@ plt.loglog(k, plin_new)
 # %%
 # %%time
 for ii in range(1000):
-    model_Arinyo.P3D_Mpc_k_mu(zs, k2d, mu2d, arinyo_pars)
+    model_Arinyo.P3D_Mpc_k_mu(linear, zs, k2d, mu2d, arinyo_pars)
 
 # %% [markdown]
 # Time after changing cosmo, practically the same
@@ -146,7 +156,8 @@ new_cosmo_params = {"ns": 0.8665}
 # %%
 # %%time
 for ii in range(1000):
-    model_Arinyo.P3D_Mpc_k_mu(zs, k2d, mu2d, arinyo_pars, new_cosmo_params=new_cosmo_params)
+    linear_new = model_Arinyo.linear_theory(zs, new_cosmo_params=new_cosmo_params)
+    model_Arinyo.P3D_Mpc_k_mu(linear_new, zs, k2d, mu2d, arinyo_pars)
 
 # %% [markdown]
 # #### Much slower when changing other parameters since we need to call camb every time
@@ -160,7 +171,8 @@ new_cosmo_params = {"H0": 80}
 # %%
 # %%time
 for ii in range(10):
-    model_Arinyo.P3D_Mpc_k_mu(zs, k2d, mu2d, arinyo_pars, new_cosmo_params=new_cosmo_params)
+    linear_new = model_Arinyo.linear_theory(zs, new_cosmo_params=new_cosmo_params)
+    model_Arinyo.P3D_Mpc_k_mu(linear_new, zs, k2d, mu2d, arinyo_pars)
 
 # %% [markdown]
 # ## Arinyo model from emulator
@@ -172,30 +184,14 @@ for ii in range(10):
 # We need the value of Delta2p and np to be consistent with the cosmology provided to the Arinyo model
 
 # %%
-import forestflow
 from forestflow.P3D_cINN import P3DEmulator
-from lace.cosmo import camb_cosmo, fit_linP
 
 # %%
-path_repo = os.path.dirname(forestflow.__path__[0]) + '/'
-emulator = P3DEmulator(
-    model_path = path_repo + "/data/emulator_models/forest_mpg",
-)
+emulator = P3DEmulator(key="forest_mpg")
 
 # %%
-# P3D
-nn_k = 200 # number of k bins
-nn_mu = 10 # number of mu bins
-k = np.logspace(-1.5, 1.05, nn_k)
-mu = np.linspace(0, 1, nn_mu)
-k2d = np.tile(k[:, np.newaxis], nn_mu) # k grid for P3D
-mu2d = np.tile(mu[:, np.newaxis], nn_k).T # mu grid for P3D
-
-zs = 3.
-kp_Mpc = 0.7
-
 # get Delta2_p and n_p from fiducial cosmology
-linP_zs = fid_cosmo.get_linP_Mpc_params(z=zs, kp_Mpc=kp_Mpc)
+linP_zs = fid_cosmo.get_linP_Mpc_params(z=zs[0], kp_Mpc=kp_Mpc)
 print(linP_zs)
 
 # get Delta2_p and n_p from emulator, random values for the IGM parameters
@@ -210,22 +206,26 @@ input_emu = {
 
 # %%
 # evaluate emulator to get the Arinyo parameters
-par_ari = emulator.predict_Arinyos(input_emu, return_dict=True)
+par_ari = emulator.evaluate(input_emu)
 par_ari
 
 # %%
 # get statistics from arinyo model using the parameters from the emulator
-p3d_from_emu = model_Arinyo.P3D_Mpc_k_mu(zs, k2d, mu2d, par_ari)
-plin = model_Arinyo.linP_Mpc(zs, k) 
+p3d_from_emu = model_Arinyo.P3D_Mpc_k_mu(linear, zs, k2d, mu2d, par_ari)
+linP_Mpc = model_Arinyo.linP_Mpc(linear, zs, k)
 
 # %%
-for ii in range(0, k2d.shape[1]):
-    col = 'C'+str(ii)
-    lab = r'$<\mu>=$'+str(np.round(np.nanmean(mu2d[:,ii]), 2))
-    plt.loglog(k, p3d_from_emu[:, ii]/plin, col, label=lab)
-    plt.plot(k, p3d_from_emu[0, ii]/plin[0]+k[:]*0, col+'--')
-plt.xlabel(r'$k$ [Mpc]')
-plt.ylabel(r'$P/P_{\rm lin}$')
-plt.legend(ncol=3)
+iz = 0
+for ii in range(k2d.shape[1]):
+    col = "C" + str(ii)
+    if ii % 3 == 0:
+        lab = r"$<\mu>=$" + str(np.round(mu[ii], 2))
+    else:
+        lab = None
+    plt.loglog(k2d[:, ii], p3d_from_emu[iz, :, ii] / linP_Mpc[iz], col, label=lab)
+    plt.plot(k2d[:, ii], p3d_from_emu[iz, 0, ii] / linP_Mpc[iz, 0] + k2d[:, ii] * 0, col + "--")
+plt.xlabel(r"$k$ [1/Mpc]")
+plt.ylabel(r"$P/P_{\rm lin}$")
+plt.legend(loc="upper left")
 
 # %%

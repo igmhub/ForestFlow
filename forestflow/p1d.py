@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.integrate import simpson
+import matplotlib.pyplot as plt
 
 
 def P1D_Mpc(
@@ -11,6 +12,7 @@ def P1D_Mpc(
     k_perp_min=0.001,
     k_perp_max=100,
     n_k_perp=99,
+    **kwargs,
 ):
     """
     Returns P1D for specified values of k_par, with the option to specify values of k_perp to be integrated over.
@@ -33,13 +35,21 @@ def P1D_Mpc(
     ln_k_perp = np.linspace(np.log(k_perp_min), np.log(k_perp_max), n_k_perp)
 
     p1d = _P1D_lnkperp_fast(
-        z, ln_k_perp, k_par, p3d_fun, p3d_params, new_cosmo_params=new_cosmo_params
+        z,
+        ln_k_perp,
+        k_par,
+        p3d_fun,
+        p3d_params,
+        new_cosmo_params=new_cosmo_params,
+        **kwargs,
     )
 
     return p1d
 
 
-def _P1D_lnkperp_fast(z, ln_k_perp, kpars, p3d_fun, p3d_params={}, new_cosmo_params=None):
+def _P1D_lnkperp_fast(
+    z, ln_k_perp, kpars, p3d_fun, p3d_params={}, new_cosmo_params=None, **kwargs
+):
     """
     Compute P1D by integrating P3D in terms of ln(k_perp) using a fast method.
 
@@ -70,11 +80,19 @@ def _P1D_lnkperp_fast(z, ln_k_perp, kpars, p3d_fun, p3d_params={}, new_cosmo_par
     mu = mu.swapaxes(0, 1)
 
     if p3d_fun.coordinates == "k_mu":
-        p3d_fix_k_par = p3d_fun(z, k, mu, p3d_params, new_cosmo_params=new_cosmo_params) * fact
+        p3d_fix_k_par = (
+            p3d_fun(z, k, mu, p3d_params, new_cosmo_params=new_cosmo_params, **kwargs)
+            * fact
+        )
     elif p3d_fun.coordinates == "kpar_kperp":
         kpar = k * mu
         kperp = k * np.sqrt(1 - mu**2)
-        p3d_fix_k_par = p3d_fun(z, kpar, kperp, p3d_params, new_cosmo_params=new_cosmo_params) * fact
+        p3d_fix_k_par = (
+            p3d_fun(
+                z, kpar, kperp, p3d_params, new_cosmo_params=new_cosmo_params, **kwargs
+            )
+            * fact
+        )
     else:
         raise ValueError(
             "p3d_fun must have coordinates attribute set to 'k_mu' or 'kpar_kperp'"
@@ -118,7 +136,9 @@ def _P1D_lnkperp_fast_smooth(
 
     fact = (1 / (2 * np.pi)) * k_perp[:, np.newaxis] ** 2
     fact = fact.swapaxes(0, 1)
-    p3d_fix_k_par = p3d_fun(z, k, mu, p3d_params, new_cosmo_params=new_cosmo_params) * fact
+    p3d_fix_k_par = (
+        p3d_fun(z, k, mu, p3d_params, new_cosmo_params=new_cosmo_params) * fact
+    )
 
     # perform numerical integration
     kernel = np.sinc(k3d_smooth * np.exp(ln_k_perp))
@@ -131,3 +151,67 @@ def _P1D_lnkperp_fast_smooth(
     )
 
     return p1d
+
+
+def p1d_from_p3d(kpar_3d, fun_p3d, z, params, vol=0, niter=1000, seed=0):
+    """
+    Compute P1D(kpar) from P3D(kpar,kper).
+
+    Parameters
+    ----------
+    kpar : (Nkpar,) array
+        Parallel wavenumbers.
+    kper : (Nkper,) array
+        Perpendicular wavenumbers.
+    p3d : (Nkpar, Nkper) array
+        3D power spectrum evaluated on the grid.
+
+    Returns
+    -------
+    p1d : (Nkpar,) array
+        One-dimensional power spectrum.
+    """
+
+    # P3D
+    kper_3d = np.logspace(-3, 2, 100)
+    kpar2d_3D, kperp2d_3D = np.meshgrid(kpar_3d, kper_3d, indexing="ij")
+    p3d = fun_p3d(z, kpar2d_3D, kperp2d_3D, params)
+
+    # P1D
+    fact = (1 / (2 * np.pi)) * kperp2d_3D**2
+    integrand = p3d * fact
+    log_kperp2d = np.log(kperp2d_3D)
+    p1d = simpson(integrand, log_kperp2d, axis=1)
+
+    if vol != 0:
+        rng = np.random.default_rng(seed)
+        rea_p3d = np.zeros((niter, p3d.shape[0], p3d.shape[1]))
+        rea_p1d = np.zeros((niter, p1d.shape[0]))
+
+        sigma_3D = get_sigma(kpar2d_3D, kperp2d_3D, p3d, vol)
+        for ii in range(niter):
+
+            err3D = rng.normal(scale=sigma_3D)
+            rea_p3d[ii] = p3d + err3D
+            rea_p1d[ii] = simpson(rea_p3d[ii] * fact, log_kperp2d, axis=1)
+
+    res = {}
+    res["kpar"] = kpar2d_3D
+    res["kper"] = kperp2d_3D
+    res["p3d"] = p3d
+    res["p1d"] = p1d
+    res["rea_p3d"] = rea_p3d
+    res["rea_p1d"] = rea_p1d
+
+    return res
+
+
+def get_sigma(kpar2d, kperp2d, p3d, vol):
+    dkpar2d = np.gradient(kpar2d, axis=0)
+    dkperp2d = np.gradient(kperp2d, axis=1)
+
+    # get Gaussian covariance
+    Nmodes = (vol / (2 * np.pi) ** 2) * kperp2d * dkperp2d * dkpar2d
+    sigma = np.sqrt(2.0 / Nmodes) * p3d
+
+    return sigma

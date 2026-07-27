@@ -7,50 +7,47 @@ name="forestflow"
 dynamic = ["version"]
 authors = [
     { name="Jonas Chaves-Montero", email="jchaves@ifae.es" },
-    { name="Laura Cabayol-Garcia", email="lcabayol@pic.es" },
+    { name="Andreu Font-Ribera", email="afont@ifae.es" },
+    { name="Laura Cabayol-Garcia"},
 ]
 maintainers = [
-    { name="Jonas Chaves-Montero", email="jchaves@ifae.es" },   
-    { name="Laura Cabayol-Garcia", email="lcabayol@pic.es" },
+    { name="Jonas Chaves-Montero", email="jchaves@ifae.es" }, 
+    { name="Andreu Font-Ribera", email="afont@ifae.es" },
 ]
 description = "Emulator for Lyman-alpha 3D power spectrum"
 readme = "README.md"
+license = { text = "MIT" }
 keywords = [
     "Lyman-alpha", "Cosmology", "Power Spectrum", "Emulator",
 ]
-requires-python = ">= 3.10"
+requires-python = ">= 3.12"
 dependencies = [
-    "pydoe2>=1.3.0",
-    "emcee>=3.1.2",
-    "freia>=0.2",
-    "corner>=2.2.1",
+    "numpy",
+    "scipy",
+    "matplotlib",
+    "emcee",
+    "torch",
+    "freia",
+    "corner",
+    "astropy",
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific :: Cosmology/Astrophysics",
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 
 [tool.setuptools_scm]
-version_scheme = "no-guess-dev"
-local_scheme = "node-and-date"
+version_scheme = "forestflow.version:version_scheme"
+local_scheme = "no-local-version"
 
-[project.optional-dependencies]
-px = [
-    "hankl>=1.1.0"
-]
-jupyter = [
-    "jupyter>=1.0.0",
-    "jupytext>=1.16.1"
-]
 
 [tool.setuptools.packages.find]
-include = ["forestflow"]
+include = ["forestflow", "forestflow.*"]
 namespaces = false
 
 [project.urls]

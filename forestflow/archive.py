@@ -32,6 +32,7 @@ class GadgetArchive3D(GadgetArchive):
         postproc="Cabayol23",
         kp_Mpc=None,
         average="both",
+        addcentral=False,
     ):
         """
         Archive class for 3D simulations
@@ -45,9 +46,7 @@ class GadgetArchive3D(GadgetArchive):
             self.base_folder = base_folder
 
         if file_errors == None:
-            file_errors = os.path.join(
-                self.base_folder, "data", "std_pnd_mpg.npz"
-            )
+            file_errors = os.path.join(self.base_folder, "data", "std_pnd_mpg.npz")
 
         err_pnd = np.load(file_errors)
         self.rel_err_p1d = err_pnd["std_p1d"]
@@ -64,9 +63,7 @@ class GadgetArchive3D(GadgetArchive):
 
         super().__init__(postproc=postproc, kp_Mpc=kp_Mpc)
 
-        self.training_data = self.get_training_data(
-            self.emu_params, average=average
-        )
+        self.training_data = self.get_training_data(self.emu_params, average=average)
 
         # mcmc chains, only computed for both
         if average == "both":
@@ -77,9 +74,11 @@ class GadgetArchive3D(GadgetArchive):
                 self.training_data, sim_label="mpg_hypercube"
             )
 
-    def get_testing_data(
-        self, sim_label, ind_rescaling=0, kmax_3d=5, kmax_1d=4
-    ):
+        if addcentral:
+            central_data = self.get_testing_data("mpg_central")
+            self.training_data.extend(central_data)
+
+    def get_testing_data(self, sim_label, ind_rescaling=0, kmax_3d=5, kmax_1d=4):
         """Return testing data augmented with Arinyo minimizer fits.
 
         Loads testing data for the given `sim_label` (via
@@ -97,19 +96,13 @@ class GadgetArchive3D(GadgetArchive):
         - testing_data: list-like archive with added `Arinyo_min` and
           `Arinyo_minz` entries where available
         """
-        testing_data = super().get_testing_data(
-            sim_label, ind_rescaling=ind_rescaling
-        )
-        self.add_Arinyo_minimizer_indiv(
-            testing_data, sim_label, kmax_3d, kmax_1d
-        )
+        testing_data = super().get_testing_data(sim_label, ind_rescaling=ind_rescaling)
+        self.add_Arinyo_minimizer_indiv(testing_data, sim_label, kmax_3d, kmax_1d)
         self.add_Arinyo_minimizer_joint(testing_data, sim_label)
 
         return testing_data
 
-    def add_Arinyo_minimizer_indiv(
-        self, archive, sim_label=None, kmax_3d=5, kmax_1d=4
-    ):
+    def add_Arinyo_minimizer_indiv(self, archive, sim_label=None, kmax_3d=5, kmax_1d=4):
         """
         Arinyo fits considering each snapshot separately
         """
@@ -193,6 +186,12 @@ class GadgetArchive3D(GadgetArchive):
                 archive[ii]["Arinyo_min"]["bias"] = -np.abs(
                     archive[ii]["Arinyo_min"]["bias"]
                 )
+                # bias_eta = bias * beta / fz
+                archive[ii]["Arinyo_min"]["bias_eta"] = (
+                    archive[ii]["Arinyo_min"]["bias"]
+                    * archive[ii]["Arinyo_min"]["beta"]
+                    / archive[ii]["f_p"]
+                )
                 archive[ii]["Arinyo_min"]["q1"] = np.abs(
                     archive[ii]["Arinyo_min"]["q1"]
                 )
@@ -200,9 +199,7 @@ class GadgetArchive3D(GadgetArchive):
                     archive[ii]["Arinyo_min"]["q2"]
                 )
 
-    def add_Arinyo_minimizer_joint(
-        self, archive, sim_label=None, kmax_3d=3, kmax_1d=3
-    ):
+    def add_Arinyo_minimizer_joint(self, archive, sim_label=None, kmax_3d=3, kmax_1d=3):
         """
         Fits parameterizing the redshift dependence of the Arinyo params
         """
@@ -274,13 +271,9 @@ class GadgetArchive3D(GadgetArchive):
                 & (np.round(archive[ii]["z"], 2) == id_z)
                 & (np.round(archive[ii]["val_scaling"], 2) == id_val_scaling)
             )[0, 0]
-            archive[ii]["Arinyo_minz"] = params_numpy2dict_minimizerz(
-                arr_params[_]
-            )
+            archive[ii]["Arinyo_minz"] = params_numpy2dict_minimizerz(arr_params[_])
 
-    def get_Arinyo_priors(
-        self, zmin, zmax, type_fit="Arinyo_min", return_all=False
-    ):
+    def get_Arinyo_priors(self, zmin, zmax, type_fit="Arinyo_min", return_all=False):
         """Compute summary priors for Arinyo fit parameters.
 
         Aggregates Arinyo fit parameter values from `self.training_data`
@@ -331,9 +324,9 @@ class GadgetArchive3D(GadgetArchive):
                 indsim = conv_sim_ind[self.training_data[ii]["sim_label"]]
                 indscal = self.training_data[ii]["ind_rescaling"]
             for par in self.training_data[ii][type_fit]:
-                data_priors[par][indsim, indscal, indz] = self.training_data[
-                    ii
-                ][type_fit][par]
+                data_priors[par][indsim, indscal, indz] = self.training_data[ii][
+                    type_fit
+                ][par]
 
         for par in self.training_data[0][type_fit]:
             data_priors[par] = data_priors[par].reshape(-1)
@@ -424,9 +417,7 @@ class GadgetArchive3D(GadgetArchive):
                 indsim = conv_sim_ind[self.training_data[ii]["sim_label"]]
                 indscal = self.training_data[ii]["ind_rescaling"]
             for par in IGM_params:
-                data_priors[par][indsim, indscal, indz] = self.training_data[
-                    ii
-                ][par]
+                data_priors[par][indsim, indscal, indz] = self.training_data[ii][par]
 
         for par in IGM_params:
             data_priors[par] = data_priors[par].reshape(-1)

@@ -8,7 +8,7 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.19.1
 #   kernelspec:
-#     display_name: lace
+#     display_name: test_lace
 #     language: python
 #     name: python3
 # ---
@@ -23,8 +23,8 @@
 # Then, we explain how to evaluate the best-fitting Arinyo model to each simulation, which I already precomputed 
 
 # %%
-# %load_ext autoreload
-# %autoreload 2
+# # %load_ext autoreload
+# # %autoreload 2
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -104,10 +104,14 @@ for ii in range(n_mubins):
     _ = np.isfinite(rebin_p3d_sim[:, ii])
     plt.plot(knew[_, ii], knew[_, ii]**2*rebin_p3d_sim[_, ii])
 plt.xscale('log')
+plt.xlabel(r"$k$ [1/Mpc]")
+plt.ylabel(r"$k^2 P(k, \mu)$")
 
 # %%
 plt.plot(k1d_Mpc, p1d_sim)
 plt.xscale('log')
+plt.xlabel(r"$k_\parallel$ [1/Mpc]")
+plt.ylabel(r"$k_\parallel P_\mathrm{1D}(k_\parallel)$")
 
 # %% [markdown]
 # ## Evaluate Arinyo model
@@ -153,15 +157,16 @@ p1d_sim = k1d_Mpc/np.pi * p1d_Mpc
 # %%
 from lace.cosmo import cosmology
 
-# %%
 fid_cosmo = cosmology.Cosmology(sim["cosmo_params"])
 model_Arinyo = ArinyoModel(fid_cosmo)
 
 # %%
 # sim['Arinyo_min'] contains the best-fitting Arinyo parameters to this simulation
 
-p3d_model = model_Arinyo.P3D_Mpc_k_mu(sim["z"], k3d_Mpc, mu3d, sim['Arinyo_min']) # get P3D for z, k3D (array), and mu3d(array)
-p1d_model = model_Arinyo.P1D_Mpc(sim["z"], k1d_Mpc, sim['Arinyo_min']) # get P1D for z, k1D (array)
+
+linear = model_Arinyo.linear_theory(sim["z"])
+p3d_model = model_Arinyo.P3D_Mpc_k_mu(linear, sim["z"], k3d_Mpc, mu3d, sim['Arinyo_min']) # get P3D for z, k3D (array), and mu3d(array)
+p1d_model = model_Arinyo.P1D_Mpc(linear, sim["z"], k1d_Mpc, sim['Arinyo_min']) # get P1D for z, k1D (array)
 
 # apply rebinning
 _ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], p3d_model[mask_3d], kmu_modes, n_mubins=n_mubins)
@@ -177,8 +182,16 @@ for ii in range(n_mubins):
     plt.plot(knew[_, ii], knew[_, ii]**2 * rebin_p3d_sim[_, ii], col)
     plt.plot(knew[_, ii], knew[_, ii]**2 * rebin_p3d_model[_, ii], col+"--")
 plt.xscale('log')
+plt.xlabel(r"$k$ [1/Mpc]")
+plt.ylabel(r"$k^2 P(k, \mu)$")
 
 # %%
 plt.plot(k1d_Mpc, p1d_sim)
 plt.plot(k1d_Mpc, p1d_model, "--")
 plt.xscale('log')
+plt.xlabel(r"$k_\parallel$ [1/Mpc]")
+plt.ylabel(r"$k_\parallel P_\mathrm{1D}(k_\parallel)$")
+
+# %%
+
+# %%
