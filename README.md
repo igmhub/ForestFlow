@@ -32,12 +32,12 @@ the emulators and archives.
 
 
 ## Installation
-(Last update Jan 19 2024)
+(Last update Jul 27 2026)
 
-- Create a new conda environment. It is usually better to follow python version one or two behind. In January 2024, the latest is 3.12, so we recommend 3.11.
+- Create a new conda environment. 
 
 ```
-conda create -n forestflow -c conda-forge python=3.11 camb fdasrsf pip=24.0
+conda create -n forestflow python=3.12
 conda activate forestflow
 ```
 - Install LaCE:
@@ -49,7 +49,7 @@ conda activate forestflow
 ```
 git clone https://github.com/igmhub/ForestFlow.git
 cd ForestFlow
-pip install -e . [jupyter] # try with or without space between the . and jupyter if you need it
+make install
 ``` 
 
 - Generate notebooks:
