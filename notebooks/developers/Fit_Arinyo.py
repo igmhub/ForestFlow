@@ -6,9 +6,9 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.1
+#       jupytext_version: 1.19.5
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: lace
 #     language: python
 #     name: python3
 # ---
@@ -37,48 +37,33 @@ rcParams["font.family"] = "STIXGeneral"
 
 
 # %%
-from lace.cosmo import camb_cosmo
+# from lace.cosmo import camb_cosmo
 import forestflow
-from forestflow.model_p3d_arinyo import get_linP_interp, ArinyoModel
-from forestflow.fit_p3d import FitPk
-from forestflow.fit_p3dz import FitPkz
+# from forestflow.model_p3d_arinyo import get_linP_interp, ArinyoModel
+from forestflow.fits.fit_p3d import FitPk
+# from forestflow.fit_p3dz import FitPkz
 from forestflow.rebin_p3d import p3d_allkmu, get_p3d_modes, p3d_rebin_mu
 
 
 from forestflow.archive import GadgetArchive3D
-from forestflow.P3D_cINN import P3DEmulator
+# from forestflow.P3D_cINN import P3DEmulator
 
-def ls_level(folder, nlevels):
-    for ii in range(nlevels):
-        folder = os.path.dirname(folder)
-    folder += "/"
-    return folder
+# def ls_level(folder, nlevels):
+#     for ii in range(nlevels):
+#         folder = os.path.dirname(folder)
+#     folder += "/"
+#     return folder
 
 
-path_program = ls_level(os.getcwd(), 2)
-print(path_program)
-sys.path.append(path_program)
+# path_program = ls_level(os.getcwd(), 2)
+# print(path_program)
+# sys.path.append(path_program)
 
 # %% [markdown]
 # ## Load archive
 
 # %%
-# %%time
-folder_lya_data = path_program + "/data/best_arinyo/"
-
-Archive3D = GadgetArchive3D(
-    base_folder=path_program[:-1],
-    folder_data=folder_lya_data,
-    force_recompute_plin=False,
-    average="both",
-)
-print(len(Archive3D.training_data))
-
-# %%
-Archive3D.training_data[0]["Arinyo_min"]
-
-# %%
-list_central = Archive3D.get_testing_data("mpg_central", kmax_3d=3, kmax_1d=3)
+Archive3D = GadgetArchive3D()
 
 # %% [markdown]
 # ### Compute average central and seed
@@ -128,10 +113,6 @@ for ii in range(len(list_merge)):
 
 # %% [markdown]
 # ### Get normalization of P3D and P1D for fit
-
-# %%
-data_dict, model = get_input_data(cen, 3)
-nmodes = 1/data_dict["std_p3d"][:,0]
 
 # %%
 rat_p1d_z = np.zeros((len(list_central), 2))
@@ -306,7 +287,7 @@ for iz, z_use in enumerate(z_grid):
     data_dict, model = get_input_data(z_use, list_sim_use, kmax_3d)
     parameters, priors = get_default_params()
     parameters = list_merge[iz]["Arinyo_minz"].copy()
-    
+
     params_minimizer = np.array(list(parameters.values()))
     names = np.array(list(parameters.keys())).reshape(-1)
 
@@ -319,9 +300,9 @@ for iz, z_use in enumerate(z_grid):
         k3d_max=kmax_3d,
         k1d_max=kmax_1d,
         verbose=True,
-        maxiter = 400,
+        maxiter=400,
     )
-    
+
     chia = fit.get_chi2(params_minimizer)
     # chia = fit.get_chi2(np.array(list(best_fit_params.values())))
     print("Initial chi2", chia)

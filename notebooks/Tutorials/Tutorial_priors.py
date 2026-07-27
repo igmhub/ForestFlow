@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.1
+#       jupytext_version: 1.19.5
 #   kernelspec:
 #     display_name: lace
 #     language: python
@@ -86,6 +86,21 @@ for par in arinyo_priors_mpg["mean"].keys():
 
     mean = arinyo_priors_mpg["mean"][par]
     std  = arinyo_priors_mpg["std"][par]
+    print(f"{par:<15} {mean:10.3f} {std:10.3f}")
+
+# %%
+# redshift range
+zmin = 3.
+zmax = 3.
+arinyo_priors_mpg = Archive3D.get_Arinyo_priors(zmin, zmax)
+arinyo_priors_mpg.keys()
+
+print(f"{'parameter':<15} {'mean':>10} {'std':>10}")
+print(f"{'-'*15} {'-'*10} {'-'*10}")
+for par in arinyo_priors_mpg["mean"].keys():
+
+    mean = arinyo_priors_mpg["min"][par]
+    std  = arinyo_priors_mpg["max"][par]
     print(f"{par:<15} {mean:10.3f} {std:10.3f}")
 
 # %%

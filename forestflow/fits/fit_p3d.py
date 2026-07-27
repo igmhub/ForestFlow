@@ -5,7 +5,7 @@ import emcee
 import copy
 
 from forestflow.utils import purge_chains, init_chains, params_numpy2dict
-from forestflow.plot_routines import plot_template
+# from forestflow.plot_routines import plot_template
 from forestflow.rebin_p3d import p3d_allkmu, p3d_rebin_mu, get_p3d_modes
 
 # from forestflow.rebin_p3d import p3d_allkmu, get_p3d_modes, p3d_rebin_mu
