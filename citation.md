@@ -2,8 +2,8 @@
 
 If you use **ForestFlow** in your research, please cite the following paper:
 
-> J. Chaves-Montero et al. *"ForestFlow: predicting the Lyman-$\alpha$ forest clustering from linear to nonlinear scales"*, 2024, arXiv:2409.05682.  
-> [https://ui.adsabs.harvard.edu/abs/2024arXiv240905682C/abstract](https://ui.adsabs.harvard.edu/abs/2024arXiv240905682C/abstract)
+> J. Chaves-Montero et al. *"ForestFlow: predicting the Lyman-$\alpha$ forest clustering from linear to nonlinear scales"*, 2025
+> [https://ui.adsabs.harvard.edu/abs/2025A%26A...694A.187C/abstract](https://ui.adsabs.harvard.edu/abs/2025A%26A...694A.187C/abstract)
 
 ### BibTeX
 
