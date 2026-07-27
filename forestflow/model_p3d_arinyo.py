@@ -12,12 +12,6 @@ from dataclasses import dataclass
 
 
 @dataclass(slots=True)
-class LinearTheoryInterp:
-    linP_interp: RectBivariateSpline
-    fz_interp: CubicSpline
-
-
-@dataclass(slots=True)
 class LinearTheoryGrid:
     z: np.ndarray  # (Nz,)
     logk: np.ndarray  # (Nk,)
@@ -74,53 +68,6 @@ class ArinyoModel(object):
             "kp": default_kp,
         }
 
-    def linear_theory_interpz(
-        self, zmin, zmax, k_Mpc_min=1e-3, k_Mpc_max=100, new_cosmo_params=None
-    ):
-        """
-        Compute all linear-theory quantities required by the model.
-        """
-
-        if self.fid_cosmo.same_background(cosmo_params=new_cosmo_params):
-            # get cosmology model using fiducial cosmo and input params
-            cosmo = rescale_cosmology.RescaledCosmology(
-                self.fid_cosmo, new_cosmo_params
-            )
-        else:
-            print("WARNING: computing CAMB again")
-            cosmo = cosmology.Cosmology(cosmo_params_dict=new_cosmo_params)
-
-        if np.isclose(zmin, zmax):
-            # Need at least a few points for spline interpolation
-            z = np.array([zmin - 0.1, zmin, zmin + 0.1])
-        else:
-            z = np.linspace(zmin, zmax, 50)
-
-        logk = np.linspace(
-            np.log(k_Mpc_min),
-            np.log(k_Mpc_max),
-            200,
-        )
-        k_Mpc = np.exp(logk)
-
-        linP_Mpc = cosmo.get_linP_Mpc(z, k_Mpc)
-        fz = cosmo.compute_growth_rate(z)
-
-        return LinearTheory(
-            linP_interp=RectBivariateSpline(
-                z,
-                logk,
-                np.log(linP_Mpc),
-                kx=min(3, len(z) - 1),
-                ky=3,
-            ),
-            fz_interp=CubicSpline(
-                z,
-                fz,
-                extrapolate=False,
-            ),
-        )
-
     def linear_theory(self, zs, k_Mpc_min=1e-3, k_Mpc_max=100, new_cosmo_params=None):
         """
         Compute all linear-theory quantities required by the model.
@@ -141,6 +88,8 @@ class ArinyoModel(object):
             200,
         )
 
+        zs = np.atleast_1d(zs)
+
         return LinearTheoryGrid(
             z=zs,
             logk=logk,
@@ -153,21 +102,30 @@ class ArinyoModel(object):
         Evaluate the linear power spectrum.
         """
 
+        def get_iz(zi):
+            matches = np.where(np.isclose(linear.z, zi, atol=1e-3, rtol=0))[0]
+
+            if len(matches) == 0:
+                raise ValueError(
+                    f"Requested z={zi} is not available in the linear theory grid."
+                )
+
+            return matches[0]
+
         z = np.asarray(z, dtype=float)
         k_Mpc = np.asarray(k_Mpc, dtype=float)
         logk = np.log(k_Mpc)
 
         # Scalar z
         if z.ndim == 0:
-            iz = np.searchsorted(linear.z, z)
-            loglinPz = linear.loglinP[iz]
-            return np.exp(np.interp(logk, linear.logk, loglinPz))
+            iz = get_iz(z)
+            return np.exp(np.interp(logk, linear.logk, linear.loglinP[iz]))
 
         # (Nz,) z and (Nk,) k -> (Nz,Nk)
         elif z.ndim == 1 and k_Mpc.ndim == 1:
             out = np.empty((len(z), len(k_Mpc)))
             for i, zi in enumerate(z):
-                iz = np.searchsorted(linear.z, zi)
+                iz = get_iz(zi)
                 out[i] = np.exp(np.interp(logk, linear.logk, linear.loglinP[iz]))
             return out
 
@@ -176,7 +134,7 @@ class ArinyoModel(object):
             out = np.empty_like(k_Mpc)
 
             for i, zi in enumerate(z):
-                iz = np.searchsorted(linear.z, zi)
+                iz = get_iz(zi)
 
                 out[i] = np.exp(
                     np.interp(

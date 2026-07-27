@@ -125,21 +125,26 @@ par_ari
 # ### Get power
 
 # %%
-# %%time
+zs = 3. # redshift
+
 # P3D
 nn_k = 200 # number of k bins
 nn_mu = 10 # number of mu bins
-k = np.logspace(-1.5, np.log10(5), nn_k)
+
+k_Mpc_min = 0.1
+k_Mpc_max = 5
+k = np.geomspace(k_Mpc_min, k_Mpc_max, nn_k)
 mu = np.linspace(0, 1, nn_mu)
 k2d = np.tile(k[:, np.newaxis], nn_mu) # k grid for P3D
 mu2d = np.tile(mu[:, np.newaxis], nn_k).T # mu grid for P3D
 
 #P1D
-kpar = np.logspace(-1, np.log10(5), nn_k) # kpar for P1D
+kpar = np.geomspace(k_Mpc_min, 5., nn_k) # kpar for P1D
 
-plin = model_Arinyo.linP_Mpc(z, k) # get linear power spectrum at target zmodel_Arinyo
-p3d = model_Arinyo.P3D_Mpc_k_mu(z, k2d, mu2d, par_ari) # get P3D at target z
-p1d = model_Arinyo.P1D_Mpc(z, kpar, par_ari) # get P1D at target z
+linear = model_Arinyo.linear_theory(zs)
+linP_Mpc = model_Arinyo.linP_Mpc(linear, zs, k)
+p3d = model_Arinyo.P3D_Mpc_k_mu(linear, zs, k2d, mu2d, par_ari) # get P3D at target z
+p1d = model_Arinyo.P1D_Mpc(linear, zs, kpar, par_ari)
 
 # %%
 for ii in range(p3d.shape[1]):
@@ -148,11 +153,11 @@ for ii in range(p3d.shape[1]):
         lab = r'$<\mu>=$'+str(np.round(mu[ii], 2))
     else:
         lab = None
-    plt.loglog(k, p3d[:, ii]/plin, col, label=lab)
-    plt.plot(k, p3d[0, ii]/plin[0]+k[:]*0, col+'--')
+    plt.loglog(k, p3d[:, ii]/linP_Mpc, col, label=lab)
+    plt.plot(k, p3d[0, ii]/linP_Mpc[0]+k[:]*0, col+'--')
 plt.xlabel(r'$k$ [1/Mpc]')
 plt.ylabel(r'$P/P_{\rm lin}$')
-plt.legend(loc='upper left')
+plt.legend(loc='lower left')
 
 # %%
 new_cosmo = {
@@ -167,10 +172,15 @@ new_cosmo = {
     "pivot_scalar": 0.05,
     "w": -1.0,
 }
-p1d_2 = model_Arinyo.P1D_Mpc(z, kpar, par_ari, new_cosmo_params=new_cosmo)
+
+linear_2 = model_Arinyo.linear_theory(zs, new_cosmo_params=new_cosmo)
+p1d_2 = model_Arinyo.P1D_Mpc(linear_2, zs, kpar, par_ari)
 
 # %%
-plt.plot(kpar, p1d/p1d_2)
+plt.plot(kpar, kpar*p1d/np.pi)
+plt.plot(kpar, kpar*p1d_2/np.pi)
 plt.xlabel(r'$k$ [1/Mpc]')
 plt.ylabel(r'$P_{\rm 1D}(k)$')
 plt.xscale('log')
+
+# %%
