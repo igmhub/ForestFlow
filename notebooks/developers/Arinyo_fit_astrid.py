@@ -20,18 +20,13 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import sys
-import os
 import matplotlib.pyplot as plt
 import numpy as np
-
-# import forestflow
-# from forestflow.P3D_cINN import P3DEmulator
-
 from forestflow.model_p3d_arinyo import ArinyoModel
+import h5py
+
 
 # %%
-import h5py
 
 data = {}
 data["cosmo"] = {}
@@ -237,6 +232,9 @@ for ii, par in enumerate(ari_par):
     ari_par_res[par] = result.x[ii]
 
 # %%
+ari_par_res
+
+# %%
 chi2(result.x, min_data)
 
 # %%
@@ -295,8 +293,8 @@ ax[0].set_xscale("log")
 # ax[0].set_yscale("log")
 ax[1].set_xscale("log")
 
-ax[0].set_ylabel("P3D")
-ax[1].set_ylabel("P1D")
+ax[0].set_ylabel("Residual P3D")
+ax[1].set_ylabel("Residual P1D")
 
 # ax[0].set_ylim(1e-4, 6)
 
