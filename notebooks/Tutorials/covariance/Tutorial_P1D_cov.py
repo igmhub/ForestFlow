@@ -7,7 +7,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.1
+#       jupytext_version: 1.19.5
 #   kernelspec:
 #     display_name: lace
 #     language: python
@@ -25,14 +25,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from forestflow.archive import GadgetArchive3D
-from forestflow.play_with_power import get_arinyo_power
-
 
 # %% [markdown]
 # ## Load data
 
 # %%
 Archive3D = GadgetArchive3D(addcentral=True)
+
+# %%
 
 # %%
 # get mpg-central at z=3

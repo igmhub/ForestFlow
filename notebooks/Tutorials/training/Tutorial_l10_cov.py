@@ -7,7 +7,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.1
+#       jupytext_version: 1.19.5
 #   kernelspec:
 #     display_name: lace
 #     language: python
@@ -53,8 +53,13 @@ Archive3D = GadgetArchive3D(addcentral=True)
 
 # %%
 from forestflow.set_training import get_training_data
-zmax = 4.1 # improves the performance, the results of the Arinyo fit are noisy at z>4 (?!)
-emu_data = get_training_data(Archive3D.training_data, zmax=zmax)
+
+# type_fit = "Arinyo_min"
+# zmax = 4.1 # improves the performance, the results of the Arinyo fit are noisy at z>4 (?!)
+
+type_fit = "Arinyo_lowk"
+zmax = 4.1
+emu_data = get_training_data(Archive3D.training_data, zmax=zmax, type_fit=type_fit)
 
 # %%
 mpg_central = Archive3D.get_testing_data("mpg_central")
@@ -70,7 +75,8 @@ mpg_central_z3 = mpg_central[ind_z3]
 # Standarize and modify input data
 
 # %%
-name_emu = "test"
+# name_emu = "test"
+name_emu = "forest_mpg_lowk"
 
 # %%
 
@@ -137,8 +143,9 @@ ax[-1].set_xlim(-2, 2)
 #
 
 # %%
-nepochs = 10 # 1000 better choice, 1 so it runs fast
+nepochs = 1250 # 1000 better choice, 1 so it runs fast
 use_val_set = True # use validation sample
+use_val_set = False # use validation sample
 
 input_training = {}
 input_training["input_par"] = ts_input
@@ -155,20 +162,22 @@ emulator = P3DEmulator(
     nLayers_inn=6,
     nepochs=nepochs,
     batch_size=8,
-    lr=1e-3,
-    dims_int=12,
+    # batch_size=32,
+    # lr=1e-3,
+    lr=1e-2,
+    # dims_int=12,
+    # dims_int=16,
+    dims_int=30,
     use_val_set=use_val_set,
     save_path=save_path,
 )
 
+
 # %%
-n = 0
+n = 100
 
 plt.plot(-np.array(emulator.loss_arr)[n:])
 plt.plot(-np.array(emulator.val_loss_arr)[n:])
-
-# %% [markdown]
-#
 
 # %% [markdown]
 # ## Load emulator
@@ -177,7 +186,13 @@ plt.plot(-np.array(emulator.val_loss_arr)[n:])
 
 # %%
 # name_emu = "test" # new trained above
-name_emu = "forest_mpg" # default
+name_emu = "forest_mpg_lowk"
+type_fit = "Arinyo_lowk"
+kmax1D = 8
+
+# name_emu = "forest_mpg" # default
+# type_fit = "Arinyo_min"
+# kmax1D = 4
 
 emulator = P3DEmulator(key=name_emu)
 
@@ -203,7 +218,7 @@ for ii, sim in enumerate(mpg_central):
 
     for par in emulator.output_labels:
         par_emu[par][ii] = out_emu[par]
-        par_ari[par][ii] = sim["Arinyo_min"][par]
+        par_ari[par][ii] = sim[type_fit][par]
 
 zz = np.array(zz)
 
@@ -226,31 +241,33 @@ cosmo_params_dict = mpg_central_z3["cosmo_params"]
 fid_cosmo = cosmology.Cosmology(cosmo_params_dict=cosmo_params_dict)
 model_Arinyo = ArinyoModel(fid_cosmo)
 
+linear = model_Arinyo.linear_theory(Archive3D.list_sim_redshifts)
+
 
 # %%
-def check_p1d(emulator, Nrealizations=3000):
+def check_p1d(emulator, Nrealizations=3000, type_fit="Arinyo_min"):
     ii0 = 0
     for ii in range(2, 11):
         sim = mpg_central[ii]
         print(ii, sim["z"])
         print()
 
-        power_sim = get_sim_power(sim)
+        power_sim = get_sim_power(sim, kmax_1d_Mpc=kmax1D)
         x = power_sim["sim_k1d_Mpc"]
         p1d_data = power_sim["sim_p1d_Mpc"]
 
         par_ari = {}
         for par in emulator.output_labels:
-            par_ari[par] = sim["Arinyo_min"][par]
+            par_ari[par] = sim[type_fit][par]
 
-        p1d_fit = model_Arinyo.P1D_Mpc(sim["z"], power_sim["sim_k1d_Mpc"], par_ari)
+        p1d_fit = model_Arinyo.P1D_Mpc(linear, sim["z"], power_sim["sim_k1d_Mpc"], par_ari)
 
         in_emu = {}
         for par in emulator.input_labels:
             in_emu[par] = sim[par]
         out_emu = emulator.evaluate(in_emu, Nrealizations=Nrealizations)
 
-        p1d_emu = model_Arinyo.P1D_Mpc(sim["z"], power_sim["sim_k1d_Mpc"], out_emu)
+        p1d_emu = model_Arinyo.P1D_Mpc(linear, sim["z"], power_sim["sim_k1d_Mpc"], out_emu)
 
         # for par in emulator.output_labels:
         #     print(par, np.round(par_ari[par], 3), np.round(out_emu[par], 3))
@@ -265,11 +282,12 @@ def check_p1d(emulator, Nrealizations=3000):
         )
         ii0 += 1
 
+    # plt.ylim(-0.04, 0.04)
     plt.ylim(-0.02, 0.02)
     plt.legend()
 
 
-check_p1d(emulator)
+check_p1d(emulator, type_fit=type_fit)
 
 # %%
 ii0 = 0
@@ -294,16 +312,16 @@ for ii in range(2, 11):
 
     par_ari = {}
     for par in emulator.output_labels:
-        par_ari[par] = sim["Arinyo_min"][par]
+        par_ari[par] = sim[type_fit][par]
 
-    p3d_fit = model_Arinyo.P3D_Mpc_k_mu(sim["z"], k3D_compare, mu3d_compare, par_ari)
+    p3d_fit = model_Arinyo.P3D_Mpc_k_mu(linear, sim["z"], k3D_compare, mu3d_compare, par_ari)
 
     in_emu = {}
     for par in emulator.input_labels:
         in_emu[par] = sim[par]
     out_emu = emulator.evaluate(in_emu)
 
-    p3d_emu = model_Arinyo.P3D_Mpc_k_mu(sim["z"], k3D_compare, mu3d_compare, out_emu)
+    p3d_emu = model_Arinyo.P3D_Mpc_k_mu(linear, sim["z"], k3D_compare, mu3d_compare, out_emu)
 
     for par in emulator.output_labels:
         print(par, np.round(par_ari[par], 3), np.round(out_emu[par], 3))
@@ -321,6 +339,7 @@ for ii in range(2, 11):
     for imu in range(2):
         plt.plot(k3D_compare[:, imu], p3d_fit[:, imu]/p3d_emu[:, imu]-1, "C" + str(ii0) + ls[imu])
     ii0 += 1
+plt.ylim(-0.02, 0.02)
 # plt.xscale("log")
 # plt.yscale("log")
 

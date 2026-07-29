@@ -73,6 +73,9 @@ class GadgetArchive3D(GadgetArchive):
             self.add_Arinyo_minimizer_joint(
                 self.training_data, sim_label="mpg_hypercube"
             )
+            self.add_Arinyo_minimizer_indiv_lowk(
+                self.training_data, sim_label="mpg_hypercube"
+            )
 
         if addcentral:
             central_data = self.get_testing_data("mpg_central")
@@ -99,6 +102,7 @@ class GadgetArchive3D(GadgetArchive):
         testing_data = super().get_testing_data(sim_label, ind_rescaling=ind_rescaling)
         self.add_Arinyo_minimizer_indiv(testing_data, sim_label, kmax_3d, kmax_1d)
         self.add_Arinyo_minimizer_joint(testing_data, sim_label)
+        self.add_Arinyo_minimizer_indiv_lowk(testing_data, sim_label=sim_label)
 
         return testing_data
 
@@ -198,6 +202,24 @@ class GadgetArchive3D(GadgetArchive):
                 archive[ii]["Arinyo_min"]["q2"] = np.abs(
                     archive[ii]["Arinyo_min"]["q2"]
                 )
+
+    def add_Arinyo_minimizer_indiv_lowk(self, archive, sim_label="mpg_hypercube"):
+
+        name_out = "Arinyo_fit_" + sim_label + "_lowk.npy"
+        file = os.path.join(
+            self.base_folder, "data", "best_arinyo", "minimizer_lowk", name_out
+        )
+        data = np.load(file, allow_pickle=True).item()
+
+        for isim in range(len(archive)):
+            archive[isim]["Arinyo_lowk"] = {}
+            for par in data["Arinyo"]:
+                archive[isim]["Arinyo_lowk"][par] = data["Arinyo"][par][isim, 0]
+            archive[isim]["Arinyo_lowk"]["beta"] = (
+                archive[isim]["f_p"]
+                * archive[isim]["Arinyo_lowk"]["bias_eta"]
+                / archive[isim]["Arinyo_lowk"]["bias"]
+            )
 
     def add_Arinyo_minimizer_joint(self, archive, sim_label=None, kmax_3d=3, kmax_1d=3):
         """

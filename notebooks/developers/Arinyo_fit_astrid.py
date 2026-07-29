@@ -27,6 +27,9 @@ import h5py
 
 
 # %%
+res.keys()
+
+# %%
 
 data = {}
 data["cosmo"] = {}

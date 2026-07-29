@@ -407,12 +407,7 @@ class P3DEmulator:
 
         # Setup learning rate scheduler
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer,
-            mode="min",
-            factor=0.5,
-            patience=25,
-            threshold=5e-5,
-            verbose=True,
+            optimizer, mode="min", factor=0.5, patience=25, threshold=5e-5
         )
 
         # Training loop

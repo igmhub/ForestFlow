@@ -6,7 +6,7 @@ from lace.cosmo import cosmology
 from forestflow.play_with_power import get_fisher
 
 
-def get_training_data(list_sims, zmin=0, zmax=10, drop_sim=None):
+def get_training_data(list_sims, zmin=0, zmax=10, drop_sim=None, type_fit="Arinyo_min"):
 
     input_params = ["Delta2_p", "n_p", "mF", "sigT_Mpc", "gamma", "kF_Mpc"]
     other_params = ["z", "As", "ns"]
@@ -48,7 +48,7 @@ def get_training_data(list_sims, zmin=0, zmax=10, drop_sim=None):
             else:
                 all_other_par[par][ii] = sim[par]
         for par in output_params:
-            all_output_par[par][ii] = sim["Arinyo_min"][par]
+            all_output_par[par][ii] = sim[type_fit][par]
         ii += 1
 
     data = {
@@ -70,6 +70,7 @@ class Transf_data(object):
         preload_file=None,
         save_file=None,
         compute_fisher=False,
+        type_fit="Arinyo_min",
     ):
         """
 
@@ -101,7 +102,7 @@ class Transf_data(object):
                 pars_model["z"] = sim_model["z"]
                 pars_model["Arinyo"] = {}
                 for par in dict_all_params["output_par"]:
-                    pars_model["Arinyo"][par] = sim_model["Arinyo_min"][par]
+                    pars_model["Arinyo"][par] = sim_model[type_fit][par]
 
                 # set Arinyo model
                 cosmo_params_dict = {}
