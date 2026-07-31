@@ -27,15 +27,12 @@ import h5py
 
 
 # %%
-res.keys()
-
-# %%
 
 data = {}
 data["cosmo"] = {}
 cosmo_labs = ["ombh2", "omch2", "ns", "As", "H0"]
 
-file = "/home/jchaves/Proyectos/projects/lya/P3d+P1d_lya_ASTRID.hdf5"
+file = "/home/jchaves/Proyectos/projects/lya/P3d+P1d_lya_ASTRID_new.hdf5"
 
 with h5py.File(file, "r") as f:
 
@@ -96,7 +93,7 @@ mask_3d = (k3d_Mpc[:, 0] > 0.1) & (k3d_Mpc[:, 0] <= kmax_3d_fit)
 
 mask_1d = (data["klos_Mpc"] <= kmax_1d_fit) & (data["klos_Mpc"] > 0.1)
 k1d_Mpc = data["klos_Mpc"][mask_1d]
-p1d_Mpc = data["p1d_lya_Mpc"][mask_1d]
+p1d_Mpc = np.real(data["p1d_lya_Mpc"][mask_1d])
 
 # %%
 from lace.cosmo import cosmology
