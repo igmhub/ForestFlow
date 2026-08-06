@@ -7,7 +7,6 @@ Lyman-alpha Cosmology Emulator. This code is a normalising flow emulator for the
 The documentation includes the user guide and complete API reference generated
 from NumPy-style docstrings.
 
-- [Online documentation](https://forestflow.readthedocs.io/en/latest/)
 - [Documentation source](https://github.com/igmhub/ForestFlow/tree/main/docs)
 
 To build the documentation locally:
