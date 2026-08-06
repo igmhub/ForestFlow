@@ -2,6 +2,9 @@
 Prepare and normalize ForestFlow training data.
 """
 
+from collections.abc import Mapping
+from typing import Any
+
 import numpy as np
 
 from forestflow.model_p3d_arinyo import ArinyoModel
@@ -10,7 +13,7 @@ from lace.cosmo import cosmology
 from forestflow.play_with_power import get_fisher
 
 
-def get_training_data(list_sims, zmin=0, zmax=10, drop_sim=None, type_fit="Arinyo_min"):
+def get_training_data(list_sims: Any, zmin: int | None=0, zmax: int | None=10, drop_sim: Any | None=None, type_fit: str | None="Arinyo_min") -> Any:
 
     """
     Return training data.
@@ -92,13 +95,13 @@ class Transf_data(object):
 
     def __init__(
         self,
-        dict_all_params=None,
-        sim_model=None,
-        preload_file=None,
-        save_file=None,
-        compute_fisher=False,
-        type_fit="Arinyo_min",
-    ):
+        dict_all_params: Any | None=None,
+        sim_model: Any | None=None,
+        preload_file: Any | None=None,
+        save_file: Any | None=None,
+        compute_fisher: bool | None=False,
+        type_fit: str | None="Arinyo_min",
+    ) -> None:
         """
         1. Set standarize for the input and output parameters (self.stand_input and self.stand_output)
         2. Get Fisher matrix for the transf + stand output parameters
@@ -195,7 +198,7 @@ class Transf_data(object):
 
         return
 
-    def set_standarize(self, dict_params, type_stand="input"):
+    def set_standarize(self, dict_params: Mapping[str, Any], type_stand: str | None="input") -> None:
 
         """
         Set standarize.
@@ -223,7 +226,7 @@ class Transf_data(object):
 
         return
 
-    def set_whitening(self, fisher, type_stand="output"):
+    def set_whitening(self, fisher: Any, type_stand: str | None="output") -> None:
 
         """
         Set whitening.
@@ -251,7 +254,7 @@ class Transf_data(object):
 
         return
 
-    def set_global_norm(self, dict_params, type_stand="output"):
+    def set_global_norm(self, dict_params: Mapping[str, Any], type_stand: str | None="output") -> None:
 
         """
         Set global norm.
@@ -277,7 +280,7 @@ class Transf_data(object):
         else:
             self.alpha_input = alpha
 
-    def transform(self, dict_params, direct=True):
+    def transform(self, dict_params: Mapping[str, Any], direct: bool | None=True) -> Any:
         """
         The input params are expected to be the original ones
 
@@ -325,7 +328,7 @@ class Transf_data(object):
 
         return t_params
 
-    def standarize(self, dict_params, direct=True, type_stand="input"):
+    def standarize(self, dict_params: Mapping[str, Any], direct: bool | None=True, type_stand: str | None="input") -> Any:
 
         """
         Standardize the requested values.
@@ -362,7 +365,7 @@ class Transf_data(object):
 
         return s_params
 
-    def whitening(self, dict_params, direct=True, type_stand="output"):
+    def whitening(self, dict_params: Mapping[str, Any], direct: bool | None=True, type_stand: str | None="output") -> Any:
 
         """
         Whiten the requested values.
@@ -406,7 +409,7 @@ class Transf_data(object):
 
         return w_params
 
-    def global_norm(self, dict_params, direct=True, type_stand="output"):
+    def global_norm(self, dict_params: Mapping[str, Any], direct: bool | None=True, type_stand: str | None="output") -> Any:
 
         """
         Normalize norm.
@@ -439,7 +442,7 @@ class Transf_data(object):
 
         return n_params
 
-    def transf_stand(self, dict_params, direct=True, type_stand="input"):
+    def transf_stand(self, dict_params: Mapping[str, Any], direct: bool | None=True, type_stand: str | None="input") -> Any:
 
         """
         Transform stand.
@@ -474,7 +477,7 @@ class Transf_data(object):
 
         return out_params
 
-    def transf_stand_white(self, dict_params, direct=True, type_stand="output"):
+    def transf_stand_white(self, dict_params: Mapping[str, Any], direct: bool | None=True, type_stand: str | None="output") -> Any:
 
         """
         Transform stand white.
@@ -513,7 +516,7 @@ class Transf_data(object):
 
         return out_params
 
-    def transf_stand_white_norm(self, dict_params, direct=True, type_stand="output"):
+    def transf_stand_white_norm(self, dict_params: Mapping[str, Any], direct: bool | None=True, type_stand: str | None="output") -> Any:
 
         """
         Transform stand white norm.

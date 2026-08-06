@@ -2,6 +2,9 @@
 Construct and transform samples for the priors analysis.
 """
 
+from typing import Any
+from numpy.typing import ArrayLike, NDArray
+
 import os
 import numpy as np
 from getdist import MCSamples
@@ -11,7 +14,7 @@ from lace.cosmo import cosmology, rescale_cosmology
 from cup1d.likelihood.pipeline import Args
 
 
-def set_getdist_samples(BAO, P1D):
+def set_getdist_samples(BAO: Any, P1D: ArrayLike) -> NDArray[Any]:
 
     """
     Set getdist samples.
@@ -149,7 +152,7 @@ def set_getdist_samples(BAO, P1D):
     return all_samples
 
 
-def set_process_p1d_chain(lab_sample, nn=10000, seed=12345, store_p1d=False):
+def set_process_p1d_chain(lab_sample: ArrayLike, nn: int | None=10000, seed: int | None=12345, store_p1d: bool | None=False) -> None:
 
     """
     Set process one-dimensional power spectrum chain.
@@ -300,7 +303,7 @@ def set_process_p1d_chain(lab_sample, nn=10000, seed=12345, store_p1d=False):
     return
 
 
-def set_input_process_p1d_chain(lab_sample, zeff=2.33):
+def set_input_process_p1d_chain(lab_sample: ArrayLike, zeff: float | None=2.33) -> tuple[Any, ...]:
     """
     Set input process one-dimensional power spectrum chain.
 
@@ -386,7 +389,7 @@ def set_input_process_p1d_chain(lab_sample, zeff=2.33):
     return pip, chain, d2star, nstar, zs, zeff
 
 
-def set_cmbspa_sig8z(nsamples=200, nz=20):
+def set_cmbspa_sig8z(nsamples: int | None=200, nz: int | None=20) -> None:
 
     # CMB-SPA Table 1 https://arxiv.org/abs/2506.20707v1
     """
@@ -433,7 +436,7 @@ def set_cmbspa_sig8z(nsamples=200, nz=20):
     return
 
 
-def sample_cosmo_dict(base, n_samples=1, rng=None):
+def sample_cosmo_dict(base: Any, n_samples: int | None=1, rng: Any | None=None) -> NDArray[Any]:
     """
     Sample cosmo dict.
 
@@ -476,7 +479,7 @@ def sample_cosmo_dict(base, n_samples=1, rng=None):
     return samples
 
 
-def load_k_mu_accel2():
+def load_k_mu_accel2() -> tuple[Any, ...]:
     """
     Load k mu accel2.
 
@@ -502,7 +505,7 @@ def load_k_mu_accel2():
     return knew3d, munew3d, data_accel2
 
 
-def set_desifs_sig8z(nsamples=5000):
+def set_desifs_sig8z(nsamples: int | None=5000) -> None:
 
     # DESI FS DR1  redshifts https://arxiv.org/abs/2411.12021
 
@@ -611,8 +614,8 @@ def set_desifs_sig8z(nsamples=5000):
 
 
 def set_map_igm_p3d(
-    lab_sample, pars_chain, store_p1d=False, store_p3d=False, old_emu=True
-):
+    lab_sample: ArrayLike, pars_chain: ArrayLike, store_p1d: bool | None=False, store_p3d: bool | None=False, old_emu: bool | None=True
+) -> None:
 
     """
     Set map intergalactic-medium three-dimensional power spectrum.

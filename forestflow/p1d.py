@@ -2,22 +2,26 @@
 Compute one-dimensional power spectra from three-dimensional models.
 """
 
+from collections.abc import Callable, Mapping
+from typing import Any
+from numpy.typing import ArrayLike, NDArray
+
 import numpy as np
 from scipy.integrate import simpson
 import matplotlib.pyplot as plt
 
 
 def P1D_Mpc(
-    z,
-    k_par,
-    p3d_fun,
-    p3d_params={},
-    new_cosmo_params=None,
-    k_perp_min=0.001,
-    k_perp_max=100,
-    n_k_perp=99,
-    **kwargs,
-):
+    z: float,
+    k_par: ArrayLike,
+    p3d_fun: Callable[..., Any],
+    p3d_params: Mapping[str, Any] | None={},
+    new_cosmo_params: Mapping[str, Any] | None=None,
+    k_perp_min: float | None=0.001,
+    k_perp_max: float | None=100,
+    n_k_perp: int | None=99,
+    **kwargs: Mapping[str, Any],
+) -> NDArray[Any]:
     """
     Return P1D for specified parallel wavenumbers.
 
@@ -57,8 +61,8 @@ def P1D_Mpc(
 
 
 def _P1D_lnkperp_fast(
-    z, ln_k_perp, kpars, p3d_fun, p3d_params={}, new_cosmo_params=None, **kwargs
-):
+    z: float, ln_k_perp: ArrayLike, kpars: ArrayLike, p3d_fun: Callable[..., Any], p3d_params: Mapping[str, Any] | None={}, new_cosmo_params: Mapping[str, Any] | None=None, **kwargs: Mapping[str, Any]
+) -> NDArray[Any]:
     """
     Compute P1D by integrating P3D in terms of ln(k_perp) using a fast method.
 
@@ -119,8 +123,8 @@ def _P1D_lnkperp_fast(
 
 
 def _P1D_lnkperp_fast_smooth(
-    z, ln_k_perp, kpars, k3d_smooth, p3d_fun, p3d_params={}, new_cosmo_params=None
-):
+    z: float, ln_k_perp: ArrayLike, kpars: ArrayLike, k3d_smooth: float, p3d_fun: Callable[..., Any], p3d_params: Mapping[str, Any] | None={}, new_cosmo_params: Mapping[str, Any] | None=None
+) -> NDArray[Any]:
     """
     Compute P1D by integrating P3D in terms of ln(k_perp) with smoothing.
 
@@ -167,7 +171,7 @@ def _P1D_lnkperp_fast_smooth(
     return p1d
 
 
-def p1d_from_p3d(kpar_3d, fun_p3d, z, params, vol=0, niter=1000, seed=0):
+def p1d_from_p3d(kpar_3d: ArrayLike, fun_p3d: ArrayLike, z: Any, params: Mapping[str, Any], vol: Any=0, niter: int=1000, seed: int=0) -> NDArray[Any]:
     """
     Compute P1D(kpar) from P3D(kpar,kper).
 
@@ -237,7 +241,7 @@ def p1d_from_p3d(kpar_3d, fun_p3d, z, params, vol=0, niter=1000, seed=0):
     return res
 
 
-def get_sigma(kpar2d, kperp2d, p3d, vol):
+def get_sigma(kpar2d: ArrayLike, kperp2d: ArrayLike, p3d: ArrayLike, vol: Any) -> NDArray[Any]:
     """
     Return uncertainty.
 

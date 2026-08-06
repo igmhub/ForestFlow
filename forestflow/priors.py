@@ -2,12 +2,14 @@
 Define priors for Arinyo and intergalactic-medium parameters.
 """
 
+from typing import Any
+
 import os
 import numpy as np
 import forestflow
 
 
-def get_arinyo_priors(z, tag="DESI_DR1_P1D", return_all=False):
+def get_arinyo_priors(z: int | float, tag: str | None="DESI_DR1_P1D", return_all: bool | None=False) -> Any:
     """
     Return Arinyo priors.
 
@@ -72,7 +74,7 @@ def get_arinyo_priors(z, tag="DESI_DR1_P1D", return_all=False):
         return out_priors
 
 
-def get_IGM_priors(z, tag="DESI_DR1_P1D", return_all=False):
+def get_IGM_priors(z: int | float, tag: str | None="DESI_DR1_P1D", return_all: bool | None=False) -> Any:
     """
     Return intergalactic-medium priors.
 

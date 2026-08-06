@@ -2,6 +2,10 @@
 Fit redshift-dependent Arinyo power-spectrum models.
 """
 
+from collections.abc import Mapping, Sequence
+from typing import Any
+from numpy.typing import ArrayLike, NDArray
+
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize
@@ -47,21 +51,21 @@ class FitPkz(object):
 
     def __init__(
         self,
-        data,
-        model,
-        fit_type="p3d",
-        names=None,
-        k3d_max=3,
-        k1d_max=3,
-        noise_3d=0,
-        noise_1d=0,
-        priors=None,
-        order=None,
-        verbose=False,
-        all_kmu=True,
-        test=False,
-        maxiter=4000,
-    ):
+        data: Mapping[str, Any],
+        model: Any,
+        fit_type: str | None="p3d",
+        names: int | None=None,
+        k3d_max: float | None=3,
+        k1d_max: float | None=3,
+        noise_3d: float | None=0,
+        noise_1d: float | None=0,
+        priors: Mapping[str, Any] | None=None,
+        order: int | None=None,
+        verbose: bool=False,
+        all_kmu: bool=True,
+        test: bool=False,
+        maxiter: int=4000,
+    ) -> Any | None:
         """
         Setup P3D flux power model and measurement.
 
@@ -156,7 +160,7 @@ class FitPkz(object):
             self.err_p1d = self.data["std_p1d"][self.ind_fit1d]
             self.nbins1d = np.sum(self.ind_fit1d)
 
-    def get_model_3d(self, parameters={}):
+    def get_model_3d(self, parameters: Mapping[str, Any] | None={}) -> NDArray[Any]:
         """
         Computes the model for the 3D flux power spectrum.
 
@@ -193,11 +197,11 @@ class FitPkz(object):
 
     def get_model_1d(
         self,
-        parameters={},
-        k_perp_min=0.001,
-        k_perp_max=60,
-        n_k_perp=40,
-    ):
+        parameters: Mapping[str, Any] | None={},
+        k_perp_min: float | None=0.001,
+        k_perp_max: float | None=60,
+        n_k_perp: int | None=40,
+    ) -> NDArray[Any]:
         """
         Computes the model for the 1D flux power spectrum.
 
@@ -224,7 +228,7 @@ class FitPkz(object):
 
         return p1d_model
 
-    def get_chi2(self, parameters):
+    def get_chi2(self, parameters: Mapping[str, Any] | None) -> float:
         """
         Compute chi squared for a particular P3D model.
 
@@ -348,7 +352,7 @@ class FitPkz(object):
 
         return chi2
 
-    def get_log_like(self, parameters={}):
+    def get_log_like(self, parameters: Mapping[str, Any] | None={}) -> float:
         """
         Compute log likelihood (ignoring determinant).
 
@@ -361,7 +365,7 @@ class FitPkz(object):
 
         return 0.5 * self.get_chi2(parameters)
 
-    def _log_like(self, values, parameter_names):
+    def _log_like(self, values: ArrayLike, parameter_names: Sequence[Any]) -> float:
         """
         Function passed to scipy minimizer to compute the log likelihood.
 
@@ -393,7 +397,7 @@ class FitPkz(object):
         else:
             return self.get_log_like(parameters)
 
-    def maximize_likelihood(self, parameters):
+    def maximize_likelihood(self, parameters: Mapping[str, Any]) -> tuple[Any, ...]:
         """
         Run minimizer and return the best-fit values.
 
@@ -437,7 +441,7 @@ class FitPkz(object):
 
         return results, dict_params
 
-    def log_like_emcee(self, params):
+    def log_like_emcee(self, params: ArrayLike) -> float:
         """
         Compute the log likelihood for emcee sampling.
 
@@ -464,14 +468,14 @@ class FitPkz(object):
 
     def explore_likelihood(
         self,
-        parameters,
-        seed=0,
-        nwalkers=20,
-        nsteps=100,
-        nburn=0,
-        plot=False,
-        attraction=0.3,
-    ):
+        parameters: Mapping[str, Any],
+        seed: int=0,
+        nwalkers: int=20,
+        nsteps: int=100,
+        nburn: int=0,
+        plot: bool=False,
+        attraction: float=0.3,
+    ) -> tuple[Any, ...]:
         """
         Run emcee to explore the likelihood and return the best-fitting chain.
 
@@ -528,7 +532,7 @@ class FitPkz(object):
 
         return lnprob, chain
 
-    def old_smooth_err_pkmu(self, kmax=10, order=2):
+    def old_smooth_err_pkmu(self, kmax: float=10, order: int=2) -> Any | None:
         """
         Return P3D(k, mu) errors estimated from simulation.
 
@@ -557,7 +561,7 @@ class FitPkz(object):
             noise_floor = noise_3d * self.data["p3d"][_, ii]
             self.err_p3d[_, ii] = 10 ** pfit(logk) + noise_floor
 
-    def old_estimate_err_p1d(self, sigma_pk1d, order=3, kmax=40, noise_1d=0.05):
+    def old_estimate_err_p1d(self, sigma_pk1d: ArrayLike, order: int=3, kmax: float=40, noise_1d: float=0.05) -> NDArray[Any]:
         """
         Returns P1D(k, mu) errors estimated from simulation
 
@@ -598,13 +602,13 @@ class FitPkz(object):
 
     def plot_fits(
         self,
-        parameters,
-        error_fit_3d=None,
-        error_fit_1d=None,
-        save_fig=None,
-        err_bar_all=False,
-        plot_emu=False,
-    ):
+        parameters: Mapping[str, Any],
+        error_fit_3d: ArrayLike | None=None,
+        error_fit_1d: ArrayLike | None=None,
+        save_fig: str | None=None,
+        err_bar_all: bool | None=False,
+        plot_emu: bool=False,
+    ) -> Any | None:
         """
         Compare data and best-fitting model.
 
@@ -870,13 +874,13 @@ class FitPkz(object):
 
     def plot_compare_smooth(
         self,
-        parameters1,
-        parameters2=None,
-        error_fit_3d=None,
-        error_fit_1d=None,
-        save_fig=None,
-        err_bar_all=False,
-    ):
+        parameters1: Any,
+        parameters2: Any | None=None,
+        error_fit_3d: ArrayLike | None=None,
+        error_fit_1d: ArrayLike | None=None,
+        save_fig: str | None=None,
+        err_bar_all: bool | None=False,
+    ) -> Any | None:
         """
         Compare data and best-fitting model.
 

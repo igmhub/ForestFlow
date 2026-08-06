@@ -10,6 +10,8 @@ and redshift-parameterized), and to compute simple priors for
 Arinyo / IGM parameters.
 """
 
+from typing import Any
+
 import numpy as np
 import os
 from lace.archive.gadget_archive import GadgetArchive
@@ -29,13 +31,13 @@ class GadgetArchive3D(GadgetArchive):
 
     def __init__(
         self,
-        base_folder=None,
-        file_errors=None,
-        postproc="Cabayol23",
-        kp_Mpc=None,
-        average="both",
-        addcentral=False,
-    ):
+        base_folder: Any | None=None,
+        file_errors: Any | None=None,
+        postproc: str | None="Cabayol23",
+        kp_Mpc: Any | None=None,
+        average: str | None="both",
+        addcentral: bool | None=False,
+    ) -> None:
         """
         Archive class for 3D simulations
 
@@ -98,7 +100,7 @@ class GadgetArchive3D(GadgetArchive):
             central_data = self.get_testing_data("mpg_central")
             self.training_data.extend(central_data)
 
-    def get_testing_data(self, sim_label, ind_rescaling=0, kmax_3d=5, kmax_1d=4):
+    def get_testing_data(self, sim_label: str, ind_rescaling: int | None=0, kmax_3d: float | None=5, kmax_1d: float | None=4) -> dict[str, Any]:
         """
         Return testing data augmented with Arinyo minimizer fits.
 
@@ -131,7 +133,7 @@ class GadgetArchive3D(GadgetArchive):
 
         return testing_data
 
-    def add_Arinyo_minimizer_indiv(self, archive, sim_label=None, kmax_3d=5, kmax_1d=4):
+    def add_Arinyo_minimizer_indiv(self, archive: Any, sim_label: Any | None=None, kmax_3d: int | None=5, kmax_1d: int | None=4) -> Any:
         """
         Arinyo fits considering each snapshot separately
 
@@ -152,7 +154,7 @@ class GadgetArchive3D(GadgetArchive):
             Result produced when the function is used to arinyo fits considering each snapshot separately.
         """
 
-        def get_flag_out(ind_sim, kmax_3d, kmax_1d):
+        def get_flag_out(ind_sim: Any, kmax_3d: int | float, kmax_1d: int | float) -> Any:
             """
             Return flag out.
 
@@ -261,7 +263,7 @@ class GadgetArchive3D(GadgetArchive):
                     archive[ii]["Arinyo_min"]["q2"]
                 )
 
-    def add_Arinyo_minimizer_indiv_lowk(self, archive, sim_label="mpg_hypercube"):
+    def add_Arinyo_minimizer_indiv_lowk(self, archive: Any, sim_label: str | None="mpg_hypercube") -> None:
 
         """
         Add Arinyo minimizer indiv lowk.
@@ -289,7 +291,7 @@ class GadgetArchive3D(GadgetArchive):
                 / archive[isim]["Arinyo_lowk"]["bias"]
             )
 
-    def add_Arinyo_minimizer_joint(self, archive, sim_label=None, kmax_3d=3, kmax_1d=3):
+    def add_Arinyo_minimizer_joint(self, archive: Any, sim_label: Any | None=None, kmax_3d: int | None=3, kmax_1d: int | None=3) -> Any:
         """
         Fits parameterizing the redshift dependence of the Arinyo params
 
@@ -310,7 +312,7 @@ class GadgetArchive3D(GadgetArchive):
             Result produced when the function is used to fits parameterizing the redshift dependence of the arinyo params.
         """
 
-        def get_flag_out(ind_sim, val_scaling, kmax_3d, kmax_1d):
+        def get_flag_out(ind_sim: Any, val_scaling: Any, kmax_3d: int | float, kmax_1d: int | float) -> Any:
             """
             Return flag out.
 
@@ -342,7 +344,7 @@ class GadgetArchive3D(GadgetArchive):
             )
             return flag
 
-        def paramz_to_paramind(z, paramz):
+        def paramz_to_paramind(z: int | float, paramz: Any) -> Any:
             """
             Convert to paramind.
 
@@ -413,7 +415,7 @@ class GadgetArchive3D(GadgetArchive):
             )[0, 0]
             archive[ii]["Arinyo_minz"] = params_numpy2dict_minimizerz(arr_params[_])
 
-    def get_Arinyo_priors(self, zmin, zmax, type_fit="Arinyo_min", return_all=False):
+    def get_Arinyo_priors(self, zmin: float, zmax: float, type_fit: str | None="Arinyo_min", return_all: bool | None=False) -> dict[str, Any]:
         """
         Compute summary priors for Arinyo fit parameters.
 
@@ -502,7 +504,7 @@ class GadgetArchive3D(GadgetArchive):
         else:
             return out_priors
 
-    def get_IGM_priors(self, zmin, zmax, return_all=False, IGM_params=None):
+    def get_IGM_priors(self, zmin: float, zmax: float, return_all: bool | None=False, IGM_params: str | None=None) -> dict[str, Any]:
         """
         Compute priors for a set of IGM parameters over redshift.
 

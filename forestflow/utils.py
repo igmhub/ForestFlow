@@ -2,12 +2,17 @@
 Provide memory, memoization, covariance, and parameter utilities.
 """
 
+from collections.abc import Callable, Mapping, Sequence
+from os import PathLike
+from typing import Any
+from numpy.typing import ArrayLike, NDArray
+
 import numpy as np
 import torch
 import functools
 
 
-def print_memory_usage(step_description):
+def print_memory_usage(step_description: str | PathLike[str]) -> None:
     """
     Print the current process memory usage.
 
@@ -30,7 +35,7 @@ def print_memory_usage(step_description):
         print(f"GPU memory cached: {torch.cuda.memory_reserved() / (1024 ** 2):.2f} MB")
 
 
-def params_numpy2dict(params):
+def params_numpy2dict(params: ArrayLike) -> dict[str, Any]:
     """
     Convert a NumPy array of parameters to a dictionary.
 
@@ -56,7 +61,7 @@ def params_numpy2dict(params):
     return dict_param
 
 
-def params_numpy2dict_minimizer(params):
+def params_numpy2dict_minimizer(params: ArrayLike) -> dict[str, Any]:
     """
     Convert a NumPy array of parameters to a dictionary.
 
@@ -88,7 +93,7 @@ def params_numpy2dict_minimizer(params):
     return dict_param
 
 
-def params_numpy2dict_minimizerz(params):
+def params_numpy2dict_minimizerz(params: ArrayLike) -> dict[str, Any]:
     """
     Convert a NumPy array of parameters to a dictionary.
 
@@ -109,7 +114,7 @@ def params_numpy2dict_minimizerz(params):
     return dict_param
 
 
-def transform_arinyo_params(dict_arinyo_params, fcosmo):
+def transform_arinyo_params(dict_arinyo_params: Mapping[str, Any], fcosmo: Any) -> Any:
     """
     Transform Arinyo parameters.
 
@@ -140,7 +145,7 @@ def transform_arinyo_params(dict_arinyo_params, fcosmo):
     return dict_arinyo_params_out
 
 
-def purge_chains(ln_prop_chains, nsplit=5, abs_diff=5, minval=-1000):
+def purge_chains(ln_prop_chains: ArrayLike, nsplit: int | None=5, abs_diff: int | None=5, minval: Any=-1000) -> Any:
     """
     Purge emcee chains that have not converged
 
@@ -187,13 +192,13 @@ def purge_chains(ln_prop_chains, nsplit=5, abs_diff=5, minval=-1000):
 
 
 def init_chains(
-    parameters,
-    nwalkers,
-    bounds,
-    seed=0,
-    attraction=1,
-    min_attraction=0.05,
-):
+    parameters: Any,
+    nwalkers: int | float,
+    bounds: Mapping[str, Any],
+    seed: int | None=0,
+    attraction: int | None=1,
+    min_attraction: float | None=0.05,
+) -> Any:
 
     """
     Initialize chains.
@@ -250,7 +255,7 @@ def init_chains(
     return design
 
 
-def memorize(func):
+def memorize(func: Callable[..., Any]) -> Callable[..., Any]:
     # Initialize a dictionary to store the previous arguments and result
     """
     Memoize the requested values.
@@ -267,7 +272,7 @@ def memorize(func):
     """
     cache = {}
 
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         # Convert args and kwargs to a hashable key
         """
         Call the wrapped function, reusing a cached result when available.
@@ -323,7 +328,7 @@ def memorize(func):
 #     return wrapper
 
 
-def memoize_numpy_arrays(func, max_history=2):
+def memoize_numpy_arrays(func: Callable[..., Any], max_history: int | None=2) -> Callable[..., Any]:
     # Initialize a dictionary to store the previous results for each key
     """
     Memoize numpy arrays.
@@ -342,7 +347,7 @@ def memoize_numpy_arrays(func, max_history=2):
     """
     cache = {}
 
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         # Convert NumPy arrays to a tuple of their shapes and contents
         """
         Call the wrapped function, reusing a cached result when available.
@@ -380,7 +385,7 @@ def memoize_numpy_arrays(func, max_history=2):
     return wrapper
 
 
-def memoize_pytorch(func):
+def memoize_pytorch(func: Callable[..., Any]) -> Callable[..., Any]:
     # Initialize a dictionary to store the previous input tensors and result
     """
     Memoize pytorch.
@@ -398,7 +403,7 @@ def memoize_pytorch(func):
     cache = {}
 
     @functools.wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         # Convert PyTorch tensors to tuples of their shapes and contents
         """
         Call the wrapped function, reusing a cached result when available.
@@ -444,7 +449,7 @@ def memoize_pytorch(func):
     return wrapper
 
 
-def memorize(func):
+def memorize(func: Callable[..., Any]) -> Callable[..., Any]:
     # Initialize a dictionary to store the previous input parameters and result
     """
     Memoize the requested values.
@@ -462,7 +467,7 @@ def memorize(func):
     cache = {}
 
     @functools.wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         # Convert arguments and keyword arguments to a tuple of their values
         """
         Call the wrapped function, reusing a cached result when available.
@@ -494,7 +499,7 @@ def memorize(func):
     return wrapper
 
 
-def sort_dict(dct, keys):
+def sort_dict(dct: Sequence[Any], keys: Sequence[Any]) -> list[Any]:
     """
     Sort a list of dictionaries based on specified keys.
 
@@ -514,7 +519,7 @@ def sort_dict(dct, keys):
     return dct
 
 
-def get_covariance(x, y, return_corr=False):
+def get_covariance(x: Any, y: Any, return_corr: bool | None=False) -> NDArray[Any]:
     # Calculate the mean and standard deviation along each column
     """
     Return covariance.
@@ -572,7 +577,7 @@ def get_covariance(x, y, return_corr=False):
 #     return array_dict
 
 
-def sigma68(data):
+def sigma68(data: ArrayLike) -> NDArray[Any]:
     """
     Compute sigma68.
 
@@ -592,17 +597,17 @@ def sigma68(data):
 
 
 def load_Arinyo_chains(
-    archive,
-    folder_chains="/pscratch/sd/l/lcabayol/P3D/p3d_fits_new/",
-    sim_label=None,
-    z=None,
-    chain_samp=10_000,
-    kmax_3d=3,
-    kmax_1d=3,
-    noise_3d=0.01,
-    noise_1d=0.01,
-    training_type="Arinyo_min_q1_q2",
-):
+    archive: Any,
+    folder_chains: str | None="/pscratch/sd/l/lcabayol/P3D/p3d_fits_new/",
+    sim_label: Any | None=None,
+    z: Any | None=None,
+    chain_samp: int | None=10_000,
+    kmax_3d: int | None=3,
+    kmax_1d: int | None=3,
+    noise_3d: float | None=0.01,
+    noise_1d: float | None=0.01,
+    training_type: str | None="Arinyo_min_q1_q2",
+) -> NDArray[Any]:
     """
     Load Arinyo model chains from stored files for all the training LH simulations.
 

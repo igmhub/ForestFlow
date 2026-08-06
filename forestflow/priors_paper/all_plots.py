@@ -2,6 +2,10 @@
 Create figures and tables for the priors analysis.
 """
 
+from collections.abc import Mapping
+from typing import Any
+from numpy.typing import ArrayLike
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
@@ -14,7 +18,7 @@ from getdist import plots
 from forestflow.priors_paper import set_samples
 
 
-def plot_bsig8_betafsigma8(samples, ftsize=18):
+def plot_bsig8_betafsigma8(samples: ArrayLike, ftsize: int | None=18) -> None:
 
     # --- plotting ---
     """
@@ -74,7 +78,7 @@ def plot_bsig8_betafsigma8(samples, ftsize=18):
     plt.savefig("figs/nocomb_bdsig8_befsig8.png")
 
 
-def plot_bao_biases(samples, ftsize=22):
+def plot_bao_biases(samples: ArrayLike, ftsize: int | None=22) -> None:
 
     """
     Plot bao biases.
@@ -139,7 +143,7 @@ def plot_bao_biases(samples, ftsize=22):
     plt.savefig("figs/bao_biases.png")
 
 
-def plot_comb_bdsig8_befsig8(samples, ftsize=24):
+def plot_comb_bdsig8_befsig8(samples: ArrayLike, ftsize: int | None=24) -> None:
 
     # --- plotting ---
     """
@@ -187,7 +191,7 @@ def plot_comb_bdsig8_befsig8(samples, ftsize=24):
     plt.savefig("figs/comb_bdsig8_befsig8.png")
 
 
-def plot_comb_bd_be_beta(samples, ftsize=20):
+def plot_comb_bd_be_beta(samples: ArrayLike, ftsize: int | None=20) -> None:
 
     # --- plotting ---
     """
@@ -228,7 +232,7 @@ def plot_comb_bd_be_beta(samples, ftsize=20):
     plt.savefig("figs/comb_bd_be_beta.png")
 
 
-def plot_sig8(samples, ftsize=20):
+def plot_sig8(samples: ArrayLike, ftsize: int | None=20) -> None:
 
     # DESY6 Table IV https://arxiv.org/pdf/2601.14559
     # DES 3x2pt LCDM
@@ -331,7 +335,7 @@ def plot_sig8(samples, ftsize=20):
     plt.savefig("figs/sig8.png")
 
 
-def plot_sig8z(samples, ftsize=20):
+def plot_sig8z(samples: ArrayLike, ftsize: int | None=20) -> None:
 
     # load CMB-SPA
     """
@@ -455,7 +459,7 @@ def plot_sig8z(samples, ftsize=20):
     return
 
 
-def plot_fsig8z(samples, ftsize=20):
+def plot_fsig8z(samples: ArrayLike, ftsize: int | None=20) -> None:
 
     # load CMB-SPA
     """
@@ -568,7 +572,7 @@ def plot_fsig8z(samples, ftsize=20):
     plt.savefig("figs/fsig8z.png")
 
 
-def plot_sig8z233(samples, ftsize=20):
+def plot_sig8z233(samples: ArrayLike, ftsize: int | None=20) -> None:
     # --- plotting ---
     """
     Plot sig8z233.
@@ -605,7 +609,7 @@ def plot_sig8z233(samples, ftsize=20):
     plt.savefig("figs/sig8z233.png")
 
 
-def plot_compressed(samples, ftsize=20):
+def plot_compressed(samples: ArrayLike, ftsize: int | None=20) -> None:
     # --- plotting ---
     """
     Plot compressed.
@@ -643,7 +647,7 @@ def plot_compressed(samples, ftsize=20):
     plt.savefig("figs/delta2star_nstar.png")
 
 
-def plot_bdelta_beta_beta(samples, ftsize=20):
+def plot_bdelta_beta_beta(samples: ArrayLike, ftsize: int | None=20) -> None:
 
     # --- plotting ---
     """
@@ -681,7 +685,7 @@ def plot_bdelta_beta_beta(samples, ftsize=20):
     plt.savefig("figs/bdelta_beta_beta.png")
 
 
-def plot_P3D_small_params(samples, ftsize=20):
+def plot_P3D_small_params(samples: ArrayLike, ftsize: int | None=20) -> None:
 
     """
     Plot three-dimensional power spectrum small parameters.
@@ -718,7 +722,7 @@ def plot_P3D_small_params(samples, ftsize=20):
     plt.savefig("figs/corner_arinyo.png")
 
 
-def table_cosmo_igm(dict_out_all):
+def table_cosmo_igm(dict_out_all: Mapping[str, Any]) -> Any:
 
     """
     Create cosmo intergalactic-medium.
@@ -733,7 +737,7 @@ def table_cosmo_igm(dict_out_all):
     object
         Computed result or generated analysis product.
     """
-    def format_pm(val, err, sig=2):
+    def format_pm(val: Any, err: ArrayLike, sig: int | None=2) -> Any:
         """
         Format a value and uncertainty with plus-minus notation.
 
@@ -779,7 +783,7 @@ def table_cosmo_igm(dict_out_all):
     return
 
 
-def plot_bias_beta_zev(bao_data, dict_mapping, plot_bias_eta=False, z0=3.0, ftsize=24):
+def plot_bias_beta_zev(bao_data: ArrayLike, dict_mapping: Mapping[str, Any], plot_bias_eta: bool | None=False, z0: float | None=3.0, ftsize: int | None=24) -> Any:
 
     # from mpl_toolkits.axes_grid1.inset_locator import inset_axes
     """
@@ -805,7 +809,7 @@ def plot_bias_beta_zev(bao_data, dict_mapping, plot_bias_eta=False, z0=3.0, ftsi
     """
     from scipy.optimize import curve_fit
 
-    def fit_pow(z, a, b):
+    def fit_pow(z: Any, a: Any, b: Any) -> Any:
         """
         Evaluate the power-law fit.
 
@@ -826,7 +830,7 @@ def plot_bias_beta_zev(bao_data, dict_mapping, plot_bias_eta=False, z0=3.0, ftsi
         x = (1 + z) / (1 + z0)
         return a * x**b
 
-    def fit_pol(z, a, b, c, d):
+    def fit_pol(z: Any, a: Any, b: Any, c: Any, d: Any) -> Any:
         """
         Evaluate the polynomial fit.
 
@@ -1011,7 +1015,7 @@ def plot_bias_beta_zev(bao_data, dict_mapping, plot_bias_eta=False, z0=3.0, ftsi
     np.save("figs/bias_beta_BAOvsP1D.npy", data_fig)
 
 
-def plot_bias_beta_zev_val(dict_mapping, plot_bias_eta=False, ftsize=24):
+def plot_bias_beta_zev_val(dict_mapping: Mapping[str, Any], plot_bias_eta: bool | None=False, ftsize: int | None=24) -> None:
 
     """
     Plot bias beta zev val.
@@ -1132,7 +1136,7 @@ def plot_bias_beta_zev_val(dict_mapping, plot_bias_eta=False, ftsize=24):
     np.save("figs/bias_beta_accel2.npy", fig_data)
 
 
-def plot_p3d_small_z(dict_mapping, z0=3, ftsize=24):
+def plot_p3d_small_z(dict_mapping: Mapping[str, Any], z0: int | None=3, ftsize: int | None=24) -> Any:
 
     """
     Plot three-dimensional power spectrum small z.
@@ -1153,7 +1157,7 @@ def plot_p3d_small_z(dict_mapping, z0=3, ftsize=24):
     """
     from scipy.optimize import curve_fit
 
-    def fit_func(z, a, b, c, d):
+    def fit_func(z: Any, a: Any, b: Any, c: Any, d: Any) -> Any:
         """
         Evaluate the fitting function.
 
@@ -1245,7 +1249,7 @@ def plot_p3d_small_z(dict_mapping, z0=3, ftsize=24):
     np.save("figs/Arinyo_with_z.npy", data_fig)
 
 
-def plot_p3d_validation(knew3d, munew3d, data_pip, data_sim, ftsize=24):
+def plot_p3d_validation(knew3d: ArrayLike, munew3d: ArrayLike, data_pip: ArrayLike, data_sim: ArrayLike, ftsize: int | None=24) -> None:
 
     """
     Plot three-dimensional power spectrum validation.

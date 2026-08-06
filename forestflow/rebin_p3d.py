@@ -2,10 +2,14 @@
 Rebin three-dimensional power spectra.
 """
 
+from collections.abc import Callable
+from typing import Any
+from numpy.typing import ArrayLike, NDArray
+
 import numpy as np
 
 
-def p3d_rebin_mu(k3d, mu, p3d, kmu_modes, n_mubins=4, return_modes=False):
+def p3d_rebin_mu(k3d: Any, mu: Any, p3d: ArrayLike, kmu_modes: Any, n_mubins: int | None=4, return_modes: bool | None=False) -> NDArray[Any]:
     """
     Rebin p3d to fewer mu bins
 
@@ -30,7 +34,7 @@ def p3d_rebin_mu(k3d, mu, p3d, kmu_modes, n_mubins=4, return_modes=False):
         Result produced when the function is used to rebin p3d to fewer mu bins.
     """
 
-    def wmean(data, weight):
+    def wmean(data: ArrayLike, weight: Any) -> Any:
         """
         Weighted mean
 
@@ -79,7 +83,7 @@ def p3d_rebin_mu(k3d, mu, p3d, kmu_modes, n_mubins=4, return_modes=False):
         return k3d_new, mu_new, p3d_new, mu_bins
 
 
-def get_p3d_modes(kmax, lbox=67.5, k_Mpc_max=20, n_k_bins=20, n_mu_bins=16):
+def get_p3d_modes(kmax: int | float, lbox: float | None=67.5, k_Mpc_max: int | None=20, n_k_bins: int | None=20, n_mu_bins: int | None=16) -> NDArray[Any]:
     """
     Get k and mu of p3d modes
 
@@ -145,8 +149,8 @@ def get_p3d_modes(kmax, lbox=67.5, k_Mpc_max=20, n_k_bins=20, n_mu_bins=16):
 
 
 def get_p3d_modes_kparkper(
-    lbox=67.5, kpar_Mpc_max=20, n_k_bins=20, n_mu_bins=16
-):
+    lbox: float | None=67.5, kpar_Mpc_max: int | None=20, n_k_bins: int | None=20, n_mu_bins: int | None=16
+) -> NDArray[Any]:
     """
     Get k and mu of p3d modes
 
@@ -210,14 +214,14 @@ def get_p3d_modes_kparkper(
 
 
 def p3d_allkmu(
-    model,
-    zs,
-    arinyo,
-    kmu_modes,
-    nk=14,
-    nmu=16,
-    compute_plin=True,
-):
+    model: Callable[..., Any],
+    zs: Any,
+    arinyo: Any,
+    kmu_modes: Any,
+    nk: int | None=14,
+    nmu: int | None=16,
+    compute_plin: bool | None=True,
+) -> NDArray[Any]:
     """
     Get p3d and plin for all k-mu bins
 

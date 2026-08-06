@@ -2,6 +2,9 @@
 Load data and chains for the priors analysis.
 """
 
+from typing import Any
+from numpy.typing import NDArray
+
 import os
 import sys
 import numpy as np
@@ -13,7 +16,7 @@ from astropy.io import fits
 from lace.cosmo import cosmology
 
 
-def load_BAO_data(nn=10000):
+def load_BAO_data(nn: int | None=10000) -> NDArray[Any]:
 
     """
     Load BAO data.
@@ -111,7 +114,7 @@ def load_BAO_data(nn=10000):
     return BAO
 
 
-def load_p1d_data(lab_sample="desi", zeff=2.33):
+def load_p1d_data(lab_sample: str | None="desi", zeff: float | None=2.33) -> NDArray[Any]:
 
     """
     Load one-dimensional power spectrum data.
@@ -164,7 +167,7 @@ def load_p1d_data(lab_sample="desi", zeff=2.33):
     return P1D
 
 
-def load_p1d_chain_for_forestflow(lab_sample="desi"):
+def load_p1d_chain_for_forestflow(lab_sample: str | None="desi") -> NDArray[Any]:
     """
     Load one-dimensional power spectrum chain for forestflow.
 
@@ -192,7 +195,7 @@ def load_p1d_chain_for_forestflow(lab_sample="desi"):
     return data
 
 
-def load_map_igm_p3d(lab_sample="desi", zeff=2.33):
+def load_map_igm_p3d(lab_sample: str | None="desi", zeff: float | None=2.33) -> NDArray[Any]:
     """
     Load map intergalactic-medium three-dimensional power spectrum.
 
@@ -241,7 +244,7 @@ def load_map_igm_p3d(lab_sample="desi", zeff=2.33):
     return data
 
 
-def load_bao_weights():
+def load_bao_weights() -> tuple[Any, ...]:
 
     """
     Load bao weights.

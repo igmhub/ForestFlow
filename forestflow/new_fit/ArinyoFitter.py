@@ -2,6 +2,10 @@
 Fit Arinyo predictions to measured power spectra.
 """
 
+from collections.abc import Mapping, Sequence
+from typing import Any
+from numpy.typing import ArrayLike, NDArray
+
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import binned_statistic_2d
@@ -39,7 +43,7 @@ class FitData:
     std_p3d: np.ndarray
 
 
-def _get_err_p1d(x, alpha=4, xmin=0.1, xmax=5, ymin=1, ymax=4):
+def _get_err_p1d(x: Any, alpha: int | None=4, xmin: float | None=0.1, xmax: int | None=5, ymin: int | None=1, ymax: int | None=4) -> NDArray[Any]:
     """
     Return err one-dimensional power spectrum.
 
@@ -67,7 +71,7 @@ def _get_err_p1d(x, alpha=4, xmin=0.1, xmax=5, ymin=1, ymax=4):
     return ymin + ymax * t**alpha
 
 
-def _get_err_p3d(x, alpha=0.2, xmin=0.1, xmax=5, ymin=3, ymax=20):
+def _get_err_p3d(x: Any, alpha: float | None=0.2, xmin: float | None=0.1, xmax: int | None=5, ymin: int | None=3, ymax: int | None=20) -> NDArray[Any]:
     """
     Return err three-dimensional power spectrum.
 
@@ -113,18 +117,18 @@ class ArinyoFitter:
 
     def __init__(
         self,
-        zlist=np.arange(2.0, 4.501, 0.25),
-        kmin_3d=0.7,
-        kmax_3d=4.5,
-        kmin_1d=0.3,
-        kmax_1d=7.0,
-        n_k_bins=20,
-        n_mu_bins=16,
-        boxsize=67.5,
-        nrkbin=12,
-        nrmubin=8,
-        bounds=None,
-    ):
+        zlist: Any=np.arange(2.0, 4.501, 0.25),
+        kmin_3d: float | None=0.7,
+        kmax_3d: float | None=4.5,
+        kmin_1d: float | None=0.3,
+        kmax_1d: float | None=7.0,
+        n_k_bins: int | None=20,
+        n_mu_bins: int | None=16,
+        boxsize: float | None=67.5,
+        nrkbin: int | None=12,
+        nrmubin: int | None=8,
+        bounds: Any | None=None,
+    ) -> None:
 
         """
         Initialize the instance.
@@ -186,7 +190,7 @@ class ArinyoFitter:
         # Fine grid used for P3D binning
         self._prepare_model_grid()
 
-    def _prepare_model_grid(self, kmax=20.0):
+    def _prepare_model_grid(self, kmax: float | None=20.0) -> None:
         """
         Build the fine (k, mu) grid used to evaluate the Arinyo model before
         averaging into the simulation bins.
@@ -282,7 +286,7 @@ class ArinyoFitter:
 
         self._bin_norm = 1.0 / self._bin_counts
 
-    def prepare_simulation(self, sim):
+    def prepare_simulation(self, sim: Any) -> None:
         """
         Prepare one simulation for fitting.
 
@@ -313,7 +317,7 @@ class ArinyoFitter:
 
         return
 
-    def _build_model(self, sim):
+    def _build_model(self, sim: Any) -> tuple[Any, ...]:
         """
         Build the cosmology, Arinyo model and linear theory.
 
@@ -334,7 +338,7 @@ class ArinyoFitter:
 
         return linear, power_model
 
-    def _prepare_p3d(self, sim):
+    def _prepare_p3d(self, sim: Any) -> tuple[Any, ...]:
         """
         Extract the fitted 3D power spectrum.
 
@@ -368,7 +372,7 @@ class ArinyoFitter:
 
         return k3d, mu3d, p3d, std_p3d
 
-    def _prepare_p1d(self, sim):
+    def _prepare_p1d(self, sim: Any) -> tuple[Any, ...]:
         """
         Extract the fitted 1D power spectrum.
 
@@ -399,7 +403,7 @@ class ArinyoFitter:
 
         return k1d, p1d, std_p1d
 
-    def params_to_dict(self, params):
+    def params_to_dict(self, params: Mapping[str, Any]) -> Any:
         """
         Convert a parameter vector into an Arinyo parameter dictionary.
 
@@ -418,7 +422,7 @@ class ArinyoFitter:
 
         return {name: value for name, value in zip(self.PARAM_NAMES, params)}
 
-    def params_from_dict(self, params):
+    def params_from_dict(self, params: Mapping[str, Any]) -> Any:
         """
         Convert an Arinyo parameter dictionary into a parameter vector.
 
@@ -438,7 +442,7 @@ class ArinyoFitter:
             dtype=float,
         )
 
-    def predict(self, params):
+    def predict(self, params: ArrayLike) -> tuple[Any, ...]:
         """
         Evaluate the Arinyo model for the current simulation.
 
@@ -488,7 +492,7 @@ class ArinyoFitter:
 
         return p3d, p1d
 
-    def _bin_p3d(self, fine_p3d):
+    def _bin_p3d(self, fine_p3d: ArrayLike) -> NDArray[Any]:
         """
         Average a fine-grid P3D onto the coarse (k,mu) grid.
 
@@ -511,7 +515,7 @@ class ArinyoFitter:
 
         return (bin_sum * self._bin_norm).reshape(self._p3d_shape)
 
-    def chi2(self, params):
+    def chi2(self, params: Mapping[str, Any]) -> Any:
         """
         Chi-square objective function.
 
@@ -534,7 +538,7 @@ class ArinyoFitter:
 
         return chi2_3d + chi2_1d
 
-    def residuals(self, params):
+    def residuals(self, params: Mapping[str, Any]) -> tuple[Any, ...]:
         """
         Return fractional residuals.
 
@@ -558,14 +562,14 @@ class ArinyoFitter:
 
     def fit(
         self,
-        x0=None,
-        bounds=None,
-        method="L-BFGS-B",
-        maxiter=500,
-        ftol=1e-2,
-        xatol=1e-5,
-        **kwargs,
-    ):
+        x0: ArrayLike | None=None,
+        bounds: Sequence[Any] | None=None,
+        method: str="L-BFGS-B",
+        maxiter: int=500,
+        ftol: Any=1e-2,
+        xatol: Any=1e-5,
+        **kwargs: Mapping[str, Any],
+    ) -> Any:
         """
         Fit the Arinyo model to the current simulation.
 
@@ -620,9 +624,9 @@ class ArinyoFitter:
 
     def fit_iterative(
         self,
-        niter=20,
-        ftol=1e-2,
-    ):
+        niter: int | None=20,
+        ftol: float | None=1e-2,
+    ) -> Any:
         """
         Alternate L-BFGS-B and Nelder-Mead until convergence.
 
@@ -673,10 +677,10 @@ class ArinyoFitter:
 
     def plot_fit(
         self,
-        params=None,
-        normalized=True,
-        figsize=(8, 8),
-    ):
+        params: Any | None=None,
+        normalized: bool | None=True,
+        figsize: Sequence[Any] | None=(8, 8),
+    ) -> tuple[Any, ...]:
         """
         Compare the fitted model to the simulation.
 
@@ -767,9 +771,9 @@ class ArinyoFitter:
 
     def plot_residuals(
         self,
-        params=None,
-        figsize=(8, 8),
-    ):
+        params: Any | None=None,
+        figsize: Sequence[Any] | None=(8, 8),
+    ) -> tuple[Any, ...]:
         """
         Plot fractional residuals.
 

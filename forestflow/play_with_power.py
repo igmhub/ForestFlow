@@ -2,11 +2,15 @@
 Explore power spectra, derivatives, and Fisher information.
 """
 
+from collections.abc import Mapping
+from typing import Any
+from numpy.typing import ArrayLike
+
 import numpy as np
 from forestflow.model_p3d_arinyo import compute_Gaussian_cov
 
 
-def get_sim_power(sim, kmax_1d_Mpc=4, kmax_3d_Mpc=5):
+def get_sim_power(sim: Any, kmax_1d_Mpc: int | None=4, kmax_3d_Mpc: int | None=5) -> Any:
 
     """
     Return simulation power.
@@ -46,16 +50,16 @@ def get_sim_power(sim, kmax_1d_Mpc=4, kmax_3d_Mpc=5):
 
 # compute power for Arinyo model
 def compute_arinyo_power(
-    pars_model,
-    model_Arinyo,
-    n3d=100,
-    n1d=100,
-    kmin_1d_Mpc=0.1,
-    kmax_1d_Mpc=5.0,
-    kmin_3d_Mpc=0.1,
-    kmax_3d_Mpc=5.0,
-    noise={"n_noise": 0, "keep_all_noise": False, "Lbox_Mpc": 100},
-):
+    pars_model: Any,
+    model_Arinyo: Any,
+    n3d: int | None=100,
+    n1d: int | None=100,
+    kmin_1d_Mpc: float | None=0.1,
+    kmax_1d_Mpc: float | None=5.0,
+    kmin_3d_Mpc: float | None=0.1,
+    kmax_3d_Mpc: float | None=5.0,
+    noise: Mapping[str, Any] | None={"n_noise": 0, "keep_all_noise": False, "Lbox_Mpc": 100},
+) -> Any:
 
     # get kaiser params
     """
@@ -146,7 +150,7 @@ def compute_arinyo_power(
     return data
 
 
-def compute_arinyo_derivatives(trans_data, data_model, model_Arinyo, hh=1e-6):
+def compute_arinyo_derivatives(trans_data: ArrayLike, data_model: ArrayLike, model_Arinyo: Any, hh: float | None=1e-6) -> Any:
 
     """
     Compute Arinyo derivatives.
@@ -236,7 +240,7 @@ def compute_arinyo_derivatives(trans_data, data_model, model_Arinyo, hh=1e-6):
     return data
 
 
-def compute_fisher(data_model, weight_3d=1.0, weight_1d=1.0):
+def compute_fisher(data_model: ArrayLike, weight_3d: float | None=1.0, weight_1d: float | None=1.0) -> Any:
 
     """
     Compute Fisher matrix.
@@ -284,13 +288,13 @@ def compute_fisher(data_model, weight_3d=1.0, weight_1d=1.0):
 
 
 def get_fisher(
-    transf_data,
-    pars_model,
-    model_Arinyo,
-    weight_3d=1.0,
-    weight_1d=1.0,
-    noise={"n_noise": 10000, "keep_all_noise": False, "Lbox_Mpc": 1000},
-):
+    transf_data: ArrayLike,
+    pars_model: Any,
+    model_Arinyo: Any,
+    weight_3d: float | None=1.0,
+    weight_1d: float | None=1.0,
+    noise: Mapping[str, Any] | None={"n_noise": 10000, "keep_all_noise": False, "Lbox_Mpc": 1000},
+) -> Any:
 
     """
     Return Fisher matrix.

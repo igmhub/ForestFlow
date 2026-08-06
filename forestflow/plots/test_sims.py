@@ -2,6 +2,9 @@
 Plot comparisons for test simulations.
 """
 
+from typing import Any
+from numpy.typing import ArrayLike
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
@@ -11,17 +14,17 @@ from forestflow.utils import sigma68
 
 
 def plot_p3d_snap(
-    folder_out,
-    k_Mpc,
-    mu,
-    p3d_sim,
-    p3d_emu,
-    p3d_std_emu,
-    mu_bins,
-    ftsize=20,
-    kmax_3d=4,
-    kmax_3d_fit=3,
-):
+    folder_out: Any,
+    k_Mpc: Any,
+    mu: Any,
+    p3d_sim: ArrayLike,
+    p3d_emu: ArrayLike,
+    p3d_std_emu: ArrayLike,
+    mu_bins: Any,
+    ftsize: int | None=20,
+    kmax_3d: int | None=4,
+    kmax_3d_fit: int | None=3,
+) -> None:
     """
     Plot three-dimensional power spectrum snapshot.
 
@@ -167,16 +170,16 @@ def plot_p3d_snap(
 
 
 def plot_p1d_snap(
-    folder_out,
-    k_p1d_Mpc,
-    p1d_sim,
-    p1d_emu,
-    p1d_std_emu,
-    ftsize=20,
+    folder_out: Any,
+    k_p1d_Mpc: ArrayLike,
+    p1d_sim: ArrayLike,
+    p1d_emu: ArrayLike,
+    p1d_std_emu: ArrayLike,
+    ftsize: int | None=20,
     # fact_kmin=4,
-    kmax_1d=4,
-    kmax_1d_fit=3,
-):
+    kmax_1d: int | None=4,
+    kmax_1d_fit: int | None=3,
+) -> None:
     """
     Plot one-dimensional power spectrum snapshot.
 
@@ -275,15 +278,15 @@ def plot_p1d_snap(
 
 
 def plot_p3d_test_sims(
-    sim_labels,
-    k_Mpc,
-    mu,
-    residual,
-    mu_bins,
-    savename=None,
-    fontsize=20,
-    kmax_3d_fit=3,
-):
+    sim_labels: Any,
+    k_Mpc: ArrayLike,
+    mu: ArrayLike,
+    residual: ArrayLike,
+    mu_bins: ArrayLike,
+    savename: Any | None=None,
+    fontsize: int=20,
+    kmax_3d_fit: Any=3,
+) -> Any | None:
     """
     Plot the fractional errors in the P3D statistic for different redshifts and mu bins.
 
@@ -422,13 +425,13 @@ def plot_p3d_test_sims(
 
 
 def plot_p1d_test_sims(
-    sim_labels,
-    k_p1d_Mpc,
-    fractional_errors,
-    savename=None,
-    fontsize=20,
-    kmax_1d_fit=3,
-):
+    sim_labels: Any,
+    k_p1d_Mpc: ArrayLike,
+    fractional_errors: ArrayLike,
+    savename: Any | None=None,
+    fontsize: int=20,
+    kmax_1d_fit: Any=3,
+) -> Any | None:
     """
     Plot the fractional errors in the P1D statistic for different redshifts.
 

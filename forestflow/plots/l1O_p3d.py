@@ -2,22 +2,25 @@
 L1o p3d utilities.
 """
 
+from typing import Any
+from numpy.typing import ArrayLike
+
 import numpy as np
 import matplotlib.pyplot as plt
 from forestflow.utils import sigma68
 
 
 def plot_p3d_L1O(
-    z_use,
-    k_Mpc,
-    mu,
-    residual,
-    mu_bins,
-    savename=None,
-    fontsize=20,
-    kmax_3d_fit=3,
-    legend=False,
-):
+    z_use: Any,
+    k_Mpc: ArrayLike,
+    mu: ArrayLike,
+    residual: ArrayLike,
+    mu_bins: ArrayLike,
+    savename: Any | None=None,
+    fontsize: int=20,
+    kmax_3d_fit: Any=3,
+    legend: bool=False,
+) -> Any | None:
     """
     Plot the fractional errors in the P3D statistic for different redshifts and mu bins.
 

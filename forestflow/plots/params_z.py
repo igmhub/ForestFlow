@@ -2,6 +2,8 @@
 Plot redshift evolution of model parameters.
 """
 
+from typing import Any
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
@@ -9,13 +11,13 @@ import matplotlib.patches as mpatches
 
 
 def plot_arinyo_z(
-    z_central,
-    Arinyo_central,
-    Arinyo_seed,
-    Arinyo_both,
-    folder_fig=None,
-    ftsize=20,
-):
+    z_central: Any,
+    Arinyo_central: Any,
+    Arinyo_seed: Any,
+    Arinyo_both: Any,
+    folder_fig: Any | None=None,
+    ftsize: int | None=20,
+) -> None:
     """
     Plot Arinyo z.
 
@@ -172,13 +174,13 @@ def plot_arinyo_z(
 
 
 def plot_forestflow_z(
-    z_central,
-    Arinyo_central,
-    Arinyo_emu,
-    Arinyo_emu_std,
-    folder_fig=None,
-    ftsize=20,
-):
+    z_central: Any,
+    Arinyo_central: Any,
+    Arinyo_emu: Any,
+    Arinyo_emu_std: Any,
+    folder_fig: Any | None=None,
+    ftsize: int | None=20,
+) -> None:
     """
     Plot forestflow z.
 

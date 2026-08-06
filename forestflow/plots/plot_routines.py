@@ -2,33 +2,35 @@
 Provide shared plotting and confidence-interval utilities.
 """
 
+from typing import Any
+
 import numpy as np
 from scipy.stats import gaussian_kde
 
 
 def plot_template(
-    ax,
-    ax2=None,
-    ay2=None,
-    xlabel=None,
-    ylabel=None,
-    title=None,
-    legend=None,
-    legend_loc="best",
-    ftsize=17,
-    extra_xaxis=False,
-    extra_yaxis=False,
-    xcolor="k",
-    ycolor="k",
-    xcolor2="k",
-    ycolor2="k",
-    ylabelpad=None,
-    handlelength=2,
-    legend_title=None,
-    legend_columns=1,
-    ftsize_legend=15,
-    title_fontsize="x-large",
-):
+    ax: Any,
+    ax2: Any | None=None,
+    ay2: Any | None=None,
+    xlabel: Any | None=None,
+    ylabel: Any | None=None,
+    title: Any | None=None,
+    legend: Any | None=None,
+    legend_loc: str | None="best",
+    ftsize: int | None=17,
+    extra_xaxis: bool | None=False,
+    extra_yaxis: bool | None=False,
+    xcolor: str | None="k",
+    ycolor: str | None="k",
+    xcolor2: str | None="k",
+    ycolor2: str | None="k",
+    ylabelpad: Any | None=None,
+    handlelength: int | None=2,
+    legend_title: Any | None=None,
+    legend_columns: int | None=1,
+    ftsize_legend: int | None=15,
+    title_fontsize: str | None="x-large",
+) -> None:
     """
     Template for all plots
 
@@ -127,7 +129,7 @@ def plot_template(
             tick.label2.set_color(ycolor2)"""
 
 
-def plot_vec(cen, vv, length, ax, label, col, direction=None):
+def plot_vec(cen: Any, vv: Any, length: Any, ax: Any, label: Any, col: Any, direction: Any | None=None) -> None:
     """
     Plot vectors
 
@@ -173,7 +175,7 @@ def plot_vec(cen, vv, length, ax, label, col, direction=None):
     return
 
 
-def density_estimation(m1, m2, ntt=100j):
+def density_estimation(m1: Any, m2: Any, ntt: Any | None=100j) -> tuple[Any, ...]:
     """
     Estimate estimation.
 
@@ -205,7 +207,7 @@ def density_estimation(m1, m2, ntt=100j):
     return X, Y, Z
 
 
-def find_confidence_interval(x, pdf, confidence_level):
+def find_confidence_interval(x: Any, pdf: Any, confidence_level: Any) -> Any:
     """
     Find confidence interval.
 

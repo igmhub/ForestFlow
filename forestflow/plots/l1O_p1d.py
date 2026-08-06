@@ -2,19 +2,22 @@
 L1o p1d utilities.
 """
 
+from typing import Any
+from numpy.typing import ArrayLike
+
 import numpy as np
 import matplotlib.pyplot as plt
 from forestflow.utils import sigma68
 
 
 def plot_p1d_L1O(
-    z_use,
-    k_p1d_Mpc,
-    fractional_errors,
-    savename=None,
-    fontsize=20,
-    kmax_1d_fit=3,
-):
+    z_use: Any,
+    k_p1d_Mpc: ArrayLike,
+    fractional_errors: ArrayLike,
+    savename: Any | None=None,
+    fontsize: int=20,
+    kmax_1d_fit: Any=3,
+) -> Any | None:
     """
     Plot the fractional errors in the P1D statistic for different redshifts.
 

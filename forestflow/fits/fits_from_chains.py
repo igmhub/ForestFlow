@@ -2,10 +2,13 @@
 Convert fitted chains into emulator inputs.
 """
 
+from typing import Any
+from numpy.typing import ArrayLike
+
 import numpy as np
 
 
-def get_params_4_emu(data, n_std=1):
+def get_params_4_emu(data: ArrayLike, n_std: int | None=1) -> tuple[Any, ...]:
     """
     Return parameters 4 emulator.
 
@@ -32,7 +35,7 @@ def get_params_4_emu(data, n_std=1):
     return means, stds, corrs
 
 
-def get_input_emulator(folder_input, ntot, file_out):
+def get_input_emulator(folder_input: Any, ntot: Any, file_out: Any) -> None:
     # best nmax points to compute best-fitting params
     """
     Return input emulator.
