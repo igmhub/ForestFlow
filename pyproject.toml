@@ -64,6 +64,6 @@ namespaces = false
 
 [project.urls]
 Homepage="https://github.com/igmhub/ForestFlow"
-Documentation="https://forestflow.readthedocs.io/en/latest/"
+Documentation="https://igmhubforestflow.readthedocs.io/en/latest/"
 Repository="https://github.com/igmhub/ForestFlow.git"
 Issues="https://github.com/igmhub/ForestFlow/issues"

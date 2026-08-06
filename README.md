@@ -1,5 +1,7 @@
 # ForestFlow
 
+[![Documentation Status](https://readthedocs.org/projects/igmhubforestflow/badge/?version=latest)](https://igmhubforestflow.readthedocs.io/en/latest/)
+
 Lyman-alpha Cosmology Emulator. This code is a normalising flow emulator for the 3D flux power spectrum of the Lyman-alpha forest.
 
 ## Documentation
@@ -7,6 +9,7 @@ Lyman-alpha Cosmology Emulator. This code is a normalising flow emulator for the
 The documentation includes the user guide and complete API reference generated
 from NumPy-style docstrings.
 
+- [Online documentation](https://igmhubforestflow.readthedocs.io/en/latest/)
 - [Documentation source](https://github.com/igmhub/ForestFlow/tree/main/docs)
 
 To build the documentation locally:
