@@ -1,3 +1,7 @@
+"""
+Combine weighted importance samples.
+"""
+
 import numpy as np
 from copy import deepcopy
 
@@ -96,9 +100,32 @@ def fit_gaussian(samples, make_plot=True):
 
 
 def gaussian_chi2(x, y, x_val, y_val, x_err, y_err, r):
-    """Given central values and errors for Delta_L^2 and n_eff, and its
+    """
+    Given central values and errors for Delta_L^2 and n_eff, and its
     cross-correlation coefficient r, compute Gaussian delta chi^2 at
     points (neff,DL2).
+
+    Parameters
+    ----------
+    x : object
+        Input values.
+    y : object
+        Target values.
+    x_val : object
+        X val used by the calculation.
+    y_val : object
+        Y val used by the calculation.
+    x_err : numpy.ndarray or dict
+        X err used by the calculation.
+    y_err : numpy.ndarray or dict
+        Y err used by the calculation.
+    r : object
+        R used by the calculation.
+
+    Returns
+    -------
+    object
+        Computed result or generated analysis product.
     """
     chi2 = (
         (y - y_val) ** 2 / y_err**2
@@ -111,6 +138,21 @@ def gaussian_chi2(x, y, x_val, y_val, x_err, y_err, r):
 def combine_inplace(samples, fit):
 
     # assume `samples` is an MCSamples object
+    """
+    Combine inplace.
+
+    Parameters
+    ----------
+    samples : numpy.ndarray or dict
+        Posterior samples to plot or process.
+    fit : object
+        Fit used by the calculation.
+
+    Returns
+    -------
+    object
+        Computed result or generated analysis product.
+    """
     p1, p2 = "b_delta_sigma8", "b_eta_f_sigma8"
 
     # --- Gaussian approximation from samples ---
@@ -135,6 +177,23 @@ def combine_inplace(samples, fit):
 
 def combine(samples, fit, label):
 
+    """
+    Combine the requested values.
+
+    Parameters
+    ----------
+    samples : numpy.ndarray or dict
+        Posterior samples to plot or process.
+    fit : object
+        Fit used by the calculation.
+    label : object
+        Label used by the calculation.
+
+    Returns
+    -------
+    object
+        Computed result or generated analysis product.
+    """
     p1, p2 = "b_delta_sigma8", "b_eta_f_sigma8"
 
     # extract parameters

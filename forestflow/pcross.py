@@ -1,3 +1,7 @@
+"""
+Compute cross-power spectra from three-dimensional flux-power models.
+"""
+
 import numpy as np
 from scipy.interpolate import CubicSpline
 from forestflow.p1d import P1D_Mpc 
@@ -41,6 +45,15 @@ def Px_Mpc(z, kpars, rperp_Mpc, p3d_fun_Mpc, p3d_params={}, max_k_for_p3d=200, *
     - This function is a thin wrapper around `Px_Mpc_detailed`, which provides
       additional control over the k_perp grid, interpolation, and P1D transition.
     - The Hankel transform is performed internally using `hankl.FFTLog`.
+
+    Other Parameters
+    ----------------
+    p3d_fun_Mpc : numpy.ndarray
+        P3d fun mpc used by the calculation.
+    max_k_for_p3d : numpy.ndarray
+        Max k for p3d used by the calculation.
+    kwargs : dict
+        Additional keyword arguments forwarded to the underlying calculation.
     """
 
     return Px_Mpc_detailed(
@@ -103,6 +116,13 @@ def Px_Mpc_detailed(
         Cross-power spectrum P_cross in Mpc units evaluated at each input r_perp and k_parallel.
         - Shape is (Nz, Nr, Nk) for multi-z input, [1, Nr, Nk] for the case where a single z is 
         input within a list or array (e.g., [my_z]), or (Nr, Nk) for single z input as float.
+
+    Other Parameters
+    ----------------
+    max_k_for_p3d : numpy.ndarray
+        Max k for p3d used by the calculation.
+    kwargs : dict
+        Additional keyword arguments forwarded to the underlying calculation.
     """
     import hankl
 

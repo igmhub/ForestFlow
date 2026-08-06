@@ -1,3 +1,7 @@
+"""
+Construct likelihood inputs for power-spectrum fits.
+"""
+
 import numpy as np
 
 # import matplotlib.pyplot as plt
@@ -10,6 +14,9 @@ from forestflow.fit_p3d import FitPk
 
 
 class Likelihood(object):
+    """
+    Wrap the ForestFlow fitting likelihood.
+    """
     def __init__(
         self,
         data,
@@ -32,6 +39,18 @@ class Likelihood(object):
             kmax_1d (float): Maximum 1D wavenumber for the Arinyo model.
             noise_1d (float): Noise level for the Arinyo model in 1D.
 
+        Other Parameters
+        ----------------
+        data : numpy.ndarray
+            Power-spectrum measurements and metadata.
+        rel_err_p3d : numpy.ndarray
+            Relative errors for the three-dimensional power spectrum.
+        rel_err_p1d : numpy.ndarray
+            Relative errors for the one-dimensional power spectrum.
+        fit_type : object
+            Power spectra included in the fit.
+        verbose : bool
+            Whether to print progress information.
         """
 
         data_dict = {}

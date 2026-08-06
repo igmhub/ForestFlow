@@ -1,3 +1,7 @@
+"""
+Plots v0 utilities.
+"""
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -23,6 +27,15 @@ from forestflow.utils import params_numpy2dict, sigma68
 def plot_test_parz(Archive3D, p3d_emu, sim_label):
     """
     Precision of emulator for target sim
+
+    Parameters
+    ----------
+    Archive3D : object
+        Archive3d used by the calculation.
+    p3d_emu : numpy.ndarray or dict
+        P3d emu used by the calculation.
+    sim_label : object
+        Sim label used by the calculation.
     """
 
     # load data
@@ -71,6 +84,21 @@ def plot_test_p3d(
 ):
     """
     Precision of emulator for target sim
+
+    Parameters
+    ----------
+    ind_book : object
+        Ind book used by the calculation.
+    Archive3D : object
+        Archive3d used by the calculation.
+    p3d_emu : numpy.ndarray or dict
+        P3d emu used by the calculation.
+    sim_label : object
+        Sim label used by the calculation.
+    plot_emu : bool, optional
+        Plot emu used by the calculation.
+    training_type : str, optional
+        Training type used by the calculation.
     """
 
     # load data
@@ -167,6 +195,23 @@ def plot_compare_p3d_smooth(
 
     Returns:
         None
+
+    Other Parameters
+    ----------------
+    like : object
+        Like used by the calculation.
+    parameters1 : object
+        Parameters1 used by the calculation.
+    parameters2 : object
+        Parameters2 used by the calculation.
+    sim_label : object
+        Sim label used by the calculation.
+    plot_data : bool
+        Plot data used by the calculation.
+    plot_p1d : bool
+        Plot p1d used by the calculation.
+    plot_legend_1 : bool
+        Plot legend 1 used by the calculation.
     """
 
     if plot_p1d:
@@ -439,6 +484,12 @@ def plot_err_uncertainty(
     Plots:
     - Two horizontally aligned panels (P1D and P3D) with percent error and uncertainty.
 
+    Other Parameters
+    ----------------
+    emulator : numpy.ndarray
+        Trained emulator.
+    archive : object
+        Simulation archive.
     """
 
     # Extract data from Archive3D
@@ -539,6 +590,24 @@ def plot_p1d_LzO(
     fontsize=20,
     fact_kmin=4,
 ):
+    """
+    Plot one-dimensional power spectrum LzO.
+
+    Parameters
+    ----------
+    archive : object
+        Archive used by the calculation.
+    z_use : object
+        Z use used by the calculation.
+    fractional_errors : numpy.ndarray or dict
+        Fractional errors used by the calculation.
+    savename : object, optional
+        Savename used by the calculation.
+    fontsize : int, optional
+        Fontsize used by the calculation.
+    fact_kmin : int, optional
+        Fact kmin used by the calculation.
+    """
     kmin = 2 * np.pi / 67.5 * fact_kmin
 
     # Create subplots with shared y-axis
@@ -622,6 +691,15 @@ def plot_paramspace(
 
     Returns:
     - None
+
+    Other Parameters
+    ----------------
+    colourbar_lab : object
+        Colourbar lab used by the calculation.
+    vmin : object
+        Vmin used by the calculation.
+    vmax : object
+        Vmax used by the calculation.
     """
     # Create a 2x2 grid of subplots
     fig, axs = plt.subplots(2, 2, figsize=(8, 6), sharey="row")

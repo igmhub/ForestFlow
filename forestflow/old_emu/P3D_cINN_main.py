@@ -1,3 +1,7 @@
+"""
+Legacy P3d cinn main utilities.
+"""
+
 # torch modules
 import torch
 from torch.utils.data import DataLoader, dataset, TensorDataset
@@ -30,8 +34,14 @@ rcParams["font.family"] = "STIXGeneral"
 
 
 def init_xavier(m):
-    """Initialization of the NN.
+    """
+    Initialization of the NN.
     This is quite important for a faster training
+
+    Parameters
+    ----------
+    m : object
+        M used by the calculation.
     """
     if type(m) == torch.nn.Linear:
         torch.nn.init.xavier_uniform_(m.weight)
@@ -39,7 +49,8 @@ def init_xavier(m):
 
 
 class P3DEmulator:
-    """A class for training an emulator.
+    """
+    A class for training an emulator.
 
     Args:
         training_data (Type): Description of training data.
@@ -95,6 +106,60 @@ class P3DEmulator:
         Nrealizations=100,
     ):
         # Initialize class attributes with provided arguments
+        """
+        Initialize the instance.
+
+        Parameters
+        ----------
+        training_data : numpy.ndarray or dict
+            Training data used by the calculation.
+        paramList : object
+            Paramlist used by the calculation.
+        kmax_Mpc : int, optional
+            Kmax mpc used by the calculation.
+        nLayers_inn : int, optional
+            Nlayers inn used by the calculation.
+        nepochs : int, optional
+            Nepochs used by the calculation.
+        batch_size : int, optional
+            Batch size used by the calculation.
+        lr : float, optional
+            Lr used by the calculation.
+        weight_decay : float, optional
+            Weight decay used by the calculation.
+        gamma : float, optional
+            Gamma used by the calculation.
+        amsgrad : bool, optional
+            Amsgrad used by the calculation.
+        step_size : int, optional
+            Step size used by the calculation.
+        adamw : bool, optional
+            Adamw used by the calculation.
+        Nsim : int, optional
+            Nsim used by the calculation.
+        train : bool, optional
+            Train used by the calculation.
+        drop_sim : object, optional
+            Drop sim used by the calculation.
+        drop_z : object, optional
+            Drop z used by the calculation.
+        pick_z : object, optional
+            Pick z used by the calculation.
+        save_path : object, optional
+            Save path used by the calculation.
+        model_path : object, optional
+            Model path used by the calculation.
+        drop_rescalings : bool, optional
+            Drop rescalings used by the calculation.
+        Archive : object, optional
+            Archive used by the calculation.
+        use_chains : bool, optional
+            Use chains used by the calculation.
+        chain_samp : int, optional
+            Chain samp used by the calculation.
+        Nrealizations : int, optional
+            Nrealizations used by the calculation.
+        """
         self.training_data = training_data
         self.emuparams = paramList
         self.kmax_Mpc = kmax_Mpc
@@ -222,6 +287,11 @@ class P3DEmulator:
 
         Returns:
             np.array: Test conditions sorted based on emulator parameters.
+
+        Other Parameters
+        ----------------
+        emu_params : dict
+            Emulator input parameters.
         """
         # Extract emulator parameters from the test data
         condition = [
@@ -332,6 +402,21 @@ class P3DEmulator:
         Returns:
             np.array: Predicted power spectrum.
             np.array or None: Covariance matrix if return_cov is True, otherwise None.
+
+        Other Parameters
+        ----------------
+        cosmo : object
+            Cosmo used by the calculation.
+        k_Mpc : numpy.ndarray
+            Wavenumbers in inverse megaparsecs.
+        mu : numpy.ndarray
+            Mu used by the calculation.
+        kpar_Mpc : numpy.ndarray
+            Kpar mpc used by the calculation.
+        test_arinyo : object
+            Test arinyo used by the calculation.
+        kp_Mpc : object
+            Kp mpc used by the calculation.
         """
 
         if (cosmo is None) and (sim_label is None):
@@ -536,6 +621,21 @@ class P3DEmulator:
         """
 
         def subnet_fc(dims_in, dims_out):
+            """
+            Build the fully connected invertible-network subnet.
+
+            Parameters
+            ----------
+            dims_in : object
+                Dims in used by the calculation.
+            dims_out : object
+                Dims out used by the calculation.
+
+            Returns
+            -------
+            object
+                Computed result or generated analysis product.
+            """
             return nn.Sequential(
                 nn.Linear(dims_in, 64),
                 nn.ReLU(),
@@ -676,6 +776,11 @@ class P3DEmulator:
 
         Returns:
             Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]: Arinyo coefficient predictions. If return_all_realizations is True, returns a tuple with all realizations and the mean.
+
+        Other Parameters
+        ----------------
+        emu_params : dict
+            Emulator input parameters.
         """
         self.emulator = self.emulator.eval()
 
@@ -762,6 +867,19 @@ class P3DEmulator:
             return Arinyo_mean
 
     def get_p1d_sim(self, dict_sim):
+        """
+        Return one-dimensional power spectrum simulation.
+
+        Parameters
+        ----------
+        dict_sim : dict
+            Dict sim used by the calculation.
+
+        Returns
+        -------
+        tuple
+            Computed result or generated analysis product.
+        """
         like = Likelihood(
             dict_sim[0], self.archive.rel_err_p3d, self.archive.rel_err_p1d
         )

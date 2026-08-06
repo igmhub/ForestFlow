@@ -1,3 +1,7 @@
+"""
+Compute one-dimensional power spectra from three-dimensional models.
+"""
+
 import numpy as np
 from scipy.integrate import simpson
 import matplotlib.pyplot as plt
@@ -15,7 +19,7 @@ def P1D_Mpc(
     **kwargs,
 ):
     """
-    Returns P1D for specified values of k_par, with the option to specify values of k_perp to be integrated over.
+    Return P1D for specified parallel wavenumbers.
 
     Parameters:
         z (float): Redshift. It modifies the linear power spectrum but not the value of the Arinyo parameters.
@@ -30,6 +34,11 @@ def P1D_Mpc(
 
     Returns:
         array-like: Computed values of P1D.
+
+    Other Parameters
+    ----------------
+    kwargs : dict
+        Additional keyword arguments forwarded to the underlying calculation.
     """
 
     ln_k_perp = np.linspace(np.log(k_perp_min), np.log(k_perp_max), n_k_perp)
@@ -63,6 +72,11 @@ def _P1D_lnkperp_fast(
 
     Returns:
         array-like: Computed values of P1D.
+
+    Other Parameters
+    ----------------
+    kwargs : dict
+        Additional keyword arguments forwarded to the underlying calculation.
     """
 
     # get interval for integration
@@ -170,6 +184,23 @@ def p1d_from_p3d(kpar_3d, fun_p3d, z, params, vol=0, niter=1000, seed=0):
     -------
     p1d : (Nkpar,) array
         One-dimensional power spectrum.
+
+    Other Parameters
+    ----------------
+    kpar_3d : numpy.ndarray
+        Kpar 3d used by the calculation.
+    fun_p3d : numpy.ndarray
+        Fun p3d used by the calculation.
+    z : object
+        Z used by the calculation.
+    params : dict
+        Model parameters.
+    vol : object
+        Vol used by the calculation.
+    niter : int
+        Niter used by the calculation.
+    seed : int
+        Random-number generator seed.
     """
 
     # P3D
@@ -207,6 +238,25 @@ def p1d_from_p3d(kpar_3d, fun_p3d, z, params, vol=0, niter=1000, seed=0):
 
 
 def get_sigma(kpar2d, kperp2d, p3d, vol):
+    """
+    Return uncertainty.
+
+    Parameters
+    ----------
+    kpar2d : numpy.ndarray
+        Kpar2d used by the calculation.
+    kperp2d : numpy.ndarray
+        Kperp2d used by the calculation.
+    p3d : numpy.ndarray
+        P3d used by the calculation.
+    vol : object
+        Vol used by the calculation.
+
+    Returns
+    -------
+    object
+        Result produced when the function is used to return uncertainty.
+    """
     dkpar2d = np.gradient(kpar2d, axis=0)
     dkperp2d = np.gradient(kperp2d, axis=1)
 

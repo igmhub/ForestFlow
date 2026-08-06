@@ -1,3 +1,7 @@
+"""
+Prepare and normalize ForestFlow training data.
+"""
+
 import numpy as np
 
 from forestflow.model_p3d_arinyo import ArinyoModel
@@ -8,6 +12,27 @@ from forestflow.play_with_power import get_fisher
 
 def get_training_data(list_sims, zmin=0, zmax=10, drop_sim=None, type_fit="Arinyo_min"):
 
+    """
+    Return training data.
+
+    Parameters
+    ----------
+    list_sims : object
+        List sims used by the calculation.
+    zmin : int, optional
+        Zmin used by the calculation.
+    zmax : int, optional
+        Zmax used by the calculation.
+    drop_sim : object, optional
+        Drop sim used by the calculation.
+    type_fit : str, optional
+        Type fit used by the calculation.
+
+    Returns
+    -------
+    object
+        Result produced when the function is used to return training data.
+    """
     input_params = ["Delta2_p", "n_p", "mF", "sigT_Mpc", "gamma", "kF_Mpc"]
     other_params = ["z", "As", "ns"]
     output_params = ["bias", "bias_eta", "q1", "kvav", "av", "bv", "kp", "q2"]
@@ -61,7 +86,9 @@ def get_training_data(list_sims, zmin=0, zmax=10, drop_sim=None, type_fit="Ariny
 
 
 class Transf_data(object):
-    """Class transf data"""
+    """
+    Class transf data
+    """
 
     def __init__(
         self,
@@ -73,12 +100,25 @@ class Transf_data(object):
         type_fit="Arinyo_min",
     ):
         """
-
         1. Set standarize for the input and output parameters (self.stand_input and self.stand_output)
         2. Get Fisher matrix for the transf + stand output parameters
         3. Set whitening for the output parameters (self.white_output)
         4. Set global norm for the output parameters (self.alpha_output)
 
+        Parameters
+        ----------
+        dict_all_params : object, optional
+            Dict all params used by the calculation.
+        sim_model : object, optional
+            Sim model used by the calculation.
+        preload_file : object, optional
+            Preload file used by the calculation.
+        save_file : object, optional
+            Save file used by the calculation.
+        compute_fisher : bool, optional
+            Compute fisher used by the calculation.
+        type_fit : str, optional
+            Type fit used by the calculation.
         """
 
         if preload_file is None:
@@ -157,6 +197,16 @@ class Transf_data(object):
 
     def set_standarize(self, dict_params, type_stand="input"):
 
+        """
+        Set standarize.
+
+        Parameters
+        ----------
+        dict_params : dict
+            Dict params used by the calculation.
+        type_stand : str, optional
+            Type stand used by the calculation.
+        """
         t_params = self.transform(dict_params, direct=True)
 
         standarize = {}
@@ -175,6 +225,16 @@ class Transf_data(object):
 
     def set_whitening(self, fisher, type_stand="output"):
 
+        """
+        Set whitening.
+
+        Parameters
+        ----------
+        fisher : object
+            Fisher used by the calculation.
+        type_stand : str, optional
+            Type stand used by the calculation.
+        """
         npars = len(fisher)
         # the fisher matrix is computed in the transf_stand space
         arr_fisher = np.zeros((npars, npars))
@@ -193,6 +253,16 @@ class Transf_data(object):
 
     def set_global_norm(self, dict_params, type_stand="output"):
 
+        """
+        Set global norm.
+
+        Parameters
+        ----------
+        dict_params : dict
+            Dict params used by the calculation.
+        type_stand : str, optional
+            Type stand used by the calculation.
+        """
         npars = len(dict_params)
         key = list(dict_params.keys())[0]
         nelem = dict_params[key].shape[0]
@@ -208,7 +278,21 @@ class Transf_data(object):
             self.alpha_input = alpha
 
     def transform(self, dict_params, direct=True):
-        """The input params are expected to be the original ones"""
+        """
+        The input params are expected to be the original ones
+
+        Parameters
+        ----------
+        dict_params : dict
+            Dict params used by the calculation.
+        direct : bool, optional
+            Direct used by the calculation.
+
+        Returns
+        -------
+        object
+            Result produced when the function is used to the input params are expected to be the original ones.
+        """
 
         t_params = {}
         for par in dict_params:
@@ -243,6 +327,23 @@ class Transf_data(object):
 
     def standarize(self, dict_params, direct=True, type_stand="input"):
 
+        """
+        Standardize the requested values.
+
+        Parameters
+        ----------
+        dict_params : dict
+            Dict params used by the calculation.
+        direct : bool, optional
+            Direct used by the calculation.
+        type_stand : str, optional
+            Type stand used by the calculation.
+
+        Returns
+        -------
+        object
+            Result produced when the function is used to standardize the requested values.
+        """
         if type_stand == "input":
             stand = self.stand_input
         elif type_stand == "output":
@@ -263,6 +364,23 @@ class Transf_data(object):
 
     def whitening(self, dict_params, direct=True, type_stand="output"):
 
+        """
+        Whiten the requested values.
+
+        Parameters
+        ----------
+        dict_params : dict
+            Dict params used by the calculation.
+        direct : bool, optional
+            Direct used by the calculation.
+        type_stand : str, optional
+            Type stand used by the calculation.
+
+        Returns
+        -------
+        object
+            Result produced when the function is used to whiten the requested values.
+        """
         if type_stand == "output":
             weight = self.white_output
         else:
@@ -290,6 +408,23 @@ class Transf_data(object):
 
     def global_norm(self, dict_params, direct=True, type_stand="output"):
 
+        """
+        Normalize norm.
+
+        Parameters
+        ----------
+        dict_params : dict
+            Dict params used by the calculation.
+        direct : bool, optional
+            Direct used by the calculation.
+        type_stand : str, optional
+            Type stand used by the calculation.
+
+        Returns
+        -------
+        object
+            Result produced when the function is used to normalize norm.
+        """
         if type_stand == "output":
             alpha = self.alpha_output
         else:
@@ -306,6 +441,23 @@ class Transf_data(object):
 
     def transf_stand(self, dict_params, direct=True, type_stand="input"):
 
+        """
+        Transform stand.
+
+        Parameters
+        ----------
+        dict_params : dict
+            Dict params used by the calculation.
+        direct : bool, optional
+            Direct used by the calculation.
+        type_stand : str, optional
+            Type stand used by the calculation.
+
+        Returns
+        -------
+        object
+            Result produced when the function is used to transform stand.
+        """
         if direct:
             dir_t_params = self.transform(dict_params, direct=True)
             dir_ts_params = self.standarize(
@@ -324,6 +476,23 @@ class Transf_data(object):
 
     def transf_stand_white(self, dict_params, direct=True, type_stand="output"):
 
+        """
+        Transform stand white.
+
+        Parameters
+        ----------
+        dict_params : dict
+            Dict params used by the calculation.
+        direct : bool, optional
+            Direct used by the calculation.
+        type_stand : str, optional
+            Type stand used by the calculation.
+
+        Returns
+        -------
+        object
+            Result produced when the function is used to transform stand white.
+        """
         if direct:
             dir_ts_params = self.transf_stand(
                 dict_params, direct=True, type_stand=type_stand
@@ -346,6 +515,23 @@ class Transf_data(object):
 
     def transf_stand_white_norm(self, dict_params, direct=True, type_stand="output"):
 
+        """
+        Transform stand white norm.
+
+        Parameters
+        ----------
+        dict_params : dict
+            Dict params used by the calculation.
+        direct : bool, optional
+            Direct used by the calculation.
+        type_stand : str, optional
+            Type stand used by the calculation.
+
+        Returns
+        -------
+        object
+            Result produced when the function is used to transform stand white norm.
+        """
         if direct:
             dir_tsw_params = self.transf_stand_white(
                 dict_params, direct=True, type_stand=type_stand

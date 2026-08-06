@@ -1,9 +1,30 @@
+"""
+Explore power spectra, derivatives, and Fisher information.
+"""
+
 import numpy as np
 from forestflow.model_p3d_arinyo import compute_Gaussian_cov
 
 
 def get_sim_power(sim, kmax_1d_Mpc=4, kmax_3d_Mpc=5):
 
+    """
+    Return simulation power.
+
+    Parameters
+    ----------
+    sim : object
+        Sim used by the calculation.
+    kmax_1d_Mpc : int, optional
+        Kmax 1d mpc used by the calculation.
+    kmax_3d_Mpc : int, optional
+        Kmax 3d mpc used by the calculation.
+
+    Returns
+    -------
+    object
+        Result produced when the function is used to return simulation power.
+    """
     data = {}
 
     mask_1d = (sim["k_Mpc"] <= kmax_1d_Mpc) & (sim["k_Mpc"] > 0)
@@ -37,6 +58,35 @@ def compute_arinyo_power(
 ):
 
     # get kaiser params
+    """
+    Compute Arinyo power.
+
+    Parameters
+    ----------
+    pars_model : object
+        Pars model used by the calculation.
+    model_Arinyo : object
+        Model arinyo used by the calculation.
+    n3d : int, optional
+        N3d used by the calculation.
+    n1d : int, optional
+        N1d used by the calculation.
+    kmin_1d_Mpc : float, optional
+        Kmin 1d mpc used by the calculation.
+    kmax_1d_Mpc : float, optional
+        Kmax 1d mpc used by the calculation.
+    kmin_3d_Mpc : float, optional
+        Kmin 3d mpc used by the calculation.
+    kmax_3d_Mpc : float, optional
+        Kmax 3d mpc used by the calculation.
+    noise : dict, optional
+        Noise used by the calculation.
+
+    Returns
+    -------
+    object
+        Result produced when the function is used to compute arinyo power.
+    """
     pars_kai = {}
     for par in pars_model["Arinyo"]:
         if par in ["q1", "q2"]:
@@ -98,6 +148,25 @@ def compute_arinyo_power(
 
 def compute_arinyo_derivatives(trans_data, data_model, model_Arinyo, hh=1e-6):
 
+    """
+    Compute Arinyo derivatives.
+
+    Parameters
+    ----------
+    trans_data : numpy.ndarray
+        Trans data used by the calculation.
+    data_model : numpy.ndarray
+        Data model used by the calculation.
+    model_Arinyo : object
+        Model arinyo used by the calculation.
+    hh : float, optional
+        Hh used by the calculation.
+
+    Returns
+    -------
+    object
+        Result produced when the function is used to compute arinyo derivatives.
+    """
     data = {}
     data["P3D_der"] = {}
     data["P1D_der"] = {}
@@ -169,6 +238,23 @@ def compute_arinyo_derivatives(trans_data, data_model, model_Arinyo, hh=1e-6):
 
 def compute_fisher(data_model, weight_3d=1.0, weight_1d=1.0):
 
+    """
+    Compute Fisher matrix.
+
+    Parameters
+    ----------
+    data_model : numpy.ndarray
+        Data model used by the calculation.
+    weight_3d : float, optional
+        Weight 3d used by the calculation.
+    weight_1d : float, optional
+        Weight 1d used by the calculation.
+
+    Returns
+    -------
+    object
+        Result produced when the function is used to compute fisher matrix.
+    """
     fisher = {}
 
     for par1 in data_model["Arinyo"]:
@@ -206,6 +292,29 @@ def get_fisher(
     noise={"n_noise": 10000, "keep_all_noise": False, "Lbox_Mpc": 1000},
 ):
 
+    """
+    Return Fisher matrix.
+
+    Parameters
+    ----------
+    transf_data : numpy.ndarray
+        Transf data used by the calculation.
+    pars_model : object
+        Pars model used by the calculation.
+    model_Arinyo : object
+        Model arinyo used by the calculation.
+    weight_3d : float, optional
+        Weight 3d used by the calculation.
+    weight_1d : float, optional
+        Weight 1d used by the calculation.
+    noise : dict, optional
+        Noise used by the calculation.
+
+    Returns
+    -------
+    object
+        Result produced when the function is used to return fisher matrix.
+    """
     power = compute_arinyo_power(pars_model, model_Arinyo, noise=noise)
     pars_model["kpar_Mpc"] = power["model_kpar_Mpc"]
     pars_model["kper_Mpc"] = power["model_kper_Mpc"]

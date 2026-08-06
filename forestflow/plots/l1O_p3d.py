@@ -1,3 +1,7 @@
+"""
+L1o p3d utilities.
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 from forestflow.utils import sigma68
@@ -28,6 +32,24 @@ def plot_p3d_L1O(
     Plots:
     - Subplots showing fractional errors in P3D for different redshifts and mu bins.
 
+    Other Parameters
+    ----------------
+    z_use : object
+        Z use used by the calculation.
+    k_Mpc : numpy.ndarray
+        Wavenumbers in inverse megaparsecs.
+    mu : numpy.ndarray
+        Mu used by the calculation.
+    residual : numpy.ndarray
+        Residual used by the calculation.
+    mu_bins : numpy.ndarray
+        Mu bins used by the calculation.
+    fontsize : int
+        Base font size in points.
+    kmax_3d_fit : object
+        Kmax 3d fit used by the calculation.
+    legend : bool
+        Legend used by the calculation.
     """
 
     # Create subplots with shared y-axis and x-axis

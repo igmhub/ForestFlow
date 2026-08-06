@@ -1,9 +1,21 @@
+"""
+Provide memory, memoization, covariance, and parameter utilities.
+"""
+
 import numpy as np
 import torch
 import functools
 
 
 def print_memory_usage(step_description):
+    """
+    Print the current process memory usage.
+
+    Parameters
+    ----------
+    step_description : str or pathlib.Path
+        Label printed with the memory measurements.
+    """
     import psutil
 
     process = psutil.Process()
@@ -20,7 +32,7 @@ def print_memory_usage(step_description):
 
 def params_numpy2dict(params):
     """
-    Converts a numpy array of parameters to a dictionary.
+    Convert a NumPy array of parameters to a dictionary.
 
     Args:
         params (numpy.ndarray): Array of parameters.
@@ -46,7 +58,7 @@ def params_numpy2dict(params):
 
 def params_numpy2dict_minimizer(params):
     """
-    Converts a numpy array of parameters to a dictionary.
+    Convert a NumPy array of parameters to a dictionary.
 
     Args:
         params (numpy.ndarray): Array of parameters.
@@ -78,7 +90,7 @@ def params_numpy2dict_minimizer(params):
 
 def params_numpy2dict_minimizerz(params):
     """
-    Converts a numpy array of parameters to a dictionary.
+    Convert a NumPy array of parameters to a dictionary.
 
     Args:
         params (numpy.ndarray): Array of parameters.
@@ -98,6 +110,21 @@ def params_numpy2dict_minimizerz(params):
 
 
 def transform_arinyo_params(dict_arinyo_params, fcosmo):
+    """
+    Transform Arinyo parameters.
+
+    Parameters
+    ----------
+    dict_arinyo_params : dict
+        Arinyo parameter mapping.
+    fcosmo : object
+        Cosmological growth rate.
+
+    Returns
+    -------
+    object
+        Result produced when the function is used to transform arinyo parameters.
+    """
     dict_arinyo_params_out = {}
     for key in dict_arinyo_params.keys():
         if key == "beta":
@@ -114,7 +141,25 @@ def transform_arinyo_params(dict_arinyo_params, fcosmo):
 
 
 def purge_chains(ln_prop_chains, nsplit=5, abs_diff=5, minval=-1000):
-    """Purge emcee chains that have not converged"""
+    """
+    Purge emcee chains that have not converged
+
+    Parameters
+    ----------
+    ln_prop_chains : numpy.ndarray
+        Ln prop chains used by the calculation.
+    nsplit : int, optional
+        Nsplit used by the calculation.
+    abs_diff : int, optional
+        Abs diff used by the calculation.
+    minval : object
+        Minval used by the calculation.
+
+    Returns
+    -------
+    object
+        Result produced when the function is used to purge emcee chains that have not converged.
+    """
     # split each walker in nsplit chunks
     split_arr = np.array_split(ln_prop_chains, nsplit, axis=0)
     # compute median of each chunck
@@ -150,6 +195,29 @@ def init_chains(
     min_attraction=0.05,
 ):
 
+    """
+    Initialize chains.
+
+    Parameters
+    ----------
+    parameters : object
+        Parameters used by the calculation.
+    nwalkers : int or float
+        Number of ensemble walkers.
+    bounds : dict
+        Lower and upper bounds for each parameter.
+    seed : int, optional
+        Seed for the random-number generator.
+    attraction : int, optional
+        Attraction used by the calculation.
+    min_attraction : float, optional
+        Min attraction used by the calculation.
+
+    Returns
+    -------
+    object
+        Result produced when the function is used to initialize chains.
+    """
     from scipy.stats import qmc
 
     parameter_names = list(parameters.keys())
@@ -184,10 +252,38 @@ def init_chains(
 
 def memorize(func):
     # Initialize a dictionary to store the previous arguments and result
+    """
+    Memoize the requested values.
+
+    Parameters
+    ----------
+    func : callable
+        Function to wrap.
+
+    Returns
+    -------
+    object
+        Result produced when the function is used to memoize the requested values.
+    """
     cache = {}
 
     def wrapper(*args, **kwargs):
         # Convert args and kwargs to a hashable key
+        """
+        Call the wrapped function, reusing a cached result when available.
+
+        Parameters
+        ----------
+        args : object
+            Args used by the calculation.
+        kwargs : object
+            Kwargs used by the calculation.
+
+        Returns
+        -------
+        object
+            Result produced when the function is used to call the wrapped function, reusing a cached result when available.
+        """
         key = (args, frozenset(kwargs.items()))
 
         # Check if the same input parameters have been seen before
@@ -229,10 +325,40 @@ def memorize(func):
 
 def memoize_numpy_arrays(func, max_history=2):
     # Initialize a dictionary to store the previous results for each key
+    """
+    Memoize numpy arrays.
+
+    Parameters
+    ----------
+    func : callable
+        Function to wrap.
+    max_history : int, optional
+        Maximum number of results retained in the cache.
+
+    Returns
+    -------
+    object
+        Result produced when the function is used to memoize numpy arrays.
+    """
     cache = {}
 
     def wrapper(*args, **kwargs):
         # Convert NumPy arrays to a tuple of their shapes and contents
+        """
+        Call the wrapped function, reusing a cached result when available.
+
+        Parameters
+        ----------
+        args : object
+            Args used by the calculation.
+        kwargs : object
+            Kwargs used by the calculation.
+
+        Returns
+        -------
+        object
+            Result produced when the function is used to call the wrapped function, reusing a cached result when available.
+        """
         key = tuple(
             (a.shape, tuple(a.flat)) if isinstance(a, np.ndarray) else a for a in args
         )
@@ -256,11 +382,39 @@ def memoize_numpy_arrays(func, max_history=2):
 
 def memoize_pytorch(func):
     # Initialize a dictionary to store the previous input tensors and result
+    """
+    Memoize pytorch.
+
+    Parameters
+    ----------
+    func : callable
+        Function to wrap.
+
+    Returns
+    -------
+    object
+        Result produced when the function is used to memoize pytorch.
+    """
     cache = {}
 
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         # Convert PyTorch tensors to tuples of their shapes and contents
+        """
+        Call the wrapped function, reusing a cached result when available.
+
+        Parameters
+        ----------
+        args : object
+            Args used by the calculation.
+        kwargs : object
+            Kwargs used by the calculation.
+
+        Returns
+        -------
+        object
+            Result produced when the function is used to call the wrapped function, reusing a cached result when available.
+        """
         args_key = tuple(
             (a.shape, tuple(a.flatten().tolist())) if isinstance(a, torch.Tensor) else a
             for a in args
@@ -292,11 +446,39 @@ def memoize_pytorch(func):
 
 def memorize(func):
     # Initialize a dictionary to store the previous input parameters and result
+    """
+    Memoize the requested values.
+
+    Parameters
+    ----------
+    func : callable
+        Function to wrap.
+
+    Returns
+    -------
+    object
+        Result produced when the function is used to memoize the requested values.
+    """
     cache = {}
 
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         # Convert arguments and keyword arguments to a tuple of their values
+        """
+        Call the wrapped function, reusing a cached result when available.
+
+        Parameters
+        ----------
+        args : object
+            Args used by the calculation.
+        kwargs : object
+            Kwargs used by the calculation.
+
+        Returns
+        -------
+        object
+            Result produced when the function is used to call the wrapped function, reusing a cached result when available.
+        """
         key = (args, tuple(kwargs.items()))
 
         # Check if the same input parameters have been seen before
@@ -334,6 +516,23 @@ def sort_dict(dct, keys):
 
 def get_covariance(x, y, return_corr=False):
     # Calculate the mean and standard deviation along each column
+    """
+    Return covariance.
+
+    Parameters
+    ----------
+    x : object
+        X used by the calculation.
+    y : object
+        Y used by the calculation.
+    return_corr : bool, optional
+        Whether to return the correlation matrix with the covariance.
+
+    Returns
+    -------
+    object
+        Result produced when the function is used to return covariance.
+    """
     mean_x = np.mean(x, axis=0)
     std_dev_x = np.std(x, axis=0)
     # Create a mask indicating elements within one standard deviation from the mean
@@ -374,6 +573,19 @@ def get_covariance(x, y, return_corr=False):
 
 
 def sigma68(data):
+    """
+    Compute sigma68.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        Input data.
+
+    Returns
+    -------
+    object
+        Result produced when the function is used to compute sigma68.
+    """
     return 0.5 * (
         np.nanquantile(data, q=0.84, axis=0) - np.nanquantile(data, q=0.16, axis=0)
     )
@@ -400,6 +612,29 @@ def load_Arinyo_chains(
 
     Returns:
         np.array: Array containing Arinyo model chains for all simulations.
+
+    Parameters
+    ----------
+    archive : object
+        Simulation archive containing the requested data.
+    folder_chains : str, optional
+        Folder chains used by the calculation.
+    sim_label : object, optional
+        Sim label used by the calculation.
+    z : object, optional
+        Redshift.
+    chain_samp : int, optional
+        Chain samp used by the calculation.
+    kmax_3d : int, optional
+        Maximum three-dimensional wavenumber included in the fit.
+    kmax_1d : int, optional
+        Maximum one-dimensional wavenumber included in the fit.
+    noise_3d : float, optional
+        Relative three-dimensional noise level.
+    noise_1d : float, optional
+        Relative one-dimensional noise level.
+    training_type : str, optional
+        Training type used by the calculation.
     """
     print("Loading Arinyo chains")
 

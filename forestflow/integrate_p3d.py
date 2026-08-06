@@ -1,3 +1,7 @@
+"""
+Integrate three-dimensional power spectra into one-dimensional spectra.
+"""
+
 import numpy as np
 from scipy.integrate import simpson
 
@@ -13,7 +17,8 @@ def compute_px_from_p3d_kmu_Mpc(
     interp_rt_Mpc_max=0.2,
     p3d_k_Mpc_max=200,
 ):
-    """Given P3D(k, mu) function, use Hankl to compute Px(rt, kp)
+    """
+    Given P3D(k, mu) function, use Hankl to compute Px(rt, kp)
 
     This is the user-friendly interface to `Px_Mpc_detailed`, used in cupix.
 
@@ -41,6 +46,16 @@ def compute_px_from_p3d_kmu_Mpc(
     Px : ndarray, shape [Nr, Nk]
         Cross-power spectrum P_cross in Mpc units evaluated at each input r_perp and k_parallel.
 
+    Other Parameters
+    ----------------
+    hankl_kt_Mpc_min : object
+        Hankl kt mpc min used by the calculation.
+    hankl_kt_Mpc_max : object
+        Hankl kt mpc max used by the calculation.
+    interp_rt_Mpc_min : object
+        Interp rt mpc min used by the calculation.
+    interp_rt_Mpc_max : object
+        Interp rt mpc max used by the calculation.
     """
 
     # ideally this function would be math only, but for now I'm recycling existing functions
@@ -49,6 +64,27 @@ def compute_px_from_p3d_kmu_Mpc(
 
     @coordinates("k_mu")
     def dummy_p3d_func_kmu(dummy, k, mu, ari_pp=None, new_cosmo_params=None):
+        """
+        Compute dummy three-dimensional power spectrum func kmu.
+
+        Parameters
+        ----------
+        dummy : object
+            Dummy used by the calculation.
+        k : object
+            K used by the calculation.
+        mu : object
+            Mu used by the calculation.
+        ari_pp : object, optional
+            Ari pp used by the calculation.
+        new_cosmo_params : object, optional
+            New cosmo params used by the calculation.
+
+        Returns
+        -------
+        object
+            Result produced when the function is used to compute dummy three-dimensional power spectrum func kmu.
+        """
         return p3d_func_kmu_Mpc(k, mu)
 
     dummy_z = 123456789
@@ -89,6 +125,18 @@ class P1DIntegrator:
 
     def __init__(self, k_perp_min=1e-3, k_perp_max=100, n_k_perp=99):
 
+        """
+        Initialize the instance.
+
+        Parameters
+        ----------
+        k_perp_min : float, optional
+            K perp min used by the calculation.
+        k_perp_max : int, optional
+            K perp max used by the calculation.
+        n_k_perp : int, optional
+            N k perp used by the calculation.
+        """
         self.ln_k_perp = np.linspace(np.log(k_perp_min), np.log(k_perp_max), n_k_perp)
 
         self.dlnk = self.ln_k_perp[1] - self.ln_k_perp[0]
@@ -114,6 +162,15 @@ class P1DIntegrator:
         Returns
         -------
         p1d : (Nz,Nk) ndarray
+
+        Other Parameters
+        ----------------
+        linear : object
+            Precomputed linear-theory grid.
+        p3d_fun : numpy.ndarray
+            Callable three-dimensional power-spectrum model.
+        p3d_params : dict
+            Parameters passed to the three-dimensional model.
         """
 
         z = np.asarray(z)
@@ -158,4 +215,25 @@ _P1D_integrator = P1DIntegrator()
 
 def P1D_Mpc(linear, zs, k_par, p3d_fun, p3d_params):
 
+    """
+    Compute one-dimensional power spectrum Mpc.
+
+    Parameters
+    ----------
+    linear : object
+        Linear used by the calculation.
+    zs : object
+        Zs used by the calculation.
+    k_par : object
+        K par used by the calculation.
+    p3d_fun : numpy.ndarray
+        P3d fun used by the calculation.
+    p3d_params : dict
+        P3d params used by the calculation.
+
+    Returns
+    -------
+    object
+        Result produced when the function is used to compute one-dimensional power spectrum mpc.
+    """
     return _P1D_integrator(linear, zs, k_par, p3d_fun, p3d_params)

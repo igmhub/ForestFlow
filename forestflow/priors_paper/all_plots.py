@@ -1,3 +1,7 @@
+"""
+Create figures and tables for the priors analysis.
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
@@ -13,6 +17,16 @@ from forestflow.priors_paper import set_samples
 def plot_bsig8_betafsigma8(samples, ftsize=18):
 
     # --- plotting ---
+    """
+    Plot bsig8 betafsigma8.
+
+    Parameters
+    ----------
+    samples : numpy.ndarray or dict
+        Posterior samples to plot or process.
+    ftsize : int, optional
+        Base font size in points.
+    """
     g = plots.get_subplot_plotter(width_inch=8)
     g.settings.lab_fontsize = ftsize
     g.settings.axes_fontsize = ftsize
@@ -62,6 +76,16 @@ def plot_bsig8_betafsigma8(samples, ftsize=18):
 
 def plot_bao_biases(samples, ftsize=22):
 
+    """
+    Plot bao biases.
+
+    Parameters
+    ----------
+    samples : numpy.ndarray or dict
+        Posterior samples to plot or process.
+    ftsize : int, optional
+        Base font size in points.
+    """
     g = plots.get_subplot_plotter(width_inch=8)
     g.settings.lab_fontsize = ftsize + 2
     g.settings.axes_fontsize = ftsize
@@ -76,13 +100,13 @@ def plot_bao_biases(samples, ftsize=22):
     for lab in ["dr1", "dr2", "dr1_hsnr", "dr2_hsnr"]:
         samples[lab].paramNames.parWithName(
             "bias_delta"
-        ).label = "b_\\delta \sigma_8/ \sigma^\mathrm{fid}_8"
+        ).label = r"b_\delta \sigma_8/ \sigma^\mathrm{fid}_8"
 
         samples[lab].paramNames.parWithName("beta").label = "\\beta"
 
         samples[lab].paramNames.parWithName(
             "bias_hcd"
-        ).label = "b_\\mathrm{HCD}\, \sigma_8/ \sigma^\mathrm{fid}_8"
+        ).label = r"b_\mathrm{HCD}\, \sigma_8/ \sigma^\mathrm{fid}_8"
 
     g.triangle_plot(
         [
@@ -118,6 +142,16 @@ def plot_bao_biases(samples, ftsize=22):
 def plot_comb_bdsig8_befsig8(samples, ftsize=24):
 
     # --- plotting ---
+    """
+    Plot comb bdsig8 befsig8.
+
+    Parameters
+    ----------
+    samples : numpy.ndarray or dict
+        Posterior samples to plot or process.
+    ftsize : int, optional
+        Base font size in points.
+    """
     g = plots.get_subplot_plotter(width_inch=8)
     g.settings.lab_fontsize = ftsize + 2
     g.settings.axes_fontsize = ftsize
@@ -156,6 +190,16 @@ def plot_comb_bdsig8_befsig8(samples, ftsize=24):
 def plot_comb_bd_be_beta(samples, ftsize=20):
 
     # --- plotting ---
+    """
+    Plot comb bd be beta.
+
+    Parameters
+    ----------
+    samples : numpy.ndarray or dict
+        Posterior samples to plot or process.
+    ftsize : int, optional
+        Base font size in points.
+    """
     g = plots.get_subplot_plotter(width_inch=8)
     g.settings.lab_fontsize = ftsize
     g.settings.axes_fontsize = ftsize
@@ -188,6 +232,16 @@ def plot_sig8(samples, ftsize=20):
 
     # DESY6 Table IV https://arxiv.org/pdf/2601.14559
     # DES 3x2pt LCDM
+    """
+    Plot sig8.
+
+    Parameters
+    ----------
+    samples : numpy.ndarray or dict
+        Posterior samples to plot or process.
+    ftsize : int, optional
+        Base font size in points.
+    """
     mu_des = 0.751
     sigma_des = 0.035
     # DES all LCDM
@@ -280,6 +334,16 @@ def plot_sig8(samples, ftsize=20):
 def plot_sig8z(samples, ftsize=20):
 
     # load CMB-SPA
+    """
+    Plot sig8z.
+
+    Parameters
+    ----------
+    samples : numpy.ndarray or dict
+        Posterior samples to plot or process.
+    ftsize : int, optional
+        Base font size in points.
+    """
     try:
         data = np.load("int_data_figs/sig8_cmb_spa.npy", allow_pickle=True).item()
     except:
@@ -394,6 +458,16 @@ def plot_sig8z(samples, ftsize=20):
 def plot_fsig8z(samples, ftsize=20):
 
     # load CMB-SPA
+    """
+    Plot fsig8z.
+
+    Parameters
+    ----------
+    samples : numpy.ndarray or dict
+        Posterior samples to plot or process.
+    ftsize : int, optional
+        Base font size in points.
+    """
     try:
         data = np.load("sig8_cmb_spa.npy", allow_pickle=True).item()
     except:
@@ -496,6 +570,16 @@ def plot_fsig8z(samples, ftsize=20):
 
 def plot_sig8z233(samples, ftsize=20):
     # --- plotting ---
+    """
+    Plot sig8z233.
+
+    Parameters
+    ----------
+    samples : numpy.ndarray or dict
+        Posterior samples to plot or process.
+    ftsize : int, optional
+        Base font size in points.
+    """
     g = plots.get_subplot_plotter(width_inch=8)
     g.settings.lab_fontsize = ftsize
     g.settings.axes_fontsize = ftsize
@@ -523,6 +607,16 @@ def plot_sig8z233(samples, ftsize=20):
 
 def plot_compressed(samples, ftsize=20):
     # --- plotting ---
+    """
+    Plot compressed.
+
+    Parameters
+    ----------
+    samples : numpy.ndarray or dict
+        Posterior samples to plot or process.
+    ftsize : int, optional
+        Base font size in points.
+    """
     g = plots.get_subplot_plotter(width_inch=8)
     g.settings.lab_fontsize = ftsize
     g.settings.axes_fontsize = ftsize
@@ -552,6 +646,16 @@ def plot_compressed(samples, ftsize=20):
 def plot_bdelta_beta_beta(samples, ftsize=20):
 
     # --- plotting ---
+    """
+    Plot bdelta beta beta.
+
+    Parameters
+    ----------
+    samples : numpy.ndarray or dict
+        Posterior samples to plot or process.
+    ftsize : int, optional
+        Base font size in points.
+    """
     g = plots.get_subplot_plotter(width_inch=8)
     g.settings.lab_fontsize = ftsize
     g.settings.axes_fontsize = ftsize
@@ -579,6 +683,16 @@ def plot_bdelta_beta_beta(samples, ftsize=20):
 
 def plot_P3D_small_params(samples, ftsize=20):
 
+    """
+    Plot three-dimensional power spectrum small parameters.
+
+    Parameters
+    ----------
+    samples : numpy.ndarray or dict
+        Posterior samples to plot or process.
+    ftsize : int, optional
+        Base font size in points.
+    """
     g = plots.get_subplot_plotter(width_inch=10)
     g.settings.lab_fontsize = ftsize
     g.settings.axes_fontsize = ftsize
@@ -606,7 +720,37 @@ def plot_P3D_small_params(samples, ftsize=20):
 
 def table_cosmo_igm(dict_out_all):
 
+    """
+    Create cosmo intergalactic-medium.
+
+    Parameters
+    ----------
+    dict_out_all : dict
+        Dict out all used by the calculation.
+
+    Returns
+    -------
+    object
+        Computed result or generated analysis product.
+    """
     def format_pm(val, err, sig=2):
+        """
+        Format a value and uncertainty with plus-minus notation.
+
+        Parameters
+        ----------
+        val : object
+            Val used by the calculation.
+        err : numpy.ndarray or dict
+            Err used by the calculation.
+        sig : int, optional
+            Sig used by the calculation.
+
+        Returns
+        -------
+        object
+            Computed result or generated analysis product.
+        """
         import math
 
         if err == 0:
@@ -638,13 +782,72 @@ def table_cosmo_igm(dict_out_all):
 def plot_bias_beta_zev(bao_data, dict_mapping, plot_bias_eta=False, z0=3.0, ftsize=24):
 
     # from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+    """
+    Plot bias beta zev.
+
+    Parameters
+    ----------
+    bao_data : numpy.ndarray or dict
+        Baryon acoustic oscillation measurements.
+    dict_mapping : dict
+        Mapping containing the analysis data sets.
+    plot_bias_eta : bool, optional
+        Whether to plot the velocity-gradient bias.
+    z0 : float, optional
+        Reference redshift.
+    ftsize : int, optional
+        Base font size in points.
+
+    Returns
+    -------
+    object
+        Computed result or generated analysis product.
+    """
     from scipy.optimize import curve_fit
 
     def fit_pow(z, a, b):
+        """
+        Evaluate the power-law fit.
+
+        Parameters
+        ----------
+        z : object
+            Redshift.
+        a : object
+            A used by the calculation.
+        b : object
+            B used by the calculation.
+
+        Returns
+        -------
+        object
+            Computed result or generated analysis product.
+        """
         x = (1 + z) / (1 + z0)
         return a * x**b
 
     def fit_pol(z, a, b, c, d):
+        """
+        Evaluate the polynomial fit.
+
+        Parameters
+        ----------
+        z : object
+            Redshift.
+        a : object
+            A used by the calculation.
+        b : object
+            B used by the calculation.
+        c : object
+            C used by the calculation.
+        d : object
+            D used by the calculation.
+
+        Returns
+        -------
+        object
+            Computed result or generated analysis product.
+        """
         x = (1 + z) / (1 + z0)
         return a + b * x + c * x**2 + d * x**3
 
@@ -810,6 +1013,18 @@ def plot_bias_beta_zev(bao_data, dict_mapping, plot_bias_eta=False, z0=3.0, ftsi
 
 def plot_bias_beta_zev_val(dict_mapping, plot_bias_eta=False, ftsize=24):
 
+    """
+    Plot bias beta zev val.
+
+    Parameters
+    ----------
+    dict_mapping : dict
+        Mapping containing the analysis data sets.
+    plot_bias_eta : bool, optional
+        Whether to plot the velocity-gradient bias.
+    ftsize : int, optional
+        Base font size in points.
+    """
     fig_data = {}
 
     params_sim = {
@@ -919,9 +1134,47 @@ def plot_bias_beta_zev_val(dict_mapping, plot_bias_eta=False, ftsize=24):
 
 def plot_p3d_small_z(dict_mapping, z0=3, ftsize=24):
 
+    """
+    Plot three-dimensional power spectrum small z.
+
+    Parameters
+    ----------
+    dict_mapping : dict
+        Mapping containing the analysis data sets.
+    z0 : int, optional
+        Reference redshift.
+    ftsize : int, optional
+        Base font size in points.
+
+    Returns
+    -------
+    object
+        Computed result or generated analysis product.
+    """
     from scipy.optimize import curve_fit
 
     def fit_func(z, a, b, c, d):
+        """
+        Evaluate the fitting function.
+
+        Parameters
+        ----------
+        z : object
+            Redshift.
+        a : object
+            A used by the calculation.
+        b : object
+            B used by the calculation.
+        c : object
+            C used by the calculation.
+        d : object
+            D used by the calculation.
+
+        Returns
+        -------
+        object
+            Computed result or generated analysis product.
+        """
         x = (1 + z) / (1 + z0)
         return a + b * x + c * x**2 + d * x**3
 
@@ -994,6 +1247,22 @@ def plot_p3d_small_z(dict_mapping, z0=3, ftsize=24):
 
 def plot_p3d_validation(knew3d, munew3d, data_pip, data_sim, ftsize=24):
 
+    """
+    Plot three-dimensional power spectrum validation.
+
+    Parameters
+    ----------
+    knew3d : numpy.ndarray or dict
+        Knew3d used by the calculation.
+    munew3d : numpy.ndarray or dict
+        Munew3d used by the calculation.
+    data_pip : numpy.ndarray or dict
+        Data pip used by the calculation.
+    data_sim : numpy.ndarray or dict
+        Data sim used by the calculation.
+    ftsize : int, optional
+        Base font size in points.
+    """
     from matplotlib.patches import Patch
 
     data_fig = {}
@@ -1078,7 +1347,7 @@ def plot_p3d_validation(knew3d, munew3d, data_pip, data_sim, ftsize=24):
             ncol=1,
         )
 
-    fig.supylabel("$P(k)/P_\mathrm{lin}(k)$", fontsize=ftsize + 2)
+    fig.supylabel(r"$P(k)/P_\mathrm{lin}(k)$", fontsize=ftsize + 2)
 
     labs = [r"$z=2.6$", r"$z=3.0$", r"$z=3.6$"]
     ylabpos = [0.2, 0.35, 0.6]
@@ -1088,7 +1357,7 @@ def plot_p3d_validation(knew3d, munew3d, data_pip, data_sim, ftsize=24):
     for ii in range(3):
         ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
 
-    ax[-1].set_xlabel("$k\, [1/\mathrm{Mpc}]$", fontsize=ftsize)
+    ax[-1].set_xlabel(r"$k\, [1/\mathrm{Mpc}]$", fontsize=ftsize)
 
     plt.xscale("log")
     plt.tight_layout()

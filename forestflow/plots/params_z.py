@@ -1,3 +1,7 @@
+"""
+Plot redshift evolution of model parameters.
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
@@ -12,6 +16,24 @@ def plot_arinyo_z(
     folder_fig=None,
     ftsize=20,
 ):
+    """
+    Plot Arinyo z.
+
+    Parameters
+    ----------
+    z_central : object
+        Z central used by the calculation.
+    Arinyo_central : object
+        Arinyo central used by the calculation.
+    Arinyo_seed : object
+        Arinyo seed used by the calculation.
+    Arinyo_both : object
+        Arinyo both used by the calculation.
+    folder_fig : object, optional
+        Folder fig used by the calculation.
+    ftsize : int, optional
+        Base font size in points.
+    """
     z_central = np.array(z_central)
     # Create a 2x1 grid for plotting
     fig, ax = plt.subplots(
@@ -157,6 +179,24 @@ def plot_forestflow_z(
     folder_fig=None,
     ftsize=20,
 ):
+    """
+    Plot forestflow z.
+
+    Parameters
+    ----------
+    z_central : object
+        Z central used by the calculation.
+    Arinyo_central : object
+        Arinyo central used by the calculation.
+    Arinyo_emu : object
+        Arinyo emu used by the calculation.
+    Arinyo_emu_std : object
+        Arinyo emu std used by the calculation.
+    folder_fig : object, optional
+        Folder fig used by the calculation.
+    ftsize : int, optional
+        Base font size in points.
+    """
     z_central = np.array(z_central)
     # Create a 2x1 grid for plotting
     fig, ax = plt.subplots(

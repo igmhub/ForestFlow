@@ -1,3 +1,7 @@
+"""
+Load data and chains for the priors analysis.
+"""
+
 import os
 import sys
 import numpy as np
@@ -11,6 +15,19 @@ from lace.cosmo import cosmology
 
 def load_BAO_data(nn=10000):
 
+    """
+    Load BAO data.
+
+    Parameters
+    ----------
+    nn : int, optional
+        Nn used by the calculation.
+
+    Returns
+    -------
+    object
+        Computed result or generated analysis product.
+    """
     zeff = 2.33
     class_planck = cosmology.Cosmology(cosmo_label="Planck18_noBAO")
     planck_sig8 = class_planck.get_sigma8(zeff)
@@ -96,6 +113,21 @@ def load_BAO_data(nn=10000):
 
 def load_p1d_data(lab_sample="desi", zeff=2.33):
 
+    """
+    Load one-dimensional power spectrum data.
+
+    Parameters
+    ----------
+    lab_sample : str, optional
+        Lab sample used by the calculation.
+    zeff : float, optional
+        Zeff used by the calculation.
+
+    Returns
+    -------
+    object
+        Computed result or generated analysis product.
+    """
     class_planck = cosmology.Cosmology(cosmo_label="Planck18")
     planck_f = class_planck.get_growth_rate(zeff)
 
@@ -133,6 +165,19 @@ def load_p1d_data(lab_sample="desi", zeff=2.33):
 
 
 def load_p1d_chain_for_forestflow(lab_sample="desi"):
+    """
+    Load one-dimensional power spectrum chain for forestflow.
+
+    Parameters
+    ----------
+    lab_sample : str, optional
+        Lab sample used by the calculation.
+
+    Returns
+    -------
+    object
+        Computed result or generated analysis product.
+    """
     try:
         data = np.load(
             "int_data_figs/" + lab_sample + "_priors_cosmo_IGM_from_p1d.npy",
@@ -148,6 +193,21 @@ def load_p1d_chain_for_forestflow(lab_sample="desi"):
 
 
 def load_map_igm_p3d(lab_sample="desi", zeff=2.33):
+    """
+    Load map intergalactic-medium three-dimensional power spectrum.
+
+    Parameters
+    ----------
+    lab_sample : str, optional
+        Lab sample used by the calculation.
+    zeff : float, optional
+        Zeff used by the calculation.
+
+    Returns
+    -------
+    object
+        Computed result or generated analysis product.
+    """
     try:
         data = np.load(
             "int_data_figs/arinyo_from_" + lab_sample + "_p1d.npy", allow_pickle=True
@@ -183,6 +243,14 @@ def load_map_igm_p3d(lab_sample="desi", zeff=2.33):
 
 def load_bao_weights():
 
+    """
+    Load bao weights.
+
+    Returns
+    -------
+    tuple
+        Computed result or generated analysis product.
+    """
     from scipy.signal import savgol_filter
 
     folder = "/home/jchaves/Proyectos/projects/lya/data/lya_bao/dr2/"

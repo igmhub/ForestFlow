@@ -1,3 +1,7 @@
+"""
+Legacy Emulator p3d plin utilities.
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -26,8 +30,14 @@ import copy
 
 
 def init_xavier(m):
-    """Initialization of the NN.
+    """
+    Initialization of the NN.
     This is quite important for a faster training
+
+    Parameters
+    ----------
+    m : object
+        M used by the calculation.
     """
     if type(m) == torch.nn.Linear:
         torch.nn.init.xavier_uniform_(m.weight)
@@ -35,7 +45,8 @@ def init_xavier(m):
 
 
 class P3DEmulator:
-    """A class for training an emulator.
+    """
+    A class for training an emulator.
 
     Args:
         emuparams (dict): A dictionary of emulator parameters.
@@ -79,6 +90,60 @@ class P3DEmulator:
         drop_rescalings=False,
         model_path=None,
     ):
+        """
+        Initialize the instance.
+
+        Parameters
+        ----------
+        training_data : numpy.ndarray or dict
+            Training data used by the calculation.
+        paramList : object
+            Paramlist used by the calculation.
+        rerr_p3d : object, optional
+            Rerr p3d used by the calculation.
+        target_space : str, optional
+            Target space used by the calculation.
+        kmax_Mpc : int, optional
+            Kmax mpc used by the calculation.
+        ndeg : int, optional
+            Ndeg used by the calculation.
+        nhidden : int, optional
+            Nhidden used by the calculation.
+        nepochs : int, optional
+            Nepochs used by the calculation.
+        batch_size : int, optional
+            Batch size used by the calculation.
+        lr : float, optional
+            Lr used by the calculation.
+        weight_decay : float, optional
+            Weight decay used by the calculation.
+        gamma : float, optional
+            Gamma used by the calculation.
+        amsgrad : bool, optional
+            Amsgrad used by the calculation.
+        step_size : int, optional
+            Step size used by the calculation.
+        init_xavier : bool, optional
+            Init xavier used by the calculation.
+        adamw : bool, optional
+            Adamw used by the calculation.
+        Nsim : int, optional
+            Nsim used by the calculation.
+        train : bool, optional
+            Train used by the calculation.
+        drop_sim : object, optional
+            Drop sim used by the calculation.
+        drop_z : object, optional
+            Drop z used by the calculation.
+        pick_z : object, optional
+            Pick z used by the calculation.
+        save_path : object, optional
+            Save path used by the calculation.
+        drop_rescalings : bool, optional
+            Drop rescalings used by the calculation.
+        model_path : object, optional
+            Model path used by the calculation.
+        """
         self.training_data = training_data
         self.rerr_p3d = rerr_p3d
         self.emuparams = paramList
@@ -230,6 +295,11 @@ class P3DEmulator:
         Given an archive and key_av, it obtains the training data based on self.emuparams
         Sorts the training data according to self.emuparams and scales the data based on self.paramLims
         Finally, it returns the training data as a torch.Tensor object.
+
+        Returns
+        -------
+        object
+            Computed result or generated analysis product.
         """
         training_data = [
             {
@@ -257,6 +327,16 @@ class P3DEmulator:
         """
         Given an archive and key_av, it obtains the p1d_Mpc values from the training data and scales it.
         Finally, it returns the scaled values as a torch.Tensor object along with the scaling factor.
+
+        Parameters
+        ----------
+        target_space : str, optional
+            Target space used by the calculation.
+
+        Returns
+        -------
+        tuple
+            Computed result or generated analysis product.
         """
 
         if target_space == "p3d":
@@ -335,6 +415,17 @@ class P3DEmulator:
 
         Returns:
             float: Computed value of the 3D flux power spectrum.
+
+        Other Parameters
+        ----------------
+        linP : object
+            Linp used by the calculation.
+        params : dict
+            Model parameters.
+        params_std : dict
+            Params std used by the calculation.
+        epoch : int
+            Epoch used by the calculation.
         """
 
         k = torch.Tensor(k)
@@ -412,6 +503,14 @@ class P3DEmulator:
 
     def _train_ArinyoSpace(self, loader_train):
         # define optimizer
+        """
+        Train ArinyoSpace.
+
+        Parameters
+        ----------
+        loader_train : object
+            Loader train used by the calculation.
+        """
         if self.adamw:
             optimizer = optim.AdamW(
                 self.emulator.parameters(),
@@ -481,6 +580,18 @@ class P3DEmulator:
         print(f"Emualtor trained in {time.time() - t0} seconds")
 
     def _train_p3dSpace(self, loader_train, kMpc_train, mu_train):
+        """
+        Train p3dSpace.
+
+        Parameters
+        ----------
+        loader_train : object
+            Loader train used by the calculation.
+        kMpc_train : object
+            Kmpc train used by the calculation.
+        mu_train : object
+            Mu train used by the calculation.
+        """
         if self.rerr_p3d is None:
             raise ValueError(
                 "Training in p3d spcae requires the argument rerr_p3d"
@@ -608,6 +719,9 @@ class P3DEmulator:
             raise ValueError("Valid target spaces are 'Ariño' and 'p3d'")
 
     def _save_emulator(self):
+        """
+        Save emulator.
+        """
         if self.drop_sim != None:
             torch.save(
                 self.emulator.state_dict(),
@@ -617,6 +731,21 @@ class P3DEmulator:
             torch.save(self.emulator.state_dict(), self.save_path)
 
     def _get_p3D_Mpc(self, testing_data, data_emu):
+        """
+        Return three-dimensional power spectrum Mpc.
+
+        Parameters
+        ----------
+        testing_data : numpy.ndarray or dict
+            Testing data used by the calculation.
+        data_emu : numpy.ndarray or dict
+            Data emu used by the calculation.
+
+        Returns
+        -------
+        tuple
+            Computed result or generated analysis product.
+        """
         data = [
             {
                 key: value
@@ -691,6 +820,19 @@ class P3DEmulator:
             )
 
     def get_coeff(self, input_emu):
+        """
+        Return coefficients.
+
+        Parameters
+        ----------
+        input_emu : object
+            Input emu used by the calculation.
+
+        Returns
+        -------
+        object
+            Computed result or generated analysis product.
+        """
         test_data = np.array(input_emu)
         test_data = (test_data - self.paramLims[:, 0]) / (
             self.paramLims[:, 1] - self.paramLims[:, 0]

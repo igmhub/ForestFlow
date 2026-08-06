@@ -1,3 +1,7 @@
+"""
+Plots v1 utilities.
+"""
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -10,6 +14,15 @@ from forestflow.plot_routines import plot_template
 def plot_test_parz(Archive3D, p3d_emu, sim_label):
     """
     Precision of emulator for target sim
+
+    Parameters
+    ----------
+    Archive3D : object
+        Archive3d used by the calculation.
+    p3d_emu : numpy.ndarray or dict
+        P3d emu used by the calculation.
+    sim_label : object
+        Sim label used by the calculation.
     """
 
     # load data
@@ -51,6 +64,17 @@ def plot_test_parz(Archive3D, p3d_emu, sim_label):
 def plot_test_p3d(ind_book, Archive3D, p3d_emu, sim_label):
     """
     Precision of emulator for target sim
+
+    Parameters
+    ----------
+    ind_book : object
+        Ind book used by the calculation.
+    Archive3D : object
+        Archive3d used by the calculation.
+    p3d_emu : numpy.ndarray or dict
+        P3d emu used by the calculation.
+    sim_label : object
+        Sim label used by the calculation.
     """
 
     # load data
@@ -94,7 +118,7 @@ def plot_test_p3d(ind_book, Archive3D, p3d_emu, sim_label):
 
 def params_numpy2dict(params):
     """
-    Converts a numpy array of parameters to a dictionary.
+    Convert a NumPy array of parameters to a dictionary.
 
     Args:
         params (numpy.ndarray): Array of parameters.
@@ -150,6 +174,17 @@ def plot_compare_p3d_smooth(
 
     Returns:
         None
+
+    Other Parameters
+    ----------------
+    parameters1 : object
+        Parameters1 used by the calculation.
+    parameters2 : object
+        Parameters2 used by the calculation.
+    sim_label : object
+        Sim label used by the calculation.
+    plot_data : bool
+        Plot data used by the calculation.
     """
 
     fig, ax = plt.subplots(

@@ -1,3 +1,7 @@
+"""
+Legacy Input emu utilities.
+"""
+
 import numpy as np
 import os
 import copy
@@ -89,6 +93,13 @@ def get_flag_out(
 
     Returns:
         str: The generated flag string.
+
+    Other Parameters
+    ----------------
+    init : object
+        Init used by the calculation.
+    scale_tau : object
+        Scale tau used by the calculation.
     """
     flag = (
         init
@@ -183,6 +194,19 @@ def get_input_data(
 
     Returns:
         tuple: A tuple containing the data dictionary, the model, and the linear power spectrum.
+
+    Other Parameters
+    ----------------
+    folder_interp : object
+        Directory containing interpolated power spectra.
+    kmax_3d : object
+        Kmax 3d used by the calculation.
+    noise_3d : int
+        Noise 3d used by the calculation.
+    kmax_1d : object
+        Kmax 1d used by the calculation.
+    noise_1d : int
+        Noise 1d used by the calculation.
     """
     data_dict = {}
     data_dict["units"] = "N"
@@ -261,6 +285,11 @@ def data_for_emu_v1(
 
     Returns:
         dict: A dictionary containing the collected data.
+
+    Other Parameters
+    ----------------
+    folder_interp : object
+        Directory containing interpolated power spectra.
     """
 
     nsamples = len(archive)

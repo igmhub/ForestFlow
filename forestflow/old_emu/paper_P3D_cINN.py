@@ -1,3 +1,7 @@
+"""
+Legacy Paper p3d cinn utilities.
+"""
+
 # torch modules
 import torch
 from torch.utils.data import DataLoader, TensorDataset
@@ -38,8 +42,14 @@ rcParams["font.family"] = "STIXGeneral"
 
 
 def init_xavier(m):
-    """Initialization of the NN.
+    """
+    Initialization of the NN.
     This is quite important for a faster training
+
+    Parameters
+    ----------
+    m : object
+        M used by the calculation.
     """
     if type(m) == torch.nn.Linear:
         torch.nn.init.xavier_uniform_(m.weight)
@@ -47,6 +57,14 @@ def init_xavier(m):
 
 
 def print_memory_usage(step_description):
+    """
+    Print the current process memory usage.
+
+    Parameters
+    ----------
+    step_description : object
+        Step description used by the calculation.
+    """
     process = psutil.Process()
     memory_info = process.memory_info()
     print(
@@ -60,7 +78,8 @@ def print_memory_usage(step_description):
 
 
 class P3DEmulator:
-    """A class for training an emulator.
+    """
+    A class for training an emulator.
 
     Args:
         training_data (Type): Description of training data.
@@ -117,6 +136,62 @@ class P3DEmulator:
         training_type="Arinyo_min_q1",
     ):
         # Initialize class attributes with provided arguments
+        """
+        Initialize the instance.
+
+        Parameters
+        ----------
+        training_data : numpy.ndarray or dict
+            Training data used by the calculation.
+        paramList : object
+            Paramlist used by the calculation.
+        kmax_Mpc : int, optional
+            Kmax mpc used by the calculation.
+        nLayers_inn : int, optional
+            Nlayers inn used by the calculation.
+        nepochs : int, optional
+            Nepochs used by the calculation.
+        batch_size : int, optional
+            Batch size used by the calculation.
+        lr : float, optional
+            Lr used by the calculation.
+        weight_decay : float, optional
+            Weight decay used by the calculation.
+        gamma : float, optional
+            Gamma used by the calculation.
+        amsgrad : bool, optional
+            Amsgrad used by the calculation.
+        step_size : int, optional
+            Step size used by the calculation.
+        adamw : bool, optional
+            Adamw used by the calculation.
+        Nsim : int, optional
+            Nsim used by the calculation.
+        train : bool, optional
+            Train used by the calculation.
+        drop_sim : object, optional
+            Drop sim used by the calculation.
+        drop_z : object, optional
+            Drop z used by the calculation.
+        pick_z : object, optional
+            Pick z used by the calculation.
+        save_path : object, optional
+            Save path used by the calculation.
+        model_path : object, optional
+            Model path used by the calculation.
+        drop_rescalings : bool, optional
+            Drop rescalings used by the calculation.
+        Archive : object, optional
+            Archive used by the calculation.
+        use_chains : bool, optional
+            Use chains used by the calculation.
+        chain_samp : int, optional
+            Chain samp used by the calculation.
+        Nrealizations : int, optional
+            Nrealizations used by the calculation.
+        training_type : str, optional
+            Training type used by the calculation.
+        """
         self.training_data = training_data
         self.emuparams = paramList
         self.kmax_Mpc = kmax_Mpc
@@ -247,6 +322,11 @@ class P3DEmulator:
 
         Returns:
             np.array: Test conditions sorted based on emulator parameters.
+
+        Other Parameters
+        ----------------
+        emu_params : dict
+            Emulator input parameters.
         """
         # Extract emulator parameters from the test data
         condition = [
@@ -331,6 +411,23 @@ class P3DEmulator:
 
     def _check_emu_params(self, emu_params, info_power, kp_Mpc=0.7):
         # check if all emulator parameters are provided
+        """
+        Validate emulator parameters.
+
+        Parameters
+        ----------
+        emu_params : dict
+            Emu params used by the calculation.
+        info_power : numpy.ndarray or dict
+            Info power used by the calculation.
+        kp_Mpc : float, optional
+            Kp mpc used by the calculation.
+
+        Returns
+        -------
+        object
+            Computed result or generated analysis product.
+        """
         compute_linP = False
         for param in self.emuparams:
             # check cosmo params
@@ -402,6 +499,27 @@ class P3DEmulator:
         #         coeffs_all_natural[ii] = np.array(list(_par.values()))
 
         # Predict Arinyo coefficients for the given test conditions
+        """
+        Return Arinyo coeffs.
+
+        Parameters
+        ----------
+        emu_params : dict
+            Emu params used by the calculation.
+        out_dict : dict
+            Out dict used by the calculation.
+        return_all_realizations : bool, optional
+            Return all realizations used by the calculation.
+        Nrealizations : object, optional
+            Nrealizations used by the calculation.
+        seed : int, optional
+            Random-number generator seed.
+
+        Returns
+        -------
+        object
+            Computed result or generated analysis product.
+        """
         _ = self.predict_Arinyos(
             emu_params,
             return_all_realizations=return_all_realizations,
@@ -440,6 +558,27 @@ class P3DEmulator:
         return out_dict
 
     def _rescale_cosmo(self, target_params, cosmo, z, kp_Mpc=0.7, ks_Mpc=0.05):
+        """
+        Rescale cosmo.
+
+        Parameters
+        ----------
+        target_params : dict
+            Target params used by the calculation.
+        cosmo : object
+            Cosmo used by the calculation.
+        z : object
+            Redshift.
+        kp_Mpc : float, optional
+            Kp mpc used by the calculation.
+        ks_Mpc : float, optional
+            Ks mpc used by the calculation.
+
+        Returns
+        -------
+        object
+            Computed result or generated analysis product.
+        """
         sim_cosmo = camb_cosmo.get_cosmology(**cosmo)
         linP_zs = fit_linP.get_linP_Mpc_zs(sim_cosmo, [z], kp_Mpc)[0]
 
@@ -463,6 +602,23 @@ class P3DEmulator:
         return rescaled_cosmo
 
     def _get_p3d(self, info_power, out_dict, model_Arinyo):
+        """
+        Return three-dimensional power spectrum.
+
+        Parameters
+        ----------
+        info_power : numpy.ndarray or dict
+            Info power used by the calculation.
+        out_dict : dict
+            Out dict used by the calculation.
+        model_Arinyo : object
+            Model arinyo used by the calculation.
+
+        Returns
+        -------
+        object
+            Computed result or generated analysis product.
+        """
         try:
             k_Mpc = info_power["k3d_Mpc"]
             mu = info_power["mu"]
@@ -517,6 +673,25 @@ class P3DEmulator:
         return out_dict
 
     def _get_p3d_cov(self, info_power, out_dict, model_Arinyo, Nrealizations):
+        """
+        Return three-dimensional power spectrum covariance.
+
+        Parameters
+        ----------
+        info_power : numpy.ndarray or dict
+            Info power used by the calculation.
+        out_dict : dict
+            Out dict used by the calculation.
+        model_Arinyo : object
+            Model arinyo used by the calculation.
+        Nrealizations : object
+            Nrealizations used by the calculation.
+
+        Returns
+        -------
+        object
+            Computed result or generated analysis product.
+        """
         try:
             k_Mpc = info_power["k3d_Mpc"]
             mu = info_power["mu"]
@@ -570,6 +745,23 @@ class P3DEmulator:
         return out_dict
 
     def _get_p1d(self, info_power, out_dict, model_Arinyo):
+        """
+        Return one-dimensional power spectrum.
+
+        Parameters
+        ----------
+        info_power : numpy.ndarray or dict
+            Info power used by the calculation.
+        out_dict : dict
+            Out dict used by the calculation.
+        model_Arinyo : object
+            Model arinyo used by the calculation.
+
+        Returns
+        -------
+        object
+            Computed result or generated analysis product.
+        """
         try:
             k1d_Mpc = info_power["k1d_Mpc"]
         except:
@@ -584,6 +776,23 @@ class P3DEmulator:
         return out_dict
 
     def _get_p1d_cov(self, info_power, out_dict, model_Arinyo):
+        """
+        Return one-dimensional power spectrum covariance.
+
+        Parameters
+        ----------
+        info_power : numpy.ndarray or dict
+            Info power used by the calculation.
+        out_dict : dict
+            Out dict used by the calculation.
+        model_Arinyo : object
+            Model arinyo used by the calculation.
+
+        Returns
+        -------
+        object
+            Computed result or generated analysis product.
+        """
         try:
             k1d_Mpc = info_power["k1d_Mpc"]
         except:
@@ -626,6 +835,15 @@ class P3DEmulator:
 
         Returns:
             Dict: Dictionary containing the predicted Arinyo parameters and (if needed) power spectrum
+
+        Other Parameters
+        ----------------
+        return_all_realizations : bool
+            Return all realizations used by the calculation.
+        verbose : bool
+            Whether to print progress information.
+        seed : int
+            Random-number generator seed.
         """
 
         if Nrealizations is None:
@@ -722,6 +940,21 @@ class P3DEmulator:
         """
 
         def subnet_fc(dims_in, dims_out):
+            """
+            Build the fully connected invertible-network subnet.
+
+            Parameters
+            ----------
+            dims_in : object
+                Dims in used by the calculation.
+            dims_out : object
+                Dims out used by the calculation.
+
+            Returns
+            -------
+            object
+                Computed result or generated analysis product.
+            """
             return nn.Sequential(
                 nn.Linear(dims_in, 64),
                 nn.ReLU(),
@@ -978,6 +1211,15 @@ class P3DEmulator:
 
         Returns:
             Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]: Arinyo coefficient predictions. If return_all_realizations is True, returns a tuple with all realizations and the mean.
+
+        Other Parameters
+        ----------------
+        emu_params : dict
+            Emulator input parameters.
+        Nrealizations : int
+            Nrealizations used by the calculation.
+        seed : int
+            Random-number generator seed.
         """
 
         if Nrealizations is None:

@@ -1,3 +1,7 @@
+"""
+Plot comparisons for test simulations.
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
@@ -18,6 +22,32 @@ def plot_p3d_snap(
     kmax_3d=4,
     kmax_3d_fit=3,
 ):
+    """
+    Plot three-dimensional power spectrum snapshot.
+
+    Parameters
+    ----------
+    folder_out : object
+        Folder out used by the calculation.
+    k_Mpc : object
+        K mpc used by the calculation.
+    mu : object
+        Cosines of the angles to the line of sight.
+    p3d_sim : numpy.ndarray or dict
+        P3d sim used by the calculation.
+    p3d_emu : numpy.ndarray or dict
+        P3d emu used by the calculation.
+    p3d_std_emu : numpy.ndarray or dict
+        P3d std emu used by the calculation.
+    mu_bins : object
+        Mu bins used by the calculation.
+    ftsize : int, optional
+        Base font size in points.
+    kmax_3d : int, optional
+        Kmax 3d used by the calculation.
+    kmax_3d_fit : int, optional
+        Kmax 3d fit used by the calculation.
+    """
     fig, axs = plt.subplots(
         2, 1, figsize=(8, 6), sharex=True, height_ratios=[3, 1]
     )
@@ -147,6 +177,28 @@ def plot_p1d_snap(
     kmax_1d=4,
     kmax_1d_fit=3,
 ):
+    """
+    Plot one-dimensional power spectrum snapshot.
+
+    Parameters
+    ----------
+    folder_out : object
+        Folder out used by the calculation.
+    k_p1d_Mpc : numpy.ndarray or dict
+        K p1d mpc used by the calculation.
+    p1d_sim : numpy.ndarray or dict
+        P1d sim used by the calculation.
+    p1d_emu : numpy.ndarray or dict
+        P1d emu used by the calculation.
+    p1d_std_emu : numpy.ndarray or dict
+        P1d std emu used by the calculation.
+    ftsize : int, optional
+        Base font size in points.
+    kmax_1d : int, optional
+        Kmax 1d used by the calculation.
+    kmax_1d_fit : int, optional
+        Kmax 1d fit used by the calculation.
+    """
     fig, axs = plt.subplots(
         2, 1, figsize=(8, 6), sharex=True, height_ratios=[3, 1]
     )
@@ -246,6 +298,22 @@ def plot_p3d_test_sims(
     Plots:
     - Subplots showing fractional errors in P3D for different redshifts and mu bins.
 
+    Other Parameters
+    ----------------
+    sim_labels : object
+        Sim labels used by the calculation.
+    k_Mpc : numpy.ndarray
+        Wavenumbers in inverse megaparsecs.
+    mu : numpy.ndarray
+        Mu used by the calculation.
+    residual : numpy.ndarray
+        Residual used by the calculation.
+    mu_bins : numpy.ndarray
+        Mu bins used by the calculation.
+    fontsize : int
+        Base font size in points.
+    kmax_3d_fit : object
+        Kmax 3d fit used by the calculation.
     """
 
     dict_labels = {
@@ -374,6 +442,16 @@ def plot_p1d_test_sims(
     Plots:
     - Subplots showing fractional errors in P1D for different redshifts.
 
+    Other Parameters
+    ----------------
+    sim_labels : object
+        Sim labels used by the calculation.
+    k_p1d_Mpc : numpy.ndarray
+        K p1d mpc used by the calculation.
+    fontsize : int
+        Base font size in points.
+    kmax_1d_fit : object
+        Kmax 1d fit used by the calculation.
     """
 
     # kmin = 2 * np.pi / 67.5 * fact_kmin

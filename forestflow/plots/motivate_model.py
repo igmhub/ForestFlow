@@ -1,3 +1,7 @@
+"""
+Plot comparisons that motivate the ForestFlow model.
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
@@ -16,6 +20,32 @@ def plot_motivate_model(
     ftsize=20,
     kmax_fit=3,
 ):
+    """
+    Plot motivate model.
+
+    Parameters
+    ----------
+    knew : numpy.ndarray or dict
+        Rebinned wavenumbers.
+    munew : numpy.ndarray or dict
+        Rebinned line-of-sight angle cosines.
+    mu_bins : object
+        Mu bins used by the calculation.
+    rebin_p3d : numpy.ndarray or dict
+        Rebin p3d used by the calculation.
+    rebin_model_p3d : numpy.ndarray or dict
+        Rebin model p3d used by the calculation.
+    rebin_kaiser_p3d : numpy.ndarray or dict
+        Rebin kaiser p3d used by the calculation.
+    rebin_plin : numpy.ndarray or dict
+        Rebin plin used by the calculation.
+    folder : object, optional
+        Output directory.
+    ftsize : int, optional
+        Base font size in points.
+    kmax_fit : int, optional
+        Kmax fit used by the calculation.
+    """
     fig, ax = plt.subplots(2, figsize=(8, 8), sharex=True, height_ratios=[3, 1])
 
     labs = []

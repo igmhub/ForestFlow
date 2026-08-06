@@ -1,4 +1,5 @@
-"""forestflow.archive
+"""
+forestflow.archive
 
 Utilities to load and process Arinyo/Gadget archives for ForestFlow.
 
@@ -17,7 +18,8 @@ from forestflow.utils import params_numpy2dict_minimizerz
 
 
 class GadgetArchive3D(GadgetArchive):
-    """Archive helpers for 3D Gadget simulations.
+    """
+    Archive helpers for 3D Gadget simulations.
 
     Extends `GadgetArchive` with methods to load training and testing
     data, attach Arinyo minimizer results (individual snapshots and
@@ -38,6 +40,21 @@ class GadgetArchive3D(GadgetArchive):
         Archive class for 3D simulations
 
         It calls the Lace GadgetArchive class and adds the Arinyo parameters
+
+        Parameters
+        ----------
+        base_folder : object, optional
+            Base folder used by the calculation.
+        file_errors : object, optional
+            File errors used by the calculation.
+        postproc : str, optional
+            Postproc used by the calculation.
+        kp_Mpc : object, optional
+            Kp mpc used by the calculation.
+        average : str, optional
+            Average used by the calculation.
+        addcentral : bool, optional
+            Addcentral used by the calculation.
         """
 
         if base_folder == None:
@@ -82,7 +99,8 @@ class GadgetArchive3D(GadgetArchive):
             self.training_data.extend(central_data)
 
     def get_testing_data(self, sim_label, ind_rescaling=0, kmax_3d=5, kmax_1d=4):
-        """Return testing data augmented with Arinyo minimizer fits.
+        """
+        Return testing data augmented with Arinyo minimizer fits.
 
         Loads testing data for the given `sim_label` (via
         the parent `GadgetArchive.get_testing_data`) and attaches both
@@ -90,14 +108,21 @@ class GadgetArchive3D(GadgetArchive):
         entry in the returned archive structure.
 
         Parameters
-        - sim_label: str, label of the simulation to load
-        - ind_rescaling: int, index of rescaling to select (default 0)
-        - kmax_3d: int, maximum k for 3D minimizer files (default 5)
-        - kmax_1d: int, maximum k for 1D minimizer files (default 4)
+        ----------
+        sim_label : str
+            Label of the simulation to load.
+        ind_rescaling : int, optional
+            Index of the optical-depth rescaling to select.
+        kmax_3d : float, optional
+            Maximum three-dimensional wavenumber used by the fit.
+        kmax_1d : float, optional
+            Maximum one-dimensional wavenumber used by the fit.
 
         Returns
-        - testing_data: list-like archive with added `Arinyo_min` and
-          `Arinyo_minz` entries where available
+        -------
+        list of dict
+            Testing snapshots augmented with ``Arinyo_min`` and
+            ``Arinyo_minz`` entries where available.
         """
         testing_data = super().get_testing_data(sim_label, ind_rescaling=ind_rescaling)
         self.add_Arinyo_minimizer_indiv(testing_data, sim_label, kmax_3d, kmax_1d)
@@ -109,9 +134,42 @@ class GadgetArchive3D(GadgetArchive):
     def add_Arinyo_minimizer_indiv(self, archive, sim_label=None, kmax_3d=5, kmax_1d=4):
         """
         Arinyo fits considering each snapshot separately
+
+        Parameters
+        ----------
+        archive : object
+            Simulation archive containing the requested data.
+        sim_label : object, optional
+            Sim label used by the calculation.
+        kmax_3d : int, optional
+            Maximum three-dimensional wavenumber included in the fit.
+        kmax_1d : int, optional
+            Maximum one-dimensional wavenumber included in the fit.
+
+        Returns
+        -------
+        object
+            Result produced when the function is used to arinyo fits considering each snapshot separately.
         """
 
         def get_flag_out(ind_sim, kmax_3d, kmax_1d):
+            """
+            Return flag out.
+
+            Parameters
+            ----------
+            ind_sim : object
+                Ind sim used by the calculation.
+            kmax_3d : int or float
+                Maximum three-dimensional wavenumber included in the fit.
+            kmax_1d : int or float
+                Maximum one-dimensional wavenumber included in the fit.
+
+            Returns
+            -------
+            object
+                Result produced when the function is used to return flag out.
+            """
             flag = (
                 "fit_sim_label_"
                 + str(ind_sim)
@@ -205,6 +263,16 @@ class GadgetArchive3D(GadgetArchive):
 
     def add_Arinyo_minimizer_indiv_lowk(self, archive, sim_label="mpg_hypercube"):
 
+        """
+        Add Arinyo minimizer indiv lowk.
+
+        Parameters
+        ----------
+        archive : object
+            Simulation archive containing the requested data.
+        sim_label : str, optional
+            Sim label used by the calculation.
+        """
         name_out = "Arinyo_fit_" + sim_label + "_lowk.npy"
         file = os.path.join(
             self.base_folder, "data", "best_arinyo", "minimizer_lowk", name_out
@@ -224,9 +292,44 @@ class GadgetArchive3D(GadgetArchive):
     def add_Arinyo_minimizer_joint(self, archive, sim_label=None, kmax_3d=3, kmax_1d=3):
         """
         Fits parameterizing the redshift dependence of the Arinyo params
+
+        Parameters
+        ----------
+        archive : object
+            Simulation archive containing the requested data.
+        sim_label : object, optional
+            Sim label used by the calculation.
+        kmax_3d : int, optional
+            Maximum three-dimensional wavenumber included in the fit.
+        kmax_1d : int, optional
+            Maximum one-dimensional wavenumber included in the fit.
+
+        Returns
+        -------
+        object
+            Result produced when the function is used to fits parameterizing the redshift dependence of the arinyo params.
         """
 
         def get_flag_out(ind_sim, val_scaling, kmax_3d, kmax_1d):
+            """
+            Return flag out.
+
+            Parameters
+            ----------
+            ind_sim : object
+                Ind sim used by the calculation.
+            val_scaling : object
+                Val scaling used by the calculation.
+            kmax_3d : int or float
+                Maximum three-dimensional wavenumber included in the fit.
+            kmax_1d : int or float
+                Maximum one-dimensional wavenumber included in the fit.
+
+            Returns
+            -------
+            object
+                Result produced when the function is used to return flag out.
+            """
             flag = (
                 "fit_sim_label_"
                 + str(ind_sim)
@@ -240,6 +343,21 @@ class GadgetArchive3D(GadgetArchive):
             return flag
 
         def paramz_to_paramind(z, paramz):
+            """
+            Convert to paramind.
+
+            Parameters
+            ----------
+            z : int or float
+                Redshift.
+            paramz : object
+                Paramz used by the calculation.
+
+            Returns
+            -------
+            object
+                Result produced when the function is used to convert to paramind.
+            """
             paramind = []
             for ii in range(len(z)):
                 param = {}
@@ -296,20 +414,27 @@ class GadgetArchive3D(GadgetArchive):
             archive[ii]["Arinyo_minz"] = params_numpy2dict_minimizerz(arr_params[_])
 
     def get_Arinyo_priors(self, zmin, zmax, type_fit="Arinyo_min", return_all=False):
-        """Compute summary priors for Arinyo fit parameters.
+        """
+        Compute summary priors for Arinyo fit parameters.
 
         Aggregates Arinyo fit parameter values from `self.training_data`
         within the redshift interval [zmin, zmax] and returns simple
         summary statistics (mean, std, min, max) for each parameter.
 
         Parameters
-        - zmin, zmax: float, redshift bounds (inclusive)
-        - type_fit: str, key in training_data entries to use (default
-          'Arinyo_min')
-        - return_all: bool, if True also return the raw flattened data
+        ----------
+        zmin, zmax : float
+            Inclusive redshift bounds.
+        type_fit : str, optional
+            Key containing fitted parameters in each training-data entry.
+        return_all : bool, optional
+            Whether to also return the flattened parameter samples.
 
         Returns
-        - out_priors: dict of summary stats (and optionally raw arrays)
+        -------
+        dict or tuple of dict
+            Summary statistics, optionally paired with the raw flattened
+            parameter samples.
         """
         # redshifts to be used
         ind_z = np.argwhere(
@@ -378,20 +503,28 @@ class GadgetArchive3D(GadgetArchive):
             return out_priors
 
     def get_IGM_priors(self, zmin, zmax, return_all=False, IGM_params=None):
-        """Compute priors for a set of IGM parameters over redshift.
+        """
+        Compute priors for a set of IGM parameters over redshift.
 
         Gathers the requested `IGM_params` from `self.training_data`
         within the redshift interval [zmin, zmax] and returns simple
         summary statistics (mean, std, min, max) for each parameter.
 
         Parameters
-        - zmin, zmax: float, redshift bounds (inclusive)
-        - return_all: bool, if True also return the raw flattened data
-        - IGM_params: iterable of parameter names to include. If None,
-          a default set of commonly used IGM/emu parameters is used.
+        ----------
+        zmin, zmax : float
+            Inclusive redshift bounds.
+        return_all : bool, optional
+            Whether to also return the flattened parameter samples.
+        IGM_params : iterable of str, optional
+            Parameters to include. By default, the standard cosmological and
+            intergalactic-medium emulator inputs are used.
 
         Returns
-        - out_priors: dict of summary stats (and optionally raw arrays)
+        -------
+        dict or tuple of dict
+            Summary statistics, optionally paired with the raw flattened
+            parameter samples.
         """
 
         if IGM_params is None:

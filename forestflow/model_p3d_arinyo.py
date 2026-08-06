@@ -1,3 +1,7 @@
+"""
+Evaluate the Arinyo Lyman-alpha forest flux-power model.
+"""
+
 import types
 import time
 import numpy as np
@@ -13,6 +17,9 @@ from dataclasses import dataclass
 
 @dataclass(slots=True)
 class LinearTheoryGrid:
+    """
+    Store linear-theory values on redshift and wavenumber grids.
+    """
     z: np.ndarray  # (Nz,)
     logk: np.ndarray  # (Nk,)
     loglinP: np.ndarray  # (Nz, Nk)
@@ -71,6 +78,22 @@ class ArinyoModel(object):
     def linear_theory(self, zs, k_Mpc_min=1e-3, k_Mpc_max=100, new_cosmo_params=None):
         """
         Compute all linear-theory quantities required by the model.
+
+        Parameters
+        ----------
+        zs : object
+            Zs used by the calculation.
+        k_Mpc_min : float, optional
+            K mpc min used by the calculation.
+        k_Mpc_max : int, optional
+            K mpc max used by the calculation.
+        new_cosmo_params : object, optional
+            New cosmo params used by the calculation.
+
+        Returns
+        -------
+        object
+            Result produced when the function is used to compute all linear-theory quantities required by the model.
         """
 
         if self.fid_cosmo.same_background(cosmo_params=new_cosmo_params):
@@ -100,9 +123,36 @@ class ArinyoModel(object):
     def linP_Mpc(self, linear, z, k_Mpc):
         """
         Evaluate the linear power spectrum.
+
+        Parameters
+        ----------
+        linear : object
+            Linear used by the calculation.
+        z : int or float
+            Redshift.
+        k_Mpc : object
+            K mpc used by the calculation.
+
+        Returns
+        -------
+        object
+            Result produced when the function is used to evaluate the linear power spectrum.
         """
 
         def get_iz(zi):
+            """
+            Return the grid index for a requested redshift.
+
+            Parameters
+            ----------
+            zi : object
+                Zi used by the calculation.
+
+            Returns
+            -------
+            object
+                Result produced when the function is used to return the grid index for a requested redshift.
+            """
             matches = np.where(np.isclose(linear.z, zi, atol=1e-3, rtol=0))[0]
 
             if len(matches) == 0:
@@ -154,6 +204,18 @@ class ArinyoModel(object):
     def fz(self, linear, z):
         """
         Evaluate the linear growth rate.
+
+        Parameters
+        ----------
+        linear : object
+            Linear used by the calculation.
+        z : int or float
+            Redshift.
+
+        Returns
+        -------
+        object
+            Result produced when the function is used to evaluate the linear growth rate.
         """
 
         return np.interp(
@@ -176,6 +238,11 @@ class ArinyoModel(object):
         Returns:
             float or array-like: 3D flux power spectrum in units of Mpc^3 with the same shape as the broadcasted
             inputs.
+
+        Other Parameters
+        ----------------
+        linear : object
+            Precomputed linear-theory grid.
         """
 
         k_Mpc = np.sqrt(kpar**2 + kperp**2)
@@ -196,6 +263,13 @@ class ArinyoModel(object):
 
         Returns:
             float or array-like: 3D flux power spectrum in units of Mpc^3 with the same shape as the inputs.
+
+        Other Parameters
+        ----------------
+        linear : object
+            Precomputed linear-theory grid.
+        k_Mpc : numpy.ndarray
+            Wavenumbers in inverse megaparsecs.
         """
         return self._P3D_Mpc(linear, z, k_Mpc, mu, ari_pp)
 
@@ -223,6 +297,21 @@ class ArinyoModel(object):
 
         Returns:
             float or array-like: 3D flux power spectrum in units of Mpc^3 with the same shape as the inputs.
+
+        Other Parameters
+        ----------------
+        linear : object
+            Precomputed linear-theory grid.
+        kpar : numpy.ndarray
+            Line-of-sight wavenumbers.
+        kperp : numpy.ndarray
+            Transverse wavenumbers.
+        seed : int
+            Random-number generator seed.
+        Lbox_Mpc : object
+            Simulation-box length in megaparsecs.
+        epsilon : object
+            Regularization amplitude.
         """
 
         # Evaluate P3D
@@ -258,6 +347,13 @@ class ArinyoModel(object):
         -------
         ndarray
             Flux power spectrum.
+
+        Other Parameters
+        ----------------
+        linP_Mpc : object
+            Linp mpc used by the calculation.
+        k_Mpc : numpy.ndarray
+            Wavenumbers in inverse megaparsecs.
         """
 
         bias = _bcast(ari_pp["bias"], k_Mpc)
@@ -295,6 +391,13 @@ class ArinyoModel(object):
 
         Returns:
             float: Computed value of the 3D flux power spectrum.
+
+        Other Parameters
+        ----------------
+        linear : object
+            Precomputed linear-theory grid.
+        k_Mpc : numpy.ndarray
+            Wavenumbers in inverse megaparsecs.
         """
 
         z = np.asarray(z)
@@ -331,6 +434,22 @@ class ArinyoModel(object):
     def P1D_Mpc(self, linear, z, k_par, ari_pp):
         """
         Compute the one-dimensional flux power spectrum.
+
+        Parameters
+        ----------
+        linear : object
+            Linear used by the calculation.
+        z : int or float
+            Redshift.
+        k_par : object
+            K par used by the calculation.
+        ari_pp : object
+            Ari pp used by the calculation.
+
+        Returns
+        -------
+        object
+            Result produced when the function is used to compute the one-dimensional flux power spectrum.
         """
 
         scalar_z = np.ndim(z) == 0
@@ -364,6 +483,15 @@ class ArinyoModel(object):
 
         Returns:
             array-like: Computed values of the one-dimensional power spectrum (P1D) for the given `k_par` values.
+
+        Other Parameters
+        ----------------
+        linear : object
+            Precomputed linear-theory grid.
+        seed : int
+            Random-number generator seed.
+        Lbox_Mpc : object
+            Simulation-box length in megaparsecs.
         """
 
         return compute_P1D(
@@ -386,6 +514,17 @@ class ArinyoModel(object):
         Returns:
             rperp (array-like): values (float) of separation in Mpc
             Px_per_kpar (array-like): values (float) of Px for each k parallel and rperp. Shape: (len(k_par), len(rperp)).
+
+        Other Parameters
+        ----------------
+        kpar_iMpc : numpy.ndarray
+            Kpar impc used by the calculation.
+        rperp_Mpc : object
+            Rperp mpc used by the calculation.
+        ari_pp : object
+            Ari pp used by the calculation.
+        new_cosmo_params : int
+            Cosmological parameters overriding the fiducial cosmology.
         """
 
         # NEEDS TO BE UPDATED!!!
@@ -408,6 +547,25 @@ class ArinyoModel(object):
 def compute_Gaussian_cov(kpar, kperp, P3D, vol):
 
     # linear
+    """
+    Compute Gaussian covariance.
+
+    Parameters
+    ----------
+    kpar : numpy.ndarray
+        Kpar used by the calculation.
+    kperp : numpy.ndarray
+        Kperp used by the calculation.
+    P3D : numpy.ndarray
+        P3d used by the calculation.
+    vol : object
+        Vol used by the calculation.
+
+    Returns
+    -------
+    object
+        Result produced when the function is used to compute gaussian covariance.
+    """
     dkpar = kpar[1, 0] - kpar[0, 0]
 
     # logarithmic
@@ -422,5 +580,20 @@ def compute_Gaussian_cov(kpar, kperp, P3D, vol):
 
 
 def _bcast(x, target):
+    """
+    Broadcast an array to the requested leading dimensions.
+
+    Parameters
+    ----------
+    x : object
+        X used by the calculation.
+    target : object
+        Target used by the calculation.
+
+    Returns
+    -------
+    object
+        Result produced when the function is used to broadcast an array to the requested leading dimensions.
+    """
     x = np.asarray(x)
     return x.reshape(x.shape + (1,) * (target.ndim - x.ndim))

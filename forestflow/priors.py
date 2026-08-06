@@ -1,9 +1,30 @@
+"""
+Define priors for Arinyo and intergalactic-medium parameters.
+"""
+
 import os
 import numpy as np
 import forestflow
 
 
 def get_arinyo_priors(z, tag="DESI_DR1_P1D", return_all=False):
+    """
+    Return Arinyo priors.
+
+    Parameters
+    ----------
+    z : int or float
+        Redshift.
+    tag : str, optional
+        Tag used by the calculation.
+    return_all : bool, optional
+        Return all used by the calculation.
+
+    Returns
+    -------
+    object
+        Result produced when the function is used to return arinyo priors.
+    """
     if tag == "DESI_DR1_P1D":
         fname = "priors_arinyo_from_p1d.npy"
     else:
@@ -52,6 +73,23 @@ def get_arinyo_priors(z, tag="DESI_DR1_P1D", return_all=False):
 
 
 def get_IGM_priors(z, tag="DESI_DR1_P1D", return_all=False):
+    """
+    Return intergalactic-medium priors.
+
+    Parameters
+    ----------
+    z : int or float
+        Redshift.
+    tag : str, optional
+        Tag used by the calculation.
+    return_all : bool, optional
+        Return all used by the calculation.
+
+    Returns
+    -------
+    object
+        Result produced when the function is used to return intergalactic-medium priors.
+    """
     if tag == "DESI_DR1_P1D":
         fname = "priors_cosmo_IGM_from_p1d.npy"
     else:

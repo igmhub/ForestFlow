@@ -1,3 +1,7 @@
+"""
+Fit Arinyo predictions to measured power spectra.
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import binned_statistic_2d
@@ -11,6 +15,9 @@ from lace.cosmo import cosmology
 class FitData:
 
     # cosmology
+    """
+    Store measured power spectra and uncertainties.
+    """
     z: float
     linear: dict
 
@@ -33,11 +40,57 @@ class FitData:
 
 
 def _get_err_p1d(x, alpha=4, xmin=0.1, xmax=5, ymin=1, ymax=4):
+    """
+    Return err one-dimensional power spectrum.
+
+    Parameters
+    ----------
+    x : object
+        X used by the calculation.
+    alpha : int, optional
+        Alpha used by the calculation.
+    xmin : float, optional
+        Xmin used by the calculation.
+    xmax : int, optional
+        Xmax used by the calculation.
+    ymin : int, optional
+        Ymin used by the calculation.
+    ymax : int, optional
+        Ymax used by the calculation.
+
+    Returns
+    -------
+    object
+        Result produced when the function is used to return err one-dimensional power spectrum.
+    """
     t = (x - xmin) / (xmax - xmin)
     return ymin + ymax * t**alpha
 
 
 def _get_err_p3d(x, alpha=0.2, xmin=0.1, xmax=5, ymin=3, ymax=20):
+    """
+    Return err three-dimensional power spectrum.
+
+    Parameters
+    ----------
+    x : object
+        X used by the calculation.
+    alpha : float, optional
+        Alpha used by the calculation.
+    xmin : float, optional
+        Xmin used by the calculation.
+    xmax : int, optional
+        Xmax used by the calculation.
+    ymin : int, optional
+        Ymin used by the calculation.
+    ymax : int, optional
+        Ymax used by the calculation.
+
+    Returns
+    -------
+    object
+        Result produced when the function is used to return err three-dimensional power spectrum.
+    """
     t = (x - xmin) / (xmax - xmin)
     return ymax - (ymax - ymin) * t**alpha
 
@@ -73,6 +126,34 @@ class ArinyoFitter:
         bounds=None,
     ):
 
+        """
+        Initialize the instance.
+
+        Parameters
+        ----------
+        zlist : object
+            Zlist used by the calculation.
+        kmin_3d : float, optional
+            Kmin 3d used by the calculation.
+        kmax_3d : float, optional
+            Maximum three-dimensional wavenumber included in the fit.
+        kmin_1d : float, optional
+            Kmin 1d used by the calculation.
+        kmax_1d : float, optional
+            Maximum one-dimensional wavenumber included in the fit.
+        n_k_bins : int, optional
+            N k bins used by the calculation.
+        n_mu_bins : int, optional
+            N mu bins used by the calculation.
+        boxsize : float, optional
+            Boxsize used by the calculation.
+        nrkbin : int, optional
+            Nrkbin used by the calculation.
+        nrmubin : int, optional
+            Nrmubin used by the calculation.
+        bounds : object, optional
+            Lower and upper bounds for each parameter.
+        """
         self.zlist = np.asarray(zlist)
 
         self.kmin_3d = kmin_3d
@@ -109,6 +190,11 @@ class ArinyoFitter:
         """
         Build the fine (k, mu) grid used to evaluate the Arinyo model before
         averaging into the simulation bins.
+
+        Parameters
+        ----------
+        kmax : float, optional
+            Kmax used by the calculation.
         """
 
         lnk_max = np.log(kmax)
@@ -199,6 +285,11 @@ class ArinyoFitter:
     def prepare_simulation(self, sim):
         """
         Prepare one simulation for fitting.
+
+        Parameters
+        ----------
+        sim : object
+            Sim used by the calculation.
         """
 
         linear, power_model = self._build_model(sim)
@@ -225,6 +316,16 @@ class ArinyoFitter:
     def _build_model(self, sim):
         """
         Build the cosmology, Arinyo model and linear theory.
+
+        Parameters
+        ----------
+        sim : object
+            Sim used by the calculation.
+
+        Returns
+        -------
+        tuple
+            Result produced when the function is used to build the cosmology, arinyo model and linear theory.
         """
 
         cosmo = cosmology.Cosmology(sim["cosmo_params"])
@@ -236,6 +337,16 @@ class ArinyoFitter:
     def _prepare_p3d(self, sim):
         """
         Extract the fitted 3D power spectrum.
+
+        Parameters
+        ----------
+        sim : object
+            Sim used by the calculation.
+
+        Returns
+        -------
+        tuple
+            Result produced when the function is used to extract the fitted 3d power spectrum.
         """
 
         mask = (sim["k3d_Mpc"][:, 0] >= self.kmin_3d) & (
@@ -260,6 +371,16 @@ class ArinyoFitter:
     def _prepare_p1d(self, sim):
         """
         Extract the fitted 1D power spectrum.
+
+        Parameters
+        ----------
+        sim : object
+            Sim used by the calculation.
+
+        Returns
+        -------
+        tuple
+            Result produced when the function is used to extract the fitted 1d power spectrum.
         """
 
         mask = (sim["k_Mpc"] >= self.kmin_1d) & (sim["k_Mpc"] < self.kmax_1d)
@@ -281,6 +402,16 @@ class ArinyoFitter:
     def params_to_dict(self, params):
         """
         Convert a parameter vector into an Arinyo parameter dictionary.
+
+        Parameters
+        ----------
+        params : dict
+            Model parameter values.
+
+        Returns
+        -------
+        object
+            Result produced when the function is used to convert a parameter vector into an arinyo parameter dictionary.
         """
 
         params = np.asarray(params)
@@ -290,6 +421,16 @@ class ArinyoFitter:
     def params_from_dict(self, params):
         """
         Convert an Arinyo parameter dictionary into a parameter vector.
+
+        Parameters
+        ----------
+        params : dict
+            Model parameter values.
+
+        Returns
+        -------
+        object
+            Result produced when the function is used to convert an arinyo parameter dictionary into a parameter vector.
         """
 
         return np.array(
@@ -350,6 +491,16 @@ class ArinyoFitter:
     def _bin_p3d(self, fine_p3d):
         """
         Average a fine-grid P3D onto the coarse (k,mu) grid.
+
+        Parameters
+        ----------
+        fine_p3d : numpy.ndarray
+            Fine p3d used by the calculation.
+
+        Returns
+        -------
+        object
+            Result produced when the function is used to average a fine-grid p3d onto the coarse (k,mu) grid.
         """
 
         bin_sum = np.bincount(
@@ -363,6 +514,16 @@ class ArinyoFitter:
     def chi2(self, params):
         """
         Chi-square objective function.
+
+        Parameters
+        ----------
+        params : dict
+            Model parameter values.
+
+        Returns
+        -------
+        object
+            Result produced when the function is used to chi-square objective function.
         """
 
         p3d, p1d = self.predict(params)
@@ -376,6 +537,16 @@ class ArinyoFitter:
     def residuals(self, params):
         """
         Return fractional residuals.
+
+        Parameters
+        ----------
+        params : dict
+            Model parameter values.
+
+        Returns
+        -------
+        tuple
+            Result produced when the function is used to return fractional residuals.
         """
 
         p3d, p1d = self.predict(params)
@@ -412,6 +583,15 @@ class ArinyoFitter:
         Returns
         -------
         OptimizeResult
+
+        Other Parameters
+        ----------------
+        ftol : object
+            Relative function-value convergence tolerance.
+        xatol : object
+            Absolute parameter convergence tolerance.
+        kwargs : dict
+            Additional keyword arguments forwarded to the underlying calculation.
         """
 
         if x0 is None:
@@ -445,6 +625,18 @@ class ArinyoFitter:
     ):
         """
         Alternate L-BFGS-B and Nelder-Mead until convergence.
+
+        Parameters
+        ----------
+        niter : int, optional
+            Niter used by the calculation.
+        ftol : float, optional
+            Ftol used by the calculation.
+
+        Returns
+        -------
+        object
+            Result produced when the function is used to alternate l-bfgs-b and nelder-mead until convergence.
         """
 
         x = self.params_from_dict(self.data.ini_params.copy())
@@ -487,6 +679,20 @@ class ArinyoFitter:
     ):
         """
         Compare the fitted model to the simulation.
+
+        Parameters
+        ----------
+        params : object, optional
+            Model parameter values.
+        normalized : bool, optional
+            Normalized used by the calculation.
+        figsize : tuple, optional
+            Figsize used by the calculation.
+
+        Returns
+        -------
+        tuple
+            Result produced when the function is used to compare the fitted model to the simulation.
         """
 
         if params is None:
@@ -566,6 +772,18 @@ class ArinyoFitter:
     ):
         """
         Plot fractional residuals.
+
+        Parameters
+        ----------
+        params : object, optional
+            Model parameter values.
+        figsize : tuple, optional
+            Figsize used by the calculation.
+
+        Returns
+        -------
+        tuple
+            Result produced when the function is used to plot fractional residuals.
         """
 
         if params is None:

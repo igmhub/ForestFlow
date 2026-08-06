@@ -1,3 +1,7 @@
+"""
+Fit redshift-dependent Arinyo power-spectrum models.
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize
@@ -76,6 +80,21 @@ class FitPkz(object):
 
         Returns:
             None
+
+        Other Parameters
+        ----------------
+        names : int
+            Names of parameters varied by the fit.
+        order : int
+            Order used by the calculation.
+        verbose : bool
+            Whether to print progress information.
+        all_kmu : bool
+            All kmu used by the calculation.
+        test : bool
+            Test used by the calculation.
+        maxiter : int
+            Maximum number of optimizer iterations.
         """
 
         # store data and model
@@ -607,6 +626,11 @@ class FitPkz(object):
 
         Returns:
             None
+
+        Other Parameters
+        ----------------
+        plot_emu : bool
+            Plot emu used by the calculation.
         """
 
         fig, ax = plt.subplots(3, sharex=True, figsize=(8, 6))
@@ -874,6 +898,13 @@ class FitPkz(object):
 
         Returns:
             None
+
+        Other Parameters
+        ----------------
+        parameters1 : object
+            Parameters1 used by the calculation.
+        parameters2 : object
+            Parameters2 used by the calculation.
         """
 
         fig, ax = plt.subplots(

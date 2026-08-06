@@ -1,3 +1,7 @@
+"""
+L1o p1d utilities.
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 from forestflow.utils import sigma68
@@ -24,6 +28,16 @@ def plot_p1d_L1O(
     Plots:
     - Subplots showing fractional errors in P1D for different redshifts.
 
+    Other Parameters
+    ----------------
+    z_use : object
+        Z use used by the calculation.
+    k_p1d_Mpc : numpy.ndarray
+        K p1d mpc used by the calculation.
+    fontsize : int
+        Base font size in points.
+    kmax_1d_fit : object
+        Kmax 1d fit used by the calculation.
     """
 
     # kmin = 2 * np.pi / 67.5 * fact_kmin

@@ -1,3 +1,7 @@
+"""
+Construct and transform samples for the priors analysis.
+"""
+
 import os
 import numpy as np
 from getdist import MCSamples
@@ -9,6 +13,21 @@ from cup1d.likelihood.pipeline import Args
 
 def set_getdist_samples(BAO, P1D):
 
+    """
+    Set getdist samples.
+
+    Parameters
+    ----------
+    BAO : object
+        Bao used by the calculation.
+    P1D : numpy.ndarray or dict
+        One-dimensional power-spectrum values.
+
+    Returns
+    -------
+    object
+        Computed result or generated analysis product.
+    """
     names = [
         "b_delta_sigma8",
         "b_eta_f_sigma8",
@@ -132,6 +151,20 @@ def set_getdist_samples(BAO, P1D):
 
 def set_process_p1d_chain(lab_sample, nn=10000, seed=12345, store_p1d=False):
 
+    """
+    Set process one-dimensional power spectrum chain.
+
+    Parameters
+    ----------
+    lab_sample : numpy.ndarray or dict
+        Lab sample used by the calculation.
+    nn : int, optional
+        Nn used by the calculation.
+    seed : int, optional
+        Random-number generator seed.
+    store_p1d : bool, optional
+        Store p1d used by the calculation.
+    """
     pip, chain, d2star, nstar, zs, zeff = set_input_process_p1d_chain(lab_sample)
 
     # get a random sample
@@ -268,6 +301,21 @@ def set_process_p1d_chain(lab_sample, nn=10000, seed=12345, store_p1d=False):
 
 
 def set_input_process_p1d_chain(lab_sample, zeff=2.33):
+    """
+    Set input process one-dimensional power spectrum chain.
+
+    Parameters
+    ----------
+    lab_sample : numpy.ndarray or dict
+        Lab sample used by the calculation.
+    zeff : float, optional
+        Zeff used by the calculation.
+
+    Returns
+    -------
+    tuple
+        Computed result or generated analysis product.
+    """
     if lab_sample == "desi":
         pip = Pipeline()
         # local
@@ -341,6 +389,16 @@ def set_input_process_p1d_chain(lab_sample, zeff=2.33):
 def set_cmbspa_sig8z(nsamples=200, nz=20):
 
     # CMB-SPA Table 1 https://arxiv.org/abs/2506.20707v1
+    """
+    Set cmbspa sig8z.
+
+    Parameters
+    ----------
+    nsamples : int, optional
+        Nsamples used by the calculation.
+    nz : int, optional
+        Nz used by the calculation.
+    """
     cosmo_full_cmbspa = {
         "H0": 67.24,
         "err_H0": 0.35,
@@ -376,6 +434,23 @@ def set_cmbspa_sig8z(nsamples=200, nz=20):
 
 
 def sample_cosmo_dict(base, n_samples=1, rng=None):
+    """
+    Sample cosmo dict.
+
+    Parameters
+    ----------
+    base : object
+        Base used by the calculation.
+    n_samples : int, optional
+        N samples used by the calculation.
+    rng : object, optional
+        Rng used by the calculation.
+
+    Returns
+    -------
+    object
+        Computed result or generated analysis product.
+    """
     rng = np.random.default_rng(rng)
 
     # parameters with errors
@@ -402,6 +477,14 @@ def sample_cosmo_dict(base, n_samples=1, rng=None):
 
 
 def load_k_mu_accel2():
+    """
+    Load k mu accel2.
+
+    Returns
+    -------
+    tuple
+        Computed result or generated analysis product.
+    """
     from cup1d.p1ds.simulations.data_accel2 import load_data
 
     folder = "/home/jchaves/Proyectos/projects/lya/data/accel2/frontier_grid/"
@@ -424,6 +507,14 @@ def set_desifs_sig8z(nsamples=5000):
     # DESI FS DR1  redshifts https://arxiv.org/abs/2411.12021
 
     # Table1
+    """
+    Set desifs sig8z.
+
+    Parameters
+    ----------
+    nsamples : int, optional
+        Nsamples used by the calculation.
+    """
     desi_fs_zeff = np.array([0.295, 0.510, 0.706, 0.930, 1.317, 1.491])
 
     datasets = ["BGS", "LRG1", "LRG2", "LRG3", "ELG2", "QSO"]
@@ -523,6 +614,22 @@ def set_map_igm_p3d(
     lab_sample, pars_chain, store_p1d=False, store_p3d=False, old_emu=True
 ):
 
+    """
+    Set map intergalactic-medium three-dimensional power spectrum.
+
+    Parameters
+    ----------
+    lab_sample : numpy.ndarray or dict
+        Lab sample used by the calculation.
+    pars_chain : numpy.ndarray or dict
+        Pars chain used by the calculation.
+    store_p1d : bool, optional
+        Store p1d used by the calculation.
+    store_p3d : bool, optional
+        Store p3d used by the calculation.
+    old_emu : bool, optional
+        Old emu used by the calculation.
+    """
     import forestflow
     from forestflow.model_p3d_arinyo import ArinyoModel
 

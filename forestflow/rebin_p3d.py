@@ -1,11 +1,51 @@
+"""
+Rebin three-dimensional power spectra.
+"""
+
 import numpy as np
 
 
 def p3d_rebin_mu(k3d, mu, p3d, kmu_modes, n_mubins=4, return_modes=False):
-    """Rebin p3d to fewer mu bins"""
+    """
+    Rebin p3d to fewer mu bins
+
+    Parameters
+    ----------
+    k3d : object
+        K3d used by the calculation.
+    mu : object
+        Mu used by the calculation.
+    p3d : numpy.ndarray
+        P3d used by the calculation.
+    kmu_modes : object
+        Kmu modes used by the calculation.
+    n_mubins : int, optional
+        N mubins used by the calculation.
+    return_modes : bool, optional
+        Return modes used by the calculation.
+
+    Returns
+    -------
+    object
+        Result produced when the function is used to rebin p3d to fewer mu bins.
+    """
 
     def wmean(data, weight):
-        """Weighted mean"""
+        """
+        Weighted mean
+
+        Parameters
+        ----------
+        data : numpy.ndarray
+            Input data.
+        weight : object
+            Weight used by the calculation.
+
+        Returns
+        -------
+        object
+            Result produced when the function is used to weighted mean.
+        """
         return np.sum(data * weight) / np.sum(weight)
 
     n_kbins = k3d.shape[0]
@@ -40,7 +80,27 @@ def p3d_rebin_mu(k3d, mu, p3d, kmu_modes, n_mubins=4, return_modes=False):
 
 
 def get_p3d_modes(kmax, lbox=67.5, k_Mpc_max=20, n_k_bins=20, n_mu_bins=16):
-    """Get k and mu of p3d modes"""
+    """
+    Get k and mu of p3d modes
+
+    Parameters
+    ----------
+    kmax : int or float
+        Kmax used by the calculation.
+    lbox : float, optional
+        Lbox used by the calculation.
+    k_Mpc_max : int, optional
+        K mpc max used by the calculation.
+    n_k_bins : int, optional
+        N k bins used by the calculation.
+    n_mu_bins : int, optional
+        N mu bins used by the calculation.
+
+    Returns
+    -------
+    object
+        Result produced when the function is used to get k and mu of p3d modes.
+    """
 
     # fundamental frequency
     k_fun = 2 * np.pi / lbox
@@ -87,7 +147,25 @@ def get_p3d_modes(kmax, lbox=67.5, k_Mpc_max=20, n_k_bins=20, n_mu_bins=16):
 def get_p3d_modes_kparkper(
     lbox=67.5, kpar_Mpc_max=20, n_k_bins=20, n_mu_bins=16
 ):
-    """Get k and mu of p3d modes"""
+    """
+    Get k and mu of p3d modes
+
+    Parameters
+    ----------
+    lbox : float, optional
+        Lbox used by the calculation.
+    kpar_Mpc_max : int, optional
+        Kpar mpc max used by the calculation.
+    n_k_bins : int, optional
+        N k bins used by the calculation.
+    n_mu_bins : int, optional
+        N mu bins used by the calculation.
+
+    Returns
+    -------
+    object
+        Result produced when the function is used to get k and mu of p3d modes.
+    """
 
     # fundamental frequency
     k_fun = 2 * np.pi / lbox
@@ -140,7 +218,31 @@ def p3d_allkmu(
     nmu=16,
     compute_plin=True,
 ):
-    """Get p3d and plin for all k-mu bins"""
+    """
+    Get p3d and plin for all k-mu bins
+
+    Parameters
+    ----------
+    model : callable
+        Model used by the calculation.
+    zs : object
+        Zs used by the calculation.
+    arinyo : object
+        Arinyo used by the calculation.
+    kmu_modes : object
+        Kmu modes used by the calculation.
+    nk : int, optional
+        Nk used by the calculation.
+    nmu : int, optional
+        Nmu used by the calculation.
+    compute_plin : bool, optional
+        Compute plin used by the calculation.
+
+    Returns
+    -------
+    object
+        Result produced when the function is used to get p3d and plin for all k-mu bins.
+    """
     p3d = np.zeros((nk, nmu))
     if compute_plin:
         plin = np.zeros((nk, nmu))

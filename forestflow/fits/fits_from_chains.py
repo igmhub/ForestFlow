@@ -1,7 +1,26 @@
+"""
+Convert fitted chains into emulator inputs.
+"""
+
 import numpy as np
 
 
 def get_params_4_emu(data, n_std=1):
+    """
+    Return parameters 4 emulator.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        Input data.
+    n_std : int, optional
+        N std used by the calculation.
+
+    Returns
+    -------
+    tuple
+        Result produced when the function is used to return parameters 4 emulator.
+    """
     means = np.mean(data, axis=0)
     cov = np.cov(data.T)
     stds = np.sqrt(np.diag(cov))
@@ -15,6 +34,18 @@ def get_params_4_emu(data, n_std=1):
 
 def get_input_emulator(folder_input, ntot, file_out):
     # best nmax points to compute best-fitting params
+    """
+    Return input emulator.
+
+    Parameters
+    ----------
+    folder_input : object
+        Folder input used by the calculation.
+    ntot : object
+        Ntot used by the calculation.
+    file_out : object
+        File out used by the calculation.
+    """
     nmax = 200
 
     for ii in range(ntot):

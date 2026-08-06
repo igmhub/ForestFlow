@@ -2,6 +2,24 @@
 
 Lyman-alpha Cosmology Emulator. This code is a normalising flow emulator for the 3D flux power spectrum of the Lyman-alpha forest.
 
+## Documentation
+
+The documentation includes the user guide and complete API reference generated
+from NumPy-style docstrings.
+
+- [Online documentation](https://forestflow.readthedocs.io/en/latest/)
+- [Documentation source](https://github.com/igmhub/ForestFlow/tree/main/docs)
+
+To build the documentation locally:
+
+```bash
+python -m pip install -e ".[docs]"
+make docs
+```
+
+Open `docs/_build/html/index.html` after the build completes. Read the Docs uses
+the repository's `.readthedocs.yaml` file to perform the same build online.
+
 ## Emulator parameters:
 
 These are the parameters that describe each individual P3D(k, mu) power spectrum. We have detached these from redshift and traditional cosmology parameters.
@@ -32,43 +50,50 @@ the emulators and archives.
 
 
 ## Installation
-(Last update Jul 27 2026)
 
-- Create a new conda environment. 
+ForestFlow requires Python 3.12 or newer. We recommend installing it in a
+dedicated environment:
 
-```
+```bash
 conda create -n forestflow python=3.12
 conda activate forestflow
 ```
-- Install LaCE:
 
-```Follow the instructions from https://github.com/igmhub/LaCE```
+ForestFlow uses [LaCE](https://github.com/igmhub/LaCE) for cosmology and
+simulation archive support. Install LaCE by following its installation
+instructions, then clone and install ForestFlow:
 
-- Clone the ForestFlow repo and perform an *editable* installation:
-
-```
+```bash
 git clone https://github.com/igmhub/ForestFlow.git
 cd ForestFlow
-make install
-``` 
-
-- Generate notebooks:
-
+python -m pip install -e .
 ```
-pip install jupytext
+
+The editable installation is recommended for development. To install the
+documentation and testing tools as well, use:
+
+```bash
+python -m pip install -e ".[docs,test]"
+```
+
+### Optional features
+
+Install the dependencies required by the cross-power routines with:
+
+```bash
+python -m pip install -e ".[px]"
+```
+
+To generate notebooks from the Jupytext sources:
+
+```bash
+python -m pip install jupytext
 jupytext --to ipynb notebooks/*/*.py
 ```
 
-- If you want to use notebooks via JupyterHub, you'll also need to download `ipykernel`:
+To expose the environment as a Jupyter kernel:
 
-```
-pip install ipykernel
+```bash
+python -m pip install ipykernel
 python -m ipykernel install --user --name forestflow --display-name forestflow
-```
-
-- If you want to use Px routines, you need to install hankl:
-
-
-```
-pip install -e .[px]
 ```

@@ -1,3 +1,7 @@
+"""
+Estimate and smooth power-spectrum variances.
+"""
+
 import numpy as np
 
 
@@ -21,6 +25,21 @@ def get_nmod(k, dk, Lbox):
 
 
 def normalize_power(arch, arch_av):
+    """
+    Normalize power.
+
+    Parameters
+    ----------
+    arch : object
+        Arch used by the calculation.
+    arch_av : object
+        Arch av used by the calculation.
+
+    Returns
+    -------
+    tuple
+        Result produced when the function is used to normalize power.
+    """
     nav = len(arch_av)
     nall = len(arch.data)
     norm_p1d = arch4cov[0]["k_Mpc"] / np.pi
@@ -46,6 +65,23 @@ def normalize_power(arch, arch_av):
 
 
 def smooth_p1d_variance(k1d, std_p1d, kmax=10):
+    """
+    Smooth one-dimensional power spectrum variance.
+
+    Parameters
+    ----------
+    k1d : object
+        K1d used by the calculation.
+    std_p1d : numpy.ndarray
+        Std p1d used by the calculation.
+    kmax : int, optional
+        Kmax used by the calculation.
+
+    Returns
+    -------
+    tuple
+        Result produced when the function is used to smooth one-dimensional power spectrum variance.
+    """
     sm_std_p1d = np.zeros_like(std_p1d)
 
     xx = k1d
@@ -60,6 +96,25 @@ def smooth_p1d_variance(k1d, std_p1d, kmax=10):
 
 
 def smooth_p3d_variance(k3d, std_p3d, kmin=0.5, kmax=10):
+    """
+    Smooth three-dimensional power spectrum variance.
+
+    Parameters
+    ----------
+    k3d : object
+        K3d used by the calculation.
+    std_p3d : numpy.ndarray
+        Std p3d used by the calculation.
+    kmin : float, optional
+        Kmin used by the calculation.
+    kmax : int, optional
+        Kmax used by the calculation.
+
+    Returns
+    -------
+    object
+        Result produced when the function is used to smooth three-dimensional power spectrum variance.
+    """
     sm_std_p3d = np.zeros_like(k3d)
     xx = np.log10(np.nanmean(k3d, axis=1))
     yy = np.log10(np.nanmean(std_p3d, axis=1))

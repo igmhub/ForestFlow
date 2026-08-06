@@ -41,6 +41,19 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 
+[project.optional-dependencies]
+docs = [
+    "sphinx>=7",
+    "numpydoc>=1.6",
+    "pydata-sphinx-theme>=0.15",
+]
+test = [
+    "pytest>=8",
+]
+px = [
+    "hankl",
+]
+
 [tool.setuptools.dynamic]
 version = {attr = "forestflow.__version__"}
 
@@ -51,5 +64,6 @@ namespaces = false
 
 [project.urls]
 Homepage="https://github.com/igmhub/ForestFlow"
+Documentation="https://forestflow.readthedocs.io/en/latest/"
 Repository="https://github.com/igmhub/ForestFlow.git"
 Issues="https://github.com/igmhub/ForestFlow/issues"
