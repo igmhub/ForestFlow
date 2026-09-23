@@ -1,5 +1,8 @@
 import numpy as np
 import sys, os
+from pathlib import Path
+
+import forestflow
 
 from forestflow.model_p3d_arinyo import ArinyoModel
 from forestflow.fit_p3d import FitPk
@@ -94,12 +97,12 @@ def get_input_data(data, err_p3d, err_p1d):
 
 
 def main():
-    path_program = "/home/jchaves/Proyectos/projects/lya/ForestFlow/"
-    folder_lya_data = path_program + "/data/best_arinyo/"
-    folder_save = "/home/jchaves/Proyectos/projects/lya/ForestFlow/data/mcmc/"
+    project_root = Path(forestflow.__path__[0]).parent
+    folder_lya_data = project_root / "data" / "best_arinyo"
+    folder_save = project_root / "data" / "mcmc"
 
     Archive3D = GadgetArchive3D(
-        base_folder=path_program[:-1],
+        base_folder=project_root,
         folder_data=folder_lya_data,
         force_recompute_plin=False,
         average="both",
@@ -211,7 +214,7 @@ def main():
                     sim_label, kmax_3d, noise_3d, kmax_1d, noise_1d
                 )
                 np.savez(
-                    folder_save + out_file,
+                    folder_save / out_file,
                     chain=chain,
                     lnprob=lnprob,
                     chi2=chi2,

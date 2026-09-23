@@ -60,6 +60,39 @@ def P1D_Mpc(
     return p1d
 
 
+def P1D_kms(
+    z, k_par_kms, p3d_fun, dkms_dMpc, p3d_params=None,
+    new_cosmo_params=None, k_perp_min=1e-6, k_perp_max=5.0,
+    n_k_perp=99, **kwargs,
+):
+    """Project an Mpc-space P3D callable into P1D in km/s.
+
+    ``k_par_kms`` and the transverse integration limits are in s/km.
+    ``dkms_dMpc`` is H(z)/(1+z) in km/s/Mpc for the supplied model.
+    The callable follows :func:`P1D_Mpc` (including its ``coordinates``
+    attribute), returning Mpc**3. Optional damping belongs in that callable.
+    The output has the same shape as the one-dimensional input wavenumbers;
+    converting P1D uses one power of ``dkms_dMpc``, not three.
+    """
+    k = np.asarray(k_par_kms, dtype=float)
+    if k.ndim != 1 or not np.all(np.isfinite(k)) or np.any(k <= 0):
+        raise ValueError("k_par_kms must be a finite, positive 1D array")
+    if not np.isfinite(dkms_dMpc) or dkms_dMpc <= 0:
+        raise ValueError("dkms_dMpc must be finite and positive")
+    if not 0 < k_perp_min < k_perp_max or not np.isfinite(k_perp_max):
+        raise ValueError("Require finite 0 < k_perp_min < k_perp_max")
+    if not isinstance(n_k_perp, (int, np.integer)) or n_k_perp < 3:
+        raise ValueError("n_k_perp must be an integer >= 3")
+    return dkms_dMpc * P1D_Mpc(
+        z, k * dkms_dMpc, p3d_fun,
+        p3d_params={} if p3d_params is None else p3d_params,
+        new_cosmo_params=new_cosmo_params,
+        k_perp_min=k_perp_min * dkms_dMpc,
+        k_perp_max=k_perp_max * dkms_dMpc,
+        n_k_perp=n_k_perp, **kwargs,
+    )
+
+
 def _P1D_lnkperp_fast(
     z: float, ln_k_perp: ArrayLike, kpars: ArrayLike, p3d_fun: Callable[..., Any], p3d_params: Mapping[str, Any] | None={}, new_cosmo_params: Mapping[str, Any] | None=None, **kwargs: Mapping[str, Any]
 ) -> NDArray[Any]:
@@ -117,7 +150,7 @@ def _P1D_lnkperp_fast(
         )
 
     # perform numerical integration
-    p1d = simpson(p3d_fix_k_par, ln_k_perp, dx=dlnk, axis=1)
+    p1d = simpson(p3d_fix_k_par, x=ln_k_perp, dx=dlnk, axis=1)
 
     return p1d
 
