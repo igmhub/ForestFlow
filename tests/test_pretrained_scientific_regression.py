@@ -47,6 +47,16 @@ EXPECTED_P3D_MPC = np.array(
 EXPECTED_P1D_MPC = np.array(
     [0.49765690342976293, 0.3073870279033289, 0.12941236753868576]
 )
+MODEL_DIRECTORY = (
+    Path(forestflow.__file__).resolve().parent.parent
+    / "data"
+    / "emulator_models"
+)
+REQUIRED_MODEL_FILES = (
+    "forest_mpg.pt",
+    "forest_mpg_metadata.npy",
+    "forest_mpg_transf.npy",
+)
 
 
 def _scalar_prediction(prediction):
@@ -58,6 +68,16 @@ def _scalar_prediction(prediction):
 
 @pytest.fixture(scope="module")
 def central_prediction():
+    missing = [
+        filename
+        for filename in REQUIRED_MODEL_FILES
+        if not (MODEL_DIRECTORY / filename).is_file()
+    ]
+    if missing:
+        pytest.skip(
+            "pretrained-model regression assets are unavailable: "
+            + ", ".join(missing)
+        )
     torch.set_num_threads(1)
     emulator = P3DEmulator(key="forest_mpg", Nrealizations=3000)
     arinyo = _scalar_prediction(emulator.evaluate(CENTRAL_INPUT, seed=0))
@@ -103,20 +123,15 @@ def test_central_simulation_power_spectra_in_both_p3d_coordinates(
 def test_saved_emulator_reload_preserves_prediction(central_prediction, tmp_path):
     emulator, expected = central_prediction
     model_prefix = tmp_path / "central_emulator"
-    model_directory = (
-        Path(forestflow.__file__).resolve().parent.parent
-        / "data"
-        / "emulator_models"
-    )
     metadata = np.load(
-        model_directory / "forest_mpg_metadata.npy", allow_pickle=True
+        MODEL_DIRECTORY / "forest_mpg_metadata.npy", allow_pickle=True
     ).item()
     torch.save(emulator.emulator.state_dict(), str(model_prefix) + ".pt")
     np.save(str(model_prefix) + "_metadata.npy", metadata)
     reloaded = P3DEmulator(
         key=None,
         model_path=str(model_prefix),
-        transf_file=str(model_directory / "forest_mpg_transf.npy"),
+        transf_file=str(MODEL_DIRECTORY / "forest_mpg_transf.npy"),
         Nrealizations=3000,
     )
 
