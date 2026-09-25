@@ -12,7 +12,7 @@ import FrEIA.framework as Ff
 import FrEIA.modules as Fm
 
 # lace models
-from lace.cosmo import camb_cosmo, fit_linP
+from lace.cosmo.cosmology import Cosmology
 
 # forestflow models
 from forestflow.model_p3d_arinyo import ArinyoModel
@@ -474,8 +474,8 @@ class P3DEmulator:
                     raise ValueError("cosmo must contain:", self.cosmo_fields)
             pk_interp = get_camb_interp("a", {"cosmo_params": cosmo})
             # Adjusting linP values to this cosmo
-            sim_cosmo = camb_cosmo.get_cosmology(**cosmo)
-            linP_zs = fit_linP.get_linP_Mpc_zs(sim_cosmo, [z], kp_Mpc)[0]
+            sim_cosmo = Cosmology(cosmo_params_dict=cosmo)
+            linP_zs = sim_cosmo.get_linP_Mpc_params(z, kp_Mpc)
             if (emu_params["Delta2_p"] != linP_zs["Delta2_p"]) or (
                 emu_params["n_p"] != linP_zs["n_p"]
             ):

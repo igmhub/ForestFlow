@@ -419,14 +419,19 @@ ax[1].set_ylabel("Residual P1D")
 ax[1].set_xlabel("k [1/Mpc]")
 
 # %% [markdown]
-# ## Class
+# ## Supported fitting workflow
+#
+# The exploratory cells above document the original development of this fit.
+# For new fits, use the stable public API below rather than the local
+# likelihood and minimizer definitions above. ``ArinyoFitter`` jointly fits
+# P3D and P1D for each simulation snapshot.
 
 # %%
-from forestflow.new_fit.ArinyoFitter import ArinyoFitter
+from forestflow.fitting import ArinyoFitter
 import forestflow
 
 # %%
-fitter = ArinyoFitter()
+fitter = ArinyoFitter(kmax_3d=4.5, kmax_1d=7.0)
 
 # %%
 # sim_label = "mpg_hypercube"
@@ -448,35 +453,61 @@ else:
     data_fit = Archive3D.get_testing_data(sim_label)
 
 # %%
-result_fits = {}
-chi2 = np.zeros(len(data_fit))
-for par in fitter.PARAM_NAMES:
-    result_fits[par] = np.zeros((len(data_fit), len(fitter.PARAM_NAMES)))
+result_fits = {par: np.full(len(data_fit), np.nan) for par in fitter.PARAM_NAMES}
+initial_chi2 = np.full(len(data_fit), np.nan)
+chi2 = np.full(len(data_fit), np.nan)
+success = np.zeros(len(data_fit), dtype=bool)
+messages = np.empty(len(data_fit), dtype=object)
+
+
+def save_fits():
+    """Save parameter mappings and diagnostics with their stable names."""
+    np.save(
+        file,
+        {
+            "schema_version": 1,
+            "parameter_names": fitter.PARAM_NAMES,
+            "z": np.array([sim["z"] for sim in data_fit]),
+            "ind_snap": np.array([sim.get("ind_snap") for sim in data_fit]),
+            "val_scaling": np.array(
+                [sim.get("val_scaling") for sim in data_fit]
+            ),
+            "initial_chi2": initial_chi2,
+            "chi2": chi2,
+            "success": success,
+            "message": messages,
+            "Arinyo": result_fits,
+        },
+    )
 
 # %%
 for ii, sim in enumerate(data_fit):
     # if ii != 11:
     #     continue
 
-    # save every 50 steps
+    # Save periodically so an interrupted long run remains useful.
     if ii % 50 == 0:
-        res = {"chi2": chi2, "Arinyo": result_fits}
-        np.save(file, res)
+        save_fits()
 
     print("Simulation", ii)
     print()
     print()
 
     fitter.prepare_simulation(sim)
+    initial_chi2[ii] = fitter.chi2(
+        fitter.params_from_dict(fitter.data.ini_params)
+    )
     result = fitter.fit_iterative()
-    # fitter.plot_residuals();
-    for jj, par in enumerate(fitter.PARAM_NAMES):
-        result_fits[par][ii] = result.x[jj]
+    best_parameters = fitter.params_to_dict(fitter.best_params)
+    for par, value in best_parameters.items():
+        result_fits[par][ii] = value
     chi2[ii] = result.fun
+    success[ii] = result.success
+    messages[ii] = result.message
+    print(f"chi2 {initial_chi2[ii]:.4f} -> {chi2[ii]:.4f}")
 
 # save also when finishing the loop
-res = {"chi2": chi2, "Arinyo": result_fits}
-np.save(file, res)
+save_fits()
 
 # %%
 fitter.bounds

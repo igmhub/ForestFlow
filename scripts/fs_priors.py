@@ -9,7 +9,7 @@ os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
 import numpy as np
 from mpi4py import MPI
 from lace.cosmo.thermal_broadening import thermal_broadening_kms
-from lace.cosmo import camb_cosmo, fit_linP
+from lace.cosmo.cosmology import Cosmology
 
 
 def main():
@@ -131,10 +131,10 @@ def main():
             "wa": _wa,
         }
 
-        sim_cosmo = camb_cosmo.get_cosmology_from_dictionary(cosmo)
+        sim_cosmo = Cosmology(cosmo_params_dict=cosmo)
         # compute linear power parameters at each z (in Mpc units)
-        linP_zs = fit_linP.get_linP_Mpc_zs(sim_cosmo, [z], kp_Mpc)
-        dkms_dMpc_zs = camb_cosmo.dkms_dMpc(sim_cosmo, z=np.array([z]))
+        linP_zs = [sim_cosmo.get_linP_Mpc_params(z, kp_Mpc)]
+        dkms_dMpc_zs = sim_cosmo.get_dkms_dMpc(np.array([z]))
 
         emu_params["Delta2_p"][ii] = linP_zs[0]["Delta2_p"]
         emu_params["n_p"][ii] = linP_zs[0]["n_p"]

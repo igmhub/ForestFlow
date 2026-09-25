@@ -1,185 +1,62 @@
-# /global/u1/j/jjchaves/ForestFlow//data/best_arinyo/minimizer/
+"""Fit Arinyo parameters to every snapshot of one Gadget simulation.
+
+This is the supported batch driver.  It uses ``forestflow.fitting`` and saves
+the fit result in ordinary (non-LaTex) parameter names.  The other files in
+this directory are retained as legacy scripts for historical analyses.
+"""
+
+import argparse
+from pathlib import Path
+
 import numpy as np
-import sys, os
 
-import forestflow
-from forestflow.model_p3d_arinyo import ArinyoModel
-from forestflow.fit_p3d import FitPk
 from forestflow.archive import GadgetArchive3D
-from forestflow.rebin_p3d import get_p3d_modes
-from forestflow.utils import params_numpy2dict
+from forestflow.fitting import ArinyoFitter
 
 
-def get_flag_out(ind_sim, kmax_3d, kmax_1d):
-    flag = (
-        "fit_sim_label_"
-        + str(ind_sim)
-        + "_kmax3d_"
-        + str(kmax_3d)
-        + "_kmax1d_"
-        + str(kmax_1d)
-    )
-    return flag
-
-
-def get_input_data(z_use, data, kmax_fit):
-    # these numbers come from notebook Fit_Arinyo
-    p1d_res = [0.9887013, -2.94078465]
-    p3d_res = [1.11635295, -3.32955821]
-    mu_res = [1.1985935, -0.11867367, 0.00485981]
-    alpha1d = 500
-    alpha3d = 0.25
-    k0_p1d = 2
-    k0_p3d = 3
-
-    data_dict = {}
-
-    data_dict["z"] = z_use
-    data_dict["kmu_modes"] = get_p3d_modes(kmax_fit)
-
-    data_dict["k3d_Mpc"] = data["k3d_Mpc"]
-    data_dict["mu3d"] = data["mu3d"]
-    data_dict["k1d_Mpc"] = data["k_Mpc"]
-
-    n_modes = np.zeros_like(data_dict["k3d_Mpc"])
-    for ii in range(data_dict["k3d_Mpc"].shape[0]):
-        for jj in range(data_dict["k3d_Mpc"].shape[1]):
-            key = f"{ii}_{jj}_k"
-            if key in data_dict["kmu_modes"]:
-                n_modes[ii, jj] = data_dict["kmu_modes"][key].shape[0]
-
-    data_dict["p3d_Mpc"] = np.zeros(
-        (data_dict["k3d_Mpc"].shape[0], data_dict["k3d_Mpc"].shape[1])
-    )
-    data_dict["std_p3d"] = np.zeros_like(data_dict["p3d_Mpc"])
-    data_dict["p1d_Mpc"] = np.zeros((data_dict["k1d_Mpc"].shape[0]))
-    data_dict["std_p1d"] = np.zeros_like(data_dict["p1d_Mpc"])
-
-    data_dict["p3d_Mpc"] = data["p3d_Mpc"]
-    data_dict["p1d_Mpc"] = data["p1d_Mpc"]
-    model = data["model"]
-    norm3d = (
-        alpha3d
-        * n_modes
-        / np.exp((1 + data_dict["z"]) * p3d_res[0] + p3d_res[1])
-    )
-    norm3d /= np.exp(
-        data_dict["mu3d"] ** 2 * mu_res[0]
-        + data_dict["mu3d"] * mu_res[1]
-        + mu_res[2]
-    )
-    data_dict["std_p3d"] = 1 / norm3d
-    norm1d = (
-        (1 + data_dict["k1d_Mpc"] / k0_p1d) ** 2
-        * alpha1d
-        / np.exp((1 + data_dict["z"]) * p1d_res[0] + p1d_res[1])
-    )
-    data_dict["std_p1d"] = 1 / norm1d
-
-    return data_dict, model
+def _simulations_for_label(archive, sim_label):
+    if sim_label in archive.list_sim_cube:
+        return [sim for sim in archive.training_data if sim["sim_label"] == sim_label]
+    return archive.get_testing_data(sim_label)
 
 
 def main():
-    args = sys.argv[1:]
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("sim_label", help="simulation label to fit")
+    parser.add_argument("--output", type=Path, required=True, help="output .npz path")
+    parser.add_argument("--kmax-3d", type=float, default=4.5)
+    parser.add_argument("--kmax-1d", type=float, default=7.0)
+    parser.add_argument("--iterations", type=int, default=20)
+    args = parser.parse_args()
 
-    path_program = forestflow.__path__[0][:-10]
-    print(path_program)
-    folder_lya_data = path_program + "/data/best_arinyo/"
-    folder_save = path_program + "/data/best_arinyo/minimizer/"
+    archive = GadgetArchive3D(average="both")
+    snapshots = _simulations_for_label(archive, args.sim_label)
+    if not snapshots:
+        raise ValueError(f"No snapshots found for simulation {args.sim_label!r}")
 
-    Archive3D = GadgetArchive3D(
-        base_folder=path_program[:-1],
-        folder_data=folder_lya_data,
-        force_recompute_plin=False,
-        average="both",
-    )
-    print(len(Archive3D.training_data))
-
-    # fit options
-    kmax_3d = 5
-    kmax_1d = 4
-    fit_type = "both"
-    # maxiter = 4
-    maxiter = 400
-
-    # loop sim_labels
-    for sim_label in Archive3D.list_sim:
-        if (args[0] != "") and (sim_label == args[0]):
-            pass
-        else:
-            continue
-
-        print(sim_label)
-        print()
-        print()
-        if sim_label in Archive3D.list_sim_cube:
-            list_sim_use = []
-            for isim in Archive3D.training_data:
-                if isim["sim_label"] == sim_label:
-                    list_sim_use.append(isim)
-        else:
-            list_sim_use = Archive3D.get_testing_data(
-                sim_label, kmax_3d=3, kmax_1d=3
-            )
-
-        res_params = []
-        res_chi2 = np.zeros((len(list_sim_use)))
-        ind_snap = np.zeros((len(list_sim_use)))
-        val_scaling = np.zeros((len(list_sim_use)))
-
-        # loop snapshots/scaligs
-        for isim, sim_use in enumerate(list_sim_use):
-            ind_snap[isim] = sim_use["ind_snap"]
-            val_scaling[isim] = sim_use["val_scaling"]
-            print()
-            print(sim_label, val_scaling[isim], sim_use["z"])
-            print()
-
-            parameters = sim_use["Arinyo_min"]
-            parameters["q1"] += np.abs(parameters["q2"])
-            parameters["q2"] = 0.05
-            print(parameters)
-
-            params_minimizer = np.array(list(parameters.values()))
-            names = np.array(list(parameters.keys())).reshape(-1)
-            data_dict, model = get_input_data(sim_use["z"], sim_use, kmax_3d)
-
-            # set fitting model
-            fit = FitPk(
-                data_dict,
-                model,
-                names=names,
-                fit_type=fit_type,
-                k3d_max=kmax_3d,
-                k1d_max=kmax_1d,
-                maxiter=maxiter,
-                verbose=True,
-            )
-
-            chia = fit.get_chi2(params_minimizer)
-            print("Initial chi2", chia)
-
-            results, best_fit_params = fit.maximize_likelihood(params_minimizer)
-            params_minimizer = np.array(list(best_fit_params.values()))
-            chi2 = fit.get_chi2(params_minimizer)
-            print("Final chi2", chi2)
-            print("and best_params", best_fit_params)
-
-            val = np.array(list(best_fit_params.values()))
-            res_params.append(best_fit_params)
-            res_chi2[isim] = chia
-
-        # save results to file
-        # folder and name of output file
-        out_file = get_flag_out(sim_label, kmax_3d, kmax_1d)
-        np.savez(
-            folder_save + out_file,
-            chi2=res_chi2,
-            best_params=res_params,
-            ind_snap=ind_snap,
-            val_scaling=val_scaling,
+    results = []
+    for snapshot in snapshots:
+        fitter = ArinyoFitter(kmax_3d=args.kmax_3d, kmax_1d=args.kmax_1d)
+        fitter.prepare_simulation(snapshot)
+        initial_chi2 = fitter.chi2(fitter.params_from_dict(fitter.data.ini_params))
+        result = fitter.fit_iterative(niter=args.iterations)
+        results.append(
+            {
+                "z": snapshot["z"],
+                "ind_snap": snapshot.get("ind_snap"),
+                "val_scaling": snapshot.get("val_scaling"),
+                "initial_chi2": initial_chi2,
+                "chi2": result.fun,
+                "success": result.success,
+                "message": result.message,
+                "Arinyo": fitter.params_to_dict(fitter.best_params),
+            }
         )
-        print("Saved to", folder_save + out_file)
+        print(f"z={snapshot['z']:.3f}: chi2 {initial_chi2:.4f} -> {result.fun:.4f}")
+
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    np.savez(args.output, parameter_names=ArinyoFitter.PARAM_NAMES, results=results)
+    print(f"Saved {len(results)} fits to {args.output}")
 
 
 if __name__ == "__main__":

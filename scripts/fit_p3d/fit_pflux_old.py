@@ -6,7 +6,7 @@ from pyDOE2 import lhs
 # mamba install -c conda-forge emcee
 
 from lace.emulator import pd_archive
-from lace.cosmo import camb_cosmo
+from lace.cosmo.cosmology import Cosmology
 from lace.setup_simulations import read_genic
 from lace_pk import model_p3d_arinyo, fit_p3d
 
@@ -124,13 +124,10 @@ def get_input_data(data, err_p3d, err_p1d):
         folder + "sim_pair_" + str(data["ind_sim"]) + "/sim_plus/paramfile.genic"
     )
     sim_cosmo_dict = read_genic.camb_from_genic(genic_fname)
-    cosmo = camb_cosmo.get_cosmology_from_dictionary(sim_cosmo_dict)
+    cosmo = Cosmology(cosmo_params_dict=sim_cosmo_dict)
 
     # get model
-    camb_results = camb_cosmo.get_camb_results(
-        cosmo, zs=data_dict["z"], camb_kmax_Mpc=200
-    )
-    model = model_p3d_arinyo.ArinyoModel(cosmo, data_dict["z"][0], camb_results)
+    model = model_p3d_arinyo.ArinyoModel(fid_cosmo=cosmo)
     linp = (
         model.linP_Mpc(z=data_dict["z"][0], k_Mpc=data_dict["k3d"])
         * data_dict["k3d"] ** 3

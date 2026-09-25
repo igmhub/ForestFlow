@@ -1,5 +1,7 @@
-"""
-Fit redshift-dependent Arinyo power-spectrum models.
+"""Legacy redshift-dependent fitting implementation.
+
+Retained for historical analyses only.  New fits should use
+:class:`forestflow.fitting.ArinyoFitter` independently for each snapshot.
 """
 
 from collections.abc import Mapping, Sequence

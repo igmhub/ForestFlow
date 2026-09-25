@@ -42,13 +42,25 @@ These are the parameters that describe each individual P3D(k, mu) power spectrum
 
 `kF_Mpc` is the filtering length (or pressure smoothing scale) in inverse comoving units
 
-#### Tutorials:
+## Tutorials and notebooks
 
-In the `Notebooks` folder, there are several tutorials one can run to learn how to use
-the emulators and archives.
+Start with the [end-to-end workflow](https://igmhubforestflow.readthedocs.io/en/latest/workflow.html),
+which follows data from a simulation archive through emulator coefficients to
+P3D and P1D predictions and explains the available uncertainty products.
 
-- Archive tutorial: notebooks/Tutorial_archive.ipynb
-- Emulator tutorial: notebooks/Tutorial_emulator.ipynb
+- [Archive tutorial](notebooks/Tutorials/Tutorial_archive.ipynb)
+- [Emulator tutorial](notebooks/Tutorials/Tutorial_emulator.ipynb)
+- [Arinyo-model tutorial](notebooks/Tutorials/Tutorial_Arinyo.ipynb)
+- [Cross-power tutorial](notebooks/Tutorials/Tutorial_Pcross.ipynb)
+- [P1D covariance tutorial](notebooks/Tutorials/covariance/Tutorial_P1D_cov.ipynb)
+- [Training-input tutorial](notebooks/Tutorials/training/Tutorial_cook_input.ipynb)
+
+`notebooks/Tutorials` contains supported user examples;
+`notebooks/Figures` reproduces publication figures;
+`notebooks/priors` studies priors; `notebooks/emulator` contains emulator
+diagnostics; and `notebooks/developers` contains exploratory or legacy work.
+See the [notebook guide](https://igmhubforestflow.readthedocs.io/en/latest/tutorials.html)
+before choosing an example.
 
 
 ## Installation
@@ -72,10 +84,18 @@ python -m pip install -e .
 ```
 
 The editable installation is recommended for development. To install the
-documentation and testing tools as well, use:
+documentation tools as well, use:
 
 ```bash
-python -m pip install -e ".[docs,test]"
+python -m pip install -e ".[docs]"
+```
+
+### Running tests
+
+Run the complete test suite with:
+
+```bash
+make test
 ```
 
 ### Optional features
@@ -86,12 +106,14 @@ Install the dependencies required by the cross-power routines with:
 python -m pip install -e ".[px]"
 ```
 
-To generate notebooks from the Jupytext sources:
+After installation, generate or refresh all Jupytext notebooks with:
 
 ```bash
 python -m pip install jupytext
-jupytext --to ipynb notebooks/*/*.py
+make notebooks
 ```
+
+Run this from the ForestFlow repository root. The target searches only `ForestFlow/notebooks/`, recursively, and skips Jupyter checkpoint files.
 
 To expose the environment as a Jupyter kernel:
 
@@ -99,3 +121,7 @@ To expose the environment as a Jupyter kernel:
 python -m pip install ipykernel
 python -m ipykernel install --user --name forestflow --display-name forestflow
 ```
+
+### Versioning
+
+Package versions are derived from Git. Tagged releases use the tag; development builds include the commit distance and short SHA (for example, `1.2.0.dev4+gabc1234`). A dirty working tree adds `.dirty`. Source archives without Git metadata report `0+unknown`.

@@ -6,7 +6,6 @@ import numpy as np
 import os
 import copy
 
-from lace.cosmo import camb_cosmo
 from lace.setup_simulations import read_genic
 from lace.emulator import pnd_archive
 

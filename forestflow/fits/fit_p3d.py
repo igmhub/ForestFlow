@@ -1,5 +1,8 @@
-"""
-Fit Arinyo parameters to three-dimensional power spectra.
+"""Legacy P3D fitting implementation.
+
+This module is retained for reproducibility of historical analyses.  It uses
+pre-current model and data contracts and is not the supported fitting API.
+Use :class:`forestflow.fitting.ArinyoFitter` instead.
 """
 
 from collections.abc import Mapping, Sequence

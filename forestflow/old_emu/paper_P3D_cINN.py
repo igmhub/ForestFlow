@@ -12,7 +12,7 @@ import FrEIA.framework as Ff
 import FrEIA.modules as Fm
 
 # lace models
-from lace.cosmo import camb_cosmo, fit_linP
+from lace.cosmo.cosmology import Cosmology
 import lace
 
 # forestflow models
@@ -460,8 +460,8 @@ class P3DEmulator:
                 cosmo = data_cosmo[sim_label]["cosmo_params"]
 
             # Get Delta2p and np from cosmology
-            sim_cosmo = camb_cosmo.get_cosmology(**cosmo)
-            linP_zs = fit_linP.get_linP_Mpc_zs(sim_cosmo, [info_power["z"]], kp_Mpc)[0]
+            sim_cosmo = Cosmology(cosmo_params_dict=cosmo)
+            linP_zs = sim_cosmo.get_linP_Mpc_params(info_power["z"], kp_Mpc)
 
             # add these to emu_params
             emu_params["Delta2_p"] = linP_zs["Delta2_p"]
@@ -478,7 +478,7 @@ class P3DEmulator:
         seed=0,
     ):
         # if natural_params:
-        # linP_zs = fit_linP.get_linP_Mpc_zs(sim_cosmo, [z], kp_Mpc)[0]
+        # linP_zs = sim_cosmo.get_linP_Mpc_params(z, kp_Mpc)
         #     orig_params = {}
         #     orig_params["Delta2_p"] = linP_zs["Delta2_p"]
         #     orig_params["n_p"] = linP_zs["n_p"]
@@ -579,8 +579,8 @@ class P3DEmulator:
         object
             Computed result or generated analysis product.
         """
-        sim_cosmo = camb_cosmo.get_cosmology(**cosmo)
-        linP_zs = fit_linP.get_linP_Mpc_zs(sim_cosmo, [z], kp_Mpc)[0]
+        sim_cosmo = Cosmology(cosmo_params_dict=cosmo)
+        linP_zs = sim_cosmo.get_linP_Mpc_params(z, kp_Mpc)
 
         fid_Ap = linP_zs["Delta2_p"]
         ratio_Ap = target_params["Delta2_p"] / fid_Ap

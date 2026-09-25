@@ -13,8 +13,10 @@ import numpy as np
 import os
 import time
 import random
+import copy
+import hashlib
 from warnings import warn
-from typing import Optional, Dict, List, Union, Tuple, Any
+from typing import Optional, Dict, List, Union, Tuple, Any, Mapping
 
 import torch
 from torch.utils.data import DataLoader, TensorDataset, random_split
@@ -23,6 +25,21 @@ import FrEIA.modules as Fm
 
 import forestflow
 from forestflow.set_training import Transf_data
+from forestflow.model_manifest import load_manifest, write_manifest
+
+
+def _training_data_fingerprint(training_data: Mapping[str, Mapping[str, Any]]) -> str:
+    """Return a stable digest of the exact standardized data used for training."""
+    digest = hashlib.sha256()
+    for group in ("input_par", "output_par"):
+        digest.update(group.encode("utf-8"))
+        for name, values in training_data[group].items():
+            array = np.ascontiguousarray(np.asarray(values))
+            digest.update(name.encode("utf-8"))
+            digest.update(str(array.dtype).encode("ascii"))
+            digest.update(np.asarray(array.shape, dtype=np.int64).tobytes())
+            digest.update(array.tobytes())
+    return digest.hexdigest()
 
 
 def init_xavier(m: torch.nn.Module) -> None:
@@ -83,6 +100,10 @@ class P3DEmulator:
         Training batch size.
     dim_inputSpace : int
         Dimension of the input/output space.
+    best_epoch : int or None
+        Zero-based epoch of the saved validation checkpoint.
+    best_validation_loss : float or None
+        Minimum validation loss, or None when training had no validation split.
     """
 
     def __init__(
@@ -102,6 +123,7 @@ class P3DEmulator:
         use_val_set: bool = False,
         adamw: bool = True,
         Nrealizations: int = 3000,
+        training_provenance: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """
         Initialize the P3D emulator.
@@ -120,7 +142,10 @@ class P3DEmulator:
         model_path : str, optional
             Path prefix for loading a pre-trained emulator.
         transf_file : str, optional
-            File path containing normalization transformations.
+            File path containing normalization transformations. When training,
+            this existing file is recorded and checksummed in the saved model
+            manifest. If omitted, ``save_path + '_transf.npy'`` is included
+            automatically when it already exists.
         nLayers_inn : int, default=6
             Number of invertible blocks in the cINN.
         dims_int : int, default=12
@@ -139,6 +164,10 @@ class P3DEmulator:
             If True use AdamW optimizer, otherwise use Adam.
         Nrealizations : int, default=3000
             Default number of latent space realizations for evaluation.
+        training_provenance : mapping, optional
+            Archive, selection, and preprocessing details to preserve in the
+            saved model manifest. The standardized training-data fingerprint and
+            all optimizer settings are recorded automatically.
 
         Raises
         ------
@@ -190,9 +219,12 @@ class P3DEmulator:
                 dim_inputSpace=len(self.output_labels),
                 save_path=save_path,
                 use_val_set=use_val_set,
+                transf_file=transf_file,
+                training_provenance=training_provenance,
             )
         elif model_path is not None:
             self.Nrealizations = Nrealizations
+            self.manifest = load_manifest(model_path, transf_file)
             self.transf_data = Transf_data(preload_file=transf_file)
             self._load_emulator(model_path=model_path)
         else:
@@ -296,6 +328,8 @@ class P3DEmulator:
 
         self.input_labels = metadata["input_labels"]
         self.output_labels = metadata["output_labels"]
+        self.best_epoch = metadata.get("best_epoch")
+        self.best_validation_loss = metadata.get("best_validation_loss")
 
         # Reconstruct the cINN architecture
         self.emulator = self._define_cINN_Arinyo(
@@ -323,6 +357,8 @@ class P3DEmulator:
         save_path: Optional[str] = None,
         train_seed: int = 32,
         use_val_set: bool = False,
+        transf_file: Optional[str] = None,
+        training_provenance: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """
         Train the cINN emulator on the provided dataset.
@@ -390,10 +426,8 @@ class P3DEmulator:
             "weight_decay": weight_decay,
             "adamw": adamw,
             "train_seed": train_seed,
+            "training_data_fingerprint": _training_data_fingerprint(training_data),
         }
-        if save_path is not None:
-            np.save(save_path + "_metadata.npy", metadata)
-
         # Apply Xavier initialization
         self.emulator.apply(init_xavier)
 
@@ -414,6 +448,8 @@ class P3DEmulator:
         self.loss_arr = []
         self.val_loss_arr = []
         best_val = np.inf
+        best_epoch = None
+        best_state_dict = None
         patience = 50
         counter = 0
 
@@ -428,8 +464,13 @@ class P3DEmulator:
                 self.val_loss_arr.append(val_loss)
                 scheduler.step(val_loss)
 
-                if val_loss < best_val - 1e-6:
+                significant_improvement = val_loss < best_val - 1e-6
+                if val_loss < best_val:
                     best_val = val_loss
+                    best_epoch = epoch
+                    best_state_dict = copy.deepcopy(self.emulator.state_dict())
+
+                if significant_improvement:
                     counter = 0
                 else:
                     counter += 1
@@ -448,9 +489,38 @@ class P3DEmulator:
 
         print(f"Emulator optimized in {time.time() - t0:.2f} seconds")
 
-        # Save the trained model
+        # Validation selects the weights that are persisted and left active.
+        # Without validation, retain the final epoch as before.
+        if use_val_set:
+            if best_state_dict is None:
+                raise RuntimeError("Validation did not produce a finite checkpoint")
+            self.emulator.load_state_dict(best_state_dict)
+            self.best_epoch = best_epoch
+            self.best_validation_loss = float(best_val)
+        else:
+            self.best_epoch = len(self.loss_arr) - 1
+            self.best_validation_loss = None
+
+        metadata["best_epoch"] = self.best_epoch
+        metadata["best_validation_loss"] = self.best_validation_loss
+
+        # Write metadata and weights together after selecting the checkpoint.
         if save_path is not None:
+            np.save(save_path + "_metadata.npy", metadata)
             torch.save(self.emulator.state_dict(), save_path + ".pt")
+            if transf_file is None:
+                candidate = save_path + "_transf.npy"
+                transf_file = candidate if os.path.isfile(candidate) else None
+            provenance = dict(training_provenance or {})
+            provenance.update(
+                {
+                    "train_seed": train_seed,
+                    "use_validation_set": use_val_set,
+                    "training_data_fingerprint": metadata["training_data_fingerprint"],
+                    "transformation_file": None if transf_file is None else str(transf_file),
+                }
+            )
+            self.manifest = write_manifest(save_path, transf_file, provenance)
 
     def _prepare_training_data(
         self, training_data: Dict[str, Dict[str, np.ndarray]]

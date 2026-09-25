@@ -19,6 +19,7 @@ htmlcov/
 
 # Packaging artifacts and virtual environments
 *.egg-info/
+forestflow/_version.py
 build/
 dist/
 .venv/

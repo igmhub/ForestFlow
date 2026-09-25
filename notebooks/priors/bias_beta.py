@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.1
+#       jupytext_version: 1.19.5
 #   kernelspec:
 #     display_name: lace
 #     language: python
@@ -133,7 +133,7 @@ for jj in range(nn):
 #     plt.plot(k_par, k_par * all_P1D_lace[jj, ii]/np.pi, col)
 
 #     plt.plot(k_par, k_par * all_P1D_ff[jj, ii]/np.pi, col+"--")
-    
+
 
 # %%
 jj = 2

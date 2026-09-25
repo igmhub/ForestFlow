@@ -11,6 +11,8 @@ import numpy as np
 import torch
 import functools
 
+from forestflow.conventions import ARINYO_PARAMETER_NAMES
+
 
 def print_memory_usage(step_description: str | PathLike[str]) -> None:
     """
@@ -45,16 +47,7 @@ def params_numpy2dict(params: ArrayLike) -> dict[str, Any]:
     Returns:
         dict: Dictionary containing the parameters with their corresponding names.
     """
-    param_names = [
-        "bias",
-        "beta",
-        "q1",
-        "kvav",
-        "av",
-        "bv",
-        "kp",
-        "q2",
-    ]
+    param_names = ARINYO_PARAMETER_NAMES
     dict_param = {}
     for ii in range(params.shape[0]):
         dict_param[param_names[ii]] = params[ii]
@@ -71,16 +64,7 @@ def params_numpy2dict_minimizer(params: ArrayLike) -> dict[str, Any]:
     Returns:
         dict: Dictionary containing the parameters with their corresponding names.
     """
-    param_names = [
-        "bias",
-        "beta",
-        "q1",
-        "kvav",
-        "av",
-        "bv",
-        "kp",
-        "q2",
-    ]
+    param_names = ARINYO_PARAMETER_NAMES
     dict_param = {}
     for ii in range(params.shape[0]):
         dict_param[param_names[ii]] = params[ii]

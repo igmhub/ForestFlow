@@ -9,6 +9,10 @@ spectrum and provides tools for fitting, integration, and validation.
    :caption: User guide
 
    installation
+   conventions
+   workflow
+   fitting
+   tutorials
    api
 
 Indices and tables

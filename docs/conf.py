@@ -19,6 +19,7 @@ except importlib.metadata.PackageNotFoundError:
     release = "development"
 
 extensions = [
+    "sphinx.ext.graphviz",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx.ext.intersphinx",
@@ -65,7 +66,17 @@ html_theme_options = (
     if html_theme == "pydata_sphinx_theme"
     else {}
 )
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = [
+    "_build",
+    "Thumbs.db",
+    ".DS_Store",
+    # Superseded fitting modules remain in the source tree for historical
+    # analyses; their status and replacement are documented in fitting.rst.
+    "generated/forestflow.fits.fit_p3d.rst",
+    "generated/forestflow.fits.fit_p3dz.rst",
+    "generated/forestflow.fits.likelihood.rst",
+    "generated/forestflow.new_fit.ArinyoFitter.rst",
+]
 intersphinx_mapping = {}
 if os.environ.get("FORESTFLOW_DOCS_INTERSPHINX") == "1":
     intersphinx_mapping = {

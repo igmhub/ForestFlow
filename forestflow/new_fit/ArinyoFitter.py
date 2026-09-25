@@ -1,5 +1,7 @@
-"""
-Fit Arinyo predictions to measured power spectra.
+"""Implementation backend for :mod:`forestflow.fitting`.
+
+Users should import :class:`ArinyoFitter` from ``forestflow.fitting``.  This
+module remains at its historical location to avoid breaking local workflows.
 """
 
 from collections.abc import Mapping, Sequence
