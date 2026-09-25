@@ -340,7 +340,6 @@ class P3DEmulator:
         )
 
         # Load pre-trained weights
-        warn("Loading a pre-trained emulator")
         self.emulator.load_state_dict(torch.load(model_path + ".pt"))
 
     def _train_emulator(
@@ -899,7 +898,9 @@ class P3DEmulator:
             )
             out_emu, _ = self.emulator(z_test, condition, rev=True)
 
-        return np.array(out_emu.reshape(neval, Nrealizations, self.dim_inputSpace))
+        return out_emu.reshape(
+            neval, Nrealizations, self.dim_inputSpace
+        ).detach().cpu().numpy()
 
     def _process_predictions(
         self, all_realizations: np.ndarray, neval: int

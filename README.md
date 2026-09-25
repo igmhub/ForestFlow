@@ -22,6 +22,14 @@ make docs
 Open `docs/_build/html/index.html` after the build completes. Read the Docs uses
 the repository's `.readthedocs.yaml` file to perform the same build online.
 
+### Relationship between the three packages
+
+Install LaCE before ForestFlow; ForestFlow uses its cosmology and simulation
+archive interfaces. cup1d is downstream and is only needed by historical or
+paper-specific analysis modules. These sibling projects are installed directly
+from their IGMHub repositories rather than declared under potentially ambiguous
+PyPI package names. The CI workflow follows the same policy.
+
 ## Emulator parameters:
 
 These are the parameters that describe each individual P3D(k, mu) power spectrum. We have detached these from redshift and traditional cosmology parameters.
