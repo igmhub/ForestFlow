@@ -2,10 +2,13 @@
 Estimate and smooth power-spectrum variances.
 """
 
+from typing import Any
+from numpy.typing import ArrayLike, NDArray
+
 import numpy as np
 
 
-def get_nmod(k, dk, Lbox):
+def get_nmod(k: float, dk: float, Lbox: float) -> float:
     """
     Calculate the number of modes in a given k bin.
 
@@ -24,7 +27,7 @@ def get_nmod(k, dk, Lbox):
     return Nk
 
 
-def normalize_power(arch, arch_av):
+def normalize_power(arch: Any, arch_av: Any) -> tuple[Any, ...]:
     """
     Normalize power.
 
@@ -64,7 +67,7 @@ def normalize_power(arch, arch_av):
     return arr_norm_kp1d, arr_norm_k3p3d
 
 
-def smooth_p1d_variance(k1d, std_p1d, kmax=10):
+def smooth_p1d_variance(k1d: Any, std_p1d: ArrayLike, kmax: int | None=10) -> tuple[Any, ...]:
     """
     Smooth one-dimensional power spectrum variance.
 
@@ -95,7 +98,7 @@ def smooth_p1d_variance(k1d, std_p1d, kmax=10):
     return k1d, sm_std_p1d
 
 
-def smooth_p3d_variance(k3d, std_p3d, kmin=0.5, kmax=10):
+def smooth_p3d_variance(k3d: Any, std_p3d: ArrayLike, kmin: float | None=0.5, kmax: int | None=10) -> NDArray[Any]:
     """
     Smooth three-dimensional power spectrum variance.
 

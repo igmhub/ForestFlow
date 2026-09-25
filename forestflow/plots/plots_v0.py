@@ -2,6 +2,10 @@
 Plots v0 utilities.
 """
 
+from collections.abc import Mapping, Sequence
+from typing import Any
+from numpy.typing import ArrayLike
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -24,7 +28,7 @@ from forestflow.utils import params_numpy2dict, sigma68
 #     return xx
 
 
-def plot_test_parz(Archive3D, p3d_emu, sim_label):
+def plot_test_parz(Archive3D: Any, p3d_emu: ArrayLike, sim_label: Any) -> None:
     """
     Precision of emulator for target sim
 
@@ -75,13 +79,13 @@ def plot_test_parz(Archive3D, p3d_emu, sim_label):
 
 
 def plot_test_p3d(
-    ind_book,
-    Archive3D,
-    p3d_emu,
-    sim_label,
-    plot_emu=True,
-    training_type="Arinyo",
-):
+    ind_book: Any,
+    Archive3D: Any,
+    p3d_emu: ArrayLike,
+    sim_label: Any,
+    plot_emu: bool | None=True,
+    training_type: str | None="Arinyo",
+) -> None:
     """
     Precision of emulator for target sim
 
@@ -164,16 +168,16 @@ def plot_test_p3d(
 
 
 def plot_compare_p3d_smooth(
-    like,
-    parameters1,
-    parameters2=None,
-    save_fig=None,
-    err_bar_all=False,
-    sim_label="",
-    plot_data=True,
-    plot_p1d=True,
-    plot_legend_1=False,
-):
+    like: Any,
+    parameters1: Any,
+    parameters2: Any | None=None,
+    save_fig: str | None=None,
+    err_bar_all: bool | None=False,
+    sim_label: Any="",
+    plot_data: bool=True,
+    plot_p1d: bool=True,
+    plot_legend_1: bool=False,
+) -> Any | None:
     """
     Compare data and best-fitting model.
 
@@ -460,14 +464,14 @@ def plot_compare_p3d_smooth(
 
 
 def plot_err_uncertainty(
-    emulator,
-    archive,
-    sim_labels,
-    mu_lims_p3d,
-    z,
-    val_scaling=1.0,
-    colors=["deepskyblue", "goldenrod"],
-):
+    emulator: ArrayLike,
+    archive: Any,
+    sim_labels: str,
+    mu_lims_p3d: ArrayLike,
+    z: float,
+    val_scaling: float=1.0,
+    colors: Sequence[Any]=["deepskyblue", "goldenrod"],
+) -> Any | None:
     """
     Plot the percent error and uncertainty in P1D and P3D for different simulation labels.
 
@@ -583,13 +587,13 @@ def plot_err_uncertainty(
 
 
 def plot_p1d_LzO(
-    archive,
-    z_use,
-    fractional_errors,
-    savename=None,
-    fontsize=20,
-    fact_kmin=4,
-):
+    archive: Any,
+    z_use: Any,
+    fractional_errors: ArrayLike,
+    savename: Any | None=None,
+    fontsize: int | None=20,
+    fact_kmin: int | None=4,
+) -> None:
     """
     Plot one-dimensional power spectrum LzO.
 
@@ -676,12 +680,12 @@ def plot_p1d_LzO(
 
 
 def plot_paramspace(
-    params_emulator,
-    errors,
-    colourbar_lab=r"$P_{\rm 3D}$ uncertainty",
-    vmin=0,
-    vmax=1,
-):
+    params_emulator: Mapping[str, Any],
+    errors: ArrayLike,
+    colourbar_lab: Any=r"$P_{\rm 3D}$ uncertainty",
+    vmin: Any=0,
+    vmax: Any=1,
+) -> Any | None:
     """
     Plot parameter space with uncertainties in a 2x2 grid.
 

@@ -2,21 +2,25 @@
 Integrate three-dimensional power spectra into one-dimensional spectra.
 """
 
+from collections.abc import Callable, Mapping
+from typing import Any
+from numpy.typing import ArrayLike, NDArray
+
 import numpy as np
 from scipy.integrate import simpson
 
 
 def compute_px_from_p3d_kmu_Mpc(
-    kp_Mpc,
-    rt_Mpc,
-    p3d_func_kmu_Mpc,
-    hankl_kt_Mpc_min=10.0**-7,
-    hankl_kt_Mpc_max=10.0**3,
-    hankl_nkt=2**11,
-    interp_rt_Mpc_min=0.005,
-    interp_rt_Mpc_max=0.2,
-    p3d_k_Mpc_max=200,
-):
+    kp_Mpc: ArrayLike,
+    rt_Mpc: ArrayLike,
+    p3d_func_kmu_Mpc: Callable[..., Any],
+    hankl_kt_Mpc_min: Any=10.0**-7,
+    hankl_kt_Mpc_max: Any=10.0**3,
+    hankl_nkt: int | None=2**11,
+    interp_rt_Mpc_min: Any=0.005,
+    interp_rt_Mpc_max: Any=0.2,
+    p3d_k_Mpc_max: float | None=200,
+) -> NDArray[Any]:
     """
     Given P3D(k, mu) function, use Hankl to compute Px(rt, kp)
 
@@ -63,7 +67,7 @@ def compute_px_from_p3d_kmu_Mpc(
     from forestflow.pcross import Px_Mpc_detailed
 
     @coordinates("k_mu")
-    def dummy_p3d_func_kmu(dummy, k, mu, ari_pp=None, new_cosmo_params=None):
+    def dummy_p3d_func_kmu(dummy: Any, k: Any, mu: Any, ari_pp: Any | None=None, new_cosmo_params: Any | None=None) -> NDArray[Any]:
         """
         Compute dummy three-dimensional power spectrum func kmu.
 
@@ -123,7 +127,7 @@ class P1DIntegrator:
         Number of logarithmically-spaced k_perp points.
     """
 
-    def __init__(self, k_perp_min=1e-3, k_perp_max=100, n_k_perp=99):
+    def __init__(self, k_perp_min: float | None=1e-3, k_perp_max: int | None=100, n_k_perp: int | None=99) -> None:
 
         """
         Initialize the instance.
@@ -149,7 +153,7 @@ class P1DIntegrator:
         # shape (1,1,Nkperp)
         self.prefactor = self.k_perp3**2 / (2 * np.pi)
 
-    def __call__(self, linear, z, k_par, p3d_fun, p3d_params):
+    def __call__(self, linear: Any, z: ArrayLike, k_par: ArrayLike, p3d_fun: ArrayLike, p3d_params: Mapping[str, Any]) -> Any:
         """
         Compute P1D.
 
@@ -213,7 +217,7 @@ class P1DIntegrator:
 _P1D_integrator = P1DIntegrator()
 
 
-def P1D_Mpc(linear, zs, k_par, p3d_fun, p3d_params):
+def P1D_Mpc(linear: Any, zs: Any, k_par: Any, p3d_fun: ArrayLike, p3d_params: Mapping[str, Any]) -> NDArray[Any]:
 
     """
     Compute one-dimensional power spectrum Mpc.

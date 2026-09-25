@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.19.5
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -30,6 +30,8 @@ import numpy as np
 import os
 import sys
 import matplotlib.pyplot as plt
+from pathlib import Path
+import forestflow
 
 from forestflow.model_p3d_arinyo import ArinyoModel
 from forestflow.archive import GadgetArchive3D
@@ -208,7 +210,7 @@ for ii in range(nn):
 # ### Load result from previous computation
 
 # %%
-folder_data = "/home/jchaves/Proyectos/projects/lya/ForestFlow/scripts/out/"
+folder_data = str(Path(forestflow.__path__[0]).parent / "scripts" / "out") + "/"
 size = 25
 nn = 100000
 
@@ -301,14 +303,14 @@ for ii in range(nelem):
 
 
 # %%
-folder_data = "/home/jchaves/Proyectos/projects/lya/ForestFlow/scripts/out/"
+folder_data = str(Path(forestflow.__path__[0]).parent / "scripts" / "out") + "/"
 np.save("forestflow_pred.npy", out_arinyo)
 
 # %% [markdown]
 # #### Load results from emulator
 
 # %%
-folder_data = "/home/jchaves/Proyectos/projects/lya/ForestFlow/scripts/out/"
+folder_data = str(Path(forestflow.__path__[0]).parent / "scripts" / "out") + "/"
 file_name = "forestflow_pred.npy"
 
 file = "/pscratch/sd/j/jjchaves/forestflow_pred.npy" # in nersc

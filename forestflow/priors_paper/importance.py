@@ -2,6 +2,9 @@
 Combine weighted importance samples.
 """
 
+from typing import Any
+from numpy.typing import ArrayLike
+
 import numpy as np
 from copy import deepcopy
 
@@ -14,7 +17,7 @@ rcParams["font.family"] = "STIXGeneral"
 from getdist import plots
 
 
-def fit_gaussian(samples, make_plot=True):
+def fit_gaussian(samples: Any, make_plot: bool | None=True) -> Any:
 
     # assume `samples` is an MCSamples object
     """
@@ -99,7 +102,7 @@ def fit_gaussian(samples, make_plot=True):
     return fits
 
 
-def gaussian_chi2(x, y, x_val, y_val, x_err, y_err, r):
+def gaussian_chi2(x: Any, y: Any, x_val: Any, y_val: Any, x_err: ArrayLike, y_err: ArrayLike, r: Any) -> Any:
     """
     Given central values and errors for Delta_L^2 and n_eff, and its
     cross-correlation coefficient r, compute Gaussian delta chi^2 at
@@ -135,7 +138,7 @@ def gaussian_chi2(x, y, x_val, y_val, x_err, y_err, r):
     return chi2
 
 
-def combine_inplace(samples, fit):
+def combine_inplace(samples: ArrayLike, fit: Any) -> Any:
 
     # assume `samples` is an MCSamples object
     """
@@ -175,7 +178,7 @@ def combine_inplace(samples, fit):
     return samples
 
 
-def combine(samples, fit, label):
+def combine(samples: ArrayLike, fit: Any, label: Any) -> Any:
 
     """
     Combine the requested values.

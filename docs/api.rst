@@ -14,6 +14,7 @@ Core models
    forestflow.p1d
    forestflow.pcross
    forestflow.rebin_p3d
+   forestflow.covariance
 
 Training and inference
 ----------------------
@@ -26,10 +27,7 @@ Training and inference
    forestflow.set_training
    forestflow.priors
    forestflow.utils
-   forestflow.new_fit.ArinyoFitter
-   forestflow.fits.fit_p3d
-   forestflow.fits.fit_p3dz
-   forestflow.fits.likelihood
+   forestflow.fitting
    forestflow.fits.compute_variance
    forestflow.fits.fits_from_chains
 

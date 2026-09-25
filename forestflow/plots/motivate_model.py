@@ -2,6 +2,9 @@
 Plot comparisons that motivate the ForestFlow model.
 """
 
+from typing import Any
+from numpy.typing import ArrayLike
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
@@ -9,17 +12,17 @@ import matplotlib.patches as mpatches
 
 
 def plot_motivate_model(
-    knew,
-    munew,
-    mu_bins,
-    rebin_p3d,
-    rebin_model_p3d,
-    rebin_kaiser_p3d,
-    rebin_plin,
-    folder=None,
-    ftsize=20,
-    kmax_fit=3,
-):
+    knew: ArrayLike,
+    munew: ArrayLike,
+    mu_bins: Any,
+    rebin_p3d: ArrayLike,
+    rebin_model_p3d: ArrayLike,
+    rebin_kaiser_p3d: ArrayLike,
+    rebin_plin: ArrayLike,
+    folder: Any | None=None,
+    ftsize: int | None=20,
+    kmax_fit: int | None=3,
+) -> None:
     """
     Plot motivate model.
 

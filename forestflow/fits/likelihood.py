@@ -2,6 +2,9 @@
 Construct likelihood inputs for power-spectrum fits.
 """
 
+from typing import Any
+from numpy.typing import ArrayLike
+
 import numpy as np
 
 # import matplotlib.pyplot as plt
@@ -19,16 +22,16 @@ class Likelihood(object):
     """
     def __init__(
         self,
-        data,
-        rel_err_p3d,
-        rel_err_p1d,
-        kmax_3d=5,
-        noise_3d=0.075,
-        kmax_1d=5,
-        noise_1d=0.01,
-        fit_type="both",
-        verbose=False,
-    ):
+        data: ArrayLike,
+        rel_err_p3d: ArrayLike,
+        rel_err_p1d: ArrayLike,
+        kmax_3d: float=5,
+        noise_3d: float=0.075,
+        kmax_1d: float=5,
+        noise_1d: float=0.01,
+        fit_type: Any="both",
+        verbose: bool=False,
+    ) -> None:
         """
         Archive
 

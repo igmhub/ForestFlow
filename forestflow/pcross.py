@@ -2,11 +2,15 @@
 Compute cross-power spectra from three-dimensional flux-power models.
 """
 
+from collections.abc import Callable, Mapping
+from typing import Any
+from numpy.typing import ArrayLike
+
 import numpy as np
 from scipy.interpolate import CubicSpline
 from forestflow.p1d import P1D_Mpc 
 
-def Px_Mpc(z, kpars, rperp_Mpc, p3d_fun_Mpc, p3d_params={}, max_k_for_p3d=200, **kwargs):
+def Px_Mpc(z: ArrayLike, kpars: ArrayLike, rperp_Mpc: ArrayLike, p3d_fun_Mpc: Callable[..., Any], p3d_params: Mapping[str, Any] | None={}, max_k_for_p3d: ArrayLike=200, **kwargs: Mapping[str, Any]) -> Any:
     """
     Compute the cross-power spectrum P_cross(k_parallel, r_perp) for a given 3D
     power spectrum model, as a function of parallel wavenumber and transverse
@@ -62,19 +66,19 @@ def Px_Mpc(z, kpars, rperp_Mpc, p3d_fun_Mpc, p3d_params={}, max_k_for_p3d=200, *
 
 
 def Px_Mpc_detailed(
-    z,
-    kpar_iMpc,
-    rperp_Mpc,
-    p3d_fun_Mpc,
-    min_kperp=10.0**-7,
-    max_kperp=10.0**3,
-    nkperp=2**11,
-    interpmin=0.005,
-    interpmax=0.2,
-    p3d_params={},  # list of dictionaries with keyword parameters to be passed to the P3D function
-    max_k_for_p3d=200, # maximum kperp that will be calculated for the P3D, which will otherwise be zero
-    **kwargs # extra keyword arguments for the P3D function that aren't parameter values
-):
+    z: ArrayLike,
+    kpar_iMpc: ArrayLike,
+    rperp_Mpc: ArrayLike,
+    p3d_fun_Mpc: Callable[..., Any],
+    min_kperp: ArrayLike=10.0**-7,
+    max_kperp: ArrayLike=10.0**3,
+    nkperp: int | None=2**11,
+    interpmin: float=0.005,
+    interpmax: float=0.2,
+    p3d_params: Mapping[str, Any] | None={},  # list of dictionaries with keyword parameters to be passed to the P3D function
+    max_k_for_p3d: ArrayLike=200, # maximum kperp that will be calculated for the P3D, which will otherwise be zero
+    **kwargs: Mapping[str, Any] # extra keyword arguments for the P3D function that aren't parameter values
+) -> Any:
     """
     Compute the cross-power spectrum P_cross(k_parallel, r_perp) using a Hankel transform
     for pairs of lines-of-sight separated by transverse distance r_perp, given a 3D power

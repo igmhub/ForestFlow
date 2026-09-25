@@ -2,6 +2,10 @@
 Evaluate the Arinyo Lyman-alpha forest flux-power model.
 """
 
+from collections.abc import Mapping
+from typing import Any
+from numpy.typing import ArrayLike, NDArray
+
 import types
 import time
 import numpy as np
@@ -33,16 +37,16 @@ class ArinyoModel(object):
 
     def __init__(
         self,
-        fid_cosmo=None,
-        default_bias=-0.18,
-        default_bias_eta=-0.23,
-        default_q1=0.4,
-        default_q2=0.0,
-        default_kvav=0.58,
-        default_av=0.29,
-        default_bv=1.55,
-        default_kp=10.5,
-    ):
+        fid_cosmo: Any | None=None,
+        default_bias: float | None=-0.18,
+        default_bias_eta: float | None=-0.23,
+        default_q1: float | None=0.4,
+        default_q2: float | None=0.0,
+        default_kvav: float | None=0.58,
+        default_av: float | None=0.29,
+        default_bv: float | None=1.55,
+        default_kp: float | None=10.5,
+    ) -> None:
         """
         Set up the flux power spectrum model.
 
@@ -75,7 +79,7 @@ class ArinyoModel(object):
             "kp": default_kp,
         }
 
-    def linear_theory(self, zs, k_Mpc_min=1e-3, k_Mpc_max=100, new_cosmo_params=None):
+    def linear_theory(self, zs: Any, k_Mpc_min: float | None=1e-3, k_Mpc_max: int | None=100, new_cosmo_params: Any | None=None) -> Any:
         """
         Compute all linear-theory quantities required by the model.
 
@@ -120,7 +124,7 @@ class ArinyoModel(object):
             fz=cosmo.compute_growth_rate(zs),
         )
 
-    def linP_Mpc(self, linear, z, k_Mpc):
+    def linP_Mpc(self, linear: Any, z: int | float, k_Mpc: Any) -> Any:
         """
         Evaluate the linear power spectrum.
 
@@ -139,7 +143,7 @@ class ArinyoModel(object):
             Result produced when the function is used to evaluate the linear power spectrum.
         """
 
-        def get_iz(zi):
+        def get_iz(zi: Any) -> Any:
             """
             Return the grid index for a requested redshift.
 
@@ -201,7 +205,7 @@ class ArinyoModel(object):
                 f"Unsupported shapes: z={z.shape}, k_Mpc={k_Mpc.shape}"
             )
 
-    def fz(self, linear, z):
+    def fz(self, linear: Any, z: int | float) -> Any:
         """
         Evaluate the linear growth rate.
 
@@ -224,7 +228,7 @@ class ArinyoModel(object):
             linear.fz,
         )
 
-    def P3D_Mpc_kpar_kperp(self, linear, z, kpar, kperp, ari_pp):
+    def P3D_Mpc_kpar_kperp(self, linear: Any, z: float, kpar: ArrayLike, kperp: ArrayLike, ari_pp: Mapping[str, Any]) -> NDArray[Any]:
         """
         Compute the 3D flux power spectrum for inputs given as k_parallel and k_perp.
 
@@ -249,7 +253,7 @@ class ArinyoModel(object):
         mu = kpar / k_Mpc
         return self._P3D_Mpc(linear, z, k_Mpc, mu, ari_pp)
 
-    def P3D_Mpc_k_mu(self, linear, z, k_Mpc, mu, ari_pp):
+    def P3D_Mpc_k_mu(self, linear: Any, z: float, k_Mpc: ArrayLike, mu: ArrayLike, ari_pp: Mapping[str, Any]) -> NDArray[Any]:
         """
         Compute the 3D flux power spectrum for inputs given as k (magnitude) and mu (cosine of angle).
 
@@ -275,15 +279,15 @@ class ArinyoModel(object):
 
     def P3D_Mpc_kpar_kperp_Gaussian_noise(
         self,
-        linear,
-        z,
-        kpar,
-        kperp,
-        ari_pp,
-        seed=0,
-        Lbox_Mpc=100,
-        epsilon=0.0,
-    ):
+        linear: Any,
+        z: float,
+        kpar: ArrayLike,
+        kperp: ArrayLike,
+        ari_pp: Mapping[str, Any],
+        seed: int=0,
+        Lbox_Mpc: Any=100,
+        epsilon: Any=0.0,
+    ) -> NDArray[Any]:
         """
         Compute the 3D flux power spectrum for inputs given as k (magnitude) and mu (cosine of angle).
 
@@ -329,7 +333,7 @@ class ArinyoModel(object):
 
         return P3D_err
 
-    def _arinyo_kernel(self, linP_Mpc, fz, k_Mpc, mu, ari_pp):
+    def _arinyo_kernel(self, linP_Mpc: Any, fz: ArrayLike, k_Mpc: ArrayLike, mu: ArrayLike, ari_pp: Mapping[str, Any]) -> NDArray[Any]:
         """
         Compute the nonlinear correction to the flux power spectrum.
 
@@ -379,7 +383,7 @@ class ArinyoModel(object):
 
         return linP_Mpc * lowk_bias**2 * dnl
 
-    def _P3D_Mpc(self, linear, z, k_Mpc, mu, ari_pp):
+    def _P3D_Mpc(self, linear: Any, z: float, k_Mpc: ArrayLike, mu: float, ari_pp: Mapping[str, Any]) -> float:
         """
         Compute the model for the 3D flux power spectrum in units of Mpc^3.
 
@@ -431,7 +435,7 @@ class ArinyoModel(object):
 
         return res
 
-    def P1D_Mpc(self, linear, z, k_par, ari_pp):
+    def P1D_Mpc(self, linear: Any, z: int | float, k_par: Any, ari_pp: Any) -> NDArray[Any]:
         """
         Compute the one-dimensional flux power spectrum.
 
@@ -467,7 +471,7 @@ class ArinyoModel(object):
 
         return p1d
 
-    def P1D_Mpc_Gaussian_noise(self, linear, z, k_par, ari_pp, seed=0, Lbox_Mpc=100):
+    def P1D_Mpc_Gaussian_noise(self, linear: Any, z: float, k_par: ArrayLike, ari_pp: Mapping[str, Any] | None, seed: int=0, Lbox_Mpc: Any=100) -> NDArray[Any]:
         """
         Compute the one-dimensional power spectrum (P1D) for the specified values of parallel wavenumber (k_par).
 
@@ -504,7 +508,7 @@ class ArinyoModel(object):
             Lbox_Mpc=Lbox_Mpc,
         )
 
-    def Px_Mpc(self, z, kpar_iMpc, rperp_Mpc, ari_pp, new_cosmo_params=None):
+    def Px_Mpc(self, z: float, kpar_iMpc: ArrayLike, rperp_Mpc: Any, ari_pp: Any, new_cosmo_params: int | None=None) -> NDArray[Any]:
         """
         Compute P-cross for the P3D model.
 
@@ -544,7 +548,7 @@ class ArinyoModel(object):
         return Px_Mpc
 
 
-def compute_Gaussian_cov(kpar, kperp, P3D, vol):
+def compute_Gaussian_cov(kpar: ArrayLike, kperp: ArrayLike, P3D: ArrayLike, vol: Any) -> Any:
 
     # linear
     """
@@ -579,7 +583,7 @@ def compute_Gaussian_cov(kpar, kperp, P3D, vol):
     return sigma
 
 
-def _bcast(x, target):
+def _bcast(x: Any, target: Any) -> Any:
     """
     Broadcast an array to the requested leading dimensions.
 

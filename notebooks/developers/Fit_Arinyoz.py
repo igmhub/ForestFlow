@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.1
+#       jupytext_version: 1.19.5
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -199,7 +199,7 @@ def get_default_paramsz(sim_label, z, kmax_3d, kmax_1d, val_scaling=1):
         "q2": [1e-3, 8],
     }
 
-    folder = "/home/jchaves/Proyectos/projects/lya/ForestFlow/data/best_arinyo/minimizer/"
+    folder = str(Path(forestflow.__path__[0]).parent / "data" / "best_arinyo" / "minimizer") + "/"
     file = f"fit_sim_label_{sim_label}_kmax3d_{kmax_3d}_kmax1d_{kmax_1d}.npz"
     dat = np.load(folder+file, allow_pickle=True)
     in_parameters = {}

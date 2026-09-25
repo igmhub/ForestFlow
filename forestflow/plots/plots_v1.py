@@ -2,6 +2,9 @@
 Plots v1 utilities.
 """
 
+from typing import Any
+from numpy.typing import ArrayLike
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -11,7 +14,7 @@ import matplotlib.lines as mlines
 from forestflow.plot_routines import plot_template
 
 
-def plot_test_parz(Archive3D, p3d_emu, sim_label):
+def plot_test_parz(Archive3D: Any, p3d_emu: ArrayLike, sim_label: Any) -> None:
     """
     Precision of emulator for target sim
 
@@ -61,7 +64,7 @@ def plot_test_parz(Archive3D, p3d_emu, sim_label):
     # plt.savefig("params_cosmo_1.png")
 
 
-def plot_test_p3d(ind_book, Archive3D, p3d_emu, sim_label):
+def plot_test_p3d(ind_book: Any, Archive3D: Any, p3d_emu: ArrayLike, sim_label: Any) -> None:
     """
     Precision of emulator for target sim
 
@@ -116,7 +119,7 @@ def plot_test_p3d(ind_book, Archive3D, p3d_emu, sim_label):
     )
 
 
-def params_numpy2dict(params):
+def params_numpy2dict(params: ArrayLike) -> dict[str, Any]:
     """
     Convert a NumPy array of parameters to a dictionary.
 
@@ -144,15 +147,15 @@ def params_numpy2dict(params):
 
 def plot_compare_p3d_smooth(
     self,
-    parameters1,
-    parameters2=None,
-    error_fit_3d=None,
-    error_fit_1d=None,
-    save_fig=None,
-    err_bar_all=False,
-    sim_label="",
-    plot_data=False,
-):
+    parameters1: Any,
+    parameters2: Any | None=None,
+    error_fit_3d: ArrayLike | None=None,
+    error_fit_1d: ArrayLike | None=None,
+    save_fig: str | None=None,
+    err_bar_all: bool | None=False,
+    sim_label: Any="",
+    plot_data: bool=False,
+) -> Any | None:
     """
     Compare data and best-fitting model.
 

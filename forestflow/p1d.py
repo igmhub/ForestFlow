@@ -2,34 +2,40 @@
 Compute one-dimensional power spectra from three-dimensional models.
 """
 
+from collections.abc import Callable, Mapping
+from typing import Any
+from numpy.typing import ArrayLike, NDArray
+
 import numpy as np
 from scipy.integrate import simpson
 import matplotlib.pyplot as plt
 
+from forestflow.conventions import validate_wavenumber
+
 
 def P1D_Mpc(
-    z,
-    k_par,
-    p3d_fun,
-    p3d_params={},
-    new_cosmo_params=None,
-    k_perp_min=0.001,
-    k_perp_max=100,
-    n_k_perp=99,
-    **kwargs,
-):
+    z: float,
+    k_par_iMpc: ArrayLike | None = None,
+    p3d_fun: Callable[..., Any] | None = None,
+    p3d_params: Mapping[str, Any] | None={},
+    new_cosmo_params: Mapping[str, Any] | None=None,
+    k_perp_min_iMpc: float | None=0.001,
+    k_perp_max_iMpc: float | None=100,
+    n_k_perp: int | None=99,
+    **kwargs: Mapping[str, Any],
+) -> NDArray[Any]:
     """
     Return P1D for specified parallel wavenumbers.
 
     Parameters:
         z (float): Redshift. It modifies the linear power spectrum but not the value of the Arinyo parameters.
-        k_par (array-like): Array or list of values for which P1D is to be computed.
+        k_par_iMpc (array-like): Parallel wavenumbers in Mpc^-1.
         p3d_fun (function): Function that returns P3D. It takes as input z, k/kpar, mu/kperp, with the difference
             depending on the value of p3d_fun.coordinates. It also takes as input p3d_params and optionally new_cosmo_params.
         p3d_params (dict, optional): Additional parameters for the model. Defaults to {}.
         new_cosmo_params (dict, optional): Optional cosmology override passed through to `P3D_Mpc`.
-        k_perp_min (float, optional): Lower bound of integral. Defaults to 0.001.
-        k_perp_max (float, optional): Upper bound of integral. Defaults to 100.
+        k_perp_min_iMpc (float, optional): Lower integration bound in Mpc^-1.
+        k_perp_max_iMpc (float, optional): Upper integration bound in Mpc^-1.
         n_k_perp (int, optional): Number of points in integral. Defaults to 99.
 
     Returns:
@@ -41,12 +47,26 @@ def P1D_Mpc(
         Additional keyword arguments forwarded to the underlying calculation.
     """
 
-    ln_k_perp = np.linspace(np.log(k_perp_min), np.log(k_perp_max), n_k_perp)
+    if k_par_iMpc is None and "k_par" in kwargs:
+        k_par_iMpc = kwargs.pop("k_par")
+    if "k_perp_min" in kwargs:
+        k_perp_min_iMpc = kwargs.pop("k_perp_min")
+    if "k_perp_max" in kwargs:
+        k_perp_max_iMpc = kwargs.pop("k_perp_max")
+    if p3d_fun is None:
+        raise TypeError("p3d_fun is required")
+    k_par_iMpc = validate_wavenumber(k_par_iMpc, name="k_par_iMpc")
+    if not 0 < k_perp_min_iMpc < k_perp_max_iMpc:
+        raise ValueError("Require 0 < k_perp_min_iMpc < k_perp_max_iMpc")
+
+    ln_k_perp = np.linspace(
+        np.log(k_perp_min_iMpc), np.log(k_perp_max_iMpc), n_k_perp
+    )
 
     p1d = _P1D_lnkperp_fast(
         z,
         ln_k_perp,
-        k_par,
+        k_par_iMpc,
         p3d_fun,
         p3d_params,
         new_cosmo_params=new_cosmo_params,
@@ -56,9 +76,51 @@ def P1D_Mpc(
     return p1d
 
 
-def _P1D_lnkperp_fast(
-    z, ln_k_perp, kpars, p3d_fun, p3d_params={}, new_cosmo_params=None, **kwargs
+def P1D_kms(
+    z, k_par_ikms=None, p3d_fun=None, dkms_diMpc=None, p3d_params=None,
+    new_cosmo_params=None, k_perp_min_ikms=1e-6, k_perp_max_ikms=5.0,
+    n_k_perp=99, **kwargs,
 ):
+    """
+    Project an Mpc-space P3D callable into P1D in km/s.
+
+    ``k_par_ikms`` and the transverse integration limits are in s/km.
+    ``dkms_diMpc`` is H(z)/(1+z) in km/s/Mpc for the supplied model.
+    The callable follows :func:`P1D_Mpc` (including its ``coordinates``
+    attribute), returning Mpc**3. Optional damping belongs in that callable.
+    The output has the same shape as the one-dimensional input wavenumbers;
+    converting P1D uses one power of ``dkms_diMpc``, not three.
+    """
+    if k_par_ikms is None and "k_par_kms" in kwargs:
+        k_par_ikms = kwargs.pop("k_par_kms")
+    if dkms_diMpc is None and "dkms_dMpc" in kwargs:
+        dkms_diMpc = kwargs.pop("dkms_dMpc")
+    if "k_perp_min" in kwargs:
+        k_perp_min_ikms = kwargs.pop("k_perp_min")
+    if "k_perp_max" in kwargs:
+        k_perp_max_ikms = kwargs.pop("k_perp_max")
+    if p3d_fun is None:
+        raise TypeError("p3d_fun is required")
+    k = validate_wavenumber(k_par_ikms, name="k_par_ikms")
+    if not np.isfinite(dkms_diMpc) or dkms_diMpc <= 0:
+        raise ValueError("dkms_diMpc must be finite and positive")
+    if not 0 < k_perp_min_ikms < k_perp_max_ikms or not np.isfinite(k_perp_max_ikms):
+        raise ValueError("Require finite 0 < k_perp_min_ikms < k_perp_max_ikms")
+    if not isinstance(n_k_perp, (int, np.integer)) or n_k_perp < 3:
+        raise ValueError("n_k_perp must be an integer >= 3")
+    return dkms_diMpc * P1D_Mpc(
+        z, k * dkms_diMpc, p3d_fun,
+        p3d_params={} if p3d_params is None else p3d_params,
+        new_cosmo_params=new_cosmo_params,
+        k_perp_min_iMpc=k_perp_min_ikms * dkms_diMpc,
+        k_perp_max_iMpc=k_perp_max_ikms * dkms_diMpc,
+        n_k_perp=n_k_perp, **kwargs,
+    )
+
+
+def _P1D_lnkperp_fast(
+    z: float, ln_k_perp: ArrayLike, kpars: ArrayLike, p3d_fun: Callable[..., Any], p3d_params: Mapping[str, Any] | None={}, new_cosmo_params: Mapping[str, Any] | None=None, **kwargs: Mapping[str, Any]
+) -> NDArray[Any]:
     """
     Compute P1D by integrating P3D in terms of ln(k_perp) using a fast method.
 
@@ -113,14 +175,14 @@ def _P1D_lnkperp_fast(
         )
 
     # perform numerical integration
-    p1d = simpson(p3d_fix_k_par, ln_k_perp, dx=dlnk, axis=1)
+    p1d = simpson(p3d_fix_k_par, x=ln_k_perp, dx=dlnk, axis=1)
 
     return p1d
 
 
 def _P1D_lnkperp_fast_smooth(
-    z, ln_k_perp, kpars, k3d_smooth, p3d_fun, p3d_params={}, new_cosmo_params=None
-):
+    z: float, ln_k_perp: ArrayLike, kpars: ArrayLike, k3d_smooth: float, p3d_fun: Callable[..., Any], p3d_params: Mapping[str, Any] | None={}, new_cosmo_params: Mapping[str, Any] | None=None
+) -> NDArray[Any]:
     """
     Compute P1D by integrating P3D in terms of ln(k_perp) with smoothing.
 
@@ -167,7 +229,7 @@ def _P1D_lnkperp_fast_smooth(
     return p1d
 
 
-def p1d_from_p3d(kpar_3d, fun_p3d, z, params, vol=0, niter=1000, seed=0):
+def p1d_from_p3d(kpar_3d: ArrayLike, fun_p3d: ArrayLike, z: Any, params: Mapping[str, Any], vol: Any=0, niter: int=1000, seed: int=0) -> NDArray[Any]:
     """
     Compute P1D(kpar) from P3D(kpar,kper).
 
@@ -237,7 +299,7 @@ def p1d_from_p3d(kpar_3d, fun_p3d, z, params, vol=0, niter=1000, seed=0):
     return res
 
 
-def get_sigma(kpar2d, kperp2d, p3d, vol):
+def get_sigma(kpar2d: ArrayLike, kperp2d: ArrayLike, p3d: ArrayLike, vol: Any) -> NDArray[Any]:
     """
     Return uncertainty.
 
