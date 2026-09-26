@@ -38,6 +38,9 @@ emulator = P3DEmulator(key = "forest_mpg")
 
 # %% [markdown]
 # ## Evaluate emulator to get Arinyo parameters
+#
+# The default emulator is evaluated eagerly. This is the most convenient mode
+# for one-off predictions and is the historical interface used by ForestFlow.
 
 # %% [markdown]
 # #### You can provide multiple inputs at once
@@ -62,6 +65,37 @@ list_input_params = [
 # %%time
 coeffs = emulator.evaluate(emu_params=list_input_params)
 coeffs
+
+# %% [markdown]
+# #### Compiled evaluation for repeated calls
+#
+# For repeated evaluations with the same input shape (for example, in an
+# inference loop), compile the PyTorch network once. Compilation is optional
+# and requires PyTorch 2 or newer. Its first call is slower because PyTorch
+# builds the graph; later calls reuse it. The numerical interface and returned
+# Arinyo parameters are unchanged.
+#
+# Either compile an existing emulator:
+
+# %%
+emulator.compile()
+
+# %%
+# %%time
+compiled_coeffs = emulator.evaluate(emu_params=list_input_params)
+compiled_coeffs
+
+# %% [markdown]
+# Or request compilation while constructing it:
+
+# %%
+# emulator_compiled = P3DEmulator(key="forest_mpg", compile_model=True)
+# compiled_coeffs = emulator_compiled.evaluate(emu_params=list_input_params)
+
+# %% [markdown]
+# `compiled_coeffs` and `coeffs` should agree up to floating-point precision.
+# The compiled path is most useful for long runs with fixed batch sizes; on a
+# CPU, measure the full workflow before assuming that compilation is faster.
 
 # %% [markdown]
 # #### Or just one

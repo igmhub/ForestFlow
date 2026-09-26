@@ -138,3 +138,70 @@ def test_saved_emulator_reload_preserves_prediction(central_prediction, tmp_path
     actual = _scalar_prediction(reloaded.evaluate(CENTRAL_INPUT, seed=0))
     for name in expected:
         assert actual[name] == pytest.approx(expected[name], rel=0, abs=0)
+
+
+def test_batched_predictions_reuse_deterministic_latent_samples(
+    central_prediction,
+):
+    emulator, _ = central_prediction
+    inputs = [
+        dict(CENTRAL_INPUT, mF=CENTRAL_INPUT["mF"] + offset)
+        for offset in (-0.02, 0.0, 0.02)
+    ]
+
+    first = emulator.evaluate(inputs, Nrealizations=64, seed=17)
+    cached_latent = emulator._latent_cache
+    second = emulator.evaluate(inputs, Nrealizations=64, seed=17)
+
+    assert emulator._latent_cache is cached_latent
+    for name in EXPECTED_ARINYO:
+        assert np.asarray(first[name]).shape == (len(inputs),)
+        np.testing.assert_array_equal(first[name], second[name])
+
+    emulator.evaluate(inputs, Nrealizations=64, seed=18)
+
+
+def test_latent_indices_preserve_independent_batch_predictions(
+    central_prediction,
+):
+    emulator, _ = central_prediction
+    first = [
+        dict(CENTRAL_INPUT, mF=CENTRAL_INPUT["mF"] + offset)
+        for offset in (-0.02, 0.0, 0.02)
+    ]
+    second = [
+        dict(CENTRAL_INPUT, gamma=CENTRAL_INPUT["gamma"] + offset)
+        for offset in (-0.03, 0.0, 0.03)
+    ]
+
+    expected_first = emulator.evaluate(first, Nrealizations=64, seed=9)
+    expected_second = emulator.evaluate(second, Nrealizations=64, seed=9)
+    combined = emulator.evaluate(
+        first + second,
+        Nrealizations=64,
+        seed=9,
+        latent_indices=[0, 1, 2, 0, 1, 2],
+    )
+
+    for name in EXPECTED_ARINYO:
+        expected = np.concatenate(
+            [np.asarray(expected_first[name]), np.asarray(expected_second[name])]
+        )
+        np.testing.assert_allclose(combined[name], expected, rtol=2e-6, atol=1e-8)
+
+
+def test_batched_p1d_matches_scalar_quadrature(central_prediction):
+    """The public P1D method dispatches stacked linear grids without a walker loop."""
+    _, arinyo = central_prediction
+    model = ArinyoModel(cosmology.Cosmology(cosmo_params_dict=CENTRAL_COSMOLOGY))
+    zs = np.array([3.0])
+    cosmologies = [{}, {"ns": CENTRAL_COSMOLOGY["ns"] + 1.0e-4}]
+    linear_batch = model.linear_theory_batch(zs, cosmologies)
+    k = np.array([[[0.2, 0.7, 2.0]], [[0.2, 0.7, 2.0]]])
+    arinyo_batch = {name: np.array([[value], [value]]) for name, value in arinyo.items()}
+    batched = model.P1D_Mpc(linear_batch, zs, k, arinyo_batch)
+    for index, parameters in enumerate(cosmologies):
+        scalar = model.P1D_Mpc(
+            model.linear_theory(zs, new_cosmo_params=parameters), zs, k[index], arinyo
+        )
+        np.testing.assert_allclose(batched[index], scalar, rtol=1.0e-12)

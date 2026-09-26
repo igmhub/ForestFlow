@@ -186,8 +186,11 @@ class P1DIntegrator:
                 k_par = k_par[None, :]
         else:
             # Multiple redshifts
-
-            if k_par.ndim == 1:
+            if k_par.ndim == 3:
+                # Batched grids: (batch, redshift, k_parallel).
+                if k_par.shape[1] != len(z):
+                    raise ValueError("redshift axis of batched k_par must match len(z).")
+            elif k_par.ndim == 1:
                 # Same k_parallel grid for every redshift
                 k_par = np.broadcast_to(
                     k_par,

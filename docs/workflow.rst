@@ -90,6 +90,31 @@ The result is keyed by ``emulator.output_labels``. Inputs outside the
 training domain are extrapolations; inspect the archive training sample before
 interpreting them.
 
+For several redshifts or parameter points, pass a list of dictionaries. The
+network then evaluates them in one batch instead of making one Python call per
+redshift:
+
+.. code-block:: python
+
+   inputs_by_redshift = [input_at_z2, input_at_z3, input_at_z4]
+   arinyo_by_redshift = emulator.evaluate(inputs_by_redshift, seed=0)
+
+Each returned value has one entry per input dictionary. Repeated calls with the
+same batch size, ``Nrealizations``, and seed reuse the deterministic latent
+sample tensor.
+
+Long minimization or sampling runs can also compile the neural network once:
+
+.. code-block:: python
+
+   emulator = P3DEmulator(key="forest_mpg", compile_model=True)
+   emulator.evaluate(inputs_by_redshift)  # compiles this input shape
+   arinyo_by_redshift = emulator.evaluate(inputs_by_redshift)  # reuses it
+
+The first call for a new input shape pays the compilation cost. Compilation is
+therefore opt-in and is most useful when later calls keep the same number of
+redshifts. The portable model saved on disk remains the ordinary PyTorch model.
+
 4. Compute P3D and P1D
 ----------------------
 

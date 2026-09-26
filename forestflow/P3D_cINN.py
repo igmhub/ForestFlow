@@ -16,7 +16,7 @@ import random
 import copy
 import hashlib
 from warnings import warn
-from typing import Optional, Dict, List, Union, Tuple, Any, Mapping
+from typing import Optional, Dict, List, Union, Tuple, Any, Mapping, Sequence
 
 import torch
 from torch.utils.data import DataLoader, TensorDataset, random_split
@@ -124,6 +124,7 @@ class P3DEmulator:
         adamw: bool = True,
         Nrealizations: int = 3000,
         training_provenance: Optional[Mapping[str, Any]] = None,
+        compile_model: bool = False,
     ) -> None:
         """
         Initialize the P3D emulator.
@@ -168,6 +169,10 @@ class P3DEmulator:
             Archive, selection, and preprocessing details to preserve in the
             saved model manifest. The standardized training-data fingerprint and
             all optimizer settings are recorded automatically.
+        compile_model : bool, default=False
+            Compile the neural network with ``torch.compile`` for repeated
+            inference. This has a noticeable one-time cost, but can reduce
+            evaluation time in long sampling runs.
 
         Raises
         ------
@@ -231,6 +236,32 @@ class P3DEmulator:
             raise ValueError(
                 "Either train=True with required parameters, or model_path must be provided."
             )
+
+        self.emulator.eval()
+        self._latent_cache_key = None
+        self._latent_cache = None
+        self._compiled = False
+        if compile_model:
+            self.compile()
+
+    def compile(self, mode: str = "reduce-overhead") -> None:
+        """Compile the network for faster repeated inference.
+
+        The first evaluation of each new input shape triggers PyTorch
+        compilation and is therefore slower. Subsequent evaluations, such as
+        likelihood calls with a fixed number of redshifts, reuse the graph.
+
+        Parameters
+        ----------
+        mode : str, default="reduce-overhead"
+            Compilation mode forwarded to :func:`torch.compile`.
+        """
+        if not hasattr(torch, "compile"):
+            raise RuntimeError("Compiled inference requires PyTorch 2.0 or newer")
+        if self._compiled:
+            return
+        self.emulator = torch.compile(self.emulator, mode=mode)
+        self._compiled = True
 
     def _define_cINN_Arinyo(
         self, nLayers_inn: int, batch_size: int, dim_inputSpace: int, dims_int: int = 16
@@ -762,6 +793,7 @@ class P3DEmulator:
         emu_params: Union[Dict[str, float], List[Dict[str, float]]],
         Nrealizations: Optional[int] = None,
         seed: int = 0,
+        latent_indices: Optional[Sequence[int]] = None,
     ) -> Dict[str, np.ndarray]:
         """
         Predict Arinyo coefficients using the trained emulator.
@@ -779,6 +811,9 @@ class P3DEmulator:
             If None, uses the default value from initialization.
         seed : int, default=0
             Random seed for reproducibility.
+        latent_indices : sequence of int, optional
+            Latent block assigned to each input. This allows a larger batch to
+            reproduce the random samples used by independent redshift batches.
 
         Returns
         -------
@@ -811,16 +846,15 @@ class P3DEmulator:
         if Nrealizations is None:
             Nrealizations = self.Nrealizations
 
-        # Setup random generator
-        generator = torch.Generator().manual_seed(seed)
-
         # Prepare conditioned inputs
         neval = len(emu_params)
         condition = self._prepare_condition_tensor(emu_params, neval, Nrealizations)
 
         # Generate predictions
+        generator = torch.Generator(device=condition.device).manual_seed(seed)
         all_realizations = self._generate_predictions(
-            condition, neval, Nrealizations, generator
+            condition, neval, Nrealizations, generator, seed=seed,
+            latent_indices=latent_indices,
         )
 
         # Process and transform predictions
@@ -846,20 +880,17 @@ class P3DEmulator:
         torch.Tensor
             Condition tensor for the cINN.
         """
-        ninpt_pars = len(emu_params[0])
-        condition = np.zeros((neval * Nrealizations, ninpt_pars))
-
-        for jj in range(neval):
+        normalized = []
+        for params in emu_params:
             # Normalize input parameters
             dict_input = self.transf_data.transf_stand(
-                emu_params[jj], type_stand="input", direct=True
+                params, type_stand="input", direct=True
             )
+            normalized.append([dict_input[par] for par in self.input_labels])
 
-            # Create array of normalized parameters
-            arr_input = np.array([dict_input[par] for par in self.input_labels])
-            condition[jj * Nrealizations : (jj + 1) * Nrealizations, :] = arr_input
-
-        return torch.tensor(condition, dtype=torch.float32)
+        device = next(self.emulator.parameters()).device
+        condition = torch.as_tensor(normalized, dtype=torch.float32, device=device)
+        return torch.repeat_interleave(condition, Nrealizations, dim=0)
 
     def _generate_predictions(
         self,
@@ -867,6 +898,8 @@ class P3DEmulator:
         neval: int,
         Nrealizations: int,
         generator: torch.Generator,
+        seed: Optional[int] = None,
+        latent_indices: Optional[Sequence[int]] = None,
     ) -> np.ndarray:
         """
         Generate predictions from the cINN model.
@@ -881,6 +914,11 @@ class P3DEmulator:
             Number of realizations per point.
         generator : torch.Generator
             Random generator for reproducibility.
+        seed : int, optional
+            Seed associated with ``generator``. When supplied, deterministic
+            latent samples are cached for subsequent calls with the same shape.
+        latent_indices : sequence of int, optional
+            Latent block to use for each evaluation point.
 
         Returns
         -------
@@ -891,11 +929,43 @@ class P3DEmulator:
         aran = np.arange(neval * Nrealizations)
         self.emulator.conditions = [aran] * self.nLayers_inn
 
+        n_samples = neval * Nrealizations
+        device = condition.device
+        if latent_indices is None:
+            latent_indices_key = None
+            n_latent_groups = neval
+        else:
+            latent_indices = np.asarray(latent_indices, dtype=int)
+            if latent_indices.shape != (neval,) or np.any(latent_indices < 0):
+                raise ValueError("latent_indices must contain one non-negative index per input")
+            latent_indices_key = tuple(latent_indices.tolist())
+            n_latent_groups = int(np.max(latent_indices)) + 1
+        cache_key = (
+            n_samples, self.dim_inputSpace, seed, device.type, device.index,
+            latent_indices_key,
+        )
+        if seed is not None and self._latent_cache_key == cache_key:
+            z_test = self._latent_cache
+        else:
+            latent = torch.randn(
+                n_latent_groups * Nrealizations,
+                self.dim_inputSpace,
+                generator=generator,
+                device=device,
+            )
+            if latent_indices is None:
+                z_test = latent
+            else:
+                z_test = latent.reshape(
+                    n_latent_groups, Nrealizations, self.dim_inputSpace
+                )[latent_indices].reshape(n_samples, self.dim_inputSpace)
+            if seed is not None:
+                # Keep only the most recently used tensor to bound memory use.
+                self._latent_cache_key = cache_key
+                self._latent_cache = z_test
+
         # Generate predictions
         with torch.no_grad():
-            z_test = torch.randn(
-                neval * Nrealizations, self.dim_inputSpace, generator=generator
-            )
             out_emu, _ = self.emulator(z_test, condition, rev=True)
 
         return out_emu.reshape(

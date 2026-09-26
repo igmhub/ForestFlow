@@ -124,6 +124,22 @@ class ArinyoModel(object):
             fz=cosmo.compute_growth_rate(zs),
         )
 
+    def linear_theory_batch(self, zs, cosmology_parameters):
+        """Build a stacked linear grid for a sequence of rescaled cosmologies."""
+        grids = [self.linear_theory(zs, new_cosmo_params=params) for params in cosmology_parameters]
+        return LinearTheoryGrid(z=np.asarray(zs), logk=grids[0].logk,
+            loglinP=np.stack([grid.loglinP for grid in grids]),
+            fz=np.stack([grid.fz for grid in grids]))
+
+    def _linP_Mpc_batch(self, linear, k_Mpc):
+        """Interpolate a ``(batch,z,k,...)`` request from a stacked grid."""
+        k_Mpc = np.asarray(k_Mpc)
+        out = np.empty_like(k_Mpc)
+        for ib in range(k_Mpc.shape[0]):
+            for iz in range(k_Mpc.shape[1]):
+                out[ib, iz] = np.exp(np.interp(np.log(k_Mpc[ib, iz]).ravel(), linear.logk, linear.loglinP[ib, iz]).reshape(k_Mpc.shape[2:]))
+        return out
+
     def linP_Mpc(self, linear: Any, z: int | float, k_Mpc: Any) -> Any:
         """
         Evaluate the linear power spectrum.
@@ -410,6 +426,14 @@ class ArinyoModel(object):
 
         scalar_z = z.ndim == 0
 
+        if np.asarray(linear.loglinP).ndim == 3:
+            linP_Mpc = self._linP_Mpc_batch(linear, k_Mpc)
+            fz = np.asarray(linear.fz)
+            while fz.ndim < k_Mpc.ndim:
+                fz = fz[..., None]
+            params = self.default_params | ari_pp
+            return self._arinyo_kernel(linP_Mpc, fz, k_Mpc, mu, params)
+
         if not scalar_z:
             # Add a redshift axis only if it is missing.
             if k_Mpc.ndim == z.ndim + 1:
@@ -436,6 +460,16 @@ class ArinyoModel(object):
         return res
 
     def P1D_Mpc(self, linear: Any, z: int | float, k_par: Any, ari_pp: Any) -> NDArray[Any]:
+        """Dispatch P1D evaluation between scalar and stacked-linear-grid kernels."""
+        if np.asarray(linear.loglinP).ndim == 3:
+            return self._P1D_Mpc_batch(linear, z, k_par, ari_pp)
+        return self._P1D_Mpc_scalar(linear, z, k_par, ari_pp)
+
+    def _P1D_Mpc_batch(self, linear, z, k_par, ari_pp):
+        """Evaluate all batch members in one broadcasted P1D quadrature."""
+        return compute_P1D(linear, z, k_par, self.P3D_Mpc_k_mu, ari_pp)
+
+    def _P1D_Mpc_scalar(self, linear: Any, z: int | float, k_par: Any, ari_pp: Any) -> NDArray[Any]:
         """
         Compute the one-dimensional flux power spectrum.
 
