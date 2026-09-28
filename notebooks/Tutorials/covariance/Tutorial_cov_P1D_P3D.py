@@ -22,13 +22,9 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import sys
-import os
 import matplotlib.pyplot as plt
 import numpy as np
 
-import forestflow
-from forestflow.P3D_cINN import P3DEmulator
 
 
 from forestflow.model_p3d_arinyo import ArinyoModel
@@ -77,7 +73,7 @@ fid_cosmo = cosmology.Cosmology(cosmo_params_dict=cosmo_params_dict)
 model_Arinyo = ArinyoModel(fid_cosmo)
 
 # %%
-from forestflow.p1d import p1d_from_p3d, get_sigma
+from forestflow.p1d import p1d_from_p3d
 
 nelem_par = 30
 nelem_per = 100

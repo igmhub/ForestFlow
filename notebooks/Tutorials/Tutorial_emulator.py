@@ -20,12 +20,9 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import sys
-import os
 import matplotlib.pyplot as plt
 import numpy as np
 
-import forestflow
 from forestflow.P3D_cINN import P3DEmulator
 
 # %% [markdown]
@@ -85,12 +82,20 @@ emulator.compile()
 compiled_coeffs = emulator.evaluate(emu_params=list_input_params)
 compiled_coeffs
 
+# %%
+# %%time
+compiled_coeffs = emulator.evaluate(emu_params=list_input_params)
+
 # %% [markdown]
 # Or request compilation while constructing it:
 
 # %%
-# emulator_compiled = P3DEmulator(key="forest_mpg", compile_model=True)
-# compiled_coeffs = emulator_compiled.evaluate(emu_params=list_input_params)
+emulator_compiled = P3DEmulator(key="forest_mpg", compile_model=True)
+compiled_coeffs = emulator_compiled.evaluate(emu_params=list_input_params)
+
+# %%
+# %%time
+compiled_coeffs = emulator_compiled.evaluate(emu_params=list_input_params)
 
 # %% [markdown]
 # `compiled_coeffs` and `coeffs` should agree up to floating-point precision.

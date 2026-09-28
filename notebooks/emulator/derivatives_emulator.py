@@ -22,7 +22,6 @@
 # No simulation archive is loaded.
 
 # %%
-# %matplotlib inline
 # %load_ext autoreload
 # %autoreload 2
 import matplotlib.pyplot as plt
@@ -85,10 +84,10 @@ igm_parameter_steps = {
 }
 
 
-def predict_p1d(
+def predict_power(
     parameters: dict[str, float], target_cosmology: Cosmology
-) -> np.ndarray:
-    """Predict P1D using one cosmology consistently in ForestFlow and P1D."""
+) -> dict[str, np.ndarray]:
+    """Predict P1D and P3D at two orientations from one emulator call."""
     arinyo_parameters = emulator.evaluate(
         emu_params=parameters,
         Nrealizations=n_realizations,
@@ -96,34 +95,59 @@ def predict_p1d(
     )
     model = ArinyoModel(target_cosmology)
     linear_theory = model.linear_theory(z)
-    return np.asarray(
-        model.P1D_Mpc(linear_theory, z, k_Mpc, arinyo_parameters)
-    ).squeeze()
+    return {
+        "p1d": np.asarray(
+            model.P1D_Mpc(linear_theory, z, k_Mpc, arinyo_parameters)
+        ).squeeze(),
+        "p3d_mu0": np.asarray(
+            model.P3D_Mpc_k_mu(
+                linear_theory, z, k_Mpc, np.zeros_like(k_Mpc), arinyo_parameters
+            )
+        ).squeeze(),
+        "p3d_mu1": np.asarray(
+            model.P3D_Mpc_k_mu(
+                linear_theory, z, k_Mpc, np.ones_like(k_Mpc), arinyo_parameters
+            )
+        ).squeeze(),
+    }
 
 
 # %% [markdown]
-# ## Compute one-at-a-time P1D responses
+# ## Compute one-at-a-time P1D and P3D responses
 #
-# The stored quantity is
-# $P_\mathrm{1D}/P_\mathrm{1D}^{\mathrm{central}}-1$. The fixed emulator seed
-# ensures that differences are caused by the input variation rather than by
-# different Monte-Carlo latent samples. For the first two panels, changing
-# $A_s$ or $n_s$ consistently changes both the emulator inputs and the linear
-# spectrum used by the P1D projection.
+# For every perturbation, ForestFlow is evaluated once and the resulting Arinyo
+# model is used for P1D and P3D. We show P3D at $\mu=0$ (purely transverse)
+# and $\mu=1$ (line of sight), which separate the angular response of the
+# velocity and thermal terms. Each response is relative to the same central
+# prediction. The fixed seed ensures that differences are due to the input
+# variation rather than different latent samples.
 
 # %%
-fiducial_p1d = predict_p1d(fiducial_parameters, fiducial_cosmology)
-
+fiducial_power = predict_power(fiducial_parameters, fiducial_cosmology)
 responses = {}
 
-# Vary As. This primarily changes Delta2_p while preserving a physically
-# consistent linear spectrum in the P1D projection.
+
+def add_response(parameter_name, values, parameter_sets, cosmologies):
+    """Store P1D and P3D fractional responses for one varied input."""
+    relative_differences = {name: [] for name in fiducial_power}
+    for parameters, target_cosmology in zip(parameter_sets, cosmologies, strict=True):
+        prediction = predict_power(parameters, target_cosmology)
+        for name, fiducial_value in fiducial_power.items():
+            relative_differences[name].append(prediction[name] / fiducial_value - 1.0)
+    responses[parameter_name] = {
+        "values": np.asarray(values),
+        "relative_differences": {
+            name: np.asarray(value) for name, value in relative_differences.items()
+        },
+    }
+
+
+# Vary As. This changes Delta2_p while preserving a consistent linear spectrum.
 fiducial_cosmology_parameters = fiducial_cosmology.input_cosmo_params_dict.copy()
 As_values = fiducial_cosmology_parameters["As"] * np.array(
     [1.0 - cosmology_steps["As_fraction"], 1.0 + cosmology_steps["As_fraction"]]
 )
-Delta2_p_values = []
-Delta2_p_differences = []
+Delta2_p_values, parameter_sets, cosmologies = [], [], []
 for As_value in As_values:
     cosmology_parameters = fiducial_cosmology_parameters.copy()
     cosmology_parameters["As"] = As_value
@@ -134,21 +158,15 @@ for As_value in As_values:
         {name: linear_parameters[name] for name in ("Delta2_p", "n_p")}
     )
     Delta2_p_values.append(linear_parameters["Delta2_p"])
-    Delta2_p_differences.append(
-        predict_p1d(varied_parameters, varied_cosmology) / fiducial_p1d - 1.0
-    )
-responses["Delta2_p"] = {
-    "values": np.asarray(Delta2_p_values),
-    "relative_difference": np.asarray(Delta2_p_differences),
-}
+    parameter_sets.append(varied_parameters)
+    cosmologies.append(varied_cosmology)
+add_response("Delta2_p", Delta2_p_values, parameter_sets, cosmologies)
 
-# Vary ns. The resulting Delta2_p and n_p are both recomputed and passed to
-# ForestFlow, while the same varied cosmology supplies the projected P1D.
+# Vary ns, recomputing both compressed linear-power inputs.
 ns_values = fiducial_cosmology_parameters["ns"] + np.array(
     [-cosmology_steps["ns"], cosmology_steps["ns"]]
 )
-n_p_values = []
-n_p_differences = []
+n_p_values, parameter_sets, cosmologies = [], [], []
 for ns_value in ns_values:
     cosmology_parameters = fiducial_cosmology_parameters.copy()
     cosmology_parameters["ns"] = ns_value
@@ -159,15 +177,11 @@ for ns_value in ns_values:
         {name: linear_parameters[name] for name in ("Delta2_p", "n_p")}
     )
     n_p_values.append(linear_parameters["n_p"])
-    n_p_differences.append(
-        predict_p1d(varied_parameters, varied_cosmology) / fiducial_p1d - 1.0
-    )
-responses["n_p"] = {
-    "values": np.asarray(n_p_values),
-    "relative_difference": np.asarray(n_p_differences),
-}
+    parameter_sets.append(varied_parameters)
+    cosmologies.append(varied_cosmology)
+add_response("n_p", n_p_values, parameter_sets, cosmologies)
 
-# Vary each IGM input with the fiducial Planck18 cosmology held fixed.
+# Vary each IGM input with Planck18 held fixed.
 for parameter_name, step in igm_parameter_steps.items():
     varied_values = np.array(
         [
@@ -175,19 +189,17 @@ for parameter_name, step in igm_parameter_steps.items():
             fiducial_parameters[parameter_name] + step,
         ]
     )
-    relative_differences = []
+    parameter_sets = []
     for varied_value in varied_values:
         varied_parameters = fiducial_parameters.copy()
         varied_parameters[parameter_name] = varied_value
-        relative_differences.append(
-            predict_p1d(varied_parameters, fiducial_cosmology)
-            / fiducial_p1d
-            - 1.0
-        )
-    responses[parameter_name] = {
-        "values": varied_values,
-        "relative_difference": np.asarray(relative_differences),
-    }
+        parameter_sets.append(varied_parameters)
+    add_response(
+        parameter_name,
+        varied_values,
+        parameter_sets,
+        [fiducial_cosmology] * len(varied_values),
+    )
 
 # %% [markdown]
 # ## Plot the parameter responses
@@ -205,27 +217,66 @@ parameter_labels = {
     "kF_Mpc": r"$k_F\,[\mathrm{Mpc}^{-1}]$",
 }
 
-figure, axes = plt.subplots(2, 3, figsize=(15, 8), sharex=True)
-for axis, (parameter_name, response) in zip(
-    axes.flat, responses.items(), strict=True
-):
-    for varied_value, relative_difference in zip(
-        response["values"], response["relative_difference"], strict=True
+
+def plot_responses(prediction_name, ylabel, title):
+    """Plot all one-at-a-time responses for one power-spectrum observable."""
+    figure, axes = plt.subplots(2, 3, figsize=(15, 8), sharex=True)
+    for axis, (parameter_name, response) in zip(
+        axes.flat, responses.items(), strict=True
     ):
-        axis.plot(
-            k_Mpc,
-            relative_difference,
-            label=f"{parameter_labels[parameter_name]} = {varied_value:.4g}",
-        )
-    axis.axhline(0.0, color="black", linestyle=":")
-    axis.set_xscale("log")
-    axis.set_title(parameter_labels[parameter_name])
-    axis.legend(fontsize=9)
+        for varied_value, relative_difference in zip(
+            response["values"],
+            response["relative_differences"][prediction_name],
+            strict=True,
+        ):
+            axis.plot(
+                k_Mpc,
+                relative_difference,
+                label=f"{parameter_labels[parameter_name]} = {varied_value:.4g}",
+            )
+        axis.axhline(0.0, color="black", linestyle=":")
+        axis.set_xscale("log")
+        axis.set_title(parameter_labels[parameter_name])
+        axis.legend(fontsize=9)
+    for axis in axes[-1]:
+        axis.set_xlabel(r"$k\,[\mathrm{Mpc}^{-1}]$")
+    for axis in axes[:, 0]:
+        axis.set_ylabel(ylabel)
+    figure.suptitle(title)
+    figure.tight_layout()
+    return figure
 
-for axis in axes[-1]:
-    axis.set_xlabel(r"$k_\parallel\,[\mathrm{Mpc}^{-1}]$")
-for axis in axes[:, 0]:
-    axis.set_ylabel(r"$P_\mathrm{1D}/P_\mathrm{1D}^{\mathrm{central}}-1$")
 
-figure.suptitle("ForestFlow P1D parameter responses at z=3")
-figure.tight_layout()
+p1d_figure = plot_responses(
+    "p1d",
+    r"$P_\mathrm{1D}/P_\mathrm{1D}^{\mathrm{central}}-1$",
+    "ForestFlow P1D parameter responses at z=3",
+)
+
+# %% [markdown]
+# ## P3D response at $\mu=0$
+#
+# At $\mu=0$ the mode is transverse to the line of sight. Comparing this plot
+# to the next one isolates the angular dependence of each parameter response.
+
+# %%
+p3d_mu0_figure = plot_responses(
+    "p3d_mu0",
+    r"$P_\mathrm{3D}(k,\mu=0)/P_\mathrm{3D}^{\mathrm{central}}-1$",
+    r"ForestFlow P3D parameter responses at z=3 ($\mu=0$)",
+)
+
+# %% [markdown]
+# ## P3D response at $\mu=1$
+#
+# At $\mu=1$ the mode is parallel to the line of sight, where redshift-space
+# distortions and thermal effects can differ substantially from $\mu=0$.
+
+# %%
+p3d_mu1_figure = plot_responses(
+    "p3d_mu1",
+    r"$P_\mathrm{3D}(k,\mu=1)/P_\mathrm{3D}^{\mathrm{central}}-1$",
+    r"ForestFlow P3D parameter responses at z=3 ($\mu=1$)",
+)
+
+# %%

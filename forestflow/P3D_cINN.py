@@ -122,7 +122,7 @@ class P3DEmulator:
         weight_decay: float = 1e-4,
         use_val_set: bool = False,
         adamw: bool = True,
-        Nrealizations: int = 3000,
+        Nrealizations: int = 1000,
         training_provenance: Optional[Mapping[str, Any]] = None,
         compile_model: bool = False,
     ) -> None:
@@ -163,7 +163,7 @@ class P3DEmulator:
             Whether to reserve 20% of training data for validation.
         adamw : bool, default=True
             If True use AdamW optimizer, otherwise use Adam.
-        Nrealizations : int, default=3000
+        Nrealizations : int, default=1000
             Default number of latent space realizations for evaluation.
         training_provenance : mapping, optional
             Archive, selection, and preprocessing details to preserve in the
@@ -547,7 +547,9 @@ class P3DEmulator:
                     "train_seed": train_seed,
                     "use_validation_set": use_val_set,
                     "training_data_fingerprint": metadata["training_data_fingerprint"],
-                    "transformation_file": None if transf_file is None else str(transf_file),
+                    "transformation_file": (
+                        None if transf_file is None else str(transf_file)
+                    ),
                 }
             )
             self.manifest = write_manifest(save_path, transf_file, provenance)
@@ -852,13 +854,17 @@ class P3DEmulator:
 
         # Generate predictions
         generator = torch.Generator(device=condition.device).manual_seed(seed)
-        all_realizations = self._generate_predictions(
-            condition, neval, Nrealizations, generator, seed=seed,
+        mean_prediction = self._generate_predictions(
+            condition,
+            neval,
+            Nrealizations,
+            generator,
+            seed=seed,
             latent_indices=latent_indices,
         )
 
         # Process and transform predictions
-        return self._process_predictions(all_realizations, neval)
+        return self._process_predictions(mean_prediction, neval)
 
     def _prepare_condition_tensor(
         self, emu_params: List[Dict[str, float]], neval: int, Nrealizations: int
@@ -923,7 +929,7 @@ class P3DEmulator:
         Returns
         -------
         np.ndarray
-            Array of all realizations with shape (neval, Nrealizations, dim_inputSpace).
+            Mean latent prediction with shape ``(neval, dim_inputSpace)``.
         """
         # Setup conditions for the cINN
         aran = np.arange(neval * Nrealizations)
@@ -937,11 +943,17 @@ class P3DEmulator:
         else:
             latent_indices = np.asarray(latent_indices, dtype=int)
             if latent_indices.shape != (neval,) or np.any(latent_indices < 0):
-                raise ValueError("latent_indices must contain one non-negative index per input")
+                raise ValueError(
+                    "latent_indices must contain one non-negative index per input"
+                )
             latent_indices_key = tuple(latent_indices.tolist())
             n_latent_groups = int(np.max(latent_indices)) + 1
         cache_key = (
-            n_samples, self.dim_inputSpace, seed, device.type, device.index,
+            n_samples,
+            self.dim_inputSpace,
+            seed,
+            device.type,
+            device.index,
             latent_indices_key,
         )
         if seed is not None and self._latent_cache_key == cache_key:
@@ -964,24 +976,31 @@ class P3DEmulator:
                 self._latent_cache_key = cache_key
                 self._latent_cache = z_test
 
-        # Generate predictions
+        # Reduce on the model device before crossing the PyTorch/NumPy boundary.
+        # Only the mean is part of the public emulator prediction, so this
+        # avoids materialising every realization in NumPy. ``no_grad`` is kept
+        # rather than ``inference_mode`` because torch.compile guards FrEIA
+        # tensors against an inference-mode dispatch-key change.
         with torch.no_grad():
             out_emu, _ = self.emulator(z_test, condition, rev=True)
 
-        return out_emu.reshape(
-            neval, Nrealizations, self.dim_inputSpace
-        ).detach().cpu().numpy()
+        return (
+            out_emu.reshape(neval, Nrealizations, self.dim_inputSpace)
+            .mean(dim=1)
+            .cpu()
+            .numpy()
+        )
 
     def _process_predictions(
-        self, all_realizations: np.ndarray, neval: int
+        self, mean_prediction: np.ndarray, neval: int
     ) -> Dict[str, np.ndarray]:
         """
         Process and transform predictions back to the original space.
 
         Parameters
         ----------
-        all_realizations : np.ndarray
-            Array of all realizations.
+        mean_prediction : np.ndarray
+            Mean prediction in transformed output space.
         neval : int
             Number of evaluation points.
 
@@ -990,12 +1009,9 @@ class P3DEmulator:
         dict
             Dictionary of processed predictions.
         """
-        # Calculate mean across realizations
-        arr_tswn_output = np.mean(all_realizations, axis=1)
-
         # Convert to dictionary format
         dict_tswn_output = {
-            par: arr_tswn_output[:, ii] for ii, par in enumerate(self.output_labels)
+            par: mean_prediction[:, ii] for ii, par in enumerate(self.output_labels)
         }
 
         # Transform back to original space

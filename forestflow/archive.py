@@ -82,7 +82,7 @@ class GadgetArchive3D(GadgetArchive):
 
         super().__init__(postproc=postproc, kp_Mpc=kp_Mpc)
 
-        self.training_data = self.get_training_data(self.emu_params, average=average)
+        self.training_data = self.get_training_data(average=average)
 
         # mcmc chains, only computed for both
         if average == "both":
@@ -99,6 +99,74 @@ class GadgetArchive3D(GadgetArchive):
         if addcentral:
             central_data = self.get_testing_data("mpg_central")
             self.training_data.extend(central_data)
+
+    def get_training_data(
+        self,
+        simulation_label: str | list[str] | None=None,
+        emu_params: list[str] | None=None,
+        **kwargs: Any,
+    ) -> list[dict[str, Any]]:
+        """Return MPG training snapshots with ForestFlow's standard inputs.
+
+        Parameters
+        ----------
+        simulation_label
+            One hypercube simulation label (for example ``"mpg_0"``), a list
+            of labels, or ``None`` for all training simulations. The legacy
+            positional form ``get_training_data(emu_params, ...)`` remains
+            supported when its first argument is a list of parameter names.
+        emu_params
+            Required emulator-input fields. Defaults to the standard
+            ForestFlow inputs: ``Delta2_p``, ``n_p``, ``mF``, ``sigT_Mpc``,
+            ``gamma``, and ``kF_Mpc``.
+        **kwargs
+            Selection options accepted by LaCE's base archive method, such as
+            ``average``, ``val_scaling``, and redshift or simulation cuts.
+        """
+        # Preserve the inherited positional API for downstream callers that
+        # supplied the emulator input list as the first argument.
+        if (
+            isinstance(simulation_label, list)
+            and emu_params is None
+            and not all(label in self.list_sim_cube for label in simulation_label)
+        ):
+            emu_params = simulation_label
+            simulation_label = None
+
+        if emu_params is None:
+            emu_params = self.emu_params
+        if not isinstance(emu_params, list):
+            raise TypeError("emu_params must be a list or None")
+
+        if simulation_label is None:
+            selected_labels = None
+        elif isinstance(simulation_label, str):
+            selected_labels = [simulation_label]
+        elif isinstance(simulation_label, list) and all(
+            isinstance(label, str) for label in simulation_label
+        ):
+            selected_labels = simulation_label
+        else:
+            raise TypeError("simulation_label must be a string, list of strings, or None")
+
+        if selected_labels is not None:
+            invalid_labels = [
+                label for label in selected_labels if label not in self.list_sim_cube
+            ]
+            if invalid_labels:
+                raise ValueError(
+                    "simulation_label must name MPG hypercube simulations; "
+                    f"invalid value(s): {invalid_labels}"
+                )
+
+        training_data = super().get_training_data(emu_params, **kwargs)
+        if selected_labels is None:
+            return training_data
+        return [
+            snapshot
+            for snapshot in training_data
+            if snapshot["sim_label"] in selected_labels
+        ]
 
     def get_testing_data(self, sim_label: str, ind_rescaling: int | None=0, kmax_3d: float | None=5, kmax_1d: float | None=4) -> dict[str, Any]:
         """

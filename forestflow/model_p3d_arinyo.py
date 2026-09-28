@@ -538,6 +538,7 @@ class ArinyoModel(object):
             k_par,
             self.P3D_Mpc_kpar_kperp_Gaussian_noise,
             ari_pp,
+            coordinates="kpar_kperp",
             seed=seed,
             Lbox_Mpc=Lbox_Mpc,
         )

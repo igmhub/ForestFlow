@@ -102,6 +102,11 @@ def compute_arinyo_power(
 
     data = {}
 
+    # The public Arinyo API takes a precomputed linear-theory grid.  Build it
+    # once here and reuse it for every P3D/P1D evaluation below.
+    linear = model_Arinyo.linear_theory(pars_model["z"])
+    data["linear"] = linear
+
     # get 3D
     kpar = np.linspace(kmin_3d_Mpc, kmax_3d_Mpc, n3d)
     kper = np.linspace(kmin_3d_Mpc, kmax_3d_Mpc, n3d)
@@ -109,20 +114,20 @@ def compute_arinyo_power(
     data["model_kpar_Mpc"] = kpar2d
     data["model_kper_Mpc"] = kperp2d
 
+    k3d = np.sqrt(kpar2d**2 + kperp2d**2)
     data["ari_P3D_Mpc"] = model_Arinyo.P3D_Mpc_kpar_kperp(
-        pars_model["z"], kpar2d, kperp2d, pars_model["Arinyo"]
+        linear, pars_model["z"], kpar2d, kperp2d, pars_model["Arinyo"]
     )
     data["kai_P3D_Mpc"] = model_Arinyo.P3D_Mpc_kpar_kperp(
-        pars_model["z"], kpar2d, kperp2d, pars_kai
+        linear, pars_model["z"], kpar2d, kperp2d, pars_kai
     )
-    k3d = np.sqrt(kpar2d**2 + kperp2d**2)
-    data["Plin_Mpc"] = model_Arinyo.linP_Mpc(pars_model["z"], k3d)
+    data["Plin_Mpc"] = model_Arinyo.linP_Mpc(linear, pars_model["z"], k3d)
 
     # get 1D
     k1d_Mpc = np.linspace(kmin_1d_Mpc, kmax_1d_Mpc, n1d)
     data["model_k1d_Mpc"] = k1d_Mpc
     data["ari_P1D_Mpc"] = model_Arinyo.P1D_Mpc(
-        pars_model["z"], k1d_Mpc, pars_model["Arinyo"]
+        linear, pars_model["z"], k1d_Mpc, pars_model["Arinyo"]
     )
 
     if noise["n_noise"] > 0:
@@ -135,6 +140,7 @@ def compute_arinyo_power(
         ari_noise_P1D_Mpc = np.zeros((noise["n_noise"], k1d_Mpc.shape[0]))
         for ii in range(noise["n_noise"]):
             ari_noise_P1D_Mpc[ii] = model_Arinyo.P1D_Mpc_Gaussian_noise(
+                linear,
                 pars_model["z"],
                 k1d_Mpc,
                 pars_model["Arinyo"],
@@ -174,6 +180,9 @@ def compute_arinyo_derivatives(trans_data: ArrayLike, data_model: ArrayLike, mod
     data = {}
     data["P3D_der"] = {}
     data["P1D_der"] = {}
+    linear = data_model.get("linear")
+    if linear is None:
+        linear = model_Arinyo.linear_theory(data_model["z"])
 
     tranf_Arinyo = trans_data.transf_stand(
         data_model["Arinyo"], type_stand="output", direct=True
@@ -208,6 +217,7 @@ def compute_arinyo_derivatives(trans_data: ArrayLike, data_model: ArrayLike, mod
 
         # 3D
         p3d_der_top = model_Arinyo.P3D_Mpc_kpar_kperp(
+            linear,
             data_model["z"],
             data_model["kpar_Mpc"],
             data_model["kper_Mpc"],
@@ -215,6 +225,7 @@ def compute_arinyo_derivatives(trans_data: ArrayLike, data_model: ArrayLike, mod
         )
 
         p3d_der_bot = model_Arinyo.P3D_Mpc_kpar_kperp(
+            linear,
             data_model["z"],
             data_model["kpar_Mpc"],
             data_model["kper_Mpc"],
@@ -224,12 +235,14 @@ def compute_arinyo_derivatives(trans_data: ArrayLike, data_model: ArrayLike, mod
         data["P3D_der"][par] = (p3d_der_top - p3d_der_bot) / 2 / hh
 
         p1d_der_top = model_Arinyo.P1D_Mpc(
+            linear,
             data_model["z"],
             data_model["k1D_Mpc"],
             top_par,
         )
 
         p1d_der_bot = model_Arinyo.P1D_Mpc(
+            linear,
             data_model["z"],
             data_model["k1D_Mpc"],
             bot_par,
@@ -320,6 +333,7 @@ def get_fisher(
         Result produced when the function is used to return fisher matrix.
     """
     power = compute_arinyo_power(pars_model, model_Arinyo, noise=noise)
+    pars_model["linear"] = power["linear"]
     pars_model["kpar_Mpc"] = power["model_kpar_Mpc"]
     pars_model["kper_Mpc"] = power["model_kper_Mpc"]
     pars_model["P3D_Mpc"] = power["ari_P3D_Mpc"]

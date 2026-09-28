@@ -21,7 +21,7 @@ def P1D_Mpc(
     new_cosmo_params: Mapping[str, Any] | None=None,
     k_perp_min_iMpc: float | None=0.001,
     k_perp_max_iMpc: float | None=100,
-    n_k_perp: int | None=99,
+    n_k_perp: int | None=48,
     **kwargs: Mapping[str, Any],
 ) -> NDArray[Any]:
     """
@@ -36,7 +36,7 @@ def P1D_Mpc(
         new_cosmo_params (dict, optional): Optional cosmology override passed through to `P3D_Mpc`.
         k_perp_min_iMpc (float, optional): Lower integration bound in Mpc^-1.
         k_perp_max_iMpc (float, optional): Upper integration bound in Mpc^-1.
-        n_k_perp (int, optional): Number of points in integral. Defaults to 99.
+        n_k_perp (int, optional): Number of points in integral. Defaults to 48.
 
     Returns:
         array-like: Computed values of P1D.
@@ -79,7 +79,7 @@ def P1D_Mpc(
 def P1D_kms(
     z, k_par_ikms=None, p3d_fun=None, dkms_diMpc=None, p3d_params=None,
     new_cosmo_params=None, k_perp_min_ikms=1e-6, k_perp_max_ikms=5.0,
-    n_k_perp=99, **kwargs,
+    n_k_perp=48, **kwargs,
 ):
     """
     Project an Mpc-space P3D callable into P1D in km/s.

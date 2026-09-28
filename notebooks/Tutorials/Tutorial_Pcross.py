@@ -22,10 +22,7 @@
 
 # %%
 import numpy as np
-from scipy import special
 import numpy as np
-import os
-import sys
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from matplotlib import rcParams
@@ -39,7 +36,6 @@ rcParams["font.family"] = "STIXGeneral"
 # import P3D theory
 from lace.cosmo import cosmology
 from forestflow.model_p3d_arinyo import ArinyoModel
-import time
 
 # %%
 # %load_ext autoreload

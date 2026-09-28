@@ -1,5 +1,6 @@
 import numpy as np
 
+from forestflow.integrate_p3d import P1DIntegrator
 from forestflow.p1d import P1D_Mpc
 from forestflow.set_training import Transf_data
 
@@ -104,3 +105,36 @@ def test_p3d_to_p1d_integration_matches_analytic_result_in_both_coordinates():
     np.testing.assert_allclose(predictions[0], expected_P1D_Mpc, rtol=1e-8)
     np.testing.assert_allclose(predictions[1], expected_P1D_Mpc, rtol=1e-8)
     np.testing.assert_allclose(predictions[0], predictions[1], rtol=1e-12)
+
+
+def test_gauss_legendre_integrator_matches_analytic_result_and_caches_geometry():
+    alpha_Mpc2 = 0.7
+    k_perp_min_iMpc = 1.0e-3
+    k_perp_max_iMpc = 8.0
+    k_par_iMpc = np.array([0.2, 0.8])
+    expected_P1D_Mpc = np.full(
+        k_par_iMpc.shape,
+        (
+            np.exp(-alpha_Mpc2 * k_perp_min_iMpc**2)
+            - np.exp(-alpha_Mpc2 * k_perp_max_iMpc**2)
+        )
+        / (4 * np.pi * alpha_Mpc2),
+    )
+
+    def gaussian_p3d(linear, z, k_Mpc, mu, parameters):
+        del linear, z, parameters
+        k_perp_iMpc = k_Mpc * np.sqrt(1 - mu**2)
+        return np.exp(-alpha_Mpc2 * k_perp_iMpc**2)
+
+    integrator = P1DIntegrator(
+        k_perp_min=k_perp_min_iMpc,
+        k_perp_max=k_perp_max_iMpc,
+        n_k_perp=32,
+        method="gauss_legendre",
+    )
+    prediction = integrator(None, 3.0, k_par_iMpc, gaussian_p3d, {})
+    np.testing.assert_allclose(prediction, expected_P1D_Mpc[None, :], rtol=2e-7)
+    assert len(integrator._geometry_cache) == 1
+    repeat = integrator(None, 3.0, k_par_iMpc, gaussian_p3d, {})
+    np.testing.assert_allclose(repeat, prediction, rtol=0)
+    assert len(integrator._geometry_cache) == 1

@@ -21,7 +21,6 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import sys
 import os
 import matplotlib.pyplot as plt
 import numpy as np
@@ -245,7 +244,7 @@ linear = model_Arinyo.linear_theory(Archive3D.list_sim_redshifts)
 
 
 # %%
-def check_p1d(emulator, Nrealizations=3000, type_fit="Arinyo_min"):
+def check_p1d(emulator, Nrealizations=1000, type_fit="Arinyo_min"):
     ii0 = 0
     for ii in range(2, 11):
         sim = mpg_central[ii]

@@ -24,8 +24,6 @@
 # %autoreload 2
 
 import numpy as np
-import os
-import sys
 import matplotlib.pyplot as plt
 
 from matplotlib import rcParams
@@ -191,6 +189,7 @@ emulator = P3DEmulator(key="forest_mpg")
 
 # %%
 # get Delta2_p and n_p from fiducial cosmology
+kp_Mpc = 0.7
 linP_zs = fid_cosmo.get_linP_Mpc_params(z=zs[0], kp_Mpc=kp_Mpc)
 print(linP_zs)
 

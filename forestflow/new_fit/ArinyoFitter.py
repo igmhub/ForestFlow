@@ -25,7 +25,7 @@ class FitData:
     Store measured power spectra and uncertainties.
     """
     z: float
-    linear: dict
+    linear: Any
 
     # model
     power_model: ArinyoModel
@@ -69,7 +69,7 @@ def _get_err_p1d(x: Any, alpha: int | None=4, xmin: float | None=0.1, xmax: int 
     object
         Result produced when the function is used to return err one-dimensional power spectrum.
     """
-    t = (x - xmin) / (xmax - xmin)
+    t = np.clip((x - xmin) / (xmax - xmin), 0.0, None)
     return ymin + ymax * t**alpha
 
 
@@ -97,7 +97,7 @@ def _get_err_p3d(x: Any, alpha: float | None=0.2, xmin: float | None=0.1, xmax: 
     object
         Result produced when the function is used to return err three-dimensional power spectrum.
     """
-    t = (x - xmin) / (xmax - xmin)
+    t = np.clip((x - xmin) / (xmax - xmin), 0.0, None)
     return ymax - (ymax - ymin) * t**alpha
 
 
@@ -288,21 +288,76 @@ class ArinyoFitter:
 
         self._bin_norm = 1.0 / self._bin_counts
 
-    def prepare_simulation(self, sim: Any) -> None:
-        """
-        Prepare one simulation for fitting.
+    def _initial_parameters_from_simulation(
+        self,
+        sim: Mapping[str, Any],
+        central_simulations: Sequence[Mapping[str, Any]] | None=None,
+        fallback_to_central: bool=True,
+    ) -> dict[str, Any]:
+        """Return local fit parameters or the matching central-simulation fit."""
+        if "Arinyo_min" in sim:
+            return dict(sim["Arinyo_min"])
+        if not fallback_to_central:
+            raise KeyError(
+                "Simulation has no Arinyo_min and fallback_to_central is False"
+            )
 
-        Parameters
-        ----------
-        sim : object
-            Sim used by the calculation.
+        if central_simulations is None:
+            # Import lazily: fitting externally supplied measurements must not
+            # load an MPG archive, and this fallback is only needed once.
+            if not hasattr(self, "_central_simulations"):
+                from forestflow.archive import GadgetArchive3D
+
+                central_archive = GadgetArchive3D()
+                self._central_simulations = central_archive.get_testing_data(
+                    "mpg_central"
+                )
+            central_simulations = self._central_simulations
+
+        matches = [
+            central
+            for central in central_simulations
+            if np.isclose(float(central["z"]), float(sim["z"]))
+        ]
+        if len(matches) != 1:
+            raise ValueError(
+                "Expected exactly one mpg_central snapshot at "
+                f"z={sim['z']}; found {len(matches)}"
+            )
+        if "Arinyo_min" not in matches[0]:
+            raise KeyError(
+                "The matching mpg_central snapshot has no Arinyo_min parameters"
+            )
+        return dict(matches[0]["Arinyo_min"])
+
+    def prepare_simulation(
+        self,
+        sim: Mapping[str, Any],
+        *,
+        central_simulations: Sequence[Mapping[str, Any]] | None=None,
+        fallback_to_central: bool=True,
+    ) -> None:
+        """Prepare one simulation for fitting.
+
+        The snapshot's ``Arinyo_min`` values initialize the fit when present.
+        For a new measurement without them, the default fallback uses the
+        best-fitting MPG-central parameters at the same redshift. Supply
+        ``central_simulations`` to reuse snapshots already loaded from an
+        archive; otherwise they are loaded and cached only on first fallback.
+        Set ``fallback_to_central=False`` to require local parameters.
         """
 
         linear, power_model = self._build_model(sim)
 
         k3d, mu3d, p3d, std_p3d = self._prepare_p3d(sim)
         k1d, p1d, std_p1d = self._prepare_p1d(sim)
+        ini_params = self._initial_parameters_from_simulation(
+            sim,
+            central_simulations=central_simulations,
+            fallback_to_central=fallback_to_central,
+        )
 
+        self._direct_p3d = False
         self.data = FitData(
             z=sim["z"],
             linear=linear,
@@ -314,10 +369,57 @@ class ArinyoFitter:
             mu3d=mu3d,
             p3d=p3d,
             std_p3d=std_p3d,
-            ini_params=sim["Arinyo_min"],
+            ini_params=ini_params,
         )
 
         return
+
+    def prepare_measurements(
+        self,
+        *,
+        z: float,
+        cosmo_params: Mapping[str, Any],
+        k3d_Mpc: ArrayLike,
+        mu3d: ArrayLike,
+        p3d_Mpc: ArrayLike,
+        std_p3d: ArrayLike,
+        k1d_Mpc: ArrayLike,
+        p1d_Mpc: ArrayLike,
+        std_p1d: ArrayLike,
+        ini_params: Mapping[str, Any] | None = None,
+    ) -> None:
+        """Prepare arbitrary P3D and P1D measurements for a direct Arinyo fit.
+
+        Unlike :meth:`prepare_simulation`, this method does not assume an
+        archive schema or rebin P3D. The supplied P3D coordinates and relative
+        uncertainties are used directly, making it suitable for an external
+        simulation or measurement such as Astrid. Wavenumbers are in Mpc^-1;
+        P3D and P1D are in Mpc^3 and Mpc, respectively.
+        """
+        k3d_Mpc = np.asarray(k3d_Mpc, dtype=float)
+        mu3d = np.asarray(mu3d, dtype=float)
+        p3d_Mpc = np.asarray(p3d_Mpc, dtype=float)
+        std_p3d = np.asarray(std_p3d, dtype=float)
+        k1d_Mpc = np.asarray(k1d_Mpc, dtype=float)
+        p1d_Mpc = np.asarray(p1d_Mpc, dtype=float)
+        std_p1d = np.asarray(std_p1d, dtype=float)
+        if not (k3d_Mpc.shape == mu3d.shape == p3d_Mpc.shape == std_p3d.shape):
+            raise ValueError("P3D coordinates, values, and uncertainties must share a shape")
+        if not (k1d_Mpc.shape == p1d_Mpc.shape == std_p1d.shape):
+            raise ValueError("P1D coordinates, values, and uncertainties must share a shape")
+        if np.any(std_p3d <= 0) or np.any(std_p1d <= 0):
+            raise ValueError("relative uncertainties must be positive")
+
+        power_model = ArinyoModel(cosmology.Cosmology(cosmo_params))
+        linear = power_model.linear_theory(z)
+        defaults = power_model.default_params if ini_params is None else ini_params
+        self._direct_p3d = True
+        self.data = FitData(
+            z=float(z), linear=linear, power_model=power_model,
+            ini_params=dict(defaults), k1d=k1d_Mpc, p1d=p1d_Mpc,
+            std_p1d=std_p1d, k3d=k3d_Mpc, mu3d=mu3d,
+            p3d=p3d_Mpc, std_p3d=std_p3d,
+        )
 
     def _build_model(self, sim: Any) -> tuple[Any, ...]:
         """
@@ -464,25 +566,23 @@ class ArinyoFitter:
 
         ari_par = self.params_to_dict(params)
 
-        # Evaluate on the fine grid
-        fine_p3d = self.data.power_model.P3D_Mpc_k_mu(
-            self.data.linear,
-            self.data.z,
-            self.fine_k,
-            self.fine_mu,
-            ari_par,
-        )
-
-        # Average into the simulation bins
-        # p3d, _, _, _ = binned_statistic_2d(
-        #     self.fine_k.ravel(),
-        #     self.fine_mu.ravel(),
-        #     fine_p3d.ravel(),
-        #     statistic="mean",
-        #     bins=[self.k_bin_edges_fit, self.mu_bin_edges],
-        # )
-
-        p3d = self._bin_p3d(fine_p3d)
+        if self._direct_p3d:
+            p3d = self.data.power_model.P3D_Mpc_k_mu(
+                self.data.linear,
+                self.data.z,
+                self.data.k3d,
+                self.data.mu3d,
+                ari_par,
+            )
+        else:
+            fine_p3d = self.data.power_model.P3D_Mpc_k_mu(
+                self.data.linear,
+                self.data.z,
+                self.fine_k,
+                self.fine_mu,
+                ari_par,
+            )
+            p3d = self._bin_p3d(fine_p3d)
 
         # Evaluate P1D
         p1d = self.data.power_model.P1D_Mpc(
@@ -532,13 +632,19 @@ class ArinyoFitter:
             Result produced when the function is used to chi-square objective function.
         """
 
-        p3d, p1d = self.predict(params)
-
-        chi2_3d = np.nanmean(((p3d / self.data.p3d - 1.0) / self.data.std_p3d) ** 2)
-
-        chi2_1d = np.nanmean(((p1d / self.data.p1d - 1.0) / self.data.std_p1d) ** 2)
-
-        return chi2_3d + chi2_1d
+        # Invalid trial points can overflow the nonlinear model. They are not
+        # valid minima, so return an infinite objective instead of propagating
+        # NaNs into the optimizer's numerical derivatives.
+        with np.errstate(over="ignore", invalid="ignore", divide="ignore"):
+            p3d, p1d = self.predict(params)
+            chi2_3d = np.nanmean(
+                ((p3d / self.data.p3d - 1.0) / self.data.std_p3d) ** 2
+            )
+            chi2_1d = np.nanmean(
+                ((p1d / self.data.p1d - 1.0) / self.data.std_p1d) ** 2
+            )
+        chi2 = chi2_3d + chi2_1d
+        return float(chi2) if np.isfinite(chi2) else 1e100
 
     def residuals(self, params: Mapping[str, Any]) -> tuple[Any, ...]:
         """
@@ -603,19 +709,18 @@ class ArinyoFitter:
         if x0 is None:
             x0 = self.params_from_dict(self.data.ini_params.copy())
 
+        options = {"maxiter": maxiter, **kwargs}
+        if method == "Nelder-Mead":
+            options.update(maxfev=maxiter, fatol=ftol, xatol=xatol)
+        elif method == "L-BFGS-B":
+            options["ftol"] = ftol
+
         result = minimize(
             self.chi2,
             x0,
             method=method,
             bounds=bounds,
-            options={
-                "disp": True,
-                "maxiter": maxiter,
-                "maxfev": maxiter,
-                "fatol": ftol,
-                "xatol": xatol,
-                **kwargs,
-            },
+            options=options,
         )
 
         self.result = result
