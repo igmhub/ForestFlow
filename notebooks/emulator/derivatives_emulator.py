@@ -27,8 +27,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from forestflow.P3D_cINN import P3DEmulator
-from forestflow.model_p3d_arinyo import ArinyoModel
+from forestflow.emulator.p3d_cinn import P3DEmulator
+from forestflow.model.arinyo import ArinyoModel
 from lace.cosmo.cosmology import Cosmology
 
 # %% [markdown]
@@ -94,7 +94,7 @@ def predict_power(
         seed=0,
     )
     model = ArinyoModel(target_cosmology)
-    linear_theory = model.linear_theory(z)
+    linear_theory = model.linear.get_linear_theory(z)
     return {
         "p1d": np.asarray(
             model.P1D_Mpc(linear_theory, z, k_Mpc, arinyo_parameters)

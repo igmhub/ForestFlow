@@ -15,16 +15,12 @@
 # # Generate GRF for testing
 
 # +
-import sys
 import numpy as np
 import matplotlib.pyplot as plt
 # get predictions from P-cross integral
-from lace.cosmo import camb_cosmo
 # %load_ext autoreload
 # %autoreload 2
 
-from forestflow.model_p3d_arinyo import ArinyoModel
-from forestflow.pcross import get_Px
 import matplotlib as mpl
 
 cmap = mpl.colormaps['Set1']
@@ -601,7 +597,6 @@ def get_Px_nonmod(
         Px_per_kpar: P-cross as an array with shape (len(kpars), len(rperp)).
     """
     import hankl
-    from scipy.interpolate import CubicSpline
 
     if fast:
         Nsteps_kperp = 1000
@@ -642,7 +637,6 @@ def get_Px_nonmod(
 
 # -
 
-from forestflow.pcross import get_Px
 
 # +
 # rperp,Px_per_kpar = get_Px(kpar, P, min_rperp=None, max_rperp=None)
@@ -654,12 +648,11 @@ from forestflow.pcross import get_Px
 #     )
 # Px_per_rperp = Px_per_kpar.T
 
-rperp, Px_per_kpar = get_Px(
+rperp, Px_per_kpar = get_Px_nonmod(
     kpar,
     P_pol,
-    0,
-    P3D_mode='pol',
-    **{"smooth":True, "smoothing":smoothing})
+    min_rperp=0,
+)
 Px_per_rperp = Px_per_kpar.T
 # find the closest predicted rperps to the measured skewer spacings
 idxs = []

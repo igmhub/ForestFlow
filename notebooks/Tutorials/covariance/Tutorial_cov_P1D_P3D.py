@@ -27,7 +27,7 @@ import numpy as np
 
 
 
-from forestflow.model_p3d_arinyo import ArinyoModel
+from forestflow.model.arinyo import ArinyoModel
 from lace.cosmo import cosmology
 
 # %% [markdown]
@@ -35,11 +35,11 @@ from lace.cosmo import cosmology
 
 # %%
 # load training data
-from forestflow.archive import GadgetArchive3D
+from forestflow.archive.gadget_archive import GadgetArchive3D
 Archive3D = GadgetArchive3D(addcentral=True)
 
 # %%
-from forestflow.set_training import get_training_data
+from forestflow.emulator.training import get_training_data
 emu_data = get_training_data(Archive3D.training_data)
 
 # %% [markdown]
@@ -73,7 +73,7 @@ fid_cosmo = cosmology.Cosmology(cosmo_params_dict=cosmo_params_dict)
 model_Arinyo = ArinyoModel(fid_cosmo)
 
 # %%
-from forestflow.p1d import p1d_from_p3d
+from forestflow.statistics.p1d import p1d_from_p3d
 
 nelem_par = 30
 nelem_per = 100
@@ -90,21 +90,23 @@ kk_3d = np.sqrt(kpar2d_3D**2 + kperp2d_3D**2)
 mu_3d = kpar2d_3D / kk_3d
 
 
+linear = model_Arinyo.linear.get_linear_theory(z)
 res = p1d_from_p3d(
+    linear,
     kpar_3d,
     model_Arinyo.P3D_Mpc_kpar_kperp,
     z,
     pars_model["Arinyo"],
-    vol=vol,
-    niter=nrand,
+    volume_Mpc3=vol,
+    n_realizations=nrand,
     seed=0,
 )
 
 # %%
-p3d = res["p3d"]
-p1d = res["p1d"]
-p3d_noise = res["rea_p3d"]
-p1d_noise = res["rea_p1d"]
+p3d = res["P3D_Mpc"]
+p1d = res["P1D_Mpc"]
+p3d_noise = res["P3D_Mpc_realizations"]
+p1d_noise = res["P1D_Mpc_realizations"]
 
 # %%
 for ii in range(100):

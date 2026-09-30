@@ -37,7 +37,7 @@ import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 
-from forestflow.fitting import ArinyoFitter
+from forestflow.model_fits import ArinyoFitter
 
 # %% [markdown]
 # ## Load one Astrid HDF5 snapshot

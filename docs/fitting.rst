@@ -5,13 +5,13 @@ Supported API
 -------------
 
 ForestFlow supports joint fits of the analytic Arinyo model to one simulation
-snapshot's P3D and P1D measurements through :class:`forestflow.fitting.ArinyoFitter`.
-Import it only from ``forestflow.fitting``; its implementation location is not
+snapshot's P3D and P1D measurements through :class:`forestflow.model_fits.ArinyoFitter`.
+Import it only from ``forestflow.model_fits``; its implementation location is not
 part of the public API.
 
 .. code-block:: python
 
-   from forestflow.fitting import ArinyoFitter
+   from forestflow.model_fits import ArinyoFitter
 
    fitter = ArinyoFitter(kmax_3d=4.5, kmax_1d=7.0)
    fitter.prepare_simulation(simulation)
@@ -42,7 +42,7 @@ parameter names:
 Historical implementations
 --------------------------
 
-``forestflow.fits.fit_p3d``, ``forestflow.fits.fit_p3dz``, and the remaining
+``forestflow.old_code.fits.fit_p3d``, ``forestflow.old_code.fits.fit_p3dz``, and the remaining
 files in ``scripts/fit_p3d`` are retained for reproducing older analyses. They
 use superseded LaCE/ForestFlow model and data contracts and are not supported
 for new work. Their replacement is the API above, with one fit per snapshot.

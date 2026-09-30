@@ -6,7 +6,7 @@ from forestflow.conventions import (
     canonicalize_unit_keys,
     validate_wavenumber,
 )
-from forestflow.p1d import P1D_Mpc, P1D_kms
+from forestflow.statistics.p1d import P1D_Mpc, P1D_kms
 
 
 def test_arinyo_parameter_order_is_canonical():
@@ -28,13 +28,12 @@ def test_wavenumber_contract():
 
 
 def test_velocity_conversion_uses_one_power_for_p1d():
-    def P3D_Mpc(z, k_iMpc, mu, params, **kwargs):
-        return np.ones_like(k_iMpc)
-
-    P3D_Mpc.coordinates = "k_mu"
+    def P3D_Mpc(linear, z, k_par_iMpc, k_perp_iMpc, params, **kwargs):
+        return np.ones_like(k_par_iMpc)
     k_ikms = np.array([0.001, 0.002])
     conversion = 70.0
     expected_Mpc = P1D_Mpc(
+        None,
         3.0,
         k_ikms * conversion,
         P3D_Mpc,
@@ -42,6 +41,7 @@ def test_velocity_conversion_uses_one_power_for_p1d():
         k_perp_max_iMpc=0.02 * conversion,
     )
     result_kms = P1D_kms(
+        None,
         3.0,
         k_ikms,
         P3D_Mpc,

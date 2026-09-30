@@ -7,7 +7,6 @@ from numpy.typing import ArrayLike
 
 import numpy as np
 import matplotlib.pyplot as plt
-from forestflow.utils import sigma68
 
 
 def plot_p3d_L1O(

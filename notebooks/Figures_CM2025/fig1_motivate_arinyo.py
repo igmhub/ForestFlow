@@ -25,8 +25,6 @@
 
 import numpy as np
 import os
-import sys
-import matplotlib.pyplot as plt
 
 from matplotlib import rcParams
 rcParams["mathtext.fontset"] = "stix"
@@ -34,13 +32,9 @@ rcParams["font.family"] = "STIXGeneral"
 
 
 # %%
-from lace.cosmo import camb_cosmo
 import forestflow
-from forestflow.archive import GadgetArchive3D
-from forestflow.model_p3d_arinyo import get_linP_interp
-from forestflow.model_p3d_arinyo import ArinyoModel
-from forestflow.P3D_cINN import P3DEmulator
-from forestflow.rebin_p3d import p3d_allkmu, get_p3d_modes, p3d_rebin_mu
+from forestflow.archive.gadget_archive import GadgetArchive3D
+from forestflow.statistics.rebin_p3d import p3d_allkmu, get_P3D_k_mu_modes, rebin_P3D_Mpc_mode_weighted
 
 # %% [markdown]
 # ## Best-fitting Arinyo model to central
@@ -74,11 +68,11 @@ k3d_Mpc = test_sim_z['k3d_Mpc']
 mu3d = test_sim_z['mu3d']
 p3d_Mpc = test_sim_z['p3d_Mpc']
 
-kmu_modes = get_p3d_modes(kmax)
+kmu_modes = get_P3D_k_mu_modes(kmax)
 
 mask_3d = k3d_Mpc[:, 0] <= kmax
 
-_ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], p3d_Mpc[mask_3d], kmu_modes, n_mubins=n_mubins)
+_ = rebin_P3D_Mpc_mode_weighted(k3d_Mpc[mask_3d], mu3d[mask_3d], p3d_Mpc[mask_3d], kmu_modes, n_mu_bins=n_mubins)
 knew, munew, rebin_p3d, mu_bins = _
 
 # mask_1d = test_sim_z['k_Mpc'] <= kmax
@@ -104,13 +98,13 @@ model_p3d, plin = _
 _ = p3d_allkmu(test_sim_z['model'], zs, kaiser_params, kmu_modes, nk=np.sum(mask_3d))
 kaiser_p3d, plin = _
 
-_ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], model_p3d, kmu_modes, n_mubins=n_mubins,)
+_ = rebin_P3D_Mpc_mode_weighted(k3d_Mpc[mask_3d], mu3d[mask_3d], model_p3d, kmu_modes, n_mu_bins=n_mubins,)
 knew, munew, rebin_model_p3d, mu_bins = _
 
-_ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], kaiser_p3d, kmu_modes, n_mubins=n_mubins)
+_ = rebin_P3D_Mpc_mode_weighted(k3d_Mpc[mask_3d], mu3d[mask_3d], kaiser_p3d, kmu_modes, n_mu_bins=n_mubins)
 knew, munew, rebin_kaiser_p3d, mu_bins = _
 
-_ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], plin, kmu_modes, n_mubins=n_mubins)
+_ = rebin_P3D_Mpc_mode_weighted(k3d_Mpc[mask_3d], mu3d[mask_3d], plin, kmu_modes, n_mu_bins=n_mubins)
 knew, munew, rebin_plin, mu_bins = _
 
 
@@ -148,19 +142,19 @@ out = {}
 
 for key in conv.keys():
     ii = conv[key]
-    
+
     out["top_" + key + "_dotted_x"] = knew[:, ii]
     out["top_" + key + "_dotted_y"] = rebin_p3d[:, ii]/rebin_plin[:, ii]
-    
+
     out["top_" + key + "_solid_x"] = knew[:, ii]
     out["top_" + key + "_solid_y"] = rebin_model_p3d[:, ii]/rebin_plin[:, ii]
-    
+
     out["top_" + key + "_dashed_x"] = knew[:, ii]
     out["top_" + key + "_dashed_y"] = rebin_kaiser_p3d[:, ii]/rebin_plin[:, ii]
 
     out["bottom_" + key + "_solid_x"] = knew[:, ii]
     out["bottom_" + key + "_solid_y"] = rebin_model_p3d[:, ii]/rebin_p3d[:, ii]
-    
+
     out["bottom_" + key + "_dashed_x"] = knew[:, ii]
     out["bottom_" + key + "_dashed_y"] = rebin_kaiser_p3d[:, ii]/rebin_p3d[:, ii]
 

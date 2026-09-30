@@ -29,7 +29,7 @@ from matplotlib import rcParams
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
-from forestflow.priors_paper import all_plots, load
+from forestflow.priors.paper import all_plots, load
 
 np.__version__
 

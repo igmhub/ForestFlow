@@ -35,9 +35,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from forestflow.P3D_cINN import P3DEmulator
-from forestflow.archive import GadgetArchive3D
-from forestflow.model_p3d_arinyo import ArinyoModel
+from forestflow.emulator.p3d_cinn import P3DEmulator
+from forestflow.archive.gadget_archive import GadgetArchive3D
+from forestflow.model.arinyo import ArinyoModel
 from lace.archive.gadget_archive import GadgetArchive
 from lace.cosmo.cosmology import Cosmology
 
@@ -95,7 +95,7 @@ def project_arinyo(snapshot, arinyo_parameters):
     """Project Arinyo parameters using the snapshot's full cosmology only."""
     cosmology = Cosmology(cosmo_params_dict=snapshot["cosmo_params"])
     model = ArinyoModel(cosmology)
-    linear = model.linear_theory(snapshot["z"])
+    linear = model.linear.get_linear_theory(snapshot["z"])
     k1d_Mpc = np.asarray(snapshot["k_Mpc"])
     parameters = {
         name: arinyo_parameters[name]

@@ -27,7 +27,7 @@ import numpy as np
 
 
 
-from forestflow.model_p3d_arinyo import ArinyoModel
+from forestflow.model.arinyo import ArinyoModel
 from lace.cosmo import cosmology
 
 # %% [markdown]
@@ -46,7 +46,7 @@ from lace.cosmo import cosmology
 
 # %%
 # load training data
-from forestflow.archive import GadgetArchive3D
+from forestflow.archive.gadget_archive import GadgetArchive3D
 Archive3D = GadgetArchive3D(addcentral=True)
 
 # %% [markdown]
@@ -57,7 +57,7 @@ Archive3D = GadgetArchive3D(addcentral=True)
 # - output_par: Arinyo
 
 # %%
-from forestflow.set_training import get_training_data
+from forestflow.emulator.training import get_training_data
 emu_data = get_training_data(Archive3D.training_data)
 
 # %%
@@ -74,7 +74,7 @@ mpg_central_z3 = mpg_central[ind_z3]
 # Standarize and modify input data
 
 # %%
-from forestflow.set_training import Transf_data
+from forestflow.emulator.training import Transf_data
 transf_data = Transf_data(emu_data, mpg_central_z3)
 
 # %% [markdown]
@@ -187,7 +187,7 @@ model_Arinyo = ArinyoModel(fid_cosmo)
 # Compute covariance matrices
 
 # %%
-from forestflow.play_with_power import compute_arinyo_power
+from forestflow.statistics.mock_power import make_arinyo_mock_power
 
 # it takes 30 s
 
@@ -195,26 +195,26 @@ from forestflow.play_with_power import compute_arinyo_power
 # In reality, we have f&p with 3 axes
 Lbox_Mpc = 150.0
 
-noise = {"n_noise": 10000, "keep_all_noise": False, "Lbox_Mpc": Lbox_Mpc}
-power = compute_arinyo_power(
+noise = {"n_realizations": 10000, "keep_realizations": False, "Lbox_Mpc": Lbox_Mpc}
+power = make_arinyo_mock_power(
     pars_model,
     model_Arinyo,
     noise=noise,
     n3d=20,
     n1d=20,
-    kmin_1d_Mpc=0.1,
-    kmax_1d_Mpc=4.0,
-    kmin_3d_Mpc=0.1,
-    kmax_3d_Mpc=5.0,
+    k_min_1d_iMpc=0.1,
+    k_max_1d_iMpc=4.0,
+    k_min_3d_iMpc=0.1,
+    k_max_3d_iMpc=5.0,
 )
 
 # %%
-pars_model["kpar_Mpc"] = power["model_kpar_Mpc"]
-pars_model["kper_Mpc"] = power["model_kper_Mpc"]
+pars_model["k_par_iMpc"] = power["model_k_par_iMpc"]
+pars_model["k_perp_iMpc"] = power["model_k_perp_iMpc"]
 pars_model["P3D_Mpc"] = power["ari_P3D_Mpc"]
 pars_model["std_P3D_Mpc"] = power["ari_std_P3D_Mpc"]
 
-pars_model["k1D_Mpc"] = power["model_k1d_Mpc"]
+pars_model["k_1d_iMpc"] = power["model_k_1d_iMpc"]
 pars_model["P1D_Mpc"] = power["ari_P1D_Mpc"]
 pars_model["std_P1D_Mpc"] = power["ari_std_P1D_Mpc"]
 
@@ -224,8 +224,8 @@ pars_model["std_P1D_Mpc"] = power["ari_std_P1D_Mpc"]
 # %%
 from matplotlib.colors import LogNorm
 
-k = np.sqrt(power["model_kpar_Mpc"]**2 + power["model_kper_Mpc"]**2)
-mu = power["model_kpar_Mpc"]/k
+k = np.sqrt(power["model_k_par_iMpc"]**2 + power["model_k_perp_iMpc"]**2)
+mu = power["model_k_par_iMpc"]/k
 
 mu_coord = False
 
@@ -233,8 +233,8 @@ if mu_coord:
     xplot = k
     yplot = mu
 else:
-    xplot = power["model_kpar_Mpc"]
-    yplot = power["model_kper_Mpc"]
+    xplot = power["model_k_par_iMpc"]
+    yplot = power["model_k_perp_iMpc"]
 
 plt.pcolormesh(
     xplot,
@@ -250,7 +250,7 @@ plt.colorbar()
 
 # %%
 plt.loglog(
-    power["model_k1d_Mpc"],
+    power["model_k_1d_iMpc"],
     power["ari_std_P1D_Mpc"],
 )
 
@@ -258,8 +258,8 @@ plt.loglog(
 # Relative difference of Arinyo to Kaiser
 
 # %%
-k = np.sqrt(power["model_kpar_Mpc"]**2 + power["model_kper_Mpc"]**2)
-mu = power["model_kpar_Mpc"]/k
+k = np.sqrt(power["model_k_par_iMpc"]**2 + power["model_k_perp_iMpc"]**2)
+mu = power["model_k_par_iMpc"]/k
 
 mu_coord = False
 
@@ -267,8 +267,8 @@ if mu_coord:
     xplot = k
     yplot = mu
 else:
-    xplot = power["model_kpar_Mpc"]
-    yplot = power["model_kper_Mpc"]
+    xplot = power["model_k_par_iMpc"]
+    yplot = power["model_k_perp_iMpc"]
 
 plt.pcolormesh(
     xplot,
@@ -286,7 +286,7 @@ plt.colorbar()
 pars_model.keys()
 
 # %%
-from forestflow.play_with_power import compute_arinyo_derivatives
+from forestflow.statistics.fisher import compute_arinyo_derivatives
 
 der_data = compute_arinyo_derivatives(transf_data, pars_model, model_Arinyo)
 
@@ -303,7 +303,7 @@ fig, ax = plt.subplots(len(pars_model["Arinyo"]), sharex=True, figsize=(8, 20))
 for jj, par in enumerate(pars_model["Arinyo"]):
     if par == "beta":
         continue
-    ax[jj].plot(pars_model["k1D_Mpc"], der_data["P1D_der"][par], label=par)
+    ax[jj].plot(pars_model["k_1d_iMpc"], der_data["P1D_der"][par], label=par)
     ax[jj].legend()
 plt.xscale("log")
 
@@ -311,8 +311,8 @@ plt.xscale("log")
 # Plot 3D derivatives
 
 # %%
-k = np.sqrt(power["model_kpar_Mpc"]**2 + power["model_kper_Mpc"]**2)
-mu = power["model_kpar_Mpc"]/k
+k = np.sqrt(power["model_k_par_iMpc"]**2 + power["model_k_perp_iMpc"]**2)
+mu = power["model_k_par_iMpc"]/k
 
 mu_coord = False
 
@@ -320,8 +320,8 @@ if mu_coord:
     xplot = k
     yplot = mu
 else:
-    xplot = power["model_kpar_Mpc"]
-    yplot = power["model_kper_Mpc"]
+    xplot = power["model_k_par_iMpc"]
+    yplot = power["model_k_perp_iMpc"]
 
 plt.pcolormesh(
     xplot,
@@ -338,15 +338,15 @@ from matplotlib.colors import SymLogNorm
 
 
 mu_coord = False
-k = np.sqrt(power["model_kpar_Mpc"]**2 + power["model_kper_Mpc"]**2)
-mu = power["model_kpar_Mpc"]/k
+k = np.sqrt(power["model_k_par_iMpc"]**2 + power["model_k_perp_iMpc"]**2)
+mu = power["model_k_par_iMpc"]/k
 
 if mu_coord:
     xplot = k
     yplot = mu
 else:
-    xplot = power["model_kpar_Mpc"]
-    yplot = power["model_kper_Mpc"]
+    xplot = power["model_k_par_iMpc"]
+    yplot = power["model_k_perp_iMpc"]
 
 fig, ax = plt.subplots(3, 3, sharex=True, sharey=True, figsize=(8, 8))
 ax = ax.reshape(-1)
@@ -383,7 +383,7 @@ for jj, par in enumerate(pars_model["Arinyo"]):
 # Fisher matrix combining derivatives and covariance
 
 # %%
-from forestflow.play_with_power import compute_fisher
+from forestflow.statistics.fisher import compute_fisher
 
 fisher = compute_fisher(pars_model)
 

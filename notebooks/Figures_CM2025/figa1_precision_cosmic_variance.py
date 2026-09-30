@@ -25,15 +25,9 @@
 import sys
 import os
 import matplotlib.pyplot as plt
-from matplotlib import gridspec
 import numpy as np
 
-from forestflow.archive import GadgetArchive3D
-from forestflow.plots_v0 import plot_test_p3d
-from forestflow.P3D_cINN import P3DEmulator
-from forestflow.model_p3d_arinyo import ArinyoModel
-from forestflow import model_p3d_arinyo
-from forestflow.utils import transform_arinyo_params, params_numpy2dict
+from forestflow.archive.gadget_archive import GadgetArchive3D
 
 
 # %%
@@ -91,7 +85,7 @@ for ii in range(len(central)):
     tar = _cen.copy()
     for par in par_merge:
         tar[par] = 0.5 * (_cen[par] + _seed[par])
-        
+
     tar["p1d_Mpc"] = (_cen["mF"]**2 * _cen["p1d_Mpc"] + _seed["mF"]**2 * _seed["p1d_Mpc"]) / tar["mF"]**2 / 2
     tar["p3d_Mpc"] = (_cen["mF"]**2 * _cen["p3d_Mpc"] + _seed["mF"]**2 * _seed["p3d_Mpc"]) / tar["mF"]**2 / 2
 
@@ -103,9 +97,7 @@ for ii in range(len(central)):
 # Difference across z between best-fitting models to central and seed relative to their average
 
 # %%
-from forestflow.rebin_p3d import p3d_allkmu, get_p3d_modes, p3d_rebin_mu
-from matplotlib.lines import Line2D
-import matplotlib.patches as mpatches
+from forestflow.statistics.rebin_p3d import get_P3D_k_mu_modes, rebin_P3D_Mpc_mode_weighted
 
 n_mubins = 4
 kmax_3d_fit = 5
@@ -115,7 +107,7 @@ kmax_1d = kmax_1d_fit + 1
 
 k3d_Mpc = central[0]['k3d_Mpc']
 mu3d = central[0]['mu3d']
-kmu_modes = get_p3d_modes(kmax_3d)
+kmu_modes = get_P3D_k_mu_modes(kmax_3d)
 mask_3d = k3d_Mpc[:, 0] <= kmax_3d
 mask_1d = (central[0]['k_Mpc'] < kmax_1d) & (central[0]['k_Mpc'] > 0)
 k1d_Mpc = central[0]['k_Mpc'][mask_1d]
@@ -130,8 +122,8 @@ p1d_measured = np.zeros((nsims, len(central), np.sum(mask_1d)))
 for isnap in range(len(combo)):
     for ii in range(nsims):
         sim = list_sims[ii]
-    
-        _ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], sim[isnap]['p3d_Mpc'][mask_3d], kmu_modes, n_mubins=n_mubins)
+
+        _ = rebin_P3D_Mpc_mode_weighted(k3d_Mpc[mask_3d], mu3d[mask_3d], sim[isnap]['p3d_Mpc'][mask_3d], kmu_modes, n_mu_bins=n_mubins)
         knew, munew, p3d_measured[ii, isnap, ...], mu_bins = _
         p1d_measured[ii, isnap, :] = sim[isnap]['p1d_Mpc'][mask_1d]
 
@@ -156,24 +148,24 @@ for iz in range(len(central)):
         pass
     else:
         continue
-    
+
     jj = 0
     ftsize = 20
     fig, ax = plt.subplots(2, figsize=(8, 6), sharex=True)
-    
+
     for ii in range(n_mubins):
-        
+
         if ii == 0:
             lab = str(mu_bins[ii]) + r"$\leq\mu<$" + str(mu_bins[ii + 1])
         else:
             lab = str(mu_bins[ii]) + r"$\leq\mu\leq$" + str(mu_bins[ii + 1])
         col = f"C{ii}"
-        x = knew[:, ii] 
+        x = knew[:, ii]
         _ = np.isfinite(x)
         y = (p3d_measured[0, iz, :, ii] - p3d_measured[1, iz, :, ii])/p3d_measured[2, iz, :, ii]/np.sqrt(2)
         print(np.nanmax(np.abs(y)))
         ax[0].plot(x[_], y[_], col+"-", lw=3, label=lab)
-        
+
     _ = np.isfinite(knew) & (knew > 0.5) & (knew < 5)
     y = (p3d_measured[0, iz, _] - p3d_measured[1, iz, _])/p3d_measured[2, iz, _]/np.sqrt(2)
     res = np.percentile(y, [50, 16, 84])
@@ -188,7 +180,7 @@ for iz in range(len(central)):
     print(res[0]*100, 0.5*(res[2]-res[1])*100, np.std(y)*100)
 
     ax[0].legend(fontsize=16, ncol=2, loc="upper left")
-    
+
     ax[0].axhline(0, linestyle=":", color="k")
     ax[0].axhline(0.1, linestyle="--", color="k")
     ax[0].axhline(-0.1, linestyle="--", color="k")
@@ -200,7 +192,7 @@ for iz in range(len(central)):
 
     ax[0].set_ylabel(r"Residual $P_\mathrm{3D}$", fontsize=ftsize)
     ax[1].set_ylabel(r"Residual $P_\mathrm{1D}$", fontsize=ftsize)
-    
+
     ax[0].set_xlabel(r"$k\, [\mathrm{Mpc}^{-1}]$", fontsize=ftsize)
     ax[1].set_xlabel(r"$k_\parallel\, [\mathrm{Mpc}^{-1}]$", fontsize=ftsize)
 
@@ -300,7 +292,7 @@ for sim in [central_0, central_1, central_2]:
         p1d += sim[ii]["mF"]**2 * sim[ii]["p1d_Mpc"]
     p3d = p3d/mF**2/2
     p1d = p1d/mF**2/2
-    
+
     av_p3d_cen.append(p3d)
     av_p1d_cen.append(p1d)
 
@@ -316,7 +308,7 @@ for sim in [seed_0, seed_1, seed_2]:
         p1d += sim[ii]["mF"]**2 * sim[ii]["p1d_Mpc"]
     p3d = p3d/mF**2/2
     p1d = p1d/mF**2/2
-    
+
     av_p3d_seed.append(p3d)
     av_p1d_seed.append(p1d)
 
@@ -346,7 +338,7 @@ av_p3d_seedt = av_p3d_seedt/mF**2/nsims
 av_p1d_seedt = av_p1d_seedt/mF**2/nsims
 
 # %%
-from forestflow.rebin_p3d import p3d_allkmu, get_p3d_modes, p3d_rebin_mu
+from forestflow.statistics.rebin_p3d import get_P3D_k_mu_modes, rebin_P3D_Mpc_mode_weighted
 
 isnap = 6
 n_mubins = 4
@@ -357,18 +349,18 @@ kmax_1d = kmax_1d_fit + 1
 
 k3d_Mpc = combo[0]['k3d_Mpc']
 mu3d = combo[0]['mu3d']
-kmu_modes = get_p3d_modes(kmax_3d)
+kmu_modes = get_P3D_k_mu_modes(kmax_3d)
 mask_3d = k3d_Mpc[:, 0] <= kmax_3d
 mask_1d = combo[0]['k_Mpc'] < kmax_1d
 k1d_Mpc = combo[0]['k_Mpc'][mask_1d]
 
-_ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], combo[isnap]['p3d_Mpc'][mask_3d], kmu_modes, n_mubins=n_mubins)
+_ = rebin_P3D_Mpc_mode_weighted(k3d_Mpc[mask_3d], mu3d[mask_3d], combo[isnap]['p3d_Mpc'][mask_3d], kmu_modes, n_mu_bins=n_mubins)
 knew, munew, combo_bin, mu_bins = _
 
-_ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], av_p3d_cent[mask_3d], kmu_modes, n_mubins=n_mubins)
+_ = rebin_P3D_Mpc_mode_weighted(k3d_Mpc[mask_3d], mu3d[mask_3d], av_p3d_cent[mask_3d], kmu_modes, n_mu_bins=n_mubins)
 knew, munew, av_p3d_cent_bin, mu_bins = _
 
-_ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], av_p3d_seedt[mask_3d], kmu_modes, n_mubins=n_mubins)
+_ = rebin_P3D_Mpc_mode_weighted(k3d_Mpc[mask_3d], mu3d[mask_3d], av_p3d_seedt[mask_3d], kmu_modes, n_mu_bins=n_mubins)
 knew, munew, av_p3d_seedt_bin, mu_bins = _
 
 
@@ -376,15 +368,15 @@ knew, munew, av_p3d_seedt_bin, mu_bins = _
 
 fig, ax = plt.subplots(4, sharex=True, sharey=True, figsize=(8, 6))
 for ii in range(3):
-    _ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], av_p3d_cen[ii], kmu_modes, n_mubins=n_mubins)
+    _ = rebin_P3D_Mpc_mode_weighted(k3d_Mpc[mask_3d], mu3d[mask_3d], av_p3d_cen[ii], kmu_modes, n_mu_bins=n_mubins)
     knew, munew, cen_bin, mu_bins = _
-    
-    _ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], av_p3d_seed[ii], kmu_modes, n_mubins=n_mubins)
+
+    _ = rebin_P3D_Mpc_mode_weighted(k3d_Mpc[mask_3d], mu3d[mask_3d], av_p3d_seed[ii], kmu_modes, n_mu_bins=n_mubins)
     knew, munew, seed_bin, mu_bins = _
 
     for jj in range(4):
         _ = np.isfinite(knew[:, jj]) & (knew[:, jj] < 0.5)
-        
+
         y = (cen_bin[:,jj] - seed_bin[:,jj])/combo_bin[:,jj]/np.sqrt(2)
         ax[jj].plot(knew[_, jj], y[_])
 
@@ -409,7 +401,7 @@ for ii in range(3):
 
     for jj in range(16):
         _ = np.isfinite(k3d_Mpc[:, jj]) & (k3d_Mpc[:, jj] < 0.5)
-        
+
         y = (av_p3d_cen[ii][:,jj] - av_p3d_seed[ii][:,jj])/combo[isnap]['p3d_Mpc'][:,jj]/np.sqrt(2)
         ax[jj].plot(k3d_Mpc[_, jj], y[_])
 

@@ -19,10 +19,9 @@
 # %%
 import numpy as np
 import matplotlib.pyplot as plt
-from vega import VegaInterface, Wedge, FitResults
-from vega.analysis import Analysis
+from vega import FitResults
 from astropy.io import fits
-from getdist import MCSamples, plots
+from getdist import plots
 
 # %% [markdown]
 # ### Reproduce the official results

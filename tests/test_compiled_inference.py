@@ -1,6 +1,6 @@
 import torch
 
-from forestflow.P3D_cINN import P3DEmulator
+from forestflow.emulator.p3d_cinn import P3DEmulator
 
 
 def test_compile_wraps_model_only_once(monkeypatch):

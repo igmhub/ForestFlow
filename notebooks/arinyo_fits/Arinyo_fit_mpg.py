@@ -34,8 +34,8 @@ from pathlib import Path
 
 import numpy as np
 
-from forestflow.archive import GadgetArchive3D
-from forestflow.fitting import ArinyoFitter
+from forestflow.archive.gadget_archive import GadgetArchive3D
+from forestflow.model_fits import ArinyoFitter
 
 # %% [markdown]
 # ## Load an MPG snapshot
@@ -53,19 +53,39 @@ from forestflow.fitting import ArinyoFitter
 # %%
 # postproc = "Cabayol23"
 postproc = "Cabayol23_fixp3d"
+archive = GadgetArchive3D(postproc=postproc, average="both")
 
-archive = GadgetArchive3D(postproc=postproc)
+if postproc != "Cabayol23":
+    standard_archive = GadgetArchive3D(postproc="Cabayol23", average="both")
 
 # %%
 # `get_training_data` uses ForestFlow's standard emulator inputs by default.
 # Choose any MPG hypercube label to fit the corrected training measurement.
-simulation_label = "mpg_0"
-snapshots = archive.get_training_data(simulation_label)
+training_label = "mpg_5"
+# This filters the archive's already loaded ``training_data`` cache; it does
+# not reread the full suite. The returned snapshots retain attached fits when
+# they are available for the selected post-processing.
+snapshots = archive.get_training_data(training_label)
+
+# For corrected P3D measurements, reuse the matching standard-postprocessing
+# snapshot as the initial Arinyo fit when the corrected one has none yet.
+# This reads each archive once; ArinyoFitter receives the already loaded list.
+standard_snapshots = None
+if postproc != "Cabayol23":
+    # Fits are attached to ``training_data`` during archive construction.
+    # A fresh get_training_data call would return measurements without
+    # ``Arinyo_min``.
+    standard_snapshots = [
+        snapshot
+        for snapshot in standard_archive.training_data
+        if snapshot["sim_label"] == training_label
+    ]
 
 snapshot_index = 0
+# snapshot_index = 10
 simulation = snapshots[snapshot_index]
 print(
-    f"{simulation_label} snapshot {snapshot_index}: z={simulation['z']:.3f} "
+    f"{training_label} snapshot {snapshot_index}: z={simulation['z']:.3f} "
     f"(postproc={postproc})"
 )
 
@@ -75,18 +95,33 @@ print(
 # `fit_iterative` begins with a bounded L-BFGS-B fit and can follow it with
 # Nelder--Mead refinements. The returned SciPy result, `best_params`, and
 # `best_chi2` are all retained by the fitter.
+#
+# These are MP-Gadget measurements, so P3D is compared using the default
+# hybrid finite-volume average: sparse cells use their exact Fourier modes and
+# dense cells use the continuous phase-space average. Do not set
+# `is_mpg=False` here: that fallback evaluates only at bin centres and is less
+# accurate on small scales.
 
 # %%
+# Omit zlist so the fitter uses the exact MP-Gadget archive redshift grid.
+# This lets the same fitter be reused safely for every snapshot below.
 fitter = ArinyoFitter(
-    zlist=np.array([simulation["z"]]),
-    kmin_3d=0.7,
+    kmin_3d=0.01,
     kmax_3d=4.5,
-    kmin_1d=0.3,
-    kmax_1d=7.0,
+    kmin_1d=0.01,
+    kmax_1d=6.0,
 )
-fitter.prepare_simulation(simulation)
+
+# %%
+fitter.prepare_simulation(
+    simulation,
+    standard_simulations=standard_snapshots,
+    is_mpg=True,
+)
 initial_parameters = fitter.params_from_dict(fitter.data.ini_params)
 initial_chi2 = fitter.chi2(initial_parameters)
+
+# %%
 result = fitter.fit_iterative()
 
 best_parameters = fitter.params_to_dict(fitter.best_params)
@@ -97,27 +132,19 @@ best_parameters
 figures = fitter.plot_fit()
 residual_figures = fitter.plot_residuals()
 
-# %%
-{'bias': np.float64(-0.7349681477587546),
- 'bias_eta': np.float64(-0.24569888228156794),
- 'q1': np.float64(1.0006817430919788),
- 'q2': np.float64(0.2840178663021624),
- 'kvav': np.float64(1.5787200310459863),
- 'av': np.float64(0.7253009499550407),
- 'bv': np.float64(1.8001766153488235),
- 'kp': np.float64(28.333600445616142)}
-
 # %% [markdown]
 # ## Optionally fit an MPG collection and save its results
 #
 # Leave `run_all_fits=False` for the tutorial. Enabling it fits every selected
 # snapshot, periodically saves progress, and writes parameter names, snapshot
 # metadata, initial/final chi2, convergence information, and best-fit Arinyo
-# parameters. The output uses ordinary parameter names, never plotting labels.
+# parameters. It also saves the full archive identity fields needed to match
+# a corrected measurement to its standard-postprocessing initialization. The
+# output uses ordinary parameter names, never plotting labels.
 
 # %%
 run_all_fits = False
-output_file = Path(f"Arinyo_fit_{simulation_label}.npy")
+output_file = Path(f"Arinyo_fit_{training_label}.npy")
 
 if run_all_fits:
     result_fits = {
@@ -128,29 +155,25 @@ if run_all_fits:
     success = np.zeros(len(snapshots), dtype=bool)
     messages = np.empty(len(snapshots), dtype=object)
 
-    def save_results():
-        np.save(
-            output_file,
-            {
-                "schema_version": 1,
-                "simulation_label": simulation_label,
-                "postproc": postproc,
-                "parameter_names": fitter.PARAM_NAMES,
-                "z": np.asarray([item["z"] for item in snapshots]),
-                "ind_snap": np.asarray([item.get("ind_snap") for item in snapshots]),
-                "val_scaling": np.asarray([item.get("val_scaling") for item in snapshots]),
-                "initial_chi2": initial_chi2_all,
-                "chi2": final_chi2_all,
-                "success": success,
-                "message": messages,
-                "Arinyo": result_fits,
-            },
-        )
 
     for index, simulation in enumerate(snapshots):
         if index % 50 == 0:
-            save_results()
-        fitter.prepare_simulation(simulation)
+            fitter.save_results(
+                output_file,
+                snapshots=snapshots,
+                initial_chi2=initial_chi2_all,
+                chi2=final_chi2_all,
+                success=success,
+                message=messages,
+                arinyo=result_fits,
+                simulation_label=training_label,
+                postproc=postproc,
+            )
+        fitter.prepare_simulation(
+            simulation,
+            standard_simulations=standard_snapshots,
+            is_mpg=True,
+        )
         initial_chi2_all[index] = fitter.chi2(
             fitter.params_from_dict(fitter.data.ini_params)
         )
@@ -165,7 +188,17 @@ if run_all_fits:
             f"{initial_chi2_all[index]:.4f} -> {final_chi2_all[index]:.4f}"
         )
 
-    save_results()
+    fitter.save_results(
+        output_file,
+        snapshots=snapshots,
+        initial_chi2=initial_chi2_all,
+        chi2=final_chi2_all,
+        success=success,
+        message=messages,
+        arinyo=result_fits,
+        simulation_label=training_label,
+        postproc=postproc,
+    )
     print(f"Saved {len(snapshots)} fits to {output_file.resolve()}")
 
 # %%

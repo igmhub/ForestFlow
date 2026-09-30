@@ -26,12 +26,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import forestflow
-from forestflow.P3D_cINN import P3DEmulator
+from forestflow.emulator.p3d_cinn import P3DEmulator
 
-from forestflow.model_p3d_arinyo import ArinyoModel
+from forestflow.model.arinyo import ArinyoModel
 from lace.cosmo import cosmology
 
-from forestflow.set_training import Transf_data
+from forestflow.emulator.training import Transf_data
 
 # %% [markdown]
 # ## Training data
@@ -40,7 +40,7 @@ from forestflow.set_training import Transf_data
 
 # %%
 # load training data
-from forestflow.archive import GadgetArchive3D
+from forestflow.archive.gadget_archive import GadgetArchive3D
 Archive3D = GadgetArchive3D(addcentral=True)
 
 # %% [markdown]
@@ -51,7 +51,7 @@ Archive3D = GadgetArchive3D(addcentral=True)
 # - output_par: Arinyo
 
 # %%
-from forestflow.set_training import get_training_data
+from forestflow.emulator.training import get_training_data
 
 # type_fit = "Arinyo_min"
 # zmax = 4.1 # improves the performance, the results of the Arinyo fit are noisy at z>4 (?!)
@@ -233,14 +233,14 @@ for ii, par in enumerate(emulator.output_labels):
     ax[ii].legend()
 
 # %%
-from forestflow.play_with_power import get_sim_power
+from forestflow.archive.helpers import get_sim_power
 
 # %%
 cosmo_params_dict = mpg_central_z3["cosmo_params"]
 fid_cosmo = cosmology.Cosmology(cosmo_params_dict=cosmo_params_dict)
 model_Arinyo = ArinyoModel(fid_cosmo)
 
-linear = model_Arinyo.linear_theory(Archive3D.list_sim_redshifts)
+linear = model_Arinyo.linear.get_linear_theory(Archive3D.list_sim_redshifts)
 
 
 # %%

@@ -39,8 +39,8 @@ import lace
 from cup1d.p1ds.data_Chabanier2019 import P1D_Chabanier2019
 
 import forestflow
-from forestflow.archive import GadgetArchive3D
-from forestflow.P3D_cINN import P3DEmulator
+from forestflow.archive.gadget_archive import GadgetArchive3D
+from forestflow.emulator.p3d_cinn import P3DEmulator
 import copy
 
 
@@ -138,7 +138,7 @@ var_input = {
     "As": cosmo["As"] + 0.05 * cosmo["As"],
     "omch2": cosmo["omch2"] + 0.05 * cosmo["omch2"],
     "mF": input_params["mF"] + 0.01 * input_params["mF"],
-    "sigT_Mpc": input_params["sigT_Mpc"] + 0.05 * input_params["sigT_Mpc"], 
+    "sigT_Mpc": input_params["sigT_Mpc"] + 0.05 * input_params["sigT_Mpc"],
 }
 
 info_power = {
@@ -187,7 +187,7 @@ for ii in range(4):
         'gamma': 1.5,
         'kF_Mpc': 10.5
     }
-    
+
     if(ii == 0):
         cosmo["As"] = var_input["As"]
     elif(ii == 1):
@@ -207,7 +207,7 @@ for ii in range(4):
         "return_p1d": True,
         "z": z_test,
     }
-    
+
     out = emulator.evaluate(
         emu_params=input_params,
         info_power=info_power,
@@ -249,7 +249,7 @@ ratio_As = np.exp(np.log(ratio_Ap) - delta_np * ln_kp_ks)
 # %%
 input_params = {
     'Delta2_p': 0.,
-    'n_p': 0., 
+    'n_p': 0.,
     'mF': 0.66,
     'sigT_Mpc': 0.13,
     'gamma': 1.5,
@@ -316,7 +316,7 @@ fontsize=20
 for ii in range(4):
     ax[0].plot(k_Mpc[:,0], var_p3d[ii, :,0]/orig_p3d[:,0], ls[ii], label=labsleg[ii], lw=lw)
     ax[1].plot(k_Mpc[:,0], var_p3d[ii, :,1]/orig_p3d[:,1], ls[ii], lw=lw)
-    
+
     ax[2].plot(kpar_Mpc, var_p1d[ii]/orig_p1d, ls[ii], lw=lw)
 
 # ax[0].plot(k_Mpc[:,0], omh2_p3d[:,0]/orig_p3d[:,0], ls[ii], label="Compensated Omh2", lw=lw)
@@ -329,14 +329,14 @@ for ii in range(4):
 for ii in range(3):
     ax[ii].axhline(1, linestyle=":", color="k", alpha=0.5, lw=2)
     ax[ii].tick_params(axis="both", which="major", labelsize=fontsize)
-    
+
 ax[0].axvline(5, linestyle="--", color="k", alpha=0.5, lw=2)
 ax[1].axvline(5, linestyle="--", color="k", alpha=0.5, lw=2)
 ax[2].axvline(4, linestyle="--", color="k", alpha=0.5, lw=2)
 
 ax[0].set_xscale("log")
 
-            
+
 ax[0].set_xlabel(r'$k\, [\mathrm{Mpc}^{-1}]$', fontsize=fontsize)
 ax[1].set_xlabel(r'$k\, [\mathrm{Mpc}^{-1}]$', fontsize=fontsize)
 ax[2].set_xlabel(r'$k_\parallel\, [\mathrm{Mpc}^{-1}]$', fontsize=fontsize)
@@ -363,10 +363,10 @@ outs = {}
 
 for key in conv.keys():
     ii = conv[key]
-    
+
     outs["top_" + key + "_x"] = k_Mpc[:,0]
     outs["top_" + key + "_y"] = var_p3d[ii, :,0]/orig_p3d[:,0]
-    
+
     outs["central_" + key + "_x"] = k_Mpc[:,0]
     outs["central_" + key + "_y"] = var_p3d[ii, :,1]/orig_p3d[:,1]
 
@@ -420,7 +420,7 @@ var_input = {
     "As": cosmo["As"] + 0.05 * cosmo["As"],
     "omch2": cosmo["omch2"] + 0.05 * cosmo["omch2"],
     "mF": input_params["mF"] + 0.01 * input_params["mF"],
-    "sigT_Mpc": input_params["sigT_Mpc"] + 0.05 * input_params["sigT_Mpc"], 
+    "sigT_Mpc": input_params["sigT_Mpc"] + 0.05 * input_params["sigT_Mpc"],
 }
 
 lybias = np.zeros((nz, 3))
@@ -431,7 +431,7 @@ for ii, z in enumerate(z_test):
         "cosmo": cosmo,
         "z": z,
     }
-    
+
     out = emulator.evaluate(
         emu_params=input_params,
         info_power=info_power,
@@ -440,7 +440,7 @@ for ii, z in enumerate(z_test):
 
     lybias[ii, 0] = out["coeffs_Arinyo"]["beta"]
     lybias[ii, 1] = out["coeffs_Arinyo"]["bias"]
-    
+
     out = emulator.evaluate(
         emu_params=input_params,
         info_power=info_power,
@@ -476,7 +476,7 @@ for ii in range(4):
         'gamma': 1.5,
         'kF_Mpc': 10.5
     }
-    
+
     if(ii == 0):
         cosmo["As"] = var_input["As"]
     elif(ii == 1):
@@ -493,16 +493,16 @@ for ii in range(4):
             "cosmo": cosmo,
             "z": z,
         }
-        
+
         out = emulator.evaluate(
             emu_params=input_params,
             info_power=info_power,
             Nrealizations=nrel
         )
-    
+
         lybias_var[ii, jj, 0] = out["coeffs_Arinyo"]["beta"]
         lybias_var[ii, jj, 1] = out["coeffs_Arinyo"]["bias"]
-        
+
         out = emulator.evaluate(
             emu_params=input_params,
             info_power=info_power,
@@ -591,13 +591,13 @@ fontsize = 22
 fig, ax = plt.subplots(3, 2, sharex=True, figsize=(8, 4*2))
 ax = ax.reshape(-1)
 for jj in range(2):
-    for kk, par in enumerate(emu_params0):       
+    for kk, par in enumerate(emu_params0):
         ii0 = 0
         for ii in range(0, nn, 2):
             if(ii == 2):
                 continue
             leg = par + '= ' + str(np.round(all_dp_vals[kk][ii], 2))
-                
+
             if(jj == 0):
                 k = k_Mpc[:,0]
                 dat = var_p3d[kk, ii, :, 0] / orig_p3d[:, 0] - 1
@@ -608,11 +608,11 @@ for jj in range(2):
                 dat = var_p3d[kk, ii, :, 1] / orig_p3d[:, 1] - 1
                 lss = "--"
                 col = "C"+str(ii0)
-                    
+
             ax[kk].plot(k, dat, ls=lss, c=col, label=leg, lw=2, alpha=0.75)
             ii0 += 1
-            
-        # ax[kk].legend(ncol=4)            
+
+        # ax[kk].legend(ncol=4)
         ax[kk].axhline(color='k', ls=":")
         ax[kk].set_title(lab_par[kk],
             fontsize=fontsize)
@@ -742,9 +742,9 @@ for jj, par in enumerate(emu_params0):
         dp_vals = np.zeros(nn)
     else:
         dp_vals = np.linspace(emu_params0[par]-range_par[par], emu_params0[par]+range_par[par], nn)
-    
+
     for ii in range(nn):
-    
+
         cosmo_params = copy.deepcopy(cosmo_params0)
         emu_params = copy.deepcopy(emu_params0)
 
@@ -759,10 +759,10 @@ for jj, par in enumerate(emu_params0):
             cosmo_params['As'] = cosmo_params0['As'] * (kp/ks)**deltapar
         else:
             emu_params[par] = dp_vals[ii]
-            
+
         out = p3d_emu.predict_P3D_Mpc(
             cosmo=cosmo_params,
-            z=z, 
+            z=z,
             emu_params=emu_params,
             k_Mpc=k_Mpc,
             mu=mu,
@@ -774,20 +774,20 @@ for jj, par in enumerate(emu_params0):
         elif(par == "n_p"):
             dp_vals[ii] = out['linP_zs']["n_p"]
         var_p1d[jj, ii] = out['p1d']
-        var_p3d[jj, ii] = out['p3d'] 
+        var_p3d[jj, ii] = out['p3d']
 
         # if((par == "Delta2_p") | (par == "n_p")):
         #     if(par == "Delta2_p"):
         #         deltapar1 = out['linP_zs'][par] / emu_params0[par]
         #     elif(par == "n_p"):
         #         deltapar1 = emu_params0[par] - out['linP_zs'][par]
-            
+
         #     print(out['linP_zs']["Delta2_p"], out['linP_zs']["n_p"], deltapar, deltapar1)
-    
-    
+
+
     all_dp_vals.append(dp_vals)
 all_dp_vals = np.array(all_dp_vals)
-print(all_dp_vals)    
+print(all_dp_vals)
 
 # %%
 dp3d_range = np.zeros((6, 2))
@@ -806,13 +806,13 @@ fontsize = 22
 fig, ax = plt.subplots(3, 2, sharex=True, figsize=(8, 4*2))
 ax = ax.reshape(-1)
 for jj in range(2):
-    for kk, par in enumerate(emu_params0):       
+    for kk, par in enumerate(emu_params0):
         ii0 = 0
         for ii in range(0, nn, 2):
             if(ii == 2):
                 continue
             leg = par + '= ' + str(np.round(all_dp_vals[kk][ii], 2))
-                
+
             if(jj == 0):
                 k = k_Mpc[:,0]
                 dat = var_p3d[kk, ii, :, 0] / orig_p3d[:, 0] - 1
@@ -823,11 +823,11 @@ for jj in range(2):
                 dat = var_p3d[kk, ii, :, 1] / orig_p3d[:, 1] - 1
                 lss = "--"
                 col = "C"+str(ii0)
-                    
+
             ax[kk].plot(k, dat, ls=lss, c=col, label=leg, lw=2, alpha=0.75)
             ii0 += 1
-            
-        # ax[kk].legend(ncol=4)            
+
+        # ax[kk].legend(ncol=4)
         ax[kk].axhline(color='k', ls=":")
         ax[kk].set_title(lab_par[kk],
             fontsize=fontsize)
@@ -874,25 +874,25 @@ fontsize = 22
 
 fig, ax = plt.subplots(3, 2, sharex=True, figsize=(8, 4*2))
 ax = ax.reshape(-1)
-for kk, par in enumerate(emu_params0):        
+for kk, par in enumerate(emu_params0):
     for ii in range(0, nn, 2):
         if(ii == 2):
             continue
         leg = par + '= ' + str(np.round(all_dp_vals[kk][ii], 2))
-        
+
         k = kpar_Mpc
         dat = var_p1d[kk, ii] / orig_p1d - 1
-                
+
         ax[kk].plot(k, dat, label=leg, lw=2)
-        
-    # ax[kk].legend(ncol=4)            
+
+    # ax[kk].legend(ncol=4)
     ax[kk].axhline(color='k', ls=":")
     ax[kk].set_title(lab_par[kk],
             fontsize=fontsize)
     ymax = np.max(np.abs(dp1d_range[kk, :]))*1.1
     ax[kk].set_ylim(-ymax, ymax)
     ax[kk].tick_params(axis="both", which="major", labelsize=fontsize-4)
-        
+
 ax[-2].set_xlabel(r'$k_\parallel\, [\mathrm{Mpc}^{-1}]$', fontsize=fontsize)
 ax[-1].set_xlabel(r'$k_\parallel\, [\mathrm{Mpc}^{-1}]$', fontsize=fontsize)
 ax[-1].set_xscale('log')
@@ -956,7 +956,7 @@ emu_params["f_p"] = fp_cen
 
 out = p3d_emu.predict_P3D_Mpc(
     cosmo=cosmo_params0,
-    z=z, 
+    z=z,
     emu_params=emu_params,
     natural_params=True,
 )
@@ -974,7 +974,7 @@ ns_sam = np.linspace(cosmo_params0["ns"]-range_par["n_p"], cosmo_params0["ns"]+r
 
 for jj, par in enumerate(emu_params0):
     dp2_vals = np.linspace(emu_params0[par]-range_par[par], emu_params0[par]+range_par[par], nn)
-    
+
     for ii in range(nn):
         cosmo_params = copy.deepcopy(cosmo_params0)
         emu_params = copy.deepcopy(emu_params0)
@@ -992,17 +992,17 @@ for jj, par in enumerate(emu_params0):
             emu_params[par] = dp2_vals[ii]
             emu_params["f_p"] = fp_cen
             param_input[ii, jj] = dp2_vals[ii]
-            
+
         out = p3d_emu.predict_P3D_Mpc(
             cosmo=cosmo_params,
-            z=z, 
+            z=z,
             emu_params=emu_params,
             natural_params=True,
             verbose=False,
             return_cov=False
         )
         param_evol[ii, jj] = np.array(list(out['coeffs_Arinyo'].values()))
-            
+
         if(par == "Delta2_p"):
             param_input[ii, jj] = out['linP_zs']["Delta2_p"]
         elif(par == "n_p"):
@@ -1017,24 +1017,24 @@ param_evol.shape
 # name_params = list(Arinyo_emu[0].keys())
 name_params = ['bias', 'bias_eta', 'q1', 'q2', 'kv', 'av', 'bv', 'kp']
 name2label = {
-    'bias':r"$b_\delta$", 
-    'bias_eta':r"$b_\eta$", 
-    'q1':r"$q_1$", 
+    'bias':r"$b_\delta$",
+    'bias_eta':r"$b_\eta$",
+    'q1':r"$q_1$",
     'q2':r"$q_2$",
-    'kv':r"$k_\mathrm{v}$", 
-    'av':r"$a_\mathrm{v}$", 
-    'bv':r"$b_\mathrm{v}$", 
-    'kp':r"$k_\mathrm{p}$", 
+    'kv':r"$k_\mathrm{v}$",
+    'av':r"$a_\mathrm{v}$",
+    'bv':r"$b_\mathrm{v}$",
+    'kp':r"$k_\mathrm{p}$",
 }
 par2label = {
-    'Delta2_p': r'$\Delta^2_\mathrm{p}$', 
-    'n_p': r'$n_\mathrm{p}$', 
-    'mF': r'$m_\mathrm{F}$', 
-    'gamma': r'$\gamma$', 
-    'sigT_Mpc': r'$\sigma_\mathrm{T}$', 
+    'Delta2_p': r'$\Delta^2_\mathrm{p}$',
+    'n_p': r'$n_\mathrm{p}$',
+    'mF': r'$m_\mathrm{F}$',
+    'gamma': r'$\gamma$',
+    'sigT_Mpc': r'$\sigma_\mathrm{T}$',
     'kF_Mpc': r'$k_\mathrm{F}$',
 }
-index2axis = [0, 1, 2, 4, 5, 6, 7, 3] 
+index2axis = [0, 1, 2, 4, 5, 6, 7, 3]
 
 # %%
 print(emu_params0.keys())
@@ -1050,14 +1050,14 @@ ls = ['-', '--', ':', '-.', (0, (5, 5)), (0, (3, 1, 1, 1, 1, 1))]
 
 for jj, par2 in enumerate(out['coeffs_Arinyo']):
     jj0 = index2axis[jj]
-    ax[jj0].set_ylabel(name2label[par2], fontsize=fontsize)  
+    ax[jj0].set_ylabel(name2label[par2], fontsize=fontsize)
     for ii, par1 in enumerate(emu_params0):
         col = "C" + str(ii)
         if(ii == jj0):
-            lab = "x = "+par2label[par1] 
+            lab = "x = "+par2label[par1]
         else:
             lab = None
-            
+
         xmin = param_input[:, ii].min()
         xmax = param_input[:, ii].max()
         x = (param_input[:, ii]-xmin)/(xmax-xmin)*2-1

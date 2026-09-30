@@ -23,20 +23,17 @@
 import numpy as np
 import os
 import sys
-import matplotlib.pyplot as plt
 
-from forestflow.model_p3d_arinyo import ArinyoModel
-from forestflow.archive import GadgetArchive3D
-from forestflow.P3D_cINN import P3DEmulator
+from forestflow.archive.gadget_archive import GadgetArchive3D
+from forestflow.emulator.p3d_cinn import P3DEmulator
 from forestflow.plots.l1O_p3d import plot_p3d_L1O
 from forestflow.plots.l1O_p1d import plot_p1d_L1O
 
-from forestflow.rebin_p3d import get_p3d_modes, p3d_allkmu, p3d_rebin_mu
+from forestflow.statistics.rebin_p3d import get_P3D_k_mu_modes, rebin_P3D_Mpc_mode_weighted
 
 from matplotlib import rcParams
 
 from forestflow.utils import (
-    params_numpy2dict,
     transform_arinyo_params,
 )
 
@@ -129,7 +126,7 @@ sim = Archive3D.training_data[0]
 k3d_Mpc = sim['k3d_Mpc']
 mu3d = sim['mu3d']
 p3d_Mpc = sim['p3d_Mpc']
-kmu_modes = get_p3d_modes(kmax_3d_plot)
+kmu_modes = get_P3D_k_mu_modes(kmax_3d_plot)
 
 mask_3d = k3d_Mpc[:, 0] <= kmax_3d_plot
 
@@ -196,19 +193,19 @@ for iz, zdrop in enumerate(z_test):
             "return_p1d": True,
             "z": zdrop,
         }
-        
+
         out = p3d_emu.evaluate(
             emu_params=dict_sim[0],
             info_power=info_power,
             natural_params=True,
             Nrealizations=100
         )
-        
+
         # p1d and p3d from sim
-        _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], dict_sim[0]["p3d_Mpc"][mask_3d], kmu_modes, n_mubins=n_mubins)
+        _ = rebin_P3D_Mpc_mode_weighted(out["k_Mpc"], out["mu"], dict_sim[0]["p3d_Mpc"][mask_3d], kmu_modes, n_mu_bins=n_mubins)
         knew, munew, arr_p3d_sim[isim, iz], mu_bins = _
-        
-        _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["p3d"], kmu_modes, n_mubins=n_mubins)
+
+        _ = rebin_P3D_Mpc_mode_weighted(out["k_Mpc"], out["mu"], out["p3d"], kmu_modes, n_mu_bins=n_mubins)
         knew, munew, arr_p3d_emu[isim, iz], mu_bins = _
 
         arr_p1d_emu[isim, iz] = out["p1d"]
@@ -217,20 +214,20 @@ for iz, zdrop in enumerate(z_test):
         params_emu[isim, iz, 0] = out['coeffs_Arinyo']["bias"]
         params_emu[isim, iz, 1] = out['coeffs_Arinyo']["bias_eta"]
 
-        _ = transform_arinyo_params(dict_sim[0]["Arinyo_minz"], dict_sim[0]["f_p"])        
+        _ = transform_arinyo_params(dict_sim[0]["Arinyo_minz"], dict_sim[0]["f_p"])
         params_sim[isim, iz, 0] = _["bias"]
         params_sim[isim, iz, 1] = _["bias_eta"]
-        
+
         break
     break
 
 # %%
 folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
 np.savez(
-    folder + "temporal_l1Oz", 
-    arr_p3d_sim=arr_p3d_sim, 
-    arr_p3d_emu=arr_p3d_emu, 
-    arr_p1d_sim=arr_p1d_sim, 
+    folder + "temporal_l1Oz",
+    arr_p3d_sim=arr_p3d_sim,
+    arr_p3d_emu=arr_p3d_emu,
+    arr_p1d_sim=arr_p1d_sim,
     arr_p1d_emu=arr_p1d_emu,
     params_sim=params_sim,
     params_emu=params_emu
@@ -272,10 +269,10 @@ residual3d = (arr_p3d_emu / arr_p3d_sim -1)
 
 # %%
 savename=folder+"l1O/l1O_z_P3D.png"
-plot_p3d_L1O(z_use, knew, munew, residual3d, mu_bins, 
+plot_p3d_L1O(z_use, knew, munew, residual3d, mu_bins,
              kmax_3d_fit=kmax_3d_fit, legend=False, savename=savename)
 savename=folder+"l1O/l1O_z_P3D.pdf"
-plot_p3d_L1O(z_use, knew, munew, residual3d, mu_bins, 
+plot_p3d_L1O(z_use, knew, munew, residual3d, mu_bins,
              kmax_3d_fit=kmax_3d_fit, legend=False, savename=savename)
 
 # %% [markdown]
@@ -308,10 +305,10 @@ med_rat_p1d = np.median(residual1d, axis=0)
 for jj in range(med_rat_p3d.shape[0]):
     for key in conv.keys():
         ii = conv[key]
-        
+
         outs["p3d_panel" + str(jj) + "_" + key + "_x"] = knew[:, ii]
         outs["p3d_panel" + str(jj) + "_" + key + "_y"] = med_rat_p3d[jj, :, ii]
-    
+
     outs["p1d_panel" + str(jj) + "_x"] = k1d_Mpc
     outs["p1d_panel" + str(jj) + "_y"] = med_rat_p1d[jj]
 

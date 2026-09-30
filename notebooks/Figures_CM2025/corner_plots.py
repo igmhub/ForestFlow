@@ -37,12 +37,11 @@ plt.rc("text", usetex=False)
 plt.rcParams["font.family"] = "serif"
 matplotlib.rcParams["mathtext.fontset"] = "cm"
 
-from forestflow.archive import GadgetArchive3D
-from forestflow.plots_v0 import plot_err_uncertainty
-from forestflow.P3D_cINN import P3DEmulator
+from forestflow.archive.gadget_archive import GadgetArchive3D
+from forestflow.emulator.p3d_cinn import P3DEmulator
 from forestflow.utils import load_Arinyo_chains
 
-# from forestflow.model_p3d_arinyo import ArinyoModel
+# from forestflow.model.arinyo import ArinyoModel
 # from forestflow import model_p3d_arinyo
 # from forestflow.likelihood import Likelihood
 
@@ -275,9 +274,9 @@ corner_plot = corner(
 )
 
 corner(
-    arinyo_emu_natural, 
-    fig=corner_plot, 
-    color="C0", 
+    arinyo_emu_natural,
+    fig=corner_plot,
+    color="C0",
     smooth=True,
     range=range_use,
     plot_density=False,

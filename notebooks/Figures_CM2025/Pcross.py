@@ -17,11 +17,10 @@ import matplotlib.pyplot as plt
 import os
 from forestflow import pcross
 from lace.cosmo import camb_cosmo
-from forestflow.model_p3d_arinyo import ArinyoModel
-from forestflow.archive import GadgetArchive3D
-from forestflow.P3D_cINN import P3DEmulator
+from forestflow.model.arinyo import ArinyoModel
+from forestflow.archive.gadget_archive import GadgetArchive3D
+from forestflow.emulator.p3d_cinn import P3DEmulator
 import forestflow
-from forestflow.rebin_p3d import get_p3d_modes
 import matplotlib.lines as mlines
 import matplotlib.patches as mpatches
 
@@ -80,9 +79,9 @@ def weighted_Px(kpar_est, z, p3d_func, sep_bin, ndiv=10, **pp):
     max_kperp=10**2.9,
     nkperp=2**12,
     **{"pp": pp})
-    
+
     Px_pred_smooth = np.average(Pxper_r, weights=rrange, axis=1)
-    
+
     # repeat for exact kpar
     rperp_pred,Pxper_r2 = pcross.Px_Mpc_detailed(kpar[1:65],
     p3d_func,
@@ -111,7 +110,7 @@ Px_pred_same_kpar_bestfit = [[],[],[],[],[],[],[]]
 Px_pred_all = [[],[],[],[],[],[],[]]
 Px_pred_samekpar_all = [[],[],[],[],[],[],[]]
 
-z_test = np.array([3]) 
+z_test = np.array([3])
 
 info_power = {
     "sim_label": "mpg_central",
@@ -174,7 +173,7 @@ for s in range(1, len(separation_bins)-1):
         Px_pred_samekpar_all[s-1].append(mean_Px_exact_i)
     print(len(Px_pred_samekpar_all[s-1]))
     mean_Px_smth_bestfit, mean_Px_exact_bestfit = weighted_Px(kpar_est, z_test[0], arinyo.P3D_Mpc, [separation_bins[s], separation_bins[s+1]], **arinyo_bestfit, ndiv=30)
-    
+
     Px_pred[s-1].extend(mean_Px_smth)
     Px_pred_plus[s-1].extend(mean_Px_smth_plus)
     Px_pred_minus[s-1].extend(mean_Px_smth_minus)
@@ -219,12 +218,12 @@ for s in range(1,len(separation_bins)-1):
 
     if s==4:
         label = ''
-        
+
     else:
         label = ''
-        
+
     if s<=4:
-        
+
         # ax[0].scatter(kpar[1:65], kpar[1:65]*Px_thisbin_avg.T[1:], label=r"$r_\perp={:.2f}-{:.2f}$ Mpc".format(separation_bins[s],separation_bins[s+1]), marker='o', s=10, color=colors[s])
         ax[0].scatter(kpar[1:65], kpar[1:65]*Px_thisbin_avg.T[1:], marker='o', s=20, color=colors[s])
         ax[0].plot(kpar_est, kpar_est*(Px_pred[s-1]), label=label, color=colors[s])
@@ -296,27 +295,27 @@ for key in ["orange", "green", "red", "purple"]:
 
     Px_info = np.load(meas_path+"Px_skewers_{:.2f}_{:.2f}_allax_allphase.npz".format(separation_bins[s],separation_bins[s+1]))
     Px_thisbin_avg = Px_info['Px']
-    
+
     out["top_" + key + "_dashed_x"] = kpar_est
     out["top_" + key + "_dashed_y"] = kpar_est*(Px_pred_bestfit[s-1])
-    
+
     out["top_" + key + "_solid_x"] = kpar_est
     out["top_" + key + "_solid_y"] = kpar_est*(Px_pred[s-1])
-    
+
     out["top_" + key + "_points_x"] = kpar[1:65]
     out["top_" + key + "_points_y"] = kpar[1:65]*Px_thisbin_avg.T[1:]
-    
+
     cond = (Px_pred_same_kpar[s-1][:64]) > (np.amax((Px_pred_same_kpar[s-1][:64]))/100.)
     cond2 = Px_pred[s-1]>np.amax(Px_pred[s-1])/100.
-        
+
     fracerr_bestfit = (Px_thisbin_avg.T[1:][cond]-(Px_pred_same_kpar_bestfit[s-1][:64])[cond])/(Px_pred_same_kpar_bestfit[s-1][:64])[cond]
     out["middle_" + key + "_solid_x"] = kpar[1:65][cond]
     out["middle_" + key + "_solid_y"] = fracerr_bestfit
 
-    fracerr_emubest = ((Px_pred[s-1][cond2])-(Px_pred_bestfit[s-1][cond2]))/(Px_pred_bestfit[s-1][cond2])    
+    fracerr_emubest = ((Px_pred[s-1][cond2])-(Px_pred_bestfit[s-1][cond2]))/(Px_pred_bestfit[s-1][cond2])
     out["bottom_" + key + "_solid_x"] = kpar_est[cond2]
     out["bottom_" + key + "_solid_y"] = fracerr_emubest
-    
+
     s+=1
 import forestflow
 path_forestflow= os.path.dirname(forestflow.__path__[0]) + "/"

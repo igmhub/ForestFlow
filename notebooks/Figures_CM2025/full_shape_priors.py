@@ -33,17 +33,8 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 import forestflow
 
-from forestflow.model_p3d_arinyo import ArinyoModel
-from forestflow.archive import GadgetArchive3D
-from forestflow.P3D_cINN import P3DEmulator
-from forestflow.plots.test_sims import (
-    plot_p1d_test_sims, 
-    plot_p3d_test_sims,
-    plot_p1d_snap,
-    plot_p3d_snap
-)
-from forestflow.utils import params_numpy2dict
-from forestflow.rebin_p3d import p3d_allkmu, get_p3d_modes, p3d_rebin_mu
+from forestflow.archive.gadget_archive import GadgetArchive3D
+from forestflow.emulator.p3d_cinn import P3DEmulator
 
 from matplotlib import rcParams
 
@@ -97,7 +88,7 @@ emu_params = {
 kp_Mpc = 0.7
 
 ## Redshift
-# DESI-DR1 KP6 
+# DESI-DR1 KP6
 z = 2.33
 
 ## IGM
@@ -172,7 +163,7 @@ for ii in range(nn):
     _ns = ns + err_ns_use[ii]
     _w0 = w0 + err_w0_use[ii]
     _wa = wa + err_wa_use[ii]
-    
+
     cosmo = {
         'H0': _H0,
         'omch2': _omch2,
@@ -185,7 +176,7 @@ for ii in range(nn):
         'w': _w0,
         "wa": _wa
     }
-    
+
     sim_cosmo = camb_cosmo.get_cosmology_from_dictionary(cosmo)
     # compute linear power parameters at each z (in Mpc units)
     linP_zs = fit_linP.get_linP_Mpc_zs(sim_cosmo, [z], kp_Mpc)
@@ -194,14 +185,14 @@ for ii in range(nn):
 
     emu_params["Delta2_p"][ii] = linP_zs[0]["Delta2_p"]
     emu_params["n_p"][ii] = linP_zs[0]["n_p"]
-    
+
     emu_params["mF"][ii] = mF + err_mF_use[ii]
     emu_params["gamma"][ii] = gamma + err_gamma_use[ii]
-    
+
     sigma_T_kms = thermal_broadening_kms(T0 + err_T0_use[ii])
-    sigT_Mpc = sigma_T_kms / dkms_dMpc_zs[0]    
+    sigT_Mpc = sigma_T_kms / dkms_dMpc_zs[0]
     emu_params["sigT_Mpc"][ii] = sigT_Mpc
-    
+
     kF_Mpc = 1/((lambdap + err_lambdap_use[ii])/1000)
     emu_params["kF_Mpc"][ii] = kF_Mpc
 
@@ -229,7 +220,7 @@ for rank in range(size):
 ind = data["Delta2_p"] != 0
 
 for key in data.keys():
-    data[key] = data[key][ind] 
+    data[key] = data[key][ind]
 
 # %%
 # corner(np.array([data['Delta2_p'], data['n_p']]).T);
@@ -289,7 +280,7 @@ for ii in range(nelem):
     emu_params = {}
     for key in data:
         emu_params[key] = data[key][ii]
-    
+
     out = emulator.predict_Arinyos(
         emu_params,
         Nrealizations=500
@@ -324,10 +315,10 @@ for jj, key in enumerate(out_arinyo):
 
 # %%
 figure = corner(
-    arr_all, 
-    show_titles=True, 
-    labels=emulator.Arinyo_params, 
-    label_kwargs={"fontsize":20}, 
+    arr_all,
+    show_titles=True,
+    labels=emulator.Arinyo_params,
+    label_kwargs={"fontsize":20},
     title_kwargs={"fontsize":20},
     title_fmt='.3f'
 )
@@ -378,10 +369,10 @@ for ii, key in enumerate(dict_arinyo):
 
 # %%
 figure = corner(
-    arr_arinyo, 
-    show_titles=True, 
-    labels=emulator.Arinyo_params, 
-    label_kwargs={"fontsize":20}, 
+    arr_arinyo,
+    show_titles=True,
+    labels=emulator.Arinyo_params,
+    label_kwargs={"fontsize":20},
     title_kwargs={"fontsize":20},
     title_fmt='.3f'
 )

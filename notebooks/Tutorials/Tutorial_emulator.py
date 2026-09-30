@@ -23,7 +23,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from forestflow.P3D_cINN import P3DEmulator
+from forestflow.emulator.p3d_cinn import P3DEmulator
 
 # %% [markdown]
 # ## Load emulator
@@ -126,7 +126,7 @@ coeffs
 # See Tutorial_Arinyo for more info about the ArinyoModel class
 
 # %%
-from forestflow.model_p3d_arinyo import ArinyoModel
+from forestflow.model.arinyo import ArinyoModel
 from lace.cosmo import cosmology
 
 # %%
@@ -180,8 +180,8 @@ mu2d = np.tile(mu[:, np.newaxis], nn_k).T # mu grid for P3D
 #P1D
 kpar = np.geomspace(k_Mpc_min, 5., nn_k) # kpar for P1D
 
-linear = model_Arinyo.linear_theory(zs)
-linP_Mpc = model_Arinyo.linP_Mpc(linear, zs, k)
+linear = model_Arinyo.linear.get_linear_theory(zs)
+linP_Mpc = model_Arinyo.linear.get_linP_Mpc(linear, zs, k)
 p3d = model_Arinyo.P3D_Mpc_k_mu(linear, zs, k2d, mu2d, par_ari) # get P3D at target z
 p1d = model_Arinyo.P1D_Mpc(linear, zs, kpar, par_ari)
 
@@ -212,7 +212,7 @@ new_cosmo = {
     "w": -1.0,
 }
 
-linear_2 = model_Arinyo.linear_theory(zs, new_cosmo_params=new_cosmo)
+linear_2 = model_Arinyo.linear.get_linear_theory(zs, new_cosmo_params=new_cosmo)
 p1d_2 = model_Arinyo.P1D_Mpc(linear_2, zs, kpar, par_ari)
 
 # %%

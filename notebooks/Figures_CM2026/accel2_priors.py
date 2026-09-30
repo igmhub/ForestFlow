@@ -29,9 +29,9 @@ from matplotlib import rcParams
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
-from forestflow.priors_paper.load import load_map_igm_p3d
-from forestflow.priors_paper.set_samples import load_k_mu_accel2
-from forestflow.priors_paper.all_plots import plot_p3d_validation, plot_bias_beta_zev_val
+from forestflow.priors.paper.load import load_map_igm_p3d
+from forestflow.priors.paper.set_samples import load_k_mu_accel2
+from forestflow.priors.paper.plots import plot_p3d_validation, plot_bias_beta_zev_val
 
 np.__version__
 
@@ -149,7 +149,7 @@ q2 0.12 0.042 0.062 0.198
 # # Check compatibility forestflow and cup1d
 
 # %%
-from forestflow.priors_paper.set_samples import set_input_process_p1d_chain
+from forestflow.priors.paper.set_samples import set_input_process_p1d_chain
 pip, chain, d2star, nstar, zs, zeff = set_input_process_p1d_chain("accel2")
 
 folder = "/home/jchaves/Proyectos/projects/lya/data/accel2/chains/chain_1/"
@@ -228,7 +228,7 @@ n_p = linP_params["n_p"]
 
 # %%
 import forestflow
-from forestflow.P3D_cINN import P3DEmulator
+from forestflow.emulator.p3d_cinn import P3DEmulator
 emulator = P3DEmulator(
     model_path=os.path.join(
         os.path.dirname(forestflow.__path__[0]),
@@ -251,7 +251,7 @@ input_emu["n_p"] = n_p
 par_ari = emulator.predict_Arinyos(emu_params=input_emu)
 
 # %%
-from forestflow.model_p3d_arinyo import ArinyoModel
+from forestflow.model.arinyo import ArinyoModel
 
 # %%
 new_cosmo = {

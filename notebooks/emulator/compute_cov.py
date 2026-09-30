@@ -25,9 +25,9 @@ from pathlib import Path
 import numpy as np
 
 import forestflow
-from forestflow.P3D_cINN import P3DEmulator
-from forestflow.archive import GadgetArchive3D
-from forestflow.covariance import data_for_l10_forest
+from forestflow.emulator.p3d_cinn import P3DEmulator
+from forestflow.archive.gadget_archive import GadgetArchive3D
+from forestflow.emulator.covariance import data_for_l10_forest
 from forestflow.plots import plot_l1o_correlation, plot_l1o_errors
 
 # %% [markdown]

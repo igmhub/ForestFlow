@@ -25,17 +25,15 @@ import os
 import sys
 import matplotlib.pyplot as plt
 
-from forestflow.model_p3d_arinyo import ArinyoModel
-from forestflow.archive import GadgetArchive3D
-from forestflow.P3D_cINN import P3DEmulator
+from forestflow.archive.gadget_archive import GadgetArchive3D
+from forestflow.emulator.p3d_cinn import P3DEmulator
 from forestflow.plots.test_sims import (
-    plot_p1d_test_sims, 
-    plot_p3d_test_sims, 
+    plot_p1d_test_sims,
+    plot_p3d_test_sims,
     plot_p1d_snap,
     plot_p3d_snap
 )
-from forestflow.utils import params_numpy2dict
-from forestflow.rebin_p3d import p3d_allkmu, get_p3d_modes, p3d_rebin_mu
+from forestflow.statistics.rebin_p3d import get_P3D_k_mu_modes, rebin_P3D_Mpc_mode_weighted
 
 from matplotlib import rcParams
 
@@ -133,7 +131,7 @@ sim = Archive3D.training_data[0]
 k3d_Mpc = sim['k3d_Mpc']
 mu3d = sim['mu3d']
 p3d_Mpc = sim['p3d_Mpc']
-kmu_modes = get_p3d_modes(kmax_3d_plot)
+kmu_modes = get_P3D_k_mu_modes(kmax_3d_plot)
 
 mask_3d = k3d_Mpc[:, 0] <= kmax_3d_plot
 
@@ -181,16 +179,16 @@ out = emulator.evaluate(
 # #### Rebin data
 
 # %%
-_ = p3d_rebin_mu(out["k_Mpc"], out["mu"], test_sim_z[0]["p3d_Mpc"][mask_3d], kmu_modes, n_mubins=n_mubins)
+_ = rebin_P3D_Mpc_mode_weighted(out["k_Mpc"], out["mu"], test_sim_z[0]["p3d_Mpc"][mask_3d], kmu_modes, n_mu_bins=n_mubins)
 knew, munew, rebin_p3d_sim, mu_bins = _
 
-_ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["p3d"], kmu_modes, n_mubins=n_mubins)
+_ = rebin_P3D_Mpc_mode_weighted(out["k_Mpc"], out["mu"], out["p3d"], kmu_modes, n_mu_bins=n_mubins)
 knew, munew, rebin_p3d_emu, mu_bins = _
 
-_ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["p3d_std"], kmu_modes, n_mubins=n_mubins)
+_ = rebin_P3D_Mpc_mode_weighted(out["k_Mpc"], out["mu"], out["p3d_std"], kmu_modes, n_mu_bins=n_mubins)
 knew, munew, rebin_p3d_std_emu, mu_bins = _
 
-_ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["Plin"], kmu_modes, n_mubins=n_mubins)
+_ = rebin_P3D_Mpc_mode_weighted(out["k_Mpc"], out["mu"], out["Plin"], kmu_modes, n_mu_bins=n_mubins)
 knew, munew, rebin_plin, mu_bins = _
 
 # %% [markdown]
@@ -219,8 +217,8 @@ print(y[0]*100, 0.5*(y[2]-y[1])*100, np.std(rat)*100)
 # %%
 folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
 plot_p3d_snap(
-    folder, 
-    knew, 
+    folder,
+    knew,
     munew,
     rebin_p3d_sim/rebin_plin,
     rebin_p3d_emu/rebin_plin,
@@ -231,8 +229,8 @@ plot_p3d_snap(
 
 # %%
 plot_p1d_snap(
-    folder, 
-    out["k1d_Mpc"], 
+    folder,
+    out["k1d_Mpc"],
     p1d_sim,
     p1d_emu,
     p1d_std_emu,
@@ -253,10 +251,10 @@ outs = {}
 
 for key in conv.keys():
     ii = conv[key]
-    
+
     outs["p3d_top_" + key + "_dotted_x"] = knew[:, ii]
     outs["p3d_top_" + key + "_dotted_y"] = rebin_p3d_sim[:, ii]/rebin_plin[:, ii]
-    
+
     outs["p3d_top_" + key + "_solid_x"] = knew[:, ii]
     outs["p3d_top_" + key + "_solid_y"] = rebin_p3d_emu[:, ii]/rebin_plin[:, ii]
 
@@ -292,7 +290,7 @@ res.keys()
 
 # %%
 sim_labels = [
-    "mpg_central",    
+    "mpg_central",
     "mpg_seed",
     "mpg_growth",
     "mpg_neutrinos",
@@ -316,7 +314,7 @@ arr_p1d_emu = np.zeros((len(sim_labels), Nz, np.sum(mask_1d)))
 params_sim = np.zeros((len(sim_labels), Nz, 3))
 params_emu = np.zeros((len(sim_labels), Nz, 3))
 
-for isim, sim_label in enumerate(sim_labels):    
+for isim, sim_label in enumerate(sim_labels):
     test_sim = Archive3D.get_testing_data(
         sim_label, force_recompute_plin=False
     )
@@ -339,35 +337,35 @@ for isim, sim_label in enumerate(sim_labels):
         }
 
         emu_params = test_sim_z[0]
-        
+
         out = emulator.evaluate(
             emu_params=emu_params,
             info_power=info_power,
             # natural_params=True,
             Nrealizations=100
         )
-        
-        _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], test_sim_z[0]["p3d_Mpc"][mask_3d], kmu_modes, n_mubins=n_mubins)
+
+        _ = rebin_P3D_Mpc_mode_weighted(out["k_Mpc"], out["mu"], test_sim_z[0]["p3d_Mpc"][mask_3d], kmu_modes, n_mu_bins=n_mubins)
         knew, munew, arr_p3d_sim[isim, iz], mu_bins = _
-        
-        _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["p3d"], kmu_modes, n_mubins=n_mubins)
+
+        _ = rebin_P3D_Mpc_mode_weighted(out["k_Mpc"], out["mu"], out["p3d"], kmu_modes, n_mu_bins=n_mubins)
         knew, munew, arr_p3d_emu[isim, iz], mu_bins = _
-        
+
         arr_p1d_emu[isim, iz] = out["p1d"]
         arr_p1d_sim[isim, iz] = test_sim_z[0]["p1d_Mpc"][mask_1d]
 
         params_sim[isim, iz, 0] = test_sim_z[0]["Arinyo_min"]["bias"]
         params_sim[isim, iz, 2] = test_sim_z[0]["Arinyo_min"]["beta"]
         _ = new_params = transform_arinyo_params(
-            test_sim_z[0]["Arinyo_min"], 
+            test_sim_z[0]["Arinyo_min"],
             test_sim_z[0]["f_p"]
         )
         params_sim[isim, iz, 1] = _["bias_eta"]
 
-        params_emu[isim, iz, 0] = out["coeffs_Arinyo"]["bias"]        
-        params_emu[isim, iz, 2] = out["coeffs_Arinyo"]["beta"]        
+        params_emu[isim, iz, 0] = out["coeffs_Arinyo"]["bias"]
+        params_emu[isim, iz, 2] = out["coeffs_Arinyo"]["beta"]
         _ = new_params = transform_arinyo_params(
-            out["coeffs_Arinyo"], 
+            out["coeffs_Arinyo"],
             test_sim_z[0]["f_p"]
         )
         params_emu[isim, iz, 1] = _["bias_eta"]
@@ -375,11 +373,11 @@ for isim, sim_label in enumerate(sim_labels):
 # %%
 folder = "/home/jchaves/Proyectos/projects/lya/data/forestflow/figures/"
 np.savez(
-    # folder + "temporal_central", 
-    folder + "temporal_all", 
-    arr_p3d_sim=arr_p3d_sim, 
-    arr_p3d_emu=arr_p3d_emu, 
-    arr_p1d_sim=arr_p1d_sim, 
+    # folder + "temporal_central",
+    folder + "temporal_all",
+    arr_p3d_sim=arr_p3d_sim,
+    arr_p3d_emu=arr_p3d_emu,
+    arr_p1d_sim=arr_p1d_sim,
     arr_p1d_emu=arr_p1d_emu,
     params_sim=params_sim,
     params_emu=params_emu
@@ -560,10 +558,10 @@ med_rat_p1d = np.median(rat_p1d, axis=1)
 for jj in range(med_rat_p3d.shape[0]):
     for key in conv.keys():
         ii = conv[key]
-        
+
         outs["p3d_panel" + str(jj) + "_" + key + "_x"] = knew[:, ii]
         outs["p3d_panel" + str(jj) + "_" + key + "_y"] = med_rat_p3d[jj, :, ii]
-    
+
     outs["p1d_panel" + str(jj) + "_x"] = out["k1d_Mpc"]
     outs["p1d_panel" + str(jj) + "_y"] = med_rat_p1d[jj]
 

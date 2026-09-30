@@ -26,10 +26,10 @@ import matplotlib.pyplot as plt
 from matplotlib import gridspec
 import numpy as np
 
-from forestflow.archive import GadgetArchive3D
+from forestflow.archive.gadget_archive import GadgetArchive3D
 from forestflow.plots_v0 import plot_test_p3d
-from forestflow.P3D_cINN import P3DEmulator
-from forestflow.model_p3d_arinyo import ArinyoModel
+from forestflow.emulator.p3d_cinn import P3DEmulator
+from forestflow.model.arinyo import ArinyoModel
 from forestflow import model_p3d_arinyo
 from forestflow.utils import transform_arinyo_params, params_numpy2dict
 
@@ -116,7 +116,7 @@ for ii in range(len(central)):
     tar = _cen.copy()
     for par in par_merge:
         tar[par] = 0.5 * (_cen[par] + _seed[par])
-        
+
     tar["p1d_Mpc"] = (_cen["mF"]**2 * _cen["p1d_Mpc"] + _seed["mF"]**2 * _seed["p1d_Mpc"]) / tar["mF"]**2 / 2
     tar["p3d_Mpc"] = (_cen["mF"]**2 * _cen["p3d_Mpc"] + _seed["mF"]**2 * _seed["p3d_Mpc"]) / tar["mF"]**2 / 2
 
@@ -152,7 +152,7 @@ seed_z = [d for d in seed if d["z"] == zs][0]
 booth_z = [d for d in list_merge if d["z"] == zs][0]
 
 # %%
-from forestflow.rebin_p3d import p3d_allkmu, get_p3d_modes, p3d_rebin_mu
+from forestflow.statistics.rebin_p3d import p3d_allkmu, get_P3D_k_mu_modes, rebin_P3D_Mpc_mode_weighted
 from matplotlib.lines import Line2D
 import matplotlib.patches as mpatches
 
@@ -163,7 +163,7 @@ kmax_fit = 3
 k3d_Mpc = central_z['k3d_Mpc']
 mu3d = central_z['mu3d']
 
-kmu_modes = get_p3d_modes(kmax)
+kmu_modes = get_P3D_k_mu_modes(kmax)
 
 mask_3d = k3d_Mpc[:, 0] <= kmax
 
@@ -176,13 +176,13 @@ p1d_both = booth_z['p1d_Mpc'][mask_1d]
 
 # rebin
 
-_ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], central_z['p3d_Mpc'][mask_3d], kmu_modes, n_mubins=n_mubins)
+_ = rebin_P3D_Mpc_mode_weighted(k3d_Mpc[mask_3d], mu3d[mask_3d], central_z['p3d_Mpc'][mask_3d], kmu_modes, n_mu_bins=n_mubins)
 knew, munew, p3d_central, mu_bins = _
 
-_ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], seed_z['p3d_Mpc'][mask_3d], kmu_modes, n_mubins=n_mubins)
+_ = rebin_P3D_Mpc_mode_weighted(k3d_Mpc[mask_3d], mu3d[mask_3d], seed_z['p3d_Mpc'][mask_3d], kmu_modes, n_mu_bins=n_mubins)
 knew, munew, p3d_seed, mu_bins = _
 
-_ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], booth_z['p3d_Mpc'][mask_3d], kmu_modes, n_mubins=n_mubins, return_modes=True)
+_ = rebin_P3D_Mpc_mode_weighted(k3d_Mpc[mask_3d], mu3d[mask_3d], booth_z['p3d_Mpc'][mask_3d], kmu_modes, n_mu_bins=n_mubins, return_mode_counts=True)
 knew, munew, p3d_both, mu_bins, n_modes = _
 
 # %%
@@ -292,7 +292,7 @@ for ii in range(Arinyo_coeffs_central.shape[0]):
     dict_params = params_numpy2dict(Arinyo_coeffs_central[ii])
     new_params = transform_arinyo_params(dict_params, central[ii]["f_p"])
     Arinyo_central.append(new_params)
-    
+
     dict_params = params_numpy2dict(Arinyo_coeffs_seed[ii])
     new_params = transform_arinyo_params(dict_params, seed[ii]["f_p"])
     Arinyo_seed.append(new_params)

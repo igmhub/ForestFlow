@@ -37,7 +37,7 @@ and precomputed Arinyo fits:
 
 .. code-block:: python
 
-   from forestflow.archive import GadgetArchive3D
+   from forestflow.archive.gadget_archive import GadgetArchive3D
 
    archive = GadgetArchive3D()
    training = archive.training_data
@@ -54,7 +54,7 @@ Archive files retain historical keys such as ``k_Mpc`` and
 
 .. code-block:: python
 
-   from forestflow.P3D_cINN import P3DEmulator
+   from forestflow.emulator.p3d_cinn import P3DEmulator
 
    emulator = P3DEmulator(key="forest_mpg")
    print(emulator.input_labels)
@@ -121,7 +121,7 @@ redshifts. The portable model saved on disk remains the ordinary PyTorch model.
 .. code-block:: python
 
    import numpy as np
-   from forestflow.model_p3d_arinyo import ArinyoModel
+   from forestflow.model.arinyo import ArinyoModel
 
    model = ArinyoModel(cosmo)
    linear = model.linear_theory(z)
@@ -135,7 +135,7 @@ redshifts. The portable model saved on disk remains the ordinary PyTorch model.
    P1D_Mpc = model.P1D_Mpc(linear, z, k_iMpc, arinyo)
 
 The outputs match their input grid shapes. For velocity coordinates use
-:func:`forestflow.p1d.P1D_kms` with ``k_ikms`` and
+:func:`forestflow.statistics.p1d.P1D_kms` with ``k_ikms`` and
 ``dkms_diMpc = H(z)/(1+z)``.
 
 5. Interpret uncertainty
@@ -147,7 +147,7 @@ not automatically a calibrated prediction error, and ``evaluate`` does not
 return a covariance.
 
 For emulator uncertainty, use leave-one-simulation-out residuals from
-``forestflow.covariance``. Their covariance describes prediction residuals
+``forestflow.emulator.covariance``. Their covariance describes prediction residuals
 over the validated simulations. Gaussian-noise helpers and the covariance
 tutorials instead estimate finite-volume/sample variance. These uncertainties
 answer different questions and should not be interchanged without an explicit

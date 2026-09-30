@@ -42,3 +42,24 @@ def validate_wavenumber(values: Any, *, name: str) -> np.ndarray:
     if array.ndim != 1 or not np.all(np.isfinite(array)) or np.any(array <= 0):
         raise ValueError(f"{name} must be a finite, positive 1D array")
     return array
+
+
+def validate_finite_array(
+    values: Any, name: str, minimum: float | None = None
+) -> np.ndarray:
+    """Return a finite array, optionally enforcing a lower physical bound."""
+    array = np.asarray(values, dtype=float)
+    if not np.all(np.isfinite(array)) or (
+        minimum is not None and np.any(array < minimum)
+    ):
+        qualifier = "finite" if minimum is None else f"finite and >= {minimum}"
+        raise ValueError(f"{name} must contain {qualifier} values")
+    return array
+
+
+def validate_mu(values: Any) -> np.ndarray:
+    """Return finite direction cosines in the physical interval [-1, 1]."""
+    array = validate_finite_array(values, "mu")
+    if np.any(np.abs(array) > 1):
+        raise ValueError("mu must lie in [-1, 1]")
+    return array

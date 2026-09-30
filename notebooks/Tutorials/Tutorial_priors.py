@@ -26,13 +26,13 @@
 # %autoreload 2
 
 import numpy as np
-from forestflow.archive import GadgetArchive3D
+from forestflow.archive.gadget_archive import GadgetArchive3D
 
 # %% [markdown]
 # ## Arinyo parameters based on DESI DR1 P1D fit
 
 # %%
-from forestflow.priors import get_arinyo_priors
+from forestflow.priors.core import get_arinyo_priors
 # at a particular z
 z = 3.
 arinyo_priors_DR1 = get_arinyo_priors(z)
@@ -52,7 +52,7 @@ for par in arinyo_priors_DR1["mean"].keys():
 # ## Cosmo and IGM parameters based on DESI DR1 P1D fit
 
 # %%
-from forestflow.priors import get_IGM_priors
+from forestflow.priors.core import get_IGM_priors
 # at a particular z
 z = 3.
 igm_priors_DR1 = get_IGM_priors(z)

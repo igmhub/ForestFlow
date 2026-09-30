@@ -42,18 +42,13 @@
 # %autoreload 2
 
 import numpy as np
-import os
-import sys
-import matplotlib.pyplot as plt
 from matplotlib import rcParams
 
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
-from getdist import plots
-from lace.cosmo import cosmology
 
-from forestflow.priors_paper import load, set_samples, all_plots, importance
+from forestflow.priors.paper import load, set_samples, all_plots, importance
 
 np.__version__
 

@@ -27,7 +27,7 @@ from matplotlib import rcParams
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
-from forestflow.priors_paper import all_plots, load
+from forestflow.priors.paper import all_plots, load
 
 np.__version__
 
@@ -59,8 +59,8 @@ all_plots.plot_p3d_small_z(dict_mapping)
 
 # %%
 
-from forestflow.model_p3d_arinyo import ArinyoModel
-from lace.cosmo import cosmology, rescale_cosmology
+from forestflow.model.arinyo import ArinyoModel
+from lace.cosmo import cosmology
 
 # fid_cosmo_params = {
 #     "H0": 67.66,

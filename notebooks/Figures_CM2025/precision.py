@@ -23,14 +23,10 @@
 import sys
 import os
 import matplotlib.pyplot as plt
-from matplotlib import gridspec
 import numpy as np
 
-from forestflow.archive import GadgetArchive3D
-from forestflow.plots_v0 import plot_test_p3d
-from forestflow.P3D_cINN import P3DEmulator
-from forestflow.model_p3d_arinyo import ArinyoModel
-from forestflow import model_p3d_arinyo
+from forestflow.archive.gadget_archive import GadgetArchive3D
+from forestflow.emulator.p3d_cinn import P3DEmulator
 from forestflow.utils import transform_arinyo_params, params_numpy2dict
 
 
@@ -119,7 +115,7 @@ for ii in range(len(central)):
     tar = _cen.copy()
     for par in par_merge:
         tar[par] = 0.5 * (_cen[par] + _seed[par])
-        
+
     tar["p1d_Mpc"] = (_cen["mF"]**2 * _cen["p1d_Mpc"] + _seed["mF"]**2 * _seed["p1d_Mpc"]) / tar["mF"]**2 / 2
     tar["p3d_Mpc"] = (_cen["mF"]**2 * _cen["p3d_Mpc"] + _seed["mF"]**2 * _seed["p3d_Mpc"]) / tar["mF"]**2 / 2
 
@@ -151,9 +147,7 @@ for ii in range(len(list_merge)):
 # Difference across z between best-fitting models to central and seed relative to their average
 
 # %%
-from forestflow.rebin_p3d import p3d_allkmu, get_p3d_modes, p3d_rebin_mu
-from matplotlib.lines import Line2D
-import matplotlib.patches as mpatches
+from forestflow.statistics.rebin_p3d import get_P3D_k_mu_modes, rebin_P3D_Mpc_mode_weighted
 
 n_mubins = 4
 kmax = 4
@@ -161,7 +155,7 @@ kmax_fit = 3
 
 k3d_Mpc = central[0]['k3d_Mpc']
 mu3d = central[0]['mu3d']
-kmu_modes = get_p3d_modes(kmax)
+kmu_modes = get_P3D_k_mu_modes(kmax)
 mask_3d = k3d_Mpc[:, 0] <= kmax
 mask_1d = central[0]['k_Mpc'] < kmax
 k1d_Mpc = central[0]['k_Mpc'][mask_1d]
@@ -196,23 +190,23 @@ if eva_emu:
 for isnap in range(len(central)):
     z = central[isnap]["z"]
     if eva_emu:
-        info_power["z"] = z    
+        info_power["z"] = z
         out = emulator.evaluate(
             emu_params=central[isnap],
             info_power=info_power,
             Nrealizations=100
-        )    
-        _ = p3d_rebin_mu(out["k_Mpc"], out["mu"], out["p3d"], kmu_modes, n_mubins=n_mubins)
+        )
+        _ = rebin_P3D_Mpc_mode_weighted(out["k_Mpc"], out["mu"], out["p3d"], kmu_modes, n_mu_bins=n_mubins)
         knew, munew, p3d_emu[isnap], mu_bins = _
         p1d_emu[isnap] = out["p1d"]
-    
+
     for ii in range(nsims):
         sim = list_sims[ii]
-    
-        _ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], sim[isnap]['p3d_Mpc'][mask_3d], kmu_modes, n_mubins=n_mubins)
+
+        _ = rebin_P3D_Mpc_mode_weighted(k3d_Mpc[mask_3d], mu3d[mask_3d], sim[isnap]['p3d_Mpc'][mask_3d], kmu_modes, n_mu_bins=n_mubins)
         knew, munew, p3d_measured[ii, isnap, ...], mu_bins = _
         p1d_measured[ii, isnap, :] = sim[isnap]['p1d_Mpc'][mask_1d]
-    
+
         pp = sim[isnap]["Arinyo_minz"]
         p3d_model[ii, isnap, ...] = sim[isnap]["model"].P3D_Mpc(z, knew, munew, pp)
         p1d_model[ii, isnap, :] = sim[isnap]["model"].P1D_Mpc(z, k1d_Mpc, parameters=pp)
@@ -249,13 +243,13 @@ lw = 3
 
 fig, ax = plt.subplots(1)
 
-ax.plot(knew_av, 0.5*(per3_data[2]-per3_data[1])*100, alpha=0.5, lw=lw, 
+ax.plot(knew_av, 0.5*(per3_data[2]-per3_data[1])*100, alpha=0.5, lw=lw,
         label="Data: cosmic variance")
-ax.plot(knew_av, 0.5*(per3_model[2]-per3_model[1])*100, alpha=0.5, lw=lw, 
+ax.plot(knew_av, 0.5*(per3_model[2]-per3_model[1])*100, alpha=0.5, lw=lw,
         label="Fit: cosmic variance")
-ax.plot(knew_av, 0.5*(per3_data_model[2]-per3_data_model[1])*100, alpha=0.5, lw=lw, 
+ax.plot(knew_av, 0.5*(per3_data_model[2]-per3_data_model[1])*100, alpha=0.5, lw=lw,
         label="Fit vs data")
-ax.plot(knew_av, 0.5*(per3_data_emu[2]-per3_data_emu[1])*100, alpha=0.5, lw=lw, 
+ax.plot(knew_av, 0.5*(per3_data_emu[2]-per3_data_emu[1])*100, alpha=0.5, lw=lw,
         label="ForestFlow vs data")
 
 ax.set_ylabel("Error P3D [%]")
@@ -270,13 +264,13 @@ lw = 3
 
 fig, ax = plt.subplots(1)
 
-ax.plot(k1d_Mpc, 0.5*(per1_data[2]-per1_data[1])*100, alpha=0.5, lw=lw, 
+ax.plot(k1d_Mpc, 0.5*(per1_data[2]-per1_data[1])*100, alpha=0.5, lw=lw,
         label="Data: cosmic variance")
-ax.plot(k1d_Mpc, 0.5*(per1_model[2]-per1_model[1])*100, alpha=0.5, lw=lw, 
+ax.plot(k1d_Mpc, 0.5*(per1_model[2]-per1_model[1])*100, alpha=0.5, lw=lw,
         label="Fit: cosmic variance")
-ax.plot(k1d_Mpc, 0.5*(per1_data_model[2]-per1_data_model[1])*100, alpha=0.5, lw=lw, 
+ax.plot(k1d_Mpc, 0.5*(per1_data_model[2]-per1_data_model[1])*100, alpha=0.5, lw=lw,
         label="Fit vs data")
-ax.plot(k1d_Mpc, 0.5*(per1_data_emu[2]-per1_data_emu[1])*100, alpha=0.5, lw=lw, 
+ax.plot(k1d_Mpc, 0.5*(per1_data_emu[2]-per1_data_emu[1])*100, alpha=0.5, lw=lw,
         label="ForestFlow vs data")
 
 ax.set_ylabel("Error P1D [%]")
@@ -345,7 +339,7 @@ for ii in range(Arinyo_coeffs_central.shape[0]):
     dict_params = params_numpy2dict(Arinyo_coeffs_central[ii])
     new_params = transform_arinyo_params(dict_params, central[ii]["f_p"])
     Arinyo_central.append(new_params)
-    
+
     dict_params = params_numpy2dict(Arinyo_coeffs_seed[ii])
     new_params = transform_arinyo_params(dict_params, seed[ii]["f_p"])
     Arinyo_seed.append(new_params)

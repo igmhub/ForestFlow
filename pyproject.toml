@@ -27,6 +27,7 @@ dependencies = [
     "matplotlib",
     "emcee",
     "torch",
+    "threadpoolctl",
     "freia",
     "corner",
     "astropy",

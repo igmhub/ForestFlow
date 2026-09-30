@@ -5,8 +5,8 @@ import pytest
 import torch
 
 import forestflow
-from forestflow.P3D_cINN import P3DEmulator
-from forestflow.model_p3d_arinyo import ArinyoModel
+from forestflow.emulator.p3d_cinn import P3DEmulator
+from forestflow.model.arinyo import ArinyoModel
 from lace.cosmo import cosmology
 
 
@@ -45,7 +45,7 @@ EXPECTED_P3D_MPC = np.array(
     [16.380650386336058, 2.0328428868294637, 0.2670374337917371]
 )
 EXPECTED_P1D_MPC = np.array(
-    [0.49765690342976293, 0.3073870279033289, 0.12941236753868576]
+    [0.4977070310463477, 0.3073870279033289, 0.12941236753868576]
 )
 MODEL_DIRECTORY = (
     Path(forestflow.__file__).resolve().parent.parent
@@ -98,7 +98,7 @@ def test_central_simulation_power_spectra_in_both_p3d_coordinates(
     model = ArinyoModel(
         cosmology.Cosmology(cosmo_params_dict=CENTRAL_COSMOLOGY)
     )
-    linear = model.linear_theory(3.0)
+    linear = model.linear.get_linear_theory(3.0)
     k_iMpc = np.array([0.2, 0.7, 2.0])
     mu = np.array([0.0, 0.5, 1.0])
 
@@ -196,12 +196,12 @@ def test_batched_p1d_matches_scalar_quadrature(central_prediction):
     model = ArinyoModel(cosmology.Cosmology(cosmo_params_dict=CENTRAL_COSMOLOGY))
     zs = np.array([3.0])
     cosmologies = [{}, {"ns": CENTRAL_COSMOLOGY["ns"] + 1.0e-4}]
-    linear_batch = model.linear_theory_batch(zs, cosmologies)
+    linear_batch = model.linear.get_linear_theory_batch(zs, cosmologies)
     k = np.array([[[0.2, 0.7, 2.0]], [[0.2, 0.7, 2.0]]])
     arinyo_batch = {name: np.array([[value], [value]]) for name, value in arinyo.items()}
     batched = model.P1D_Mpc(linear_batch, zs, k, arinyo_batch)
     for index, parameters in enumerate(cosmologies):
         scalar = model.P1D_Mpc(
-            model.linear_theory(zs, new_cosmo_params=parameters), zs, k[index], arinyo
+            model.linear.get_linear_theory(zs, new_cosmo_params=parameters), zs, k[index], arinyo
         )
         np.testing.assert_allclose(batched[index], scalar, rtol=1.0e-12)

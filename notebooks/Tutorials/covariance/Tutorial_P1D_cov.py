@@ -24,7 +24,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from forestflow.archive import GadgetArchive3D
+from forestflow.archive.gadget_archive import GadgetArchive3D
 
 # %% [markdown]
 # ## Load data

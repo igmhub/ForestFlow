@@ -32,9 +32,9 @@ import numpy as np
 import torch
 
 from lace.cosmo import cosmology
-from forestflow.P3D_cINN import P3DEmulator
-from forestflow.integrate_p3d import P1DIntegrator
-from forestflow.model_p3d_arinyo import ArinyoModel
+from forestflow.emulator.p3d_cinn import P3DEmulator
+from forestflow.statistics.p1d import P1DIntegrator
+from forestflow.model.arinyo import ArinyoModel
 
 
 torch.set_num_threads(1)
@@ -59,7 +59,7 @@ kpar_Mpc = np.geomspace(0.02, 5.0, 80)
 
 emulator = P3DEmulator(key="forest_mpg", compile_model=True)
 arinyo_model = ArinyoModel(cosmology.Cosmology())
-linear = arinyo_model.linear_theory(z)
+linear = arinyo_model.linear.get_linear_theory(z)
 
 
 def relative_difference(value, reference):
