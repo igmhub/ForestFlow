@@ -88,7 +88,15 @@ instructions, then clone and install ForestFlow:
 ```bash
 git clone https://github.com/igmhub/ForestFlow.git
 cd ForestFlow
-python -m pip install -e .
+make install
+```
+
+The minimal installation contains the supported cINN emulator, including its
+required torch and FrEIA dependencies. Paper-analysis helpers, cross-power,
+and MPI scripts are opt-in:
+
+```bash
+make install-extended
 ```
 
 The editable installation is recommended for development. To install the

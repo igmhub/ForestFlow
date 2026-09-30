@@ -49,10 +49,6 @@ autodoc_mock_imports = [
     "psutil",
     "scipy",
     "torch",
-    # Compatibility import paths retained by legacy ForestFlow modules.
-    "forestflow.old_code.fits.fit_p3d",
-    "forestflow.likelihood",
-    "forestflow.plot_routines",
 ]
 
 html_theme = (

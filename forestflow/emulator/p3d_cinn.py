@@ -177,6 +177,14 @@ class P3DEmulator:
         if train:
             key = None
         self.model_key = key
+        if model_domain is None and key in _LEGACY_MODEL_DOMAINS:
+            warn(
+                f"Emulator bundle {key!r} has no model_domain metadata and "
+                "relies on deprecated built-in defaults. Regenerate the "
+                "bundle to embed model_domain before the next major release.",
+                FutureWarning,
+                stacklevel=2,
+            )
         self.model_domain = _normalise_model_domain(
             model_domain or _LEGACY_MODEL_DOMAINS.get(key)
         )

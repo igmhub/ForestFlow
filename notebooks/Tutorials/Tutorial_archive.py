@@ -127,24 +127,26 @@ from forestflow.model.arinyo import ArinyoModel
 sim = Archive3D.training_data[6]
 print(sim["z"])
 
-k3d_Mpc = sim['k3d_Mpc']
-mu3d = sim['mu3d']
-p3d_Mpc = sim['p3d_Mpc']
+k3d_Mpc = sim["k3d_Mpc"]
+mu3d = sim["mu3d"]
+p3d_Mpc = sim["p3d_Mpc"]
 # get modes in each k-mu bin
 k_mu_modes = get_P3D_k_mu_modes(kmax_3d_plot)
 
 mask_3d = k3d_Mpc[:, 0] <= kmax_3d_plot
 
-mask_1d = (sim['k_Mpc'] <= kmax_1d_plot) & (sim['k_Mpc'] > 0)
-k1d_Mpc = sim['k_Mpc'][mask_1d]
-p1d_Mpc = sim['p1d_Mpc'][mask_1d]
+mask_1d = (sim["k_Mpc"] <= kmax_1d_plot) & (sim["k_Mpc"] > 0)
+k1d_Mpc = sim["k_Mpc"][mask_1d]
+p1d_Mpc = sim["p1d_Mpc"][mask_1d]
 
 # apply rebinning
-_ = rebin_P3D_Mpc_mode_weighted(k3d_Mpc[mask_3d], mu3d[mask_3d], p3d_Mpc[mask_3d], k_mu_modes, n_mu_bins=n_mu_bins)
+_ = rebin_P3D_Mpc_mode_weighted(
+    k3d_Mpc[mask_3d], mu3d[mask_3d], p3d_Mpc[mask_3d], k_mu_modes, n_mu_bins=n_mu_bins
+)
 knew, munew, rebin_p3d_sim, mu_bins = _
 
 # normalize P1D
-p1d_sim = k1d_Mpc/np.pi * p1d_Mpc
+p1d_sim = k1d_Mpc / np.pi * p1d_Mpc
 
 
 # %% [markdown]
@@ -162,11 +164,11 @@ model_Arinyo = ArinyoModel(fid_cosmo)
 
 # %%
 # sim['Arinyo_min'] contains the best-fitting Arinyo parameters to this simulation
-
+# arinyo_fixp3d new ones
 
 linear = model_Arinyo.linear.get_linear_theory(sim["z"])
-p3d_model = model_Arinyo.P3D_Mpc_k_mu(linear, sim["z"], k3d_Mpc, mu3d, sim['Arinyo_min']) # get P3D for z, k3D (array), and mu3d(array)
-p1d_model = model_Arinyo.P1D_Mpc(linear, sim["z"], k1d_Mpc, sim['Arinyo_min']) # get P1D for z, k1D (array)
+p3d_model = model_Arinyo.P3D_Mpc_k_mu(linear, sim["z"], k3d_Mpc, mu3d, sim['arinyo_fixp3d']) # get P3D for z, k3D (array), and mu3d(array)
+p1d_model = model_Arinyo.P1D_Mpc(linear, sim["z"], k1d_Mpc, sim['arinyo_fixp3d']) # get P1D for z, k1D (array)
 
 # apply rebinning
 _ = rebin_P3D_Mpc_mode_weighted(k3d_Mpc[mask_3d], mu3d[mask_3d], p3d_model[mask_3d], k_mu_modes, n_mu_bins=n_mu_bins)

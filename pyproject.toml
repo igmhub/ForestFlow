@@ -25,12 +25,10 @@ dependencies = [
     "numpy",
     "scipy",
     "matplotlib",
-    "emcee",
     "torch",
     "threadpoolctl",
     "freia",
-    "corner",
-    "astropy",
+    "lace",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -51,9 +49,10 @@ docs = [
 test = [
     "pytest>=8",
 ]
-px = [
-    "hankl",
-]
+px = ["hankl"]
+paper = ["astropy", "corner", "getdist"]
+mpi = ["mpi4py"]
+extended = ["hankl", "astropy", "corner", "getdist", "mpi4py"]
 
 
 [tool.setuptools.packages.find]

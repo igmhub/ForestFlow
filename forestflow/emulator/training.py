@@ -7,6 +7,8 @@ from typing import Any
 
 import numpy as np
 
+from forestflow.conventions import ARINYO_PARAMETER_NAMES
+
 from forestflow.model.arinyo import ArinyoModel
 from lace.cosmo import cosmology
 
@@ -38,7 +40,7 @@ def get_training_data(list_sims: Any, zmin: int | None=0, zmax: int | None=10, d
     """
     input_params = ["Delta2_p", "n_p", "mF", "sigT_Mpc", "gamma", "kF_Mpc"]
     other_params = ["z", "As", "ns"]
-    output_params = ["bias", "bias_eta", "q1", "kvav", "av", "bv", "kp", "q2"]
+    output_params = list(ARINYO_PARAMETER_NAMES)
 
     nn_train = 0
     for ii in range(len(list_sims)):

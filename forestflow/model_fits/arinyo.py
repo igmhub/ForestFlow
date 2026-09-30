@@ -108,6 +108,10 @@ class ArinyoFitter:
             ]
 
         self.bounds = bounds
+        # One hypercube simulation contributes many redshift/rescaling
+        # snapshots with the same cosmology. Reuse its costly LaCE/CAMB-backed
+        # objects across those snapshots.
+        self._model_cache: dict[tuple[Any, ...], tuple[Any, ArinyoModel]] = {}
 
         self._prepare_mpg_bin_geometry()
 
@@ -415,11 +419,21 @@ class ArinyoFitter:
             Result produced when the function is used to build the cosmology, arinyo model and linear theory.
         """
 
-        cosmo = cosmology.Cosmology(sim["cosmo_params"])
+        cosmo_params = sim["cosmo_params"]
+        cache_key = (
+            sim.get("sim_label"),
+            tuple(sorted((str(name), repr(value)) for name, value in cosmo_params.items())),
+        )
+        cached = self._model_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        cosmo = cosmology.Cosmology(cosmo_params)
         power_model = ArinyoModel(cosmo)
         linear = power_model.linear.get_linear_theory(self.zlist)
-
-        return linear, power_model
+        cached = (linear, power_model)
+        self._model_cache[cache_key] = cached
+        return cached
 
     def _prepare_p3d(self, sim: Any) -> tuple[Any, ...]:
         """
@@ -668,7 +682,12 @@ class ArinyoFitter:
 
     def chi2(self, params: Mapping[str, Any]) -> Any:
         """
-        Chi-square objective function.
+        Equal-weight P3D/P1D fitting objective.
+
+        Despite its historical name, this is not a statistical chi-squared:
+        it is the sum of the mean squared uncertainty-normalized fractional
+        residuals of P3D and P1D, intentionally giving each spectrum equal
+        aggregate weight.
 
         Parameters
         ----------

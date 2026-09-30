@@ -16,6 +16,9 @@ from forestflow.model_fits import ArinyoFitter
 
 
 def _simulations_for_label(archive, sim_label):
+    """Select one simulation, or the combined central--seed measurement."""
+    if sim_label == "mpg_central_seed":
+        return archive.get_central_seed_average()
     if sim_label in archive.list_sim_cube:
         return [sim for sim in archive.training_data if sim["sim_label"] == sim_label]
     return archive.get_testing_data(sim_label)
@@ -23,7 +26,13 @@ def _simulations_for_label(archive, sim_label):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("sim_label", help="simulation label to fit")
+    parser.add_argument(
+        "sim_label",
+        help=(
+            "simulation label to fit, or mpg_central_seed for the "
+            "mean-flux-consistent combined testing measurement"
+        ),
+    )
     parser.add_argument("--output", type=Path, required=True, help="output .npy path")
     parser.add_argument(
         "--postproc",
@@ -81,8 +90,16 @@ def main():
             f"{initial_chi2_all[index]:.4f} -> {result.fun:.4f}"
         )
 
+    # Resolve relative output paths from the ForestFlow repository, not the
+    # caller's current directory. This makes documented ``data/...`` paths
+    # work identically from the repository root and scripts/fit_p3d.
+    output_path = (
+        args.output
+        if args.output.is_absolute()
+        else Path(archive.base_folder) / args.output
+    )
     output = fitter.save_results(
-        args.output,
+        output_path,
         snapshots=snapshots,
         initial_chi2=initial_chi2_all,
         chi2=final_chi2_all,

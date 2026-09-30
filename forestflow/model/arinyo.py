@@ -70,9 +70,13 @@ class ArinyoModel:
             Precomputed linear-theory grid.
         """
 
-        k_par_iMpc = validate_finite_array(k_par_iMpc, "k_par_iMpc")
+        k_par_iMpc = validate_finite_array(
+            k_par_iMpc, "k_par_iMpc", minimum=0.0
+        )
         k_perp_iMpc = validate_finite_array(k_perp_iMpc, "k_perp_iMpc", minimum=0.0)
         k_iMpc = np.hypot(k_par_iMpc, k_perp_iMpc)
+        if np.any(k_iMpc == 0):
+            raise ValueError("k_iMpc must be positive; k=0 is outside the linear-theory grid")
         mu = k_par_iMpc / k_iMpc
         return self.P3D_Mpc_k_mu(linear, z, k_iMpc, mu, ari_pp)
 
@@ -128,8 +132,8 @@ class ArinyoModel:
         valid = np.isfinite(k_iMpc) & np.isfinite(mu)
         if np.any(k_iMpc[valid] < 0):
             raise ValueError("k_iMpc must be non-negative where it is finite")
-        if np.any(np.abs(mu[valid]) > 1):
-            raise ValueError("mu must lie in [-1, 1] where it is finite")
+        if np.any((mu[valid] < 0) | (mu[valid] > 1)):
+            raise ValueError("mu must lie in [0, 1] where it is finite")
         # Archive/rebinning grids may contain padded NaN cells. Evaluate safe
         # placeholders and restore those cells as NaN in the returned model.
         k_iMpc_safe = np.where(valid, k_iMpc, 1.0)
@@ -137,9 +141,9 @@ class ArinyoModel:
 
         scalar_z = z.ndim == 0
 
-        if np.asarray(linear.loglinP_Mpc).ndim == 3:
+        if linear.is_batched:
             linP_Mpc = self.linear.get_linP_Mpc_batch(linear, k_iMpc_safe)
-            fz = np.asarray(linear.fz)
+            fz = self.linear.get_fz_batch(linear)
             while fz.ndim < k_iMpc_safe.ndim:
                 fz = fz[..., None]
             params = self.default_params | ari_pp

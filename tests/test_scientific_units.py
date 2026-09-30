@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from forestflow.statistics.p1d import P1DIntegrator, P1D_Mpc_bin_averaged, p1d_from_p3d
 from forestflow.statistics.mock_power import make_arinyo_mock_power
@@ -204,16 +205,23 @@ def test_mock_power_uses_canonical_wavenumber_keys():
     assert "model_kpar_Mpc" not in result
 
 
-def test_p3d_accepts_zero_wavenumber_and_preserves_padded_nan_cells():
+def test_p3d_rejects_wavenumbers_below_the_linear_theory_grid():
     from forestflow.model.arinyo import ArinyoModel
     from forestflow.model.linear import LinearTheoryGrid
 
+    class UnitLaCECosmology:
+        def get_linP_Mpc(self, z, k_iMpc):
+            k_iMpc = np.asarray(k_iMpc)
+            if np.any(k_iMpc < 1.0e-3):
+                raise ValueError("k_iMpc is outside the LaCE interpolation grid")
+            return np.ones_like(k_iMpc)
+
+        def get_growth_rate(self, z):
+            return np.ones_like(np.asarray(z), dtype=float)
+
     model = ArinyoModel()
     linear = LinearTheoryGrid(
-        z=np.array([3.0]),
-        logk_iMpc=np.log(np.array([1.0e-3, 1.0, 10.0])),
-        loglinP_Mpc=np.log(np.array([[1.0, 1.0, 1.0]])),
-        fz=np.array([1.0]),
+        z=np.array([3.0]), cosmology=UnitLaCECosmology()
     )
     parameters = {
         "bias": -0.2,
@@ -225,10 +233,19 @@ def test_p3d_accepts_zero_wavenumber_and_preserves_padded_nan_cells():
         "bv": 1.0,
         "kp": 1.0,
     }
+    with pytest.raises(ValueError, match="k_iMpc"):
+        model.P3D_Mpc_k_mu(
+            linear,
+            3.0,
+            np.array([0.0, np.nan, 1.0]),
+            np.array([0.0, np.nan, 0.5]),
+            parameters,
+        )
+
     result = model.P3D_Mpc_k_mu(
         linear,
         3.0,
-        np.array([0.0, np.nan, 1.0]),
+        np.array([1.0e-3, np.nan, 1.0]),
         np.array([0.0, np.nan, 0.5]),
         parameters,
     )

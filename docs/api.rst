@@ -32,6 +32,5 @@ Plotting
    :recursive:
 
    forestflow.plots.plot_routines
-   forestflow.plots.plots_v1
    forestflow.plots.params_z
    forestflow.plots.test_sims

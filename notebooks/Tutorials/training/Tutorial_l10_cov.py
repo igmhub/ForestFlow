@@ -41,7 +41,8 @@ from forestflow.emulator.training import Transf_data
 # %%
 # load training data
 from forestflow.archive.gadget_archive import GadgetArchive3D
-Archive3D = GadgetArchive3D(addcentral=True)
+
+Archive3D = GadgetArchive3D(postproc="Cabayol23_fixp3d", addcentral=True)
 
 # %% [markdown]
 # #### Get data for training the emulator
@@ -56,8 +57,13 @@ from forestflow.emulator.training import get_training_data
 # type_fit = "Arinyo_min"
 # zmax = 4.1 # improves the performance, the results of the Arinyo fit are noisy at z>4 (?!)
 
-type_fit = "Arinyo_lowk"
-zmax = 4.1
+# type_fit = "Arinyo_lowk"
+# zmax = 4.1
+
+# latest!
+type_fit = "arinyo_fixp3d"
+zmax = 4.3
+
 emu_data = get_training_data(Archive3D.training_data, zmax=zmax, type_fit=type_fit)
 
 # %%
@@ -75,7 +81,8 @@ mpg_central_z3 = mpg_central[ind_z3]
 
 # %%
 # name_emu = "test"
-name_emu = "forest_mpg_lowk"
+# name_emu = "forest_mpg_lowk"
+name_emu = "forest_mpg_fix"
 
 # %%
 
@@ -142,8 +149,11 @@ ax[-1].set_xlim(-2, 2)
 #
 
 # %%
-nepochs = 1250 # 1000 better choice, 1 so it runs fast
-use_val_set = True # use validation sample
+# nepochs = 1000
+# use_val_set = True # use validation sample
+
+# nepochs = 1250 # 1000 better choice, 1 so it runs fast
+nepochs = 400
 use_val_set = False # use validation sample
 
 input_training = {}
@@ -162,8 +172,8 @@ emulator = P3DEmulator(
     nepochs=nepochs,
     batch_size=8,
     # batch_size=32,
-    # lr=1e-3,
-    lr=1e-2,
+    lr=5e-3,
+    # lr=1e-2,
     # dims_int=12,
     # dims_int=16,
     dims_int=30,
@@ -173,6 +183,10 @@ emulator = P3DEmulator(
 
 
 # %%
+# -28 1e-3
+# -30 2e-3
+
+
 n = 100
 
 plt.plot(-np.array(emulator.loss_arr)[n:])
@@ -185,13 +199,18 @@ plt.plot(-np.array(emulator.val_loss_arr)[n:])
 
 # %%
 # name_emu = "test" # new trained above
-name_emu = "forest_mpg_lowk"
-type_fit = "Arinyo_lowk"
-kmax1D = 8
+# name_emu = "forest_mpg_lowk"
+# type_fit = "Arinyo_lowk"
+# kmax1D = 8
 
 # name_emu = "forest_mpg" # default
 # type_fit = "Arinyo_min"
 # kmax1D = 4
+
+
+name_emu = "forest_mpg_fix"
+# type_fit = "Arinyo_lowk"
+# kmax1D = 8
 
 emulator = P3DEmulator(key=name_emu)
 
@@ -244,7 +263,7 @@ linear = model_Arinyo.linear.get_linear_theory(Archive3D.list_sim_redshifts)
 
 
 # %%
-def check_p1d(emulator, Nrealizations=1000, type_fit="Arinyo_min"):
+def check_p1d(emulator, Nrealizations=1000, type_fit="arinyo_fixp3d", kmax1D=6.):
     ii0 = 0
     for ii in range(2, 11):
         sim = mpg_central[ii]
@@ -285,6 +304,9 @@ def check_p1d(emulator, Nrealizations=1000, type_fit="Arinyo_min"):
     plt.ylim(-0.02, 0.02)
     plt.legend()
 
+
+
+# %%
 
 check_p1d(emulator, type_fit=type_fit)
 

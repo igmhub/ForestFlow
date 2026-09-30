@@ -32,12 +32,12 @@ class GadgetArchive3D(GadgetArchive):
 
     def __init__(
         self,
-        base_folder: Any | None=None,
-        file_errors: Any | None=None,
-        postproc: str | None="Cabayol23",
-        kp_Mpc: Any | None=None,
-        average: str | None="both",
-        addcentral: bool | None=False,
+        base_folder: Any | None = None,
+        file_errors: Any | None = None,
+        postproc: str | None = "Cabayol23",
+        kp_Mpc: Any | None = None,
+        average: str | None = "both",
+        addcentral: bool | None = False,
     ) -> None:
         """
         Archive class for 3D simulations
@@ -92,12 +92,13 @@ class GadgetArchive3D(GadgetArchive):
             self.add_Arinyo_minimizer_indiv(
                 self.training_data, sim_label="mpg_hypercube"
             )
-            self.add_Arinyo_minimizer_joint(
-                self.training_data, sim_label="mpg_hypercube"
-            )
-            self.add_Arinyo_minimizer_indiv_lowk(
-                self.training_data, sim_label="mpg_hypercube"
-            )
+            # self.add_Arinyo_minimizer_joint(
+            #     self.training_data, sim_label="mpg_hypercube"
+            # )
+            # self.add_Arinyo_minimizer_indiv_lowk(
+            #     self.training_data, sim_label="mpg_hypercube"
+            # )
+            self.add_arinyo_fixp3d(self.training_data)
 
         if addcentral:
             central_data = self.get_testing_data("mpg_central")
@@ -107,11 +108,10 @@ class GadgetArchive3D(GadgetArchive):
         """Return the native MP-Gadget P3D bin edges used by this archive."""
         return get_P3D_k_mu_bin_edges(k_max_iMpc, **self.P3D_binning)
 
-
     def get_training_data(
         self,
-        simulation_label: str | list[str] | None=None,
-        emu_params: list[str] | None=None,
+        simulation_label: str | list[str] | None = None,
+        emu_params: list[str] | None = None,
         **kwargs: Any,
     ) -> list[dict[str, Any]]:
         """Return MPG training snapshots with ForestFlow's standard inputs.
@@ -161,7 +161,9 @@ class GadgetArchive3D(GadgetArchive):
         ):
             selected_labels = simulation_label
         else:
-            raise TypeError("simulation_label must be a string, list of strings, or None")
+            raise TypeError(
+                "simulation_label must be a string, list of strings, or None"
+            )
 
         if selected_labels is not None:
             invalid_labels = [
@@ -186,7 +188,13 @@ class GadgetArchive3D(GadgetArchive):
             if snapshot["sim_label"] in selected_labels
         ]
 
-    def get_testing_data(self, sim_label: str, ind_rescaling: int | None=0, kmax_3d: float | None=5, kmax_1d: float | None=4) -> dict[str, Any]:
+    def get_testing_data(
+        self,
+        sim_label: str,
+        ind_rescaling: int | None = 0,
+        kmax_3d: float | None = 5,
+        kmax_1d: float | None = 4,
+    ) -> dict[str, Any]:
         """
         Return testing data augmented with Arinyo minimizer fits.
 
@@ -214,12 +222,171 @@ class GadgetArchive3D(GadgetArchive):
         """
         testing_data = super().get_testing_data(sim_label, ind_rescaling=ind_rescaling)
         self.add_Arinyo_minimizer_indiv(testing_data, sim_label, kmax_3d, kmax_1d)
-        self.add_Arinyo_minimizer_joint(testing_data, sim_label)
-        self.add_Arinyo_minimizer_indiv_lowk(testing_data, sim_label=sim_label)
+        # self.add_Arinyo_minimizer_joint(testing_data, sim_label)
+        # self.add_Arinyo_minimizer_indiv_lowk(testing_data, sim_label=sim_label)
+        self.add_arinyo_fixp3d(testing_data)
 
         return testing_data
 
-    def add_Arinyo_minimizer_indiv(self, archive: Any, sim_label: Any | None=None, kmax_3d: int | None=5, kmax_1d: int | None=4) -> Any:
+    def get_central_seed_average(self) -> list[dict[str, Any]]:
+        """Return mean-flux-consistent averages of central and seed snapshots.
+
+        The two MP-Gadget realizations have the same cosmology and native
+        Fourier grid.  Scalar IGM summaries are averaged arithmetically,
+        while P1D and P3D are first converted to absolute flux power using
+        ``mF**2``, averaged, and converted back using the averaged ``mF``.
+        The returned snapshots are labelled ``"mpg_central_seed"`` and retain
+        the central fit as their initial condition.  If its corrected combined
+        fit file exists, it is attached as ``arinyo_fixp3d``.
+        """
+        central = self.get_testing_data("mpg_central")
+        seed = self.get_testing_data("mpg_seed")
+        identity_fields = ("z", "ind_snap", "ind_phase", "ind_axis", "ind_rescaling")
+
+        def identity_value(value: Any) -> Any:
+            if isinstance(value, np.generic):
+                value = value.item()
+            return round(float(value), 10) if isinstance(value, float) else value
+
+        def identity(snapshot: dict[str, Any]) -> tuple[Any, ...]:
+            return tuple(identity_value(snapshot[field]) for field in identity_fields)
+
+        seed_by_identity = {identity(snapshot): snapshot for snapshot in seed}
+        if len(seed_by_identity) != len(seed):
+            raise ValueError("mpg_seed contains duplicate snapshot identities")
+        combined = []
+        average_fields = ("mF", "T0", "gamma", "sigT_Mpc", "kF_Mpc")
+        grid_fields = ("k_Mpc", "k3d_Mpc", "mu3d")
+        reported_coordinate_mismatch = False
+        for central_snapshot in central:
+            snapshot_identity = identity(central_snapshot)
+            try:
+                seed_snapshot = seed_by_identity.pop(snapshot_identity)
+            except KeyError as error:
+                raise KeyError(
+                    "mpg_seed has no snapshot matching mpg_central identity "
+                    f"{snapshot_identity}"
+                ) from error
+            for field in grid_fields:
+                central_grid = np.asarray(central_snapshot[field])
+                seed_grid = np.asarray(seed_snapshot[field])
+                if central_grid.shape != seed_grid.shape:
+                    raise ValueError(
+                        f"mpg_central and mpg_seed have incompatible {field} "
+                        f"shapes for snapshot {snapshot_identity}: "
+                        f"{central_grid.shape} != {seed_grid.shape}"
+                    )
+                # The two realizations share the same Fourier lattice and bin
+                # definitions. Their archived coordinates can nevertheless
+                # differ because they are power/mode-weighted reported bin
+                # centres. The combination follows the historical definition:
+                # combine corresponding cells and retain central coordinates.
+                reported_coordinate_mismatch |= not np.allclose(
+                    central_grid, seed_grid, equal_nan=True
+                )
+
+            snapshot = central_snapshot.copy()
+            # A combined measurement must never inherit central's corrected
+            # fit. ``add_arinyo_fixp3d`` below attaches only the dedicated
+            # mpg_central_seed result when that file exists.
+            snapshot.pop("arinyo_fixp3d", None)
+            for field in average_fields:
+                snapshot[field] = 0.5 * (central_snapshot[field] + seed_snapshot[field])
+            if snapshot["mF"] == 0:
+                raise ValueError(f"Combined mean flux is zero for {snapshot_identity}")
+            for field in ("p1d_Mpc", "p3d_Mpc"):
+                snapshot[field] = (
+                    central_snapshot["mF"] ** 2 * central_snapshot[field]
+                    + seed_snapshot["mF"] ** 2 * seed_snapshot[field]
+                ) / (2.0 * snapshot["mF"] ** 2)
+            snapshot["sim_label"] = "mpg_central_seed"
+            combined.append(snapshot)
+        if seed_by_identity:
+            raise KeyError(
+                "mpg_seed contains snapshots with no mpg_central counterpart: "
+                f"{sorted(seed_by_identity)}"
+            )
+        if reported_coordinate_mismatch:
+            print(
+                "NOTE: central and seed store different mode-weighted bin "
+                "centres; combined powers retain the central coordinates."
+            )
+
+        self.add_arinyo_fixp3d(combined)
+        return combined
+
+    def add_arinyo_fixp3d(self, archive: list[dict[str, Any]]) -> None:
+        """Attach corrected-postprocessing Arinyo fits as ``arinyo_fixp3d``.
+
+        Fits are matched to archive entries through their complete saved
+        snapshot identity, rather than through list order.  This retains the
+        corrected-fit parameters alongside the legacy ``Arinyo_min`` and
+        ``Arinyo_lowk`` fields.
+        """
+        fit_folder = os.path.join(
+            self.base_folder, "data", "best_arinyo", "cabayol23_fixp3d"
+        )
+        identity_fields = ("z", "ind_snap", "ind_phase", "ind_axis", "ind_rescaling")
+
+        def identity_value(value: Any) -> Any:
+            """Normalize numpy scalars while retaining string-valued axes."""
+            if isinstance(value, np.generic):
+                value = value.item()
+            return round(float(value), 10) if isinstance(value, float) else value
+
+        def snapshot_identity(source: dict[str, Any]) -> tuple[Any, ...]:
+            return tuple(identity_value(source[field]) for field in identity_fields)
+
+        labels = {snapshot["sim_label"] for snapshot in archive}
+        for sim_label in labels:
+            fit_file = os.path.join(fit_folder, f"Arinyo_fit_{sim_label}.npy")
+            if not os.path.isfile(fit_file):
+                continue
+            fit = np.load(fit_file, allow_pickle=True).item()
+            if fit.get("simulation_label") != sim_label:
+                raise ValueError(
+                    f"Corrected Arinyo fit {fit_file} is labelled "
+                    f"{fit.get('simulation_label')!r}, not {sim_label!r}."
+                )
+            if fit.get("postproc") != "Cabayol23_fixp3d":
+                raise ValueError(
+                    f"Corrected Arinyo fit {fit_file} has the wrong postproc."
+                )
+            missing = [field for field in identity_fields if field not in fit]
+            if missing:
+                raise KeyError(f"Corrected Arinyo fit {fit_file} lacks {missing}.")
+
+            rows = {}
+            for index in range(len(fit["z"])):
+                identity = snapshot_identity(
+                    {field: fit[field][index] for field in identity_fields}
+                )
+                if identity in rows:
+                    raise ValueError(
+                        f"Duplicate snapshot identity in {fit_file}: {identity}."
+                    )
+                rows[identity] = index
+
+            for snapshot in archive:
+                if snapshot["sim_label"] != sim_label:
+                    continue
+                identity = snapshot_identity(snapshot)
+                if identity not in rows:
+                    raise KeyError(
+                        f"No corrected Arinyo fit in {fit_file} for snapshot {identity}."
+                    )
+                row = rows[identity]
+                snapshot["arinyo_fixp3d"] = {
+                    name: float(values[row]) for name, values in fit["Arinyo"].items()
+                }
+
+    def add_Arinyo_minimizer_indiv(
+        self,
+        archive: Any,
+        sim_label: Any | None = None,
+        kmax_3d: int | None = 5,
+        kmax_1d: int | None = 4,
+    ) -> Any:
         """
         Arinyo fits considering each snapshot separately
 
@@ -240,7 +407,9 @@ class GadgetArchive3D(GadgetArchive):
             Result produced when the function is used to arinyo fits considering each snapshot separately.
         """
 
-        def get_flag_out(ind_sim: Any, kmax_3d: int | float, kmax_1d: int | float) -> Any:
+        def get_flag_out(
+            ind_sim: Any, kmax_3d: int | float, kmax_1d: int | float
+        ) -> Any:
             """
             Return flag out.
 
@@ -349,8 +518,9 @@ class GadgetArchive3D(GadgetArchive):
                     archive[ii]["Arinyo_min"]["q2"]
                 )
 
-    def add_Arinyo_minimizer_indiv_lowk(self, archive: Any, sim_label: str | None="mpg_hypercube") -> None:
-
+    def add_Arinyo_minimizer_indiv_lowk(
+        self, archive: Any, sim_label: str | None = "mpg_hypercube"
+    ) -> None:
         """
         Add Arinyo minimizer indiv lowk.
 
@@ -361,11 +531,26 @@ class GadgetArchive3D(GadgetArchive):
         sim_label : str, optional
             Sim label used by the calculation.
         """
-        name_out = "Arinyo_fit_" + sim_label + "_lowk.npy"
+        # The seed simulation has no standalone low-k Arinyo fit yet.  Its
+        # measurements remain untouched; only its initial conditions use the
+        # already available central-simulation low-k fit.
+        source_label = "mpg_central" if sim_label == "mpg_seed" else sim_label
+        name_out = "Arinyo_fit_" + source_label + "_lowk.npy"
         file = os.path.join(
             self.base_folder, "data", "best_arinyo", "minimizer_lowk", name_out
         )
+        if sim_label == "mpg_seed":
+            print(
+                "Using mpg_central low-k Arinyo fit only as the initial "
+                "condition for mpg_seed."
+            )
         data = np.load(file, allow_pickle=True).item()
+        n_available = next(iter(data["Arinyo"].values())).shape[0]
+        if len(archive) > n_available:
+            raise ValueError(
+                f"Low-k Arinyo fit {file} has {n_available} snapshots, but "
+                f"{sim_label} requested {len(archive)}."
+            )
 
         for isim in range(len(archive)):
             archive[isim]["Arinyo_lowk"] = {}
@@ -377,7 +562,13 @@ class GadgetArchive3D(GadgetArchive):
                 / archive[isim]["Arinyo_lowk"]["bias"]
             )
 
-    def add_Arinyo_minimizer_joint(self, archive: Any, sim_label: Any | None=None, kmax_3d: int | None=3, kmax_1d: int | None=3) -> Any:
+    def add_Arinyo_minimizer_joint(
+        self,
+        archive: Any,
+        sim_label: Any | None = None,
+        kmax_3d: int | None = 3,
+        kmax_1d: int | None = 3,
+    ) -> Any:
         """
         Fits parameterizing the redshift dependence of the Arinyo params
 
@@ -398,7 +589,9 @@ class GadgetArchive3D(GadgetArchive):
             Result produced when the function is used to fits parameterizing the redshift dependence of the arinyo params.
         """
 
-        def get_flag_out(ind_sim: Any, val_scaling: Any, kmax_3d: int | float, kmax_1d: int | float) -> Any:
+        def get_flag_out(
+            ind_sim: Any, val_scaling: Any, kmax_3d: int | float, kmax_1d: int | float
+        ) -> Any:
             """
             Return flag out.
 
@@ -501,7 +694,13 @@ class GadgetArchive3D(GadgetArchive):
             )[0, 0]
             archive[ii]["Arinyo_minz"] = params_numpy2dict_minimizerz(arr_params[_])
 
-    def get_Arinyo_priors(self, zmin: float, zmax: float, type_fit: str | None="Arinyo_min", return_all: bool | None=False) -> dict[str, Any]:
+    def get_Arinyo_priors(
+        self,
+        zmin: float,
+        zmax: float,
+        type_fit: str | None = "Arinyo_min",
+        return_all: bool | None = False,
+    ) -> dict[str, Any]:
         """
         Compute summary priors for Arinyo fit parameters.
 
@@ -590,7 +789,13 @@ class GadgetArchive3D(GadgetArchive):
         else:
             return out_priors
 
-    def get_IGM_priors(self, zmin: float, zmax: float, return_all: bool | None=False, IGM_params: str | None=None) -> dict[str, Any]:
+    def get_IGM_priors(
+        self,
+        zmin: float,
+        zmax: float,
+        return_all: bool | None = False,
+        IGM_params: str | None = None,
+    ) -> dict[str, Any]:
         """
         Compute priors for a set of IGM parameters over redshift.
 
