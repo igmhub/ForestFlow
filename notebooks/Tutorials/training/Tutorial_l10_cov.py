@@ -62,7 +62,7 @@ from forestflow.emulator.training import get_training_data
 
 # latest!
 type_fit = "arinyo_fixp3d"
-zmax = 4.3
+zmax = 4.6
 
 emu_data = get_training_data(Archive3D.training_data, zmax=zmax, type_fit=type_fit)
 
@@ -85,8 +85,6 @@ mpg_central_z3 = mpg_central[ind_z3]
 name_emu = "forest_mpg_fix"
 
 # %%
-
-
 save_file = os.path.join(
     os.path.dirname(forestflow.__path__[0]),
     "data",
@@ -368,18 +366,19 @@ plt.ylim(-0.02, 0.02)
 # ### Train l1O emulators
 
 # %%
-zmax = 4.1 # better performance, the results of the Arinyo fit are noisy at z>4 (?!)
+zmax = 4.6  # better performance, the results of the Arinyo fit are noisy at z>4 (?!)
 
-nepochs = 1000 # 1000 better choice, 1 so it runs fast
-use_val_set = False # use validation sample
+nepochs = 400
+use_val_set = False  # use validation sample
+type_fit = "arinyo_fixp3d"
 
 for isim, sim in enumerate(Archive3D.list_sim_cube):
-    if isim < 25:
-        continue
+    # if isim < 25:
+    #     continue
     print(sim)
     print()
 
-    name_emu = "forest_mpg_l1O_" + str(isim)
+    name_emu = "forest_mpg_fix_l1O_" + str(isim)
 
     save_file_transf = os.path.join(
         os.path.dirname(forestflow.__path__[0]),
@@ -389,11 +388,17 @@ for isim, sim in enumerate(Archive3D.list_sim_cube):
         name_emu + "_transf.npy",
     )
     save_path_emu = os.path.join(
-        os.path.dirname(forestflow.__path__[0]), "data", "emulator_models", "l1O", name_emu
+        os.path.dirname(forestflow.__path__[0]),
+        "data",
+        "emulator_models",
+        "l1O",
+        name_emu,
     )
 
     # training data
-    emu_data = get_training_data(Archive3D.training_data, zmax=zmax, drop_sim=sim)
+    emu_data = get_training_data(
+        Archive3D.training_data, zmax=zmax, type_fit=type_fit, drop_sim=sim
+    )
     transf_data = Transf_data(
         dict_all_params=emu_data, save_file=save_file_transf, compute_fisher=False
     )
@@ -413,8 +418,8 @@ for isim, sim in enumerate(Archive3D.list_sim_cube):
         nLayers_inn=6,
         nepochs=nepochs,
         batch_size=8,
-        lr=1e-3,
-        dims_int=12,
+        lr=5e-3,
+        dims_int=30,
         use_val_set=use_val_set,
         save_path=save_path_emu,
     )

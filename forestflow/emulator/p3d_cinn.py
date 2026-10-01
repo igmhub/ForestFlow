@@ -32,10 +32,20 @@ from .network import _training_data_fingerprint, init_xavier
 # client. Bundled metadata predates this field, so these documented defaults
 # provide a migration path until the bundles are republished.
 _LEGACY_MODEL_DOMAINS = {
-    "forest_mpg": {"kp_iMpc": 0.7, "kmax_iMpc": 4.0, "zmax": 4.1,
-                   "list_sim_cube": [f"mpg_{index}" for index in range(30)]},
-    "forest_mpg_lowk": {"kp_iMpc": 0.7, "kmax_iMpc": 4.0, "zmax": 4.1,
-                        "list_sim_cube": [f"mpg_{index}" for index in range(30)]},
+    "forest_mpg": {
+        "kp_iMpc": 0.7,
+        "kmax_3d_iMpc": 4.0,
+        "kmax_1d_iMpc": 4.0,
+        "zmax": 4.1,
+        "list_sim_cube": [f"mpg_{index}" for index in range(30)],
+    },
+    "forest_mpg_lowk": {
+        "kp_iMpc": 0.7,
+        "kmax_3d_iMpc": 4.0,
+        "kmax_1d_iMpc": 4.0,
+        "zmax": 4.1,
+        "list_sim_cube": [f"mpg_{index}" for index in range(30)],
+    },
 }
 
 
@@ -44,7 +54,12 @@ def _normalise_model_domain(domain: Mapping[str, Any] | None) -> dict[str, Any]:
     if domain is None:
         return {}
     result = dict(domain)
-    for name in ("kp_iMpc", "kmax_iMpc", "zmax"):
+    for name in (
+        "kp_iMpc",
+        "kmax_3d_iMpc",
+        "kmax_1d_iMpc",
+        "zmax",
+    ):
         if name in result:
             result[name] = float(result[name])
             if result[name] <= 0:
@@ -264,9 +279,14 @@ class P3DEmulator:
         return self._domain_value("kp_iMpc")
 
     @property
-    def kmax_iMpc(self) -> float:
-        """Maximum supported wavenumber in inverse Mpc."""
-        return self._domain_value("kmax_iMpc")
+    def kmax_3d_iMpc(self) -> float:
+        """Maximum P3D fitting cut used to calibrate this emulator."""
+        return self._domain_value("kmax_3d_iMpc")
+
+    @property
+    def kmax_1d_iMpc(self) -> float:
+        """Maximum P1D fitting cut used to calibrate this emulator."""
+        return self._domain_value("kmax_1d_iMpc")
 
     @property
     def zmax(self) -> float:

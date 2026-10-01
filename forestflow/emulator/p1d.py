@@ -199,9 +199,14 @@ class P1DEmulator:
         return self.emulator.kp_iMpc
 
     @property
-    def kmax_iMpc(self):
-        """Maximum wavenumber stored in the ForestFlow emulator metadata."""
-        return self.emulator.kmax_iMpc
+    def kmax_3d_iMpc(self):
+        """Maximum P3D fitting cut stored in the emulator metadata."""
+        return self.emulator.kmax_3d_iMpc
+
+    @property
+    def kmax_1d_iMpc(self):
+        """Maximum P1D fitting cut stored in the emulator metadata."""
+        return self.emulator.kmax_1d_iMpc
 
     @property
     def zmax(self):
@@ -217,11 +222,6 @@ class P1DEmulator:
     def kp_Mpc(self):
         """Common emulator API name; its units are inverse Mpc."""
         return self.kp_iMpc
-
-    @property
-    def kmax_Mpc(self):
-        """Common emulator API name; its units are inverse Mpc."""
-        return self.kmax_iMpc
 
 
 def _same_cosmology(cosmo_params_dict, new_cosmo_params):

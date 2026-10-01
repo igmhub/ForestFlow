@@ -122,3 +122,38 @@ Historical implementations
 files in ``scripts/fit_p3d`` are retained for reproducing older analyses. They
 use superseded LaCE/ForestFlow model and data contracts and are not supported
 for new work. Their replacement is the API above, with one fit per snapshot.
+
+Training ForestFlow emulators
+-----------------------------
+
+Use the batch driver to train reproducible cINN bundles from the corrected
+``Cabayol23_fixp3d`` Arinyo fits.  It uses the production network settings
+(400 epochs, six cINN layers, hidden dimension 30, batch size 8, and
+``z <= 4.6``), records the fitted P3D and P1D cuts (4.5 and 6.0 ``iMpc``),
+and writes transformations, weights, metadata, and a manifest together.
+
+Train the full emulator on the 30 hypercube simulations plus ``mpg_central``::
+
+   python scripts/training_l1O/train_emulator.py --full
+
+This saves ``data/emulator_models/forest_mpg_fix``.  The default invocation
+trains one leave-one-out bundle for every hypercube simulation::
+
+   python scripts/training_l1O/train_emulator.py
+
+To train the complete leave-one-out suite, including the emulator without
+``mpg_central``, run the fixed batch wrapper with no arguments::
+
+   scripts/training_l1O/train_all_l1O.sh
+
+To train a selected leave-one-out model, for example excluding ``mpg_7``::
+
+   python scripts/training_l1O/train_emulator.py --simulations mpg_7
+
+The corresponding bundle is saved below ``data/emulator_models/l1O/``.  To
+exclude the central simulation instead, run::
+
+   python scripts/training_l1O/train_emulator.py --simulations mpg_central
+
+which writes ``forest_mpg_fix_l1O_mpg_central``.  Existing complete bundles
+are skipped; pass ``--overwrite`` only when deliberately retraining one.
