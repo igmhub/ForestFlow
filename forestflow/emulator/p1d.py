@@ -21,6 +21,7 @@ class P1DEmulator:
         self.cosmo_params_dict = None
         self.model_Arinyo = None
         self.linear = None
+        self._linear_cosmology_parameters = None
         self._prediction_cache = None
 
     def set_cosmology(self, cosmo_params_dict):
@@ -33,16 +34,30 @@ class P1DEmulator:
         fid_cosmo = cosmology.Cosmology(cosmo_params_dict=self.cosmo_params_dict)
         self.model_Arinyo = ArinyoModel(fid_cosmo)
         self.linear = None
+        self._linear_cosmology_parameters = None
+
+    def _effective_cosmology_parameters(self, new_cosmo_params):
+        """Return the complete cosmology represented by one linear grid."""
+
+        parameters = dict(self.cosmo_params_dict)
+        if new_cosmo_params is not None:
+            parameters.update(new_cosmo_params)
+        return parameters
 
     def set_linear_theory(self, z, new_cosmo_params=None):
 
         if self.model_Arinyo is None or self.cosmo_params_dict is None:
             raise RuntimeError("Call set_cosmology before evaluating ForestFlow P1D")
         zuse = np.unique(np.atleast_1d(np.asarray(z, dtype=float)))
+        requested_cosmology = self._effective_cosmology_parameters(
+            new_cosmo_params
+        )
 
         if (
             self.linear is not None
-            and _same_cosmology(self.cosmo_params_dict, new_cosmo_params)
+            and _same_cosmology(
+                self._linear_cosmology_parameters, requested_cosmology
+            )
             and np.array_equal(zuse, self.linear.z)
         ):
             return
@@ -50,6 +65,7 @@ class P1DEmulator:
         self.linear = self.model_Arinyo.linear.get_linear_theory(
             zuse, new_cosmo_params=new_cosmo_params
         )
+        self._linear_cosmology_parameters = requested_cosmology
 
     def _prediction_key(self, parameters, latent_index=None):
         """Return a stable key for one set of emulator inputs."""
@@ -224,10 +240,12 @@ class P1DEmulator:
         return self.kp_iMpc
 
 
-def _same_cosmology(cosmo_params_dict, new_cosmo_params):
-    if new_cosmo_params is None:
-        return True
+def _same_cosmology(first, second):
+    """Compare effective cosmology mappings, including their key sets."""
 
+    if first is None or second is None or first.keys() != second.keys():
+        return False
     return all(
-        cosmo_params_dict.get(key) == value for key, value in new_cosmo_params.items()
+        np.array_equal(np.asarray(first[key]), np.asarray(second[key]))
+        for key in first
     )

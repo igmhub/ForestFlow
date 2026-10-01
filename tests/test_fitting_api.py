@@ -79,7 +79,7 @@ def test_training_label_selection_reuses_loaded_archive_cache():
 
 
 def test_default_fitter_redshift_grid_matches_mpg_archive():
-    from lace.archive.gadget_archive import MPG_SIM_REDSHIFTS
+    from forestflow.archive.gadget_archive import MPG_SIM_REDSHIFTS
 
     fitter = ArinyoFitter()
     np.testing.assert_allclose(fitter.zlist, MPG_SIM_REDSHIFTS)
