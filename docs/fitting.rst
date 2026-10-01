@@ -146,6 +146,17 @@ To train the complete leave-one-out suite, including the emulator without
 
    scripts/training_emulators/train_all_l1O.sh
 
+On NERSC, submit the equivalent Slurm job array instead. It charges the
+``desi`` account and uses NERSC's priority ``premium`` QOS, trains one
+exclusion per task, and limits the array to eight simultaneous CPU trainings by
+default. The premium QOS has a higher charge multiplier::
+
+   sbatch scripts/training_emulators/train_all_l1O_array.slurm
+
+The array task IDs 0 through 29 omit ``mpg_0`` through ``mpg_29``;
+task 30 omits ``mpg_central``. Adjust the array concurrency, CPU count, or
+walltime in the launcher after timing one representative task.
+
 To train a selected leave-one-out model, for example excluding ``mpg_7``::
 
    python scripts/training_emulators/train_emulator.py --simulations mpg_7
