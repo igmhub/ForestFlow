@@ -1,0 +1,85 @@
+"""
+Construct likelihood inputs for power-spectrum fits.
+"""
+
+from typing import Any
+from numpy.typing import ArrayLike
+
+import numpy as np
+
+# import matplotlib.pyplot as plt
+# from itertools import product
+
+
+from forestflow.old_code.fits.fit_p3d import FitPk
+
+
+class Likelihood(object):
+    """
+    Wrap the ForestFlow fitting likelihood.
+    """
+    def __init__(
+        self,
+        data: ArrayLike,
+        rel_err_p3d: ArrayLike,
+        rel_err_p1d: ArrayLike,
+        kmax_3d: float=5,
+        noise_3d: float=0.075,
+        kmax_1d: float=5,
+        noise_1d: float=0.01,
+        fit_type: Any="both",
+        verbose: bool=False,
+    ) -> None:
+        """
+        Archive
+
+        Args:
+
+            kmax_3d (float): Maximum 3D wavenumber for the Arinyo model.
+            noise_3d (float): Noise level for the Arinyo model in 3D.
+            kmax_1d (float): Maximum 1D wavenumber for the Arinyo model.
+            noise_1d (float): Noise level for the Arinyo model in 1D.
+
+        Other Parameters
+        ----------------
+        data : numpy.ndarray
+            Power-spectrum measurements and metadata.
+        rel_err_p3d : numpy.ndarray
+            Relative errors for the three-dimensional power spectrum.
+        rel_err_p1d : numpy.ndarray
+            Relative errors for the one-dimensional power spectrum.
+        fit_type : object
+            Power spectra included in the fit.
+        verbose : bool
+            Whether to print progress information.
+        """
+
+        data_dict = {}
+
+        data_dict["z"] = np.atleast_1d(data["z"])
+        # no units for P1D and P3D
+        data_dict["units"] = "N"
+
+        # P3D
+        data_dict["k3d"] = data["k3d_Mpc"]
+        data_dict["mu3d"] = data["mu3d"]
+        data_dict["p3d"] = (
+            data["p3d_Mpc"] * data["k3d_Mpc"] ** 3 / 2 / np.pi**2
+        )
+        data_dict["std_p3d"] = rel_err_p3d * data_dict["p3d"]
+
+        # P1D
+        data_dict["k1d"] = data["k_Mpc"]
+        data_dict["p1d"] = data["p1d_Mpc"] * data["k_Mpc"] / np.pi
+        data_dict["std_p1d"] = rel_err_p1d * data_dict["p1d"]
+        data_dict["Plin"] = data["Plin"]
+
+        self.like = FitPk(
+            data_dict,
+            data["model"],
+            fit_type=fit_type,
+            k3d_max=kmax_3d,
+            k1d_max=kmax_1d,
+            noise_3d=noise_3d,
+            noise_1d=noise_1d,
+        )

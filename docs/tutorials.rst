@@ -31,6 +31,15 @@ Focused tutorials
    Emulator input preparation and leave-one-out validation. These workflows
    require training data and are not needed for ordinary prediction.
 
+``notebooks/arinyo_fits/Arinyo_fit_mpg.ipynb``
+   Supported MP-Gadget Arinyo-fitting example: one snapshot, hybrid P3D
+   averaging, residual plots, and an optional per-simulation batch loop. See
+   :doc:`fitting` for the corresponding command-line workflow.
+
+``notebooks/arinyo_fits/Arinyo_fit_precision.ipynb``
+   Validate saved corrected Arinyo fits for central, seed, their combined
+   measurement, and the 30-simulation hypercube residual summary.
+
 Other directories
 -----------------
 
@@ -41,7 +50,9 @@ Other directories
    Arinyo, cosmological, and IGM prior studies.
 
 ``notebooks/emulator``
-   Emulator covariance and derivative diagnostics.
+   Emulator covariance and derivative diagnostics. In particular,
+   ``Emulator_precision.ipynb`` compares the corrected emulator against saved
+   ``arinyo_fixp3d`` fits for testing and training simulations.
 
 ``notebooks/developers``
    Exploratory, historical, or maintenance workflows; APIs and external paths

@@ -3,7 +3,7 @@ from types import MethodType
 import numpy as np
 import torch
 
-from forestflow.P3D_cINN import P3DEmulator
+from forestflow.emulator.p3d_cinn import P3DEmulator
 
 
 class _ScalarModel(torch.nn.Module):

@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import matplotlib.patches as mpatches
 
-from forestflow.utils import sigma68
 
 
 def plot_p3d_snap(

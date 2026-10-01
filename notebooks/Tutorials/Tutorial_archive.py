@@ -8,7 +8,7 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.19.5
 #   kernelspec:
-#     display_name: test_lace
+#     display_name: lace
 #     language: python
 #     name: python3
 # ---
@@ -23,14 +23,14 @@
 # Then, we explain how to evaluate the best-fitting Arinyo model to each simulation, which I already precomputed 
 
 # %%
-# # %load_ext autoreload
-# # %autoreload 2
+# %load_ext autoreload
+# %autoreload 2
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-from forestflow.archive import GadgetArchive3D
-from forestflow.rebin_p3d import get_p3d_modes, p3d_rebin_mu
+from forestflow.archive.gadget_archive import GadgetArchive3D
+from forestflow.statistics.rebin_p3d import get_P3D_k_mu_modes, rebin_P3D_Mpc_mode_weighted
 
 # %% [markdown]
 # ## LOAD P3D ARCHIVE
@@ -71,7 +71,7 @@ sim = Archive3D.get_testing_data("mpg_central")
 # We plot the statistics for the first simulation of the LH. We will rebin P3D to reduce noise
 
 # %%
-n_mubins = 4
+n_mu_bins = 4
 kmax_3d_plot = 4
 kmax_1d_plot = 4
 
@@ -83,7 +83,7 @@ k3d_Mpc = sim['k3d_Mpc']
 mu3d = sim['mu3d']
 p3d_Mpc = sim['p3d_Mpc']
 # get modes in each k-mu bin
-kmu_modes = get_p3d_modes(kmax_3d_plot)
+k_mu_modes = get_P3D_k_mu_modes(kmax_3d_plot)
 
 mask_3d = k3d_Mpc[:, 0] <= kmax_3d_plot
 
@@ -93,14 +93,14 @@ p1d_Mpc = sim['p1d_Mpc'][mask_1d]
 
 # %%
 # apply rebinning
-_ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], p3d_Mpc[mask_3d], kmu_modes, n_mubins=n_mubins)
+_ = rebin_P3D_Mpc_mode_weighted(k3d_Mpc[mask_3d], mu3d[mask_3d], p3d_Mpc[mask_3d], k_mu_modes, n_mu_bins=n_mu_bins)
 knew, munew, rebin_p3d_sim, mu_bins = _
 
 # normalize P1D
 p1d_sim = k1d_Mpc/np.pi * p1d_Mpc
 
 # %%
-for ii in range(n_mubins):
+for ii in range(n_mu_bins):
     _ = np.isfinite(rebin_p3d_sim[:, ii])
     plt.plot(knew[_, ii], knew[_, ii]**2*rebin_p3d_sim[_, ii])
 plt.xscale('log')
@@ -117,7 +117,7 @@ plt.ylabel(r"$k_\parallel P_\mathrm{1D}(k_\parallel)$")
 # ## Evaluate Arinyo model
 
 # %%
-from forestflow.model_p3d_arinyo import ArinyoModel
+from forestflow.model.arinyo import ArinyoModel
 
 # %% [markdown]
 # We continue with the first simulation of the LH
@@ -127,24 +127,26 @@ from forestflow.model_p3d_arinyo import ArinyoModel
 sim = Archive3D.training_data[6]
 print(sim["z"])
 
-k3d_Mpc = sim['k3d_Mpc']
-mu3d = sim['mu3d']
-p3d_Mpc = sim['p3d_Mpc']
+k3d_Mpc = sim["k3d_Mpc"]
+mu3d = sim["mu3d"]
+p3d_Mpc = sim["p3d_Mpc"]
 # get modes in each k-mu bin
-kmu_modes = get_p3d_modes(kmax_3d_plot)
+k_mu_modes = get_P3D_k_mu_modes(kmax_3d_plot)
 
 mask_3d = k3d_Mpc[:, 0] <= kmax_3d_plot
 
-mask_1d = (sim['k_Mpc'] <= kmax_1d_plot) & (sim['k_Mpc'] > 0)
-k1d_Mpc = sim['k_Mpc'][mask_1d]
-p1d_Mpc = sim['p1d_Mpc'][mask_1d]
+mask_1d = (sim["k_Mpc"] <= kmax_1d_plot) & (sim["k_Mpc"] > 0)
+k1d_Mpc = sim["k_Mpc"][mask_1d]
+p1d_Mpc = sim["p1d_Mpc"][mask_1d]
 
 # apply rebinning
-_ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], p3d_Mpc[mask_3d], kmu_modes, n_mubins=n_mubins)
+_ = rebin_P3D_Mpc_mode_weighted(
+    k3d_Mpc[mask_3d], mu3d[mask_3d], p3d_Mpc[mask_3d], k_mu_modes, n_mu_bins=n_mu_bins
+)
 knew, munew, rebin_p3d_sim, mu_bins = _
 
 # normalize P1D
-p1d_sim = k1d_Mpc/np.pi * p1d_Mpc
+p1d_sim = k1d_Mpc / np.pi * p1d_Mpc
 
 
 # %% [markdown]
@@ -162,21 +164,21 @@ model_Arinyo = ArinyoModel(fid_cosmo)
 
 # %%
 # sim['Arinyo_min'] contains the best-fitting Arinyo parameters to this simulation
+# arinyo_fixp3d new ones
 
-
-linear = model_Arinyo.linear_theory(sim["z"])
-p3d_model = model_Arinyo.P3D_Mpc_k_mu(linear, sim["z"], k3d_Mpc, mu3d, sim['Arinyo_min']) # get P3D for z, k3D (array), and mu3d(array)
-p1d_model = model_Arinyo.P1D_Mpc(linear, sim["z"], k1d_Mpc, sim['Arinyo_min']) # get P1D for z, k1D (array)
+linear = model_Arinyo.linear.get_linear_theory(sim["z"])
+p3d_model = model_Arinyo.P3D_Mpc_k_mu(linear, sim["z"], k3d_Mpc, mu3d, sim['arinyo_fixp3d']) # get P3D for z, k3D (array), and mu3d(array)
+p1d_model = model_Arinyo.P1D_Mpc(linear, sim["z"], k1d_Mpc, sim['arinyo_fixp3d']) # get P1D for z, k1D (array)
 
 # apply rebinning
-_ = p3d_rebin_mu(k3d_Mpc[mask_3d], mu3d[mask_3d], p3d_model[mask_3d], kmu_modes, n_mubins=n_mubins)
+_ = rebin_P3D_Mpc_mode_weighted(k3d_Mpc[mask_3d], mu3d[mask_3d], p3d_model[mask_3d], k_mu_modes, n_mu_bins=n_mu_bins)
 knew, munew, rebin_p3d_model, mu_bins = _
 
 # normalize P1D
 p1d_model = k1d_Mpc/np.pi * p1d_model
 
 # %%
-for ii in range(n_mubins):
+for ii in range(n_mu_bins):
     col = "C"+str(ii)
     _ = np.isfinite(rebin_p3d_sim[:, ii])
     plt.plot(knew[_, ii], knew[_, ii]**2 * rebin_p3d_sim[_, ii], col)

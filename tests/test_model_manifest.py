@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from forestflow.model_manifest import ModelBundleError, load_manifest, write_manifest
+from forestflow.emulator.bundle import ModelBundleError, load_manifest, write_manifest
 
 
 def _bundle(tmp_path):

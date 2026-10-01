@@ -22,10 +22,7 @@
 
 # %%
 import numpy as np
-from scipy import special
 import numpy as np
-import os
-import sys
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from matplotlib import rcParams
@@ -38,13 +35,12 @@ rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 # import P3D theory
 from lace.cosmo import cosmology
-from forestflow.model_p3d_arinyo import ArinyoModel
-import time
+from forestflow.model.arinyo import ArinyoModel
 
 # %%
 # %load_ext autoreload
 # %autoreload 2
-from forestflow.pcross import Px_Mpc, Px_Mpc_detailed
+from forestflow.statistics.px import Px_Mpc, Px_Mpc_detailed
 
 # %% [markdown]
 # First, choose a redshift and $k$ range. Initialize an instance of the Arinyo class for this redshift given cosmology calculations from Camb.
@@ -69,6 +65,7 @@ cosmo_params = {
 cosmo = cosmology.Cosmology(cosmo_params_dict=cosmo_params)
 model_Arinyo = ArinyoModel(fid_cosmo=cosmo)
 model_Arinyo.default_params
+linear = model_Arinyo.linear.get_linear_theory(zs)
 
 # %% [markdown]
 # ## Plot the 3D power spectrum
@@ -83,12 +80,12 @@ mu2d = np.tile(mu[:, np.newaxis], nn_k).T  # mu grid for P3D
 
 kpar = np.logspace(-1, np.log10(5), nn_k)  # kpar for P1D
 
-plin = model_Arinyo.linP_Mpc(zs[0], k)  # get linear power spectrum at target z
+plin = model_Arinyo.linear.get_linP_Mpc(linear, zs[0], k)  # get linear power spectrum at target z
 p3d = model_Arinyo.P3D_Mpc_k_mu(
-    zs[0], k2d, mu2d, ari_pp=model_Arinyo.default_params
+    linear, zs[0], k2d, mu2d, ari_pp=model_Arinyo.default_params
 )  # get P3D at target z
 p1d = model_Arinyo.P1D_Mpc(
-    zs[0], kpar, ari_pp=model_Arinyo.default_params
+    linear, zs[0], kpar, ari_pp=model_Arinyo.default_params
 )  # get P1D at target z
 
 # %%
@@ -115,7 +112,7 @@ Px_Mpc_1 = model_Arinyo.Px_Mpc(z=zs[0], kpar_iMpc = kpar, rperp_Mpc = rperp, ari
 
 # we could have also done it outside of the class with the function Px_Mpc:
 Px_Mpc_2 = Px_Mpc(
-    zs[0], kpar, rperp, model_Arinyo.P3D_Mpc_k_mu, p3d_params=model_Arinyo.default_params
+    linear, zs[0], kpar, rperp, model_Arinyo.P3D_Mpc_k_mu, p3d_params=model_Arinyo.default_params
 )
 print("Detailed method is equal to previous method:", np.allclose(Px_Mpc_1, Px_Mpc_2, atol=1e-15))
 
@@ -127,16 +124,16 @@ print("Is updated cosmology returning the same as previous method?", np.allclose
 # the last line should return False since we updated the cosmology.
 
 # %% [markdown]
-# ### Compare against the new function in integrate_p3d
+# ### Callable-only Px interface
 #
 # Andreu has recently added a new function to be used from cupix, that offers a different interface to compute Px
 
 # %%
-from forestflow.integrate_p3d import compute_px_from_p3d_kmu_Mpc
+from forestflow.statistics.px import compute_px_from_p3d_kmu_Mpc
 
 def p3d_func_kmu_Mpc(k, mu):
     z = zs[0]
-    return model_Arinyo.P3D_Mpc_k_mu(z, k, mu, ari_pp=model_Arinyo.default_params)
+    return model_Arinyo.P3D_Mpc_k_mu(linear, z, k, mu, ari_pp=model_Arinyo.default_params)
 
 Px_Mpc_3 = compute_px_from_p3d_kmu_Mpc(kp_Mpc=kpar, rt_Mpc=rperp, p3d_func_kmu_Mpc=p3d_func_kmu_Mpc)
 print("Math-only method is equal to previous method:", np.allclose(Px_Mpc_1, Px_Mpc_3, atol=1e-15))
@@ -176,7 +173,7 @@ kpars_Px = np.logspace(-3, np.log10(20), 100)
 # add a 0 to kpars_Px to make sure that kpar=0 works fine
 kpars_Px = np.append(0, kpars_Px)
 Px_per_theta_perz = Px_Mpc(
-    zs,
+    linear, zs,
     kpars_Px,
     rperp,
     model_Arinyo.P3D_Mpc_k_mu,
@@ -191,7 +188,7 @@ Px_per_theta_perz = Px_Mpc(
 p1d_comparison = []
 for iz, z in enumerate(zs):
     p1d_comparison.append(model_Arinyo.P1D_Mpc(
-        zs[iz], kpars_Px, ari_pp=model_Arinyo.default_params
+        linear, zs[iz], kpars_Px, ari_pp=model_Arinyo.default_params
     ))  # get the P1D comparison
 
 # %%
@@ -254,7 +251,7 @@ rperp = (
 # {'bias': [b1,b2], 'beta': [beta1,beta2], ...} for each redshift.
 
 Px_sel = Px_Mpc(
-    zs,
+    linear, zs,
     kpars_Px,
     rperp,
     model_Arinyo.P3D_Mpc_k_mu,
@@ -408,23 +405,23 @@ rperp = np.logspace(-4,3, 1000)
 
 # %%
 # profile the code with line_profiler
-# %lprun -f Px_Mpc_detailed Px_Mpc_detailed(zs[0], kpars_Px, rperp, model_Arinyo.P3D_Mpc_k_mu, p3d_params =model_Arinyo.default_params)
+# %lprun -f Px_Mpc_detailed Px_Mpc_detailed(linear, zs[0], kpars_Px, rperp, model_Arinyo.P3D_Mpc_k_mu, p3d_params =model_Arinyo.default_params)
 
 
 # %%
 # time-test the code. The average should be about 130 ms.
-# %timeit Px_Mpc_detailed(zs[0], kpars_Px, rperp, model_Arinyo.P3D_Mpc_k_mu, p3d_params =model_Arinyo.default_params)
+# %timeit Px_Mpc_detailed(linear, zs[0], kpars_Px, rperp, model_Arinyo.P3D_Mpc_k_mu, p3d_params =model_Arinyo.default_params)
 
 # %%
 # now include 3x more kpars and time-test again. The code should scale roughly with N kpar, so we expect it to take about 3x as long, or about 400 ms.
 kpars_Px_extended = np.logspace(-3, np.log10(20), 300)
-# %timeit Px_Mpc_detailed(zs[0], kpars_Px_extended, rperp, model_Arinyo.P3D_Mpc_k_mu, p3d_params =model_Arinyo.default_params)
+# %timeit Px_Mpc_detailed(linear, zs[0], kpars_Px_extended, rperp, model_Arinyo.P3D_Mpc_k_mu, p3d_params =model_Arinyo.default_params)
 
 # %%
 # change the value of nkerp to a very high value to get a 'perfect' integration via Hankel transform:
 
 Px_Mpc_full = Px_Mpc_detailed(
-    zs[0],
+    linear, zs[0],
     kpars_Px,
     rperp,
     model_Arinyo.P3D_Mpc_k_mu,
@@ -438,7 +435,7 @@ Px_Mpc_full = Px_Mpc_detailed(
 
 # compare with a lower value of nkperp to see the difference:
 Px_Mpc_lownkperp = Px_Mpc_detailed(
-    zs[0],
+    linear, zs[0],
     kpars_Px,
     rperp,
     model_Arinyo.P3D_Mpc_k_mu,

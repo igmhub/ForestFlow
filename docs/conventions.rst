@@ -43,3 +43,11 @@ Archives with ``k_Mpc``, ``p1d_Mpc``, ``p3d_Mpc``,
 ``k_kms``, ``Pk_kms``, or ``dkms_dMpc`` remain readable through
 compatibility normalization. New interfaces and stored products should use
 the canonical names above.
+Compatibility transition
+------------------------
+
+Raw simulation files retain their historical field names (for example
+``k_Mpc`` and ``p1d_Mpc``). They are an on-disk archive schema, not the
+public ForestFlow mapping contract. New public mappings must use the canonical
+names above. ``canonicalize_unit_keys`` remains temporarily for migration and
+emits a ``FutureWarning``; it will be removed in the next major release.

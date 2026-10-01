@@ -1,6 +1,9 @@
 install:
 	pip install -e .
 
+install-extended:
+	pip install -e ".[extended]"
+
 test:
 	python -m pip install -e ".[test]"
 	pytest -q
@@ -13,7 +16,7 @@ test-regression:
 
 NOTEBOOKS_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))notebooks
 
-.PHONY: install test test-unit test-regression docs clean-docs notebooks
+.PHONY: install install-extended test test-unit test-regression docs clean-docs notebooks
 
 notebooks:
 	find "$(NOTEBOOKS_DIR)" -type f -name '*.py' -not -path '*/.ipynb_checkpoints/*' -print0 | xargs -0 -r jupytext --to ipynb

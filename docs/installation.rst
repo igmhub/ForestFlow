@@ -8,9 +8,14 @@ with its runtime dependencies:
 
    python -m pip install -e .
 
-The package relies on LaCE for cosmology and simulation archive support. Follow
-the LaCE installation instructions before importing archive- or model-related
-modules.
+The package relies on LaCE for cosmology and simulation archive support; it is
+declared as a runtime dependency. Torch and FrEIA remain mandatory because the
+supported cINN emulator uses them. Paper-analysis helpers, the cross-power
+routines, and MPI scripts are optional:
+
+.. code-block:: console
+
+   python -m pip install -e ".[extended]"
 
 To build this documentation, install the documentation extra and invoke the
 Make target:

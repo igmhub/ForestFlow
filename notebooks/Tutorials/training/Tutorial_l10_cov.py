@@ -21,18 +21,17 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import sys
 import os
 import matplotlib.pyplot as plt
 import numpy as np
 
 import forestflow
-from forestflow.P3D_cINN import P3DEmulator
+from forestflow.emulator.p3d_cinn import P3DEmulator
 
-from forestflow.model_p3d_arinyo import ArinyoModel
+from forestflow.model.arinyo import ArinyoModel
 from lace.cosmo import cosmology
 
-from forestflow.set_training import Transf_data
+from forestflow.emulator.training import Transf_data
 
 # %% [markdown]
 # ## Training data
@@ -41,8 +40,9 @@ from forestflow.set_training import Transf_data
 
 # %%
 # load training data
-from forestflow.archive import GadgetArchive3D
-Archive3D = GadgetArchive3D(addcentral=True)
+from forestflow.archive.gadget_archive import GadgetArchive3D
+
+Archive3D = GadgetArchive3D(postproc="Cabayol23_fixp3d", addcentral=True)
 
 # %% [markdown]
 # #### Get data for training the emulator
@@ -52,13 +52,18 @@ Archive3D = GadgetArchive3D(addcentral=True)
 # - output_par: Arinyo
 
 # %%
-from forestflow.set_training import get_training_data
+from forestflow.emulator.training import get_training_data
 
 # type_fit = "Arinyo_min"
 # zmax = 4.1 # improves the performance, the results of the Arinyo fit are noisy at z>4 (?!)
 
-type_fit = "Arinyo_lowk"
-zmax = 4.1
+# type_fit = "Arinyo_lowk"
+# zmax = 4.1
+
+# latest!
+type_fit = "arinyo_fixp3d"
+zmax = 4.6
+
 emu_data = get_training_data(Archive3D.training_data, zmax=zmax, type_fit=type_fit)
 
 # %%
@@ -76,11 +81,10 @@ mpg_central_z3 = mpg_central[ind_z3]
 
 # %%
 # name_emu = "test"
-name_emu = "forest_mpg_lowk"
+# name_emu = "forest_mpg_lowk"
+name_emu = "forest_mpg_fix"
 
 # %%
-
-
 save_file = os.path.join(
     os.path.dirname(forestflow.__path__[0]),
     "data",
@@ -143,8 +147,11 @@ ax[-1].set_xlim(-2, 2)
 #
 
 # %%
-nepochs = 1250 # 1000 better choice, 1 so it runs fast
-use_val_set = True # use validation sample
+# nepochs = 1000
+# use_val_set = True # use validation sample
+
+# nepochs = 1250 # 1000 better choice, 1 so it runs fast
+nepochs = 400
 use_val_set = False # use validation sample
 
 input_training = {}
@@ -163,8 +170,8 @@ emulator = P3DEmulator(
     nepochs=nepochs,
     batch_size=8,
     # batch_size=32,
-    # lr=1e-3,
-    lr=1e-2,
+    lr=5e-3,
+    # lr=1e-2,
     # dims_int=12,
     # dims_int=16,
     dims_int=30,
@@ -174,6 +181,10 @@ emulator = P3DEmulator(
 
 
 # %%
+# -28 1e-3
+# -30 2e-3
+
+
 n = 100
 
 plt.plot(-np.array(emulator.loss_arr)[n:])
@@ -186,13 +197,18 @@ plt.plot(-np.array(emulator.val_loss_arr)[n:])
 
 # %%
 # name_emu = "test" # new trained above
-name_emu = "forest_mpg_lowk"
-type_fit = "Arinyo_lowk"
-kmax1D = 8
+# name_emu = "forest_mpg_lowk"
+# type_fit = "Arinyo_lowk"
+# kmax1D = 8
 
 # name_emu = "forest_mpg" # default
 # type_fit = "Arinyo_min"
 # kmax1D = 4
+
+
+name_emu = "forest_mpg_fix"
+# type_fit = "Arinyo_lowk"
+# kmax1D = 8
 
 emulator = P3DEmulator(key=name_emu)
 
@@ -234,18 +250,18 @@ for ii, par in enumerate(emulator.output_labels):
     ax[ii].legend()
 
 # %%
-from forestflow.play_with_power import get_sim_power
+from forestflow.archive.helpers import get_sim_power
 
 # %%
 cosmo_params_dict = mpg_central_z3["cosmo_params"]
 fid_cosmo = cosmology.Cosmology(cosmo_params_dict=cosmo_params_dict)
 model_Arinyo = ArinyoModel(fid_cosmo)
 
-linear = model_Arinyo.linear_theory(Archive3D.list_sim_redshifts)
+linear = model_Arinyo.linear.get_linear_theory(Archive3D.list_sim_redshifts)
 
 
 # %%
-def check_p1d(emulator, Nrealizations=3000, type_fit="Arinyo_min"):
+def check_p1d(emulator, Nrealizations=1000, type_fit="arinyo_fixp3d", kmax1D=6.):
     ii0 = 0
     for ii in range(2, 11):
         sim = mpg_central[ii]
@@ -286,6 +302,9 @@ def check_p1d(emulator, Nrealizations=3000, type_fit="Arinyo_min"):
     plt.ylim(-0.02, 0.02)
     plt.legend()
 
+
+
+# %%
 
 check_p1d(emulator, type_fit=type_fit)
 
@@ -347,18 +366,19 @@ plt.ylim(-0.02, 0.02)
 # ### Train l1O emulators
 
 # %%
-zmax = 4.1 # better performance, the results of the Arinyo fit are noisy at z>4 (?!)
+zmax = 4.6  # better performance, the results of the Arinyo fit are noisy at z>4 (?!)
 
-nepochs = 1000 # 1000 better choice, 1 so it runs fast
-use_val_set = False # use validation sample
+nepochs = 400
+use_val_set = False  # use validation sample
+type_fit = "arinyo_fixp3d"
 
 for isim, sim in enumerate(Archive3D.list_sim_cube):
-    if isim < 25:
-        continue
+    # if isim < 25:
+    #     continue
     print(sim)
     print()
 
-    name_emu = "forest_mpg_l1O_" + str(isim)
+    name_emu = "forest_mpg_fix_l1O_" + str(isim)
 
     save_file_transf = os.path.join(
         os.path.dirname(forestflow.__path__[0]),
@@ -368,11 +388,17 @@ for isim, sim in enumerate(Archive3D.list_sim_cube):
         name_emu + "_transf.npy",
     )
     save_path_emu = os.path.join(
-        os.path.dirname(forestflow.__path__[0]), "data", "emulator_models", "l1O", name_emu
+        os.path.dirname(forestflow.__path__[0]),
+        "data",
+        "emulator_models",
+        "l1O",
+        name_emu,
     )
 
     # training data
-    emu_data = get_training_data(Archive3D.training_data, zmax=zmax, drop_sim=sim)
+    emu_data = get_training_data(
+        Archive3D.training_data, zmax=zmax, type_fit=type_fit, drop_sim=sim
+    )
     transf_data = Transf_data(
         dict_all_params=emu_data, save_file=save_file_transf, compute_fisher=False
     )
@@ -392,8 +418,8 @@ for isim, sim in enumerate(Archive3D.list_sim_cube):
         nLayers_inn=6,
         nepochs=nepochs,
         batch_size=8,
-        lr=1e-3,
-        dims_int=12,
+        lr=5e-3,
+        dims_int=30,
         use_val_set=use_val_set,
         save_path=save_path_emu,
     )

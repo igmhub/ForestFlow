@@ -20,13 +20,10 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import sys
-import os
 import matplotlib.pyplot as plt
 import numpy as np
 
-import forestflow
-from forestflow.P3D_cINN import P3DEmulator
+from forestflow.emulator.p3d_cinn import P3DEmulator
 
 # %% [markdown]
 # ## Load emulator
@@ -34,10 +31,13 @@ from forestflow.P3D_cINN import P3DEmulator
 # Here to directly load the emulator
 
 # %%
-emulator = P3DEmulator(key = "forest_mpg")
+emulator = P3DEmulator(key="forest_mpg_fix")
 
 # %% [markdown]
 # ## Evaluate emulator to get Arinyo parameters
+#
+# The default emulator is evaluated eagerly. This is the most convenient mode
+# for one-off predictions and is the historical interface used by ForestFlow.
 
 # %% [markdown]
 # #### You can provide multiple inputs at once
@@ -64,6 +64,46 @@ coeffs = emulator.evaluate(emu_params=list_input_params)
 coeffs
 
 # %% [markdown]
+# #### Compiled evaluation for repeated calls
+#
+# For repeated evaluations with the same input shape (for example, in an
+# inference loop), compile the PyTorch network once. Compilation is optional
+# and requires PyTorch 2 or newer. Its first call is slower because PyTorch
+# builds the graph; later calls reuse it. The numerical interface and returned
+# Arinyo parameters are unchanged.
+#
+# Either compile an existing emulator:
+
+# %%
+emulator.compile()
+
+# %%
+# %%time
+compiled_coeffs = emulator.evaluate(emu_params=list_input_params)
+compiled_coeffs
+
+# %%
+# %%time
+for ii in range(100):
+    compiled_coeffs = emulator.evaluate(emu_params=list_input_params)
+
+# %% [markdown]
+# Or request compilation while constructing it:
+
+# %%
+emulator_compiled = P3DEmulator(key="forest_mpg_fix", compile_model=True)
+compiled_coeffs = emulator_compiled.evaluate(emu_params=list_input_params)
+
+# %%
+# %%time
+compiled_coeffs = emulator_compiled.evaluate(emu_params=list_input_params)
+
+# %% [markdown]
+# `compiled_coeffs` and `coeffs` should agree up to floating-point precision.
+# The compiled path is most useful for long runs with fixed batch sizes; on a
+# CPU, measure the full workflow before assuming that compilation is faster.
+
+# %% [markdown]
 # #### Or just one
 
 # %%
@@ -87,7 +127,7 @@ coeffs
 # See Tutorial_Arinyo for more info about the ArinyoModel class
 
 # %%
-from forestflow.model_p3d_arinyo import ArinyoModel
+from forestflow.model.arinyo import ArinyoModel
 from lace.cosmo import cosmology
 
 # %%
@@ -141,8 +181,8 @@ mu2d = np.tile(mu[:, np.newaxis], nn_k).T # mu grid for P3D
 #P1D
 kpar = np.geomspace(k_Mpc_min, 5., nn_k) # kpar for P1D
 
-linear = model_Arinyo.linear_theory(zs)
-linP_Mpc = model_Arinyo.linP_Mpc(linear, zs, k)
+linear = model_Arinyo.linear.get_linear_theory(zs)
+linP_Mpc = model_Arinyo.linear.get_linP_Mpc(linear, zs, k)
 p3d = model_Arinyo.P3D_Mpc_k_mu(linear, zs, k2d, mu2d, par_ari) # get P3D at target z
 p1d = model_Arinyo.P1D_Mpc(linear, zs, kpar, par_ari)
 
@@ -173,7 +213,7 @@ new_cosmo = {
     "w": -1.0,
 }
 
-linear_2 = model_Arinyo.linear_theory(zs, new_cosmo_params=new_cosmo)
+linear_2 = model_Arinyo.linear.get_linear_theory(zs, new_cosmo_params=new_cosmo)
 p1d_2 = model_Arinyo.P1D_Mpc(linear_2, zs, kpar, par_ari)
 
 # %%

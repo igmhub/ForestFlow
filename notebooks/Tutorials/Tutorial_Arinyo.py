@@ -24,15 +24,13 @@
 # %autoreload 2
 
 import numpy as np
-import os
-import sys
 import matplotlib.pyplot as plt
 
 from matplotlib import rcParams
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
-from forestflow.model_p3d_arinyo import ArinyoModel
+from forestflow.model.arinyo import ArinyoModel
 from lace.cosmo import cosmology
 
 
@@ -81,8 +79,8 @@ arinyo_pars = {
     'kp': 10.5
 }
 
-linear = model_Arinyo.linear_theory(zs)
-linP_Mpc = model_Arinyo.linP_Mpc(linear, zs, k)
+linear = model_Arinyo.linear.get_linear_theory(zs)
+linP_Mpc = model_Arinyo.linear.get_linP_Mpc(linear, zs, k)
 p3d = model_Arinyo.P3D_Mpc_k_mu(linear, zs, k2d, mu2d, arinyo_pars) # get P3D at target z
 p1d = model_Arinyo.P1D_Mpc(linear, zs, kpar, arinyo_pars)
 
@@ -122,9 +120,9 @@ plt.xscale('log')
 # %%
 new_cosmo_params = {"ns": 0.8665} # only change ns compared to the value for the fiducial cosmology
 
-linear_new = model_Arinyo.linear_theory(zs, new_cosmo_params=new_cosmo_params)
+linear_new = model_Arinyo.linear.get_linear_theory(zs, new_cosmo_params=new_cosmo_params)
 
-linP_Mpc_new = model_Arinyo.linP_Mpc(linear_new, zs, k)
+linP_Mpc_new = model_Arinyo.linear.get_linP_Mpc(linear_new, zs, k)
 p3d_new = model_Arinyo.P3D_Mpc_k_mu(linear_new, zs, k2d, mu2d, arinyo_pars) # get P3D at target z
 p1d_new = model_Arinyo.P1D_Mpc(linear_new, zs, kpar, arinyo_pars)
 
@@ -156,7 +154,7 @@ new_cosmo_params = {"ns": 0.8665}
 # %%
 # %%time
 for ii in range(1000):
-    linear_new = model_Arinyo.linear_theory(zs, new_cosmo_params=new_cosmo_params)
+    linear_new = model_Arinyo.linear.get_linear_theory(zs, new_cosmo_params=new_cosmo_params)
     model_Arinyo.P3D_Mpc_k_mu(linear_new, zs, k2d, mu2d, arinyo_pars)
 
 # %% [markdown]
@@ -171,7 +169,7 @@ new_cosmo_params = {"H0": 80}
 # %%
 # %%time
 for ii in range(10):
-    linear_new = model_Arinyo.linear_theory(zs, new_cosmo_params=new_cosmo_params)
+    linear_new = model_Arinyo.linear.get_linear_theory(zs, new_cosmo_params=new_cosmo_params)
     model_Arinyo.P3D_Mpc_k_mu(linear_new, zs, k2d, mu2d, arinyo_pars)
 
 # %% [markdown]
@@ -184,13 +182,14 @@ for ii in range(10):
 # We need the value of Delta2p and np to be consistent with the cosmology provided to the Arinyo model
 
 # %%
-from forestflow.P3D_cINN import P3DEmulator
+from forestflow.emulator.p3d_cinn import P3DEmulator
 
 # %%
-emulator = P3DEmulator(key="forest_mpg")
+emulator = P3DEmulator(key="forest_mpg_fix")
 
 # %%
 # get Delta2_p and n_p from fiducial cosmology
+kp_Mpc = 0.7
 linP_zs = fid_cosmo.get_linP_Mpc_params(z=zs[0], kp_Mpc=kp_Mpc)
 print(linP_zs)
 
@@ -212,7 +211,7 @@ par_ari
 # %%
 # get statistics from arinyo model using the parameters from the emulator
 p3d_from_emu = model_Arinyo.P3D_Mpc_k_mu(linear, zs, k2d, mu2d, par_ari)
-linP_Mpc = model_Arinyo.linP_Mpc(linear, zs, k)
+linP_Mpc = model_Arinyo.linear.get_linP_Mpc(linear, zs, k)
 
 # %%
 iz = 0

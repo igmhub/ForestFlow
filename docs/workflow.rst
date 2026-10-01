@@ -37,7 +37,7 @@ and precomputed Arinyo fits:
 
 .. code-block:: python
 
-   from forestflow.archive import GadgetArchive3D
+   from forestflow.archive.gadget_archive import GadgetArchive3D
 
    archive = GadgetArchive3D()
    training = archive.training_data
@@ -54,7 +54,7 @@ Archive files retain historical keys such as ``k_Mpc`` and
 
 .. code-block:: python
 
-   from forestflow.P3D_cINN import P3DEmulator
+   from forestflow.emulator.p3d_cinn import P3DEmulator
 
    emulator = P3DEmulator(key="forest_mpg")
    print(emulator.input_labels)
@@ -90,13 +90,38 @@ The result is keyed by ``emulator.output_labels``. Inputs outside the
 training domain are extrapolations; inspect the archive training sample before
 interpreting them.
 
+For several redshifts or parameter points, pass a list of dictionaries. The
+network then evaluates them in one batch instead of making one Python call per
+redshift:
+
+.. code-block:: python
+
+   inputs_by_redshift = [input_at_z2, input_at_z3, input_at_z4]
+   arinyo_by_redshift = emulator.evaluate(inputs_by_redshift, seed=0)
+
+Each returned value has one entry per input dictionary. Repeated calls with the
+same batch size, ``Nrealizations``, and seed reuse the deterministic latent
+sample tensor.
+
+Long minimization or sampling runs can also compile the neural network once:
+
+.. code-block:: python
+
+   emulator = P3DEmulator(key="forest_mpg", compile_model=True)
+   emulator.evaluate(inputs_by_redshift)  # compiles this input shape
+   arinyo_by_redshift = emulator.evaluate(inputs_by_redshift)  # reuses it
+
+The first call for a new input shape pays the compilation cost. Compilation is
+therefore opt-in and is most useful when later calls keep the same number of
+redshifts. The portable model saved on disk remains the ordinary PyTorch model.
+
 4. Compute P3D and P1D
 ----------------------
 
 .. code-block:: python
 
    import numpy as np
-   from forestflow.model_p3d_arinyo import ArinyoModel
+   from forestflow.model.arinyo import ArinyoModel
 
    model = ArinyoModel(cosmo)
    linear = model.linear_theory(z)
@@ -110,7 +135,7 @@ interpreting them.
    P1D_Mpc = model.P1D_Mpc(linear, z, k_iMpc, arinyo)
 
 The outputs match their input grid shapes. For velocity coordinates use
-:func:`forestflow.p1d.P1D_kms` with ``k_ikms`` and
+:func:`forestflow.statistics.p1d.P1D_kms` with ``k_ikms`` and
 ``dkms_diMpc = H(z)/(1+z)``.
 
 5. Interpret uncertainty
@@ -122,7 +147,7 @@ not automatically a calibrated prediction error, and ``evaluate`` does not
 return a covariance.
 
 For emulator uncertainty, use leave-one-simulation-out residuals from
-``forestflow.covariance``. Their covariance describes prediction residuals
+``forestflow.emulator.covariance``. Their covariance describes prediction residuals
 over the validated simulations. Gaussian-noise helpers and the covariance
 tutorials instead estimate finite-volume/sample variance. These uncertainties
 answer different questions and should not be interchanged without an explicit

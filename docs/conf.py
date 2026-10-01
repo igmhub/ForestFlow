@@ -49,10 +49,6 @@ autodoc_mock_imports = [
     "psutil",
     "scipy",
     "torch",
-    # Compatibility import paths retained by legacy ForestFlow modules.
-    "forestflow.fit_p3d",
-    "forestflow.likelihood",
-    "forestflow.plot_routines",
 ]
 
 html_theme = (
@@ -70,12 +66,7 @@ exclude_patterns = [
     "_build",
     "Thumbs.db",
     ".DS_Store",
-    # Superseded fitting modules remain in the source tree for historical
-    # analyses; their status and replacement are documented in fitting.rst.
-    "generated/forestflow.fits.fit_p3d.rst",
-    "generated/forestflow.fits.fit_p3dz.rst",
-    "generated/forestflow.fits.likelihood.rst",
-    "generated/forestflow.new_fit.ArinyoFitter.rst",
+    "old_code",
 ]
 intersphinx_mapping = {}
 if os.environ.get("FORESTFLOW_DOCS_INTERSPHINX") == "1":
