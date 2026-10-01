@@ -40,7 +40,7 @@ from lace.cosmo.cosmology import Cosmology
 # are stored here so the notebook does not need to load a simulation archive.
 
 # %%
-emulator_label = "forest_mpg"
+emulator_label = "forest_mpg_fix"
 z = 3.0
 kp_Mpc = 0.7
 fiducial_cosmology = Cosmology(cosmo_label="Planck18")

@@ -185,7 +185,7 @@ for ii in range(10):
 from forestflow.emulator.p3d_cinn import P3DEmulator
 
 # %%
-emulator = P3DEmulator(key="forest_mpg")
+emulator = P3DEmulator(key="forest_mpg_fix")
 
 # %%
 # get Delta2_p and n_p from fiducial cosmology

@@ -31,7 +31,7 @@ from forestflow.emulator.p3d_cinn import P3DEmulator
 # Here to directly load the emulator
 
 # %%
-emulator = P3DEmulator(key = "forest_mpg")
+emulator = P3DEmulator(key="forest_mpg_fix")
 
 # %% [markdown]
 # ## Evaluate emulator to get Arinyo parameters
@@ -84,13 +84,14 @@ compiled_coeffs
 
 # %%
 # %%time
-compiled_coeffs = emulator.evaluate(emu_params=list_input_params)
+for ii in range(100):
+    compiled_coeffs = emulator.evaluate(emu_params=list_input_params)
 
 # %% [markdown]
 # Or request compilation while constructing it:
 
 # %%
-emulator_compiled = P3DEmulator(key="forest_mpg", compile_model=True)
+emulator_compiled = P3DEmulator(key="forest_mpg_fix", compile_model=True)
 compiled_coeffs = emulator_compiled.evaluate(emu_params=list_input_params)
 
 # %%

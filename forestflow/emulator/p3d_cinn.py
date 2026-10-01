@@ -48,7 +48,6 @@ _LEGACY_MODEL_DOMAINS = {
     },
 }
 
-
 def _normalise_model_domain(domain: Mapping[str, Any] | None) -> dict[str, Any]:
     """Validate and copy emulator-domain metadata."""
     if domain is None:
@@ -111,7 +110,7 @@ class P3DEmulator:
 
     def __init__(
         self,
-        key: str = "forest_mpg",
+        key: str = "forest_mpg_fix",
         training_data: Optional[Dict[str, Dict[str, np.ndarray]]] = None,
         train: bool = False,
         save_path: Optional[str] = None,
@@ -135,7 +134,7 @@ class P3DEmulator:
 
         Parameters
         ----------
-        key : str, default="forest_mpg"
+        key : str, default="forest_mpg_fix"
             Name identifier for pre-trained emulator models.
         training_data : dict, optional
             Dictionary containing training data with 'input_par' and 'output_par' keys.

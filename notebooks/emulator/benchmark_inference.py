@@ -22,7 +22,7 @@
 # in Arinyo coefficients and P1D are portable diagnostics.
 #
 # Run it after modifying cINN evaluation, latent-realization handling, or the
-# P3D-to-P1D integration.  The pretrained `forest_mpg` bundle is required.
+# P3D-to-P1D integration. The pretrained `forest_mpg_fix` bundle is required.
 
 # %%
 from time import perf_counter
@@ -57,7 +57,7 @@ input_params = {
 z = 3.0
 kpar_Mpc = np.geomspace(0.02, 5.0, 80)
 
-emulator = P3DEmulator(key="forest_mpg", compile_model=True)
+emulator = P3DEmulator(key="forest_mpg_fix", compile_model=True)
 arinyo_model = ArinyoModel(cosmology.Cosmology())
 linear = arinyo_model.linear.get_linear_theory(z)
 

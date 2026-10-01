@@ -39,7 +39,7 @@ class GadgetArchive3D(GadgetArchive):
         self,
         base_folder: Any | None = None,
         file_errors: Any | None = None,
-        postproc: str | None = "Cabayol23",
+        postproc: str | None = "Cabayol23_fixp3d",
         kp_Mpc: Any | None = None,
         average: str | None = "both",
         addcentral: bool | None = False,
@@ -56,7 +56,8 @@ class GadgetArchive3D(GadgetArchive):
         file_errors : object, optional
             File errors used by the calculation.
         postproc : str, optional
-            Postproc used by the calculation.
+            Post-processing used by the calculation. Defaults to the corrected
+            ``"Cabayol23_fixp3d"`` MP-Gadget P3D archive.
         kp_Mpc : object, optional
             Kp mpc used by the calculation.
         average : str, optional

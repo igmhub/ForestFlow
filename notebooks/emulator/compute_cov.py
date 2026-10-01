@@ -34,9 +34,9 @@ from forestflow.plots import plot_l1o_correlation, plot_l1o_errors
 # ## Load the emulator and corresponding archive
 
 # %%
-emulator_label = "forest_mpg"
+emulator_label = "forest_mpg_fix"
 
-archive = GadgetArchive3D(addcentral=True)
+archive = GadgetArchive3D(postproc="Cabayol23_fixp3d", addcentral=True)
 emulator = P3DEmulator(key=emulator_label)
 
 # %% [markdown]

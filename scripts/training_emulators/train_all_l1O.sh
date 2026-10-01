@@ -7,7 +7,7 @@ cd "$repository_root"
 
 # The suite contains one emulator without each hypercube simulation and one
 # additional emulator without mpg_central.
-simulations=(mpg_{0..29} mpg_central)
+simulations=(mpg_{8..29} mpg_central)
 for simulation in "${simulations[@]}"; do
     echo "================================================================"
     echo "Training leave-one-out emulator without ${simulation}."

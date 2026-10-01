@@ -11,7 +11,7 @@ from .p3d_cinn import P3DEmulator
 
 
 class P1DEmulator:
-    def __init__(self, name_emu="forest_mpg", compile_model=True):
+    def __init__(self, name_emu="forest_mpg_fix", compile_model=True):
 
         self.emulator = P3DEmulator(key=name_emu, compile_model=compile_model)
 
