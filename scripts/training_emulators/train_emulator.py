@@ -10,7 +10,7 @@ hypercube simulation excluded.  The output names follow the convention used by
 For example, to train every l1O emulator with the documented production
 settings, run from the ForestFlow repository root::
 
-    python scripts/training_l1O/train_emulator.py
+    python scripts/training_emulators/train_emulator.py
 
 Use ``--simulations mpg_0 mpg_7`` to train or re-train selected bundles.
 To train the full corrected emulator, including the central simulation, use

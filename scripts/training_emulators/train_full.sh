@@ -6,4 +6,4 @@ repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repository_root"
 
 echo "Training the full emulator: hypercube simulations plus mpg_central."
-python scripts/training_l1O/train_emulator.py --full "$@"
+python scripts/training_emulators/train_emulator.py --full "$@"

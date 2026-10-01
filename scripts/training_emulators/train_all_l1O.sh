@@ -11,7 +11,7 @@ simulations=(mpg_{0..29} mpg_central)
 for simulation in "${simulations[@]}"; do
     echo "================================================================"
     echo "Training leave-one-out emulator without ${simulation}."
-    python scripts/training_l1O/train_emulator.py --simulations "$simulation"
+    python scripts/training_emulators/train_emulator.py --simulations "$simulation"
 done
 
 echo "Finished all ${#simulations[@]} leave-one-out emulator trainings."
