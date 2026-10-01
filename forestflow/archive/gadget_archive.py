@@ -19,6 +19,11 @@ import forestflow
 from forestflow.utils import params_numpy2dict_minimizerz
 from forestflow.statistics.rebin_p3d import MPG_P3D_BINNING, get_P3D_k_mu_bin_edges
 
+# MP-Gadget snapshot convention used by ForestFlow fitting and archive tools.
+# It is owned here rather than imported from LaCE so ForestFlow supports the
+# released LaCE API as well as its development branch.
+MPG_SIM_REDSHIFTS = np.arange(2.0, 4.6, 0.25)
+
 
 class GadgetArchive3D(GadgetArchive):
     """

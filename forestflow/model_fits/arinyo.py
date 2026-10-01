@@ -19,7 +19,7 @@ from forestflow.statistics.rebin_p3d import get_P3D_k_mu_modes
 from .data import FitData
 from .errors import _get_err_p1d, _get_err_p3d
 from lace.cosmo import cosmology
-from lace.archive.gadget_archive import MPG_SIM_REDSHIFTS
+from forestflow.archive.gadget_archive import MPG_SIM_REDSHIFTS
 
 
 class ArinyoFitter:
