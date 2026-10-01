@@ -12,8 +12,6 @@ def test_nnu_variation_rebuilds_transfer_functions_instead_of_rescaling():
 
     fiducial = cosmology.Cosmology()
     requested = {"nnu": 4.0}
-    assert not fiducial.same_background(requested)
-
     linear_theory = LinearTheory(fiducial)
     varied = linear_theory.get_linear_theory([3.0], requested).cosmology
     fresh = cosmology.Cosmology(cosmo_params_dict=requested)

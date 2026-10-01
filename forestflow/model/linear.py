@@ -40,6 +40,12 @@ class LinearTheory:
         self.fiducial_cosmology = fiducial_cosmology or cosmology.Cosmology()
 
     def _cosmology_for_parameters(self, new_cosmo_params=None):
+        # ``nnu`` changes the radiation content and transfer functions.  Some
+        # supported LaCE releases did not include it in ``same_background``,
+        # so do not permit its primordial-only rescaling path here.
+        if new_cosmo_params is not None and "nnu" in new_cosmo_params:
+            print("WARNING: computing CAMB again")
+            return cosmology.Cosmology(cosmo_params_dict=new_cosmo_params)
         if self.fiducial_cosmology.same_background(
             cosmo_params=new_cosmo_params
         ):
