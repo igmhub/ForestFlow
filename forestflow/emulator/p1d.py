@@ -11,7 +11,22 @@ from .p3d_cinn import P3DEmulator
 
 
 class P1DEmulator:
+    """Adapt a ForestFlow P3D bundle into a stateful P1D emulator.
+
+    The cosmology and linear theory are attached lazily, allowing this module
+    to be imported without initializing the LaCE cosmology stack.
+    """
+
     def __init__(self, name_emu="forest_mpg_fix", compile_model=True):
+        """Load a named P3D bundle.
+
+        Parameters
+        ----------
+        name_emu : str, default="forest_mpg_fix"
+            ForestFlow emulator bundle key.
+        compile_model : bool, default=True
+            Whether to compile the neural-network model when supported.
+        """
 
         self.emulator = P3DEmulator(key=name_emu, compile_model=compile_model)
 
@@ -25,6 +40,7 @@ class P1DEmulator:
         self._prediction_cache = None
 
     def set_cosmology(self, cosmo_params_dict):
+        """Set the cosmology used for subsequent Arinyo and P1D predictions."""
         # Kept lazy so a P3D-only ForestFlow installation does not need LaCE.
         from lace.cosmo import cosmology
 
@@ -45,6 +61,15 @@ class P1DEmulator:
         return parameters
 
     def set_linear_theory(self, z, new_cosmo_params=None):
+        """Build or reuse linear theory at the requested redshifts.
+
+        Parameters
+        ----------
+        z : array_like
+            Redshifts requiring linear-theory products.
+        new_cosmo_params : mapping, optional
+            Cosmological changes relative to the configured fiducial model.
+        """
 
         if self.model_Arinyo is None or self.cosmo_params_dict is None:
             raise RuntimeError("Call set_cosmology before evaluating ForestFlow P1D")

@@ -1,0 +1,260 @@
+# ---
+# jupyter:
+#   jupytext:
+#     formats: ipynb,py:percent
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.19.5
+#   kernelspec:
+#     display_name: lace
+#     language: python
+#     name: python3
+# ---
+
+# %% [markdown]
+# # Estimate covariance between P1D and P3D
+#
+# This finite-volume Gaussian experiment projects each P3D realization into
+# P1D, then estimates their joint sample covariance. It uses the central
+# MP-Gadget snapshot at z=3 and its historical `Arinyo_min` coefficients.
+# It does not calibrate emulator errors or model an observational covariance.
+# Independent P3D cells neglect nonlinear mode coupling and survey windows.
+#
+# The default 10,000 draws on a 30-by-100 grid require substantial memory
+# (hundreds of MB for each realization array, plus covariance and temporaries).
+# Reduce the draws for exploration, but expect noisier covariance estimates.
+# Only the final plotting cells write files, into `figs/` relative to the
+# current working directory; no covariance product is saved.
+
+# %%
+# %load_ext autoreload
+# %autoreload 2
+
+import matplotlib.pyplot as plt
+import numpy as np
+from pathlib import Path
+
+
+
+from forestflow.model.arinyo import ArinyoModel
+from lace.cosmo import cosmology
+
+# %% [markdown]
+# ### Load model for mpg-central at z=3
+
+# %%
+# load training data
+from forestflow.archive.gadget_archive import GadgetArchive3D
+Archive3D = GadgetArchive3D(addcentral=True)
+
+# %%
+from forestflow.emulator.training import get_training_data
+emu_data = get_training_data(Archive3D.training_data)
+
+# %% [markdown]
+# #### Arinyo model
+
+# %%
+sim_mpg_central = Archive3D.get_testing_data("mpg_central")
+
+ztar = 3.0
+for ii, sim in enumerate(sim_mpg_central):
+    if sim["z"] == ztar:
+        ind_z3 = ii
+
+sim = sim_mpg_central[ind_z3]
+
+pars_model = {}
+pars_model["z"] = sim["z"]
+pars_model["Arinyo"] = {}
+for par in emu_data["output_par"]:
+    pars_model["Arinyo"][par] = sim["Arinyo_min"][par]
+
+# set Arinyo model
+cosmo_params_dict = {}
+for par in sim["cosmo_params"]:
+    if par != "omk":
+        cosmo_params_dict[par] = sim["cosmo_params"][par]
+    else:
+        cosmo_params_dict[par] = 0.0
+
+fid_cosmo = cosmology.Cosmology(cosmo_params_dict=cosmo_params_dict)
+model_Arinyo = ArinyoModel(fid_cosmo)
+
+# %%
+from forestflow.statistics.p1d import P1DIntegrator, p1d_from_p3d
+
+# %% [markdown]
+# ## Projection grid and Gaussian realizations
+#
+# All k values are inverse Mpc, P3D is Mpc cubed, P1D is Mpc, and the
+# illustrative box volume is (200 Mpc)^3. P1D integrates
+# k_perp^2 P3D / (2 pi) over log(k_perp). Use an explicit integrator so its
+# 100 transverse nodes match the grid used for reshaping and plotting.
+# Mean spectra and realizations use exactly the same quadrature and seed.
+
+# %%
+
+nelem_par = 30
+nelem_per = 100
+# nrand = 1
+nrand = 10000
+z = 3.0
+vol = 200.0**3
+
+kpar_3d = np.linspace(0.1, 5.0, nelem_par)
+kper_3d = np.logspace(-3, 2, nelem_per)
+# kper_3d = np.linspace(0.1, 1., nelem3d)
+kpar2d_3D, kperp2d_3D = np.meshgrid(kpar_3d, kper_3d, indexing="ij")
+kk_3d = np.sqrt(kpar2d_3D**2 + kperp2d_3D**2)
+mu_3d = kpar2d_3D / kk_3d
+
+
+linear = model_Arinyo.linear.get_linear_theory(z)
+res = p1d_from_p3d(
+    linear,
+    kpar_3d,
+    model_Arinyo.P3D_Mpc_kpar_kperp,
+    z,
+    pars_model["Arinyo"],
+    volume_Mpc3=vol,
+    n_realizations=nrand,
+    seed=0,
+    integrator=P1DIntegrator(n_k_perp=nelem_per),
+)
+
+# %%
+p3d = res["P3D_Mpc"]
+p1d = res["P1D_Mpc"]
+p3d_noise = res["P3D_Mpc_realizations"]
+p1d_noise = res["P1D_Mpc_realizations"]
+
+# %%
+for ii in range(100):
+    plt.plot(kpar_3d, p1d_noise[ii]/p1d-1)
+
+plt.xscale("log")
+
+# %%
+for ii in range(10):
+    plt.scatter(kperp2d_3D.reshape(-1), p3d_noise[ii, :, :].reshape(-1)/p3d.reshape(-1), alpha=0.5)
+
+plt.xscale("log")
+
+# %% [markdown]
+# ## Joint vector and covariance blocks
+#
+# Each row contains flattened P3D (k_perp varies fastest), followed by P1D.
+# Thus the covariance has P3D–P3D, P3D–P1D and P1D–P1D blocks, with units
+# Mpc^6, Mpc^4 and Mpc^2 respectively. Normalizing by both standard
+# deviations gives a dimensionless correlation matrix. Monte Carlo
+# off-diagonal entries also contain finite-sample noise.
+
+# %%
+nmax = nelem_par * nelem_per + nelem_par
+
+both = np.zeros((nrand, nmax))
+for ii in range(nrand):
+    both[ii, : nelem_par * nelem_per] = p3d_noise[ii].reshape(-1)
+    both[ii, nelem_par * nelem_per:] = p1d_noise[ii]
+
+
+# %%
+cov_both = np.cov(both.T)
+cov_both.shape
+
+# %%
+diag = np.sqrt(np.diag(cov_both))
+corr_both = cov_both / np.outer(diag, diag)
+
+# %%
+# kpar3D sim kpar1D
+# kper/kpar1D = 0.66
+# mu = 0.78
+
+# 1/np.sqrt(1 + 0.66**2)
+
+# %% [markdown]
+# ## Inspect cross-correlations
+#
+# The scatter shows P1D–P3D entries above 0.05, colored by P3D k_parallel.
+# The vertical line at 0.66 is a visual reference, not a universal boundary.
+# The full matrix below uses the concatenated-vector ordering defined above.
+
+# %%
+sc_all = []
+
+for ii in range(kpar_3d.shape[0]):
+# for ii in range(2):
+    x = kpar2d_3D.reshape(-1) / kpar_3d[ii]
+    y = corr_both[nmax - nelem_par + ii, : nmax - nelem_par]
+    # _ = (x > 0.9) & (x < 1.1) & (y > 0.05)
+    _ = (y > 0.05)
+    col = kperp2d_3D.reshape(-1) / kpar_3d[ii]
+    # col2 = kk_3d.reshape(-1)/ kpar_3d[ii]
+    # col2 = mu_3d.reshape(-1)
+    col2 = kpar2d_3D.reshape(-1)
+    sc = plt.scatter(col[_], y[_], c=col2[_], alpha=0.6)
+    sc_all.append(sc)
+
+vmin = min(sc.get_array().min() for sc in sc_all)
+vmax = max(sc.get_array().max() for sc in sc_all)
+
+norm = plt.Normalize(vmin, vmax)
+
+for sc in sc_all:
+    sc.set_norm(norm)
+
+plt.axvline(0.66)
+plt.xscale("log")
+plt.ylim(0.05, 0.4)
+plt.colorbar()
+
+# %%
+plt.imshow(corr_both)
+plt.colorbar()
+
+# %%
+# plt.figure(figsize=(8, 8))
+
+# Flattened P3D bins have repeated k_parallel but different k_perp. Plot
+# their column indices rather than collapsing them onto duplicate x positions.
+x_edges = np.arange(nelem_par * nelem_per)
+
+# kpar2d_3D, kperp2d_3D = np.meshgrid(kpar_3d, kper_3d, indexing="ij")
+# kk_3d = np.sqrt(kpar2d_3D**2 + kperp2d_3D**2)
+# mu_3d = kpar2d_3D / kk_3d
+
+mat = corr_both[nmax - nelem_par :, : nmax - nelem_par]
+ind = np.argsort(x_edges)
+
+fig, ax = plt.subplots(figsize=(8, 6))
+
+fontsize = 18
+ticksize = 18
+sc = ax.pcolormesh(x_edges[ind], kpar_3d, mat[:, ind], shading="auto", rasterized=True)
+ax.set_ylabel(r"$k^\mathrm{1D}_\parallel[\mathrm{Mpc}^{-1}]$", fontsize=fontsize)
+ax.set_xlabel("Flattened P3D bin (k_perp varies fastest)", fontsize=fontsize)
+ax.tick_params(axis="both", labelsize=ticksize)
+
+cbar = fig.colorbar(sc)
+cbar.set_label(r"Correlation $P_\mathrm{3D}$ and $P_\mathrm{1D}$", fontsize=fontsize)
+cbar.ax.tick_params(labelsize=ticksize)
+plt.tight_layout()
+Path("figs").mkdir(exist_ok=True)
+plt.savefig("figs/corr_p1d_p3d.pdf")
+plt.savefig("figs/corr_p1d_p3d.png")
+
+# %%
+# plt.figure(figsize=(8, 8))
+
+
+mat = corr_both[nmax - nelem_par :, :nmax - nelem_par]
+
+plt.pcolormesh(mat, shading="auto")
+plt.colorbar()
+
+# %% [markdown]
+#
