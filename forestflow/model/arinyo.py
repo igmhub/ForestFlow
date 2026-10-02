@@ -50,24 +50,32 @@ class ArinyoModel:
         k_perp_iMpc: ArrayLike,
         ari_pp: Mapping[str, Any],
     ) -> NDArray[Any]:
-        """
-        Compute the 3D flux power spectrum for inputs given as k_parallel and k_perp.
+        """Evaluate Cartesian Arinyo P3D in comoving units.
 
-        Parameters:
-            z (float): Redshift (scalar). It modifies the linear power spectrum but not the value of the Arinyo parameters
-            kpar (float or array-like): Wavenumber component along the line-of-sight (Mpc^-1).
-            kperp (float or array-like): Wavenumber component perpendicular to the line-of-sight (Mpc^-1).
-            ari_pp (dict): Arinyo model parameters (missing keys will use defaults).
-            new_cosmo_params (dict, optional): Optional cosmology override passed through to `P3D_Mpc`.
+        Parameters
+        ----------
+        linear : forestflow.model.linear.LinearTheoryGrid
+            Linear-theory grid supplying the evolved ``bc`` power and growth
+            rate at ``z``.
+        z : float or array_like
+            Redshift scalar or redshift axis accepted by ``linear``.
+        k_par_iMpc, k_perp_iMpc : array_like
+            Non-negative parallel and transverse comoving wavenumbers in
+            1/Mpc. They are broadcast to the output shape.
+        ari_pp : mapping
+            Arinyo coefficients; omitted coefficient names use model defaults.
 
-        Returns:
-            float or array-like: 3D flux power spectrum in units of Mpc^3 with the same shape as the broadcasted
-            inputs.
+        Returns
+        -------
+        numpy.ndarray
+            Flux P3D in Mpc^3, with broadcast k, redshift, and supported
+            leading batch axes.
 
-        Other Parameters
-        ----------------
-        linear : object
-            Precomputed linear-theory grid.
+        Raises
+        ------
+        ValueError
+            If a wavenumber is non-finite, negative, or both components are
+            zero.
         """
 
         k_par_iMpc = validate_finite_array(
@@ -105,24 +113,30 @@ class ArinyoModel:
         mu: float,
         ari_pp: Mapping[str, Any],
     ) -> float:
-        """
-        Compute the model for the 3D flux power spectrum in units of Mpc^3.
+        """Evaluate Arinyo P3D on wavenumber--angle coordinates.
 
-        Parameters:
-            z (float): Redshift. It modifies the linear power spectrum but not the value of the Arinyo parameters
-            k (float): Wavenumber.
-            mu (float): Cosine of the angle between the line-of-sight and the wavevector.
-            ari_pp (dict): Arinyo parameters
+        Parameters
+        ----------
+        linear : forestflow.model.linear.LinearTheoryGrid
+            Linear-theory grid associated with the supplied redshift(s).
+        z : float or array_like
+            Redshift scalar or axis accepted by the linear grid.
+        k_iMpc, mu : array_like
+            Comoving wavenumber in 1/Mpc and line-of-sight cosine in ``[0, 1]``.
+            Inputs are broadcast and may include padded NaN cells, which are
+            returned as NaN.
+        ari_pp : mapping
+            Named Arinyo coefficients. Missing entries use defaults.
 
-        Returns:
-            float: Computed value of the 3D flux power spectrum.
+        Returns
+        -------
+        numpy.ndarray
+            P3D in Mpc^3 with the supported redshift and leading batch axes.
 
-        Other Parameters
-        ----------------
-        linear : object
-            Precomputed linear-theory grid.
-        k_iMpc : numpy.ndarray
-            Wavenumbers in inverse megaparsecs.
+        Notes
+        -----
+        The large-scale term is ``(bias + bias_eta * f * mu**2)**2``;
+        ``bias_eta`` is not the redshift-space parameter beta.
         """
 
         z = np.asarray(z)
@@ -265,26 +279,26 @@ class ArinyoModel:
         ari_pp: Any,
         new_cosmo_params: int | None = None,
     ) -> NDArray[Any]:
-        """
-        Compute P-cross for the P3D model.
+        """Project Arinyo P3D into transverse cross power.
 
-        Parameters:
-            z (float): Redshift. Cannot be array.
-            k_par (array-like): Array of k-parallel values at which to compute Px.
-        Returns:
-            rperp (array-like): values (float) of separation in Mpc
-            Px_per_kpar (array-like): values (float) of Px for each k parallel and rperp. Shape: (len(k_par), len(rperp)).
+        Parameters
+        ----------
+        z : float
+            Single redshift at which a linear-theory grid is constructed.
+        k_par_iMpc : array_like
+            Parallel comoving wavenumbers in 1/Mpc.
+        r_perp_Mpc : array_like
+            Transverse separations in comoving Mpc.
+        ari_pp : mapping
+            Named Arinyo coefficients.
+        new_cosmo_params : mapping, optional
+            Cosmological changes forwarded to the linear-theory constructor.
 
-        Other Parameters
-        ----------------
-        k_par_iMpc : numpy.ndarray
-            Kpar impc used by the calculation.
-        r_perp_Mpc : object
-            Rperp mpc used by the calculation.
-        ari_pp : object
-            Ari pp used by the calculation.
-        new_cosmo_params : int
-            Cosmological parameters overriding the fiducial cosmology.
+        Returns
+        -------
+        numpy.ndarray
+            Cross power with axes corresponding to ``k_par_iMpc`` and
+            ``r_perp_Mpc``.
         """
 
         # NEEDS TO BE UPDATED!!!

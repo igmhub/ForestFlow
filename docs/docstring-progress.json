@@ -1,0 +1,3325 @@
+{
+  "repository": "ForestFlow",
+  "revision": "95cc1c39b8ce758567efa724a74aa537a58b0d6f",
+  "functions": [
+    {
+      "id": "ForestFlow-0001",
+      "file": "forestflow/archive/gadget_archive.py",
+      "qualified_name": "GadgetArchive3D.__init__",
+      "line": 38,
+      "signature": "__init__(self, base_folder: Any | None=None, file_errors: Any | None=None, postproc: str | None='Cabayol23_fixp3d', kp_Mpc: Any | None=None, average: str | None='both', addcentral: bool | None=False) -> None",
+      "detected_gaps": [
+        "Summary does not end with a period.",
+        "Replace placeholder descriptions with concrete meaning for `base_folder`, `file_errors`, `postproc`, `kp_Mpc`, `average`, `addcentral`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0002",
+      "file": "forestflow/archive/gadget_archive.py",
+      "qualified_name": "GadgetArchive3D.get_P3D_k_mu_bin_edges",
+      "line": 113,
+      "signature": "get_P3D_k_mu_bin_edges(self, k_max_iMpc=None)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `k_max_iMpc`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0003",
+      "file": "forestflow/archive/gadget_archive.py",
+      "qualified_name": "GadgetArchive3D.get_training_data",
+      "line": 117,
+      "signature": "get_training_data(self, simulation_label: str | list[str] | None=None, emu_params: list[str] | None=None, **kwargs: Any) -> list[dict[str, Any]]",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `simulation_label`, `emu_params`, `kwargs`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `TypeError`, `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0004",
+      "file": "forestflow/archive/gadget_archive.py",
+      "qualified_name": "GadgetArchive3D.get_testing_data",
+      "line": 197,
+      "signature": "get_testing_data(self, sim_label: str, ind_rescaling: int | None=0, kmax_3d: float | None=5, kmax_1d: float | None=4) -> dict[str, Any]",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0005",
+      "file": "forestflow/archive/gadget_archive.py",
+      "qualified_name": "GadgetArchive3D.get_central_seed_average",
+      "line": 237,
+      "signature": "get_central_seed_average(self) -> list[dict[str, Any]]",
+      "detected_gaps": [
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `KeyError`, `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0006",
+      "file": "forestflow/archive/gadget_archive.py",
+      "qualified_name": "GadgetArchive3D.get_central_seed_average.<locals>.identity_value",
+      "line": 252,
+      "signature": "identity_value(value: Any) -> Any",
+      "detected_gaps": [
+        "No docstring: write an implementation-specific summary and the applicable NumPy sections.",
+        "Provide canonical `Parameters` entries for `value`.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0007",
+      "file": "forestflow/archive/gadget_archive.py",
+      "qualified_name": "GadgetArchive3D.get_central_seed_average.<locals>.identity",
+      "line": 257,
+      "signature": "identity(snapshot: dict[str, Any]) -> tuple[Any, ...]",
+      "detected_gaps": [
+        "No docstring: write an implementation-specific summary and the applicable NumPy sections.",
+        "Provide canonical `Parameters` entries for `snapshot`.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0008",
+      "file": "forestflow/archive/gadget_archive.py",
+      "qualified_name": "GadgetArchive3D.add_arinyo_fixp3d",
+      "line": 324,
+      "signature": "add_arinyo_fixp3d(self, archive: list[dict[str, Any]]) -> None",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `archive`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Review explicit raises `KeyError`, `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0009",
+      "file": "forestflow/archive/gadget_archive.py",
+      "qualified_name": "GadgetArchive3D.add_arinyo_fixp3d.<locals>.identity_value",
+      "line": 337,
+      "signature": "identity_value(value: Any) -> Any",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `value`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0010",
+      "file": "forestflow/archive/gadget_archive.py",
+      "qualified_name": "GadgetArchive3D.add_arinyo_fixp3d.<locals>.snapshot_identity",
+      "line": 343,
+      "signature": "snapshot_identity(source: dict[str, Any]) -> tuple[Any, ...]",
+      "detected_gaps": [
+        "No docstring: write an implementation-specific summary and the applicable NumPy sections.",
+        "Provide canonical `Parameters` entries for `source`.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0011",
+      "file": "forestflow/archive/gadget_archive.py",
+      "qualified_name": "GadgetArchive3D.add_Arinyo_minimizer_indiv",
+      "line": 389,
+      "signature": "add_Arinyo_minimizer_indiv(self, archive: Any, sim_label: Any | None=None, kmax_3d: int | None=5, kmax_1d: int | None=4) -> Any",
+      "detected_gaps": [
+        "Summary does not end with a period.",
+        "Replace placeholder descriptions with concrete meaning for `sim_label`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0012",
+      "file": "forestflow/archive/gadget_archive.py",
+      "qualified_name": "GadgetArchive3D.add_Arinyo_minimizer_indiv.<locals>.get_flag_out",
+      "line": 416,
+      "signature": "get_flag_out(ind_sim: Any, kmax_3d: int | float, kmax_1d: int | float) -> Any",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `ind_sim`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0013",
+      "file": "forestflow/archive/gadget_archive.py",
+      "qualified_name": "GadgetArchive3D.add_Arinyo_minimizer_indiv_lowk",
+      "line": 527,
+      "signature": "add_Arinyo_minimizer_indiv_lowk(self, archive: Any, sim_label: str | None='mpg_hypercube') -> None",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `sim_label`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0014",
+      "file": "forestflow/archive/gadget_archive.py",
+      "qualified_name": "GadgetArchive3D.add_Arinyo_minimizer_joint",
+      "line": 571,
+      "signature": "add_Arinyo_minimizer_joint(self, archive: Any, sim_label: Any | None=None, kmax_3d: int | None=3, kmax_1d: int | None=3) -> Any",
+      "detected_gaps": [
+        "Summary does not end with a period.",
+        "Replace placeholder descriptions with concrete meaning for `sim_label`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0015",
+      "file": "forestflow/archive/gadget_archive.py",
+      "qualified_name": "GadgetArchive3D.add_Arinyo_minimizer_joint.<locals>.get_flag_out",
+      "line": 598,
+      "signature": "get_flag_out(ind_sim: Any, val_scaling: Any, kmax_3d: int | float, kmax_1d: int | float) -> Any",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `ind_sim`, `val_scaling`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0016",
+      "file": "forestflow/archive/gadget_archive.py",
+      "qualified_name": "GadgetArchive3D.add_Arinyo_minimizer_joint.<locals>.paramz_to_paramind",
+      "line": 632,
+      "signature": "paramz_to_paramind(z: int | float, paramz: Any) -> Any",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `paramz`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0017",
+      "file": "forestflow/archive/gadget_archive.py",
+      "qualified_name": "GadgetArchive3D.get_Arinyo_priors",
+      "line": 703,
+      "signature": "get_Arinyo_priors(self, zmin: float, zmax: float, type_fit: str | None='Arinyo_min', return_all: bool | None=False) -> dict[str, Any]",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0018",
+      "file": "forestflow/archive/gadget_archive.py",
+      "qualified_name": "GadgetArchive3D.get_IGM_priors",
+      "line": 798,
+      "signature": "get_IGM_priors(self, zmin: float, zmax: float, return_all: bool | None=False, IGM_params: str | None=None) -> dict[str, Any]",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0019",
+      "file": "forestflow/archive/helpers.py",
+      "qualified_name": "get_sim_power",
+      "line": 5,
+      "signature": "get_sim_power(sim: Any, kmax_1d_Mpc: int | None=4, kmax_3d_Mpc: int | None=5) -> Any",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `sim`, `kmax_1d_Mpc`, `kmax_3d_Mpc`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0020",
+      "file": "forestflow/conventions.py",
+      "qualified_name": "canonicalize_unit_keys",
+      "line": 31,
+      "signature": "canonicalize_unit_keys(values: dict[str, Any]) -> dict[str, Any]",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `values`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0021",
+      "file": "forestflow/conventions.py",
+      "qualified_name": "validate_wavenumber",
+      "line": 50,
+      "signature": "validate_wavenumber(values: Any, *, name: str) -> np.ndarray",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `values`, `name`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0022",
+      "file": "forestflow/conventions.py",
+      "qualified_name": "validate_finite_array",
+      "line": 58,
+      "signature": "validate_finite_array(values: Any, name: str, minimum: float | None=None) -> np.ndarray",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `values`, `name`, `minimum`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0023",
+      "file": "forestflow/conventions.py",
+      "qualified_name": "validate_mu",
+      "line": 71,
+      "signature": "validate_mu(values: Any) -> np.ndarray",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `values`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0024",
+      "file": "forestflow/emulator/bundle.py",
+      "qualified_name": "manifest_path",
+      "line": 20,
+      "signature": "manifest_path(model_path: str | Path) -> Path",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `model_path`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0025",
+      "file": "forestflow/emulator/bundle.py",
+      "qualified_name": "sha256",
+      "line": 25,
+      "signature": "sha256(path: str | Path) -> str",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `path`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0026",
+      "file": "forestflow/emulator/bundle.py",
+      "qualified_name": "runtime_versions",
+      "line": 34,
+      "signature": "runtime_versions() -> dict[str, str]",
+      "detected_gaps": [
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0027",
+      "file": "forestflow/emulator/bundle.py",
+      "qualified_name": "write_manifest",
+      "line": 45,
+      "signature": "write_manifest(model_path: str | Path, transform_path: str | Path | None, training_provenance: Mapping[str, Any] | None=None) -> Path",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `model_path`, `transform_path`, `training_provenance`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `FileNotFoundError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0028",
+      "file": "forestflow/emulator/bundle.py",
+      "qualified_name": "load_manifest",
+      "line": 82,
+      "signature": "load_manifest(model_path: str | Path, transform_path: str | Path | None) -> dict[str, Any] | None",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `model_path`, `transform_path`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `ModelBundleError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0029",
+      "file": "forestflow/emulator/covariance.py",
+      "qualified_name": "data_for_l10_forest",
+      "line": 10,
+      "signature": "data_for_l10_forest(archive, emulator_label='forest_mpg', *, fit_label='Arinyo_min', kmax_Mpc=4.0)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `archive`, `emulator_label`, `fit_label`, `kmax_Mpc`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0030",
+      "file": "forestflow/emulator/network.py",
+      "qualified_name": "_training_data_fingerprint",
+      "line": 8,
+      "signature": "_training_data_fingerprint(training_data: Mapping[str, Mapping[str, Any]]) -> str",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `training_data`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0031",
+      "file": "forestflow/emulator/network.py",
+      "qualified_name": "init_xavier",
+      "line": 21,
+      "signature": "init_xavier(m: torch.nn.Module) -> None",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0032",
+      "file": "forestflow/emulator/p1d.py",
+      "qualified_name": "P1DEmulator.__init__",
+      "line": 20,
+      "signature": "__init__(self, name_emu='forest_mpg_fix', compile_model=True)",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0033",
+      "file": "forestflow/emulator/p1d.py",
+      "qualified_name": "P1DEmulator.set_cosmology",
+      "line": 42,
+      "signature": "set_cosmology(self, cosmo_params_dict)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `cosmo_params_dict`. Existing prose may describe these, but there are no matching canonical entries."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0034",
+      "file": "forestflow/emulator/p1d.py",
+      "qualified_name": "P1DEmulator._effective_cosmology_parameters",
+      "line": 55,
+      "signature": "_effective_cosmology_parameters(self, new_cosmo_params)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `new_cosmo_params`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0035",
+      "file": "forestflow/emulator/p1d.py",
+      "qualified_name": "P1DEmulator.set_linear_theory",
+      "line": 63,
+      "signature": "set_linear_theory(self, z, new_cosmo_params=None)",
+      "detected_gaps": [
+        "Review explicit raises `RuntimeError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0036",
+      "file": "forestflow/emulator/p1d.py",
+      "qualified_name": "P1DEmulator._prediction_key",
+      "line": 95,
+      "signature": "_prediction_key(self, parameters, latent_index=None)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `parameters`, `latent_index`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0037",
+      "file": "forestflow/emulator/p1d.py",
+      "qualified_name": "P1DEmulator._evaluate_emulator",
+      "line": 101,
+      "signature": "_evaluate_emulator(self, emulator_calls, **kwargs)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `emulator_calls`, `kwargs`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0038",
+      "file": "forestflow/emulator/p1d.py",
+      "qualified_name": "P1DEmulator.prime_prediction_cache",
+      "line": 110,
+      "signature": "prime_prediction_cache(self, emulator_calls)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `emulator_calls`. Existing prose may describe these, but there are no matching canonical entries."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0039",
+      "file": "forestflow/emulator/p1d.py",
+      "qualified_name": "P1DEmulator.clear_prediction_cache",
+      "line": 140,
+      "signature": "clear_prediction_cache(self)",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0040",
+      "file": "forestflow/emulator/p1d.py",
+      "qualified_name": "P1DEmulator.emulate_p1d_Mpc",
+      "line": 145,
+      "signature": "emulate_p1d_Mpc(self, zs, k_iMpc, emulator_parameters, cosmology_parameters=None)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `zs`, `k_iMpc`, `emulator_parameters`, `cosmology_parameters`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0041",
+      "file": "forestflow/emulator/p1d.py",
+      "qualified_name": "P1DEmulator._emulate_p1d_Mpc_scalar",
+      "line": 169,
+      "signature": "_emulate_p1d_Mpc_scalar(self, zs, k_iMpc, emulator_parameters)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `zs`, `k_iMpc`, `emulator_parameters`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `RuntimeError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0042",
+      "file": "forestflow/emulator/p1d.py",
+      "qualified_name": "P1DEmulator._emulate_p1d_Mpc_batch",
+      "line": 206,
+      "signature": "_emulate_p1d_Mpc_batch(self, zs, k_iMpc, emulator_parameters, cosmo_params_batch)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `zs`, `k_iMpc`, `emulator_parameters`, `cosmo_params_batch`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `RuntimeError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0043",
+      "file": "forestflow/emulator/p1d.py",
+      "qualified_name": "P1DEmulator.kp_iMpc",
+      "line": 238,
+      "signature": "kp_iMpc(self)",
+      "detected_gaps": [
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0044",
+      "file": "forestflow/emulator/p1d.py",
+      "qualified_name": "P1DEmulator.kmax_3d_iMpc",
+      "line": 243,
+      "signature": "kmax_3d_iMpc(self)",
+      "detected_gaps": [
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0045",
+      "file": "forestflow/emulator/p1d.py",
+      "qualified_name": "P1DEmulator.kmax_1d_iMpc",
+      "line": 248,
+      "signature": "kmax_1d_iMpc(self)",
+      "detected_gaps": [
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0046",
+      "file": "forestflow/emulator/p1d.py",
+      "qualified_name": "P1DEmulator.zmax",
+      "line": 253,
+      "signature": "zmax(self)",
+      "detected_gaps": [
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0047",
+      "file": "forestflow/emulator/p1d.py",
+      "qualified_name": "P1DEmulator.list_sim_cube",
+      "line": 258,
+      "signature": "list_sim_cube(self)",
+      "detected_gaps": [
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0048",
+      "file": "forestflow/emulator/p1d.py",
+      "qualified_name": "P1DEmulator.kp_Mpc",
+      "line": 263,
+      "signature": "kp_Mpc(self)",
+      "detected_gaps": [
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0049",
+      "file": "forestflow/emulator/p1d.py",
+      "qualified_name": "_same_cosmology",
+      "line": 268,
+      "signature": "_same_cosmology(first, second)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `first`, `second`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0050",
+      "file": "forestflow/emulator/p3d_cinn.py",
+      "qualified_name": "_normalise_model_domain",
+      "line": 51,
+      "signature": "_normalise_model_domain(domain: Mapping[str, Any] | None) -> dict[str, Any]",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `domain`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0051",
+      "file": "forestflow/emulator/p3d_cinn.py",
+      "qualified_name": "P3DEmulator.__init__",
+      "line": 111,
+      "signature": "__init__(self, key: str='forest_mpg_fix', training_data: Optional[Dict[str, Dict[str, np.ndarray]]]=None, train: bool=False, save_path: Optional[str]=None, model_path: Optional[str]=None, transf_file: Optional[str]=None, nLayers_inn: int=6, dims_int: int=12, nepochs: int=1000, batch_size: int=8, lr: float=0.001, weight_decay: float=0.0001, use_val_set: bool=False, adamw: bool=True, Nrealizations: int=1000, training_provenance: Optional[Mapping[str, Any]]=None, model_domain: Optional[Mapping[str, Any]]=None, compile_model: bool=False) -> None",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0052",
+      "file": "forestflow/emulator/p3d_cinn.py",
+      "qualified_name": "P3DEmulator._domain_value",
+      "line": 267,
+      "signature": "_domain_value(self, name: str) -> Any",
+      "detected_gaps": [
+        "No docstring: write an implementation-specific summary and the applicable NumPy sections.",
+        "Provide canonical `Parameters` entries for `name`.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `AttributeError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0053",
+      "file": "forestflow/emulator/p3d_cinn.py",
+      "qualified_name": "P3DEmulator.kp_iMpc",
+      "line": 276,
+      "signature": "kp_iMpc(self) -> float",
+      "detected_gaps": [
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0054",
+      "file": "forestflow/emulator/p3d_cinn.py",
+      "qualified_name": "P3DEmulator.kmax_3d_iMpc",
+      "line": 281,
+      "signature": "kmax_3d_iMpc(self) -> float",
+      "detected_gaps": [
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0055",
+      "file": "forestflow/emulator/p3d_cinn.py",
+      "qualified_name": "P3DEmulator.kmax_1d_iMpc",
+      "line": 286,
+      "signature": "kmax_1d_iMpc(self) -> float",
+      "detected_gaps": [
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0056",
+      "file": "forestflow/emulator/p3d_cinn.py",
+      "qualified_name": "P3DEmulator.zmax",
+      "line": 291,
+      "signature": "zmax(self) -> float",
+      "detected_gaps": [
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0057",
+      "file": "forestflow/emulator/p3d_cinn.py",
+      "qualified_name": "P3DEmulator.list_sim_cube",
+      "line": 296,
+      "signature": "list_sim_cube(self) -> list[str]",
+      "detected_gaps": [
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0058",
+      "file": "forestflow/emulator/p3d_cinn.py",
+      "qualified_name": "P3DEmulator.compile",
+      "line": 300,
+      "signature": "compile(self, mode: str='reduce-overhead') -> None",
+      "detected_gaps": [
+        "Review explicit raises `RuntimeError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0059",
+      "file": "forestflow/emulator/p3d_cinn.py",
+      "qualified_name": "P3DEmulator._define_cINN_Arinyo",
+      "line": 319,
+      "signature": "_define_cINN_Arinyo(self, nLayers_inn: int, batch_size: int, dim_inputSpace: int, dims_int: int=16) -> Ff.SequenceINN",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0060",
+      "file": "forestflow/emulator/p3d_cinn.py",
+      "qualified_name": "P3DEmulator._define_cINN_Arinyo.<locals>.subnet_fc",
+      "line": 350,
+      "signature": "subnet_fc(dims_in: int, dims_out: int) -> torch.nn.Sequential",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0061",
+      "file": "forestflow/emulator/p3d_cinn.py",
+      "qualified_name": "P3DEmulator._load_emulator",
+      "line": 394,
+      "signature": "_load_emulator(self, model_path: str) -> None",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0062",
+      "file": "forestflow/emulator/p3d_cinn.py",
+      "qualified_name": "P3DEmulator._train_emulator",
+      "line": 432,
+      "signature": "_train_emulator(self, training_data: Dict[str, Dict[str, np.ndarray]], adamw: bool=True, lr: float=0.0005, nepochs: int=1000, weight_decay: float=0.0001, dim_inputSpace: int=8, nLayers_inn: int=5, dims_int: int=16, batch_size: int=16, save_path: Optional[str]=None, train_seed: int=32, use_val_set: bool=False, transf_file: Optional[str]=None, training_provenance: Optional[Mapping[str, Any]]=None, model_domain: Optional[Mapping[str, Any]]=None) -> None",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `transf_file`, `training_provenance`, `model_domain`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Review explicit raises `RuntimeError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0063",
+      "file": "forestflow/emulator/p3d_cinn.py",
+      "qualified_name": "P3DEmulator._prepare_training_data",
+      "line": 615,
+      "signature": "_prepare_training_data(self, training_data: Dict[str, Dict[str, np.ndarray]]) -> Tuple[torch.Tensor, torch.Tensor]",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0064",
+      "file": "forestflow/emulator/p3d_cinn.py",
+      "qualified_name": "P3DEmulator._create_data_loaders",
+      "line": 660,
+      "signature": "_create_data_loaders(self, emu_input: torch.Tensor, emu_output: torch.Tensor, batch_size: int, use_val_set: bool, seed: int) -> Tuple[DataLoader, Optional[DataLoader]]",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0065",
+      "file": "forestflow/emulator/p3d_cinn.py",
+      "qualified_name": "P3DEmulator._setup_optimizer",
+      "line": 722,
+      "signature": "_setup_optimizer(self, adamw: bool, lr: float, weight_decay: float) -> torch.optim.Optimizer",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0066",
+      "file": "forestflow/emulator/p3d_cinn.py",
+      "qualified_name": "P3DEmulator._train_epoch",
+      "line": 755,
+      "signature": "_train_epoch(self, optimizer: torch.optim.Optimizer, loader: DataLoader) -> float",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0067",
+      "file": "forestflow/emulator/p3d_cinn.py",
+      "qualified_name": "P3DEmulator._compute_validation_loss",
+      "line": 793,
+      "signature": "_compute_validation_loss(self, loader: DataLoader) -> float",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0068",
+      "file": "forestflow/emulator/p3d_cinn.py",
+      "qualified_name": "P3DEmulator._log_training_progress",
+      "line": 824,
+      "signature": "_log_training_progress(self, epoch: int, nepochs: int, use_val_set: bool) -> None",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0069",
+      "file": "forestflow/emulator/p3d_cinn.py",
+      "qualified_name": "P3DEmulator.evaluate",
+      "line": 851,
+      "signature": "evaluate(self, emu_params: Union[Dict[str, float], List[Dict[str, float]]], Nrealizations: Optional[int]=None, seed: int=0, latent_indices: Optional[Sequence[int]]=None) -> Dict[str, np.ndarray]",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0070",
+      "file": "forestflow/emulator/p3d_cinn.py",
+      "qualified_name": "P3DEmulator._prepare_condition_tensor",
+      "line": 927,
+      "signature": "_prepare_condition_tensor(self, emu_params: List[Dict[str, float]], neval: int, Nrealizations: int) -> torch.Tensor",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0071",
+      "file": "forestflow/emulator/p3d_cinn.py",
+      "qualified_name": "P3DEmulator._generate_predictions",
+      "line": 959,
+      "signature": "_generate_predictions(self, condition: torch.Tensor, neval: int, Nrealizations: int, generator: torch.Generator, seed: Optional[int]=None, latent_indices: Optional[Sequence[int]]=None) -> np.ndarray",
+      "detected_gaps": [
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0072",
+      "file": "forestflow/emulator/p3d_cinn.py",
+      "qualified_name": "P3DEmulator._process_predictions",
+      "line": 1052,
+      "signature": "_process_predictions(self, mean_prediction: np.ndarray, neval: int) -> Dict[str, np.ndarray]",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0073",
+      "file": "forestflow/emulator/p3d_cinn.py",
+      "qualified_name": "compute_val_loss",
+      "line": 1088,
+      "signature": "compute_val_loss(model: Ff.SequenceINN, loader: DataLoader) -> float",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0074",
+      "file": "forestflow/emulator/training.py",
+      "qualified_name": "get_training_data",
+      "line": 18,
+      "signature": "get_training_data(list_sims: Any, zmin: int | None=0, zmax: int | None=10, drop_sim: Any | None=None, type_fit: str | None='Arinyo_min') -> Any",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `list_sims`, `zmin`, `zmax`, `drop_sim`, `type_fit`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0075",
+      "file": "forestflow/emulator/training.py",
+      "qualified_name": "Transf_data.__init__",
+      "line": 98,
+      "signature": "__init__(self, dict_all_params: Any | None=None, sim_model: Any | None=None, preload_file: Any | None=None, save_file: Any | None=None, compute_fisher: bool | None=False, type_fit: str | None='Arinyo_min') -> None",
+      "detected_gaps": [
+        "Summary does not end with a period.",
+        "Replace placeholder descriptions with concrete meaning for `dict_all_params`, `sim_model`, `preload_file`, `save_file`, `compute_fisher`, `type_fit`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0076",
+      "file": "forestflow/emulator/training.py",
+      "qualified_name": "Transf_data.set_standarize",
+      "line": 203,
+      "signature": "set_standarize(self, dict_params: Mapping[str, Any], type_stand: str | None='input') -> None",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `dict_params`, `type_stand`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0077",
+      "file": "forestflow/emulator/training.py",
+      "qualified_name": "Transf_data.set_whitening",
+      "line": 231,
+      "signature": "set_whitening(self, fisher: Any, type_stand: str | None='output') -> None",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `fisher`, `type_stand`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0078",
+      "file": "forestflow/emulator/training.py",
+      "qualified_name": "Transf_data.set_global_norm",
+      "line": 259,
+      "signature": "set_global_norm(self, dict_params: Mapping[str, Any], type_stand: str | None='output') -> None",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `dict_params`, `type_stand`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0079",
+      "file": "forestflow/emulator/training.py",
+      "qualified_name": "Transf_data.transform",
+      "line": 285,
+      "signature": "transform(self, dict_params: Mapping[str, Any], direct: bool | None=True) -> Any",
+      "detected_gaps": [
+        "Summary does not end with a period.",
+        "Replace placeholder descriptions with concrete meaning for `dict_params`, `direct`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0080",
+      "file": "forestflow/emulator/training.py",
+      "qualified_name": "Transf_data.standarize",
+      "line": 333,
+      "signature": "standarize(self, dict_params: Mapping[str, Any], direct: bool | None=True, type_stand: str | None='input') -> Any",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `dict_params`, `direct`, `type_stand`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0081",
+      "file": "forestflow/emulator/training.py",
+      "qualified_name": "Transf_data.whitening",
+      "line": 370,
+      "signature": "whitening(self, dict_params: Mapping[str, Any], direct: bool | None=True, type_stand: str | None='output') -> Any",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `dict_params`, `direct`, `type_stand`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0082",
+      "file": "forestflow/emulator/training.py",
+      "qualified_name": "Transf_data.global_norm",
+      "line": 414,
+      "signature": "global_norm(self, dict_params: Mapping[str, Any], direct: bool | None=True, type_stand: str | None='output') -> Any",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `dict_params`, `direct`, `type_stand`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0083",
+      "file": "forestflow/emulator/training.py",
+      "qualified_name": "Transf_data.transf_stand",
+      "line": 447,
+      "signature": "transf_stand(self, dict_params: Mapping[str, Any], direct: bool | None=True, type_stand: str | None='input') -> Any",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `dict_params`, `direct`, `type_stand`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0084",
+      "file": "forestflow/emulator/training.py",
+      "qualified_name": "Transf_data.transf_stand_white",
+      "line": 482,
+      "signature": "transf_stand_white(self, dict_params: Mapping[str, Any], direct: bool | None=True, type_stand: str | None='output') -> Any",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `dict_params`, `direct`, `type_stand`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0085",
+      "file": "forestflow/emulator/training.py",
+      "qualified_name": "Transf_data.transf_stand_white_norm",
+      "line": 521,
+      "signature": "transf_stand_white_norm(self, dict_params: Mapping[str, Any], direct: bool | None=True, type_stand: str | None='output') -> Any",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `dict_params`, `direct`, `type_stand`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0086",
+      "file": "forestflow/model/arinyo.py",
+      "qualified_name": "ArinyoModel.__init__",
+      "line": 19,
+      "signature": "__init__(self, fiducial_cosmology: Any | None=None, default_bias: float | None=-0.18, default_bias_eta: float | None=-0.23, default_q1: float | None=0.4, default_q2: float | None=0.0, default_kvav: float | None=0.58, default_av: float | None=0.29, default_bv: float | None=1.55, default_kp: float | None=10.5) -> None",
+      "detected_gaps": [
+        "No docstring: write an implementation-specific summary and the applicable NumPy sections.",
+        "Provide canonical `Parameters` entries for `fiducial_cosmology`, `default_bias`, `default_bias_eta`, `default_q1`, `default_q2`, `default_kvav`, `default_av`, `default_bv`, `default_kp`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0087",
+      "file": "forestflow/model/arinyo.py",
+      "qualified_name": "ArinyoModel.P3D_Mpc_kpar_kperp",
+      "line": 45,
+      "signature": "P3D_Mpc_kpar_kperp(self, linear: Any, z: float, k_par_iMpc: ArrayLike, k_perp_iMpc: ArrayLike, ari_pp: Mapping[str, Any]) -> NDArray[Any]",
+      "detected_gaps": [
+        "Convert non-NumPy section headings: `Parameters:`, `Returns:`.",
+        "Provide canonical `Parameters` entries for `z`, `k_par_iMpc`, `k_perp_iMpc`, `ari_pp`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "verified_unchanged",
+      "evidence": "Verified Cartesian P3D documentation against finite/nonnegative validation, broadcasting, comoving units, and linear-grid use.",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0088",
+      "file": "forestflow/model/arinyo.py",
+      "qualified_name": "ArinyoModel._arinyo_kernel",
+      "line": 83,
+      "signature": "_arinyo_kernel(self, linP_Mpc, fz, k_iMpc, mu, ari_pp)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `linP_Mpc`, `fz`, `k_iMpc`, `mu`, `ari_pp`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0089",
+      "file": "forestflow/model/arinyo.py",
+      "qualified_name": "ArinyoModel.P3D_Mpc_k_mu",
+      "line": 100,
+      "signature": "P3D_Mpc_k_mu(self, linear: Any, z: float, k_iMpc: ArrayLike, mu: float, ari_pp: Mapping[str, Any]) -> float",
+      "detected_gaps": [
+        "Convert non-NumPy section headings: `Parameters:`, `Returns:`.",
+        "Provide canonical `Parameters` entries for `z`, `mu`, `ari_pp`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "verified_unchanged",
+      "evidence": "Verified k/mu P3D documentation against padded-NaN behavior, batch axes, units, and bias_eta growth convention.",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0090",
+      "file": "forestflow/model/arinyo.py",
+      "qualified_name": "ArinyoModel.P3D_Mpc_kpar_kperp_Gaussian_noise",
+      "line": 174,
+      "signature": "P3D_Mpc_kpar_kperp_Gaussian_noise(self, linear, z, k_par_iMpc, k_perp_iMpc, ari_pp, seed=0, Lbox_Mpc=100, epsilon=0.0)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `linear`, `z`, `k_par_iMpc`, `k_perp_iMpc`, `ari_pp`, `seed`, `Lbox_Mpc`, `epsilon`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0091",
+      "file": "forestflow/model/arinyo.py",
+      "qualified_name": "ArinyoModel.P1D_Mpc",
+      "line": 198,
+      "signature": "P1D_Mpc(self, linear: Any, z: int | float, k_par_iMpc: Any, ari_pp: Any) -> NDArray[Any]",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `linear`, `z`, `k_par_iMpc`, `ari_pp`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0092",
+      "file": "forestflow/model/arinyo.py",
+      "qualified_name": "ArinyoModel.P1D_Mpc_Gaussian_noise",
+      "line": 215,
+      "signature": "P1D_Mpc_Gaussian_noise(self, linear: Any, z: float, k_par_iMpc: ArrayLike, ari_pp: Mapping[str, Any] | None, seed: int=0, Lbox_Mpc: Any=100) -> NDArray[Any]",
+      "detected_gaps": [
+        "Convert non-NumPy section headings: `Parameters:`, `Returns:`.",
+        "Provide canonical `Parameters` entries for `z`, `k_par_iMpc`, `ari_pp`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0093",
+      "file": "forestflow/model/arinyo.py",
+      "qualified_name": "ArinyoModel.Px_Mpc",
+      "line": 260,
+      "signature": "Px_Mpc(self, z: float, k_par_iMpc: ArrayLike, r_perp_Mpc: Any, ari_pp: Any, new_cosmo_params: int | None=None) -> NDArray[Any]",
+      "detected_gaps": [
+        "Convert non-NumPy section headings: `Parameters:`, `Returns:`.",
+        "Replace placeholder descriptions with concrete meaning for `k_par_iMpc`, `r_perp_Mpc`, `ari_pp`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d",
+        "Provide canonical `Parameters` entries for `z`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0094",
+      "file": "forestflow/model/linear.py",
+      "qualified_name": "LinearTheoryGrid.is_batched",
+      "line": 25,
+      "signature": "is_batched(self) -> bool",
+      "detected_gaps": [
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0095",
+      "file": "forestflow/model/linear.py",
+      "qualified_name": "LinearTheory.__init__",
+      "line": 39,
+      "signature": "__init__(self, fiducial_cosmology=None)",
+      "detected_gaps": [
+        "No docstring: write an implementation-specific summary and the applicable NumPy sections.",
+        "Provide canonical `Parameters` entries for `fiducial_cosmology`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0096",
+      "file": "forestflow/model/linear.py",
+      "qualified_name": "LinearTheory._cosmology_for_parameters",
+      "line": 42,
+      "signature": "_cosmology_for_parameters(self, new_cosmo_params=None)",
+      "detected_gaps": [
+        "No docstring: write an implementation-specific summary and the applicable NumPy sections.",
+        "Provide canonical `Parameters` entries for `new_cosmo_params`.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0097",
+      "file": "forestflow/model/linear.py",
+      "qualified_name": "LinearTheory.get_linear_theory",
+      "line": 58,
+      "signature": "get_linear_theory(self, zs, new_cosmo_params=None, **_ignored)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `zs`, `new_cosmo_params`, `_ignored`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0098",
+      "file": "forestflow/model/linear.py",
+      "qualified_name": "LinearTheory.get_linear_theory_batch",
+      "line": 69,
+      "signature": "get_linear_theory_batch(self, zs, cosmology_parameters: Sequence[dict[str, Any]])",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `zs`, `cosmology_parameters`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0099",
+      "file": "forestflow/model/linear.py",
+      "qualified_name": "LinearTheory._require_scalar_adapter",
+      "line": 82,
+      "signature": "_require_scalar_adapter(linear: LinearTheoryGrid)",
+      "detected_gaps": [
+        "No docstring: write an implementation-specific summary and the applicable NumPy sections.",
+        "Provide canonical `Parameters` entries for `linear`.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0100",
+      "file": "forestflow/model/linear.py",
+      "qualified_name": "LinearTheory.get_linP_Mpc",
+      "line": 86,
+      "signature": "get_linP_Mpc(self, linear, z, k_iMpc)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `linear`, `z`, `k_iMpc`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `NotImplementedError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0101",
+      "file": "forestflow/model/linear.py",
+      "qualified_name": "LinearTheory.get_linP_Mpc_batch",
+      "line": 104,
+      "signature": "get_linP_Mpc_batch(self, linear, k_iMpc)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `linear`, `k_iMpc`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0102",
+      "file": "forestflow/model/linear.py",
+      "qualified_name": "LinearTheory.get_fz",
+      "line": 125,
+      "signature": "get_fz(self, linear, z)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `linear`, `z`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0103",
+      "file": "forestflow/model/linear.py",
+      "qualified_name": "LinearTheory.get_fz_batch",
+      "line": 130,
+      "signature": "get_fz_batch(self, linear)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `linear`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0104",
+      "file": "forestflow/model_fits/arinyo.py",
+      "qualified_name": "ArinyoFitter.__init__",
+      "line": 46,
+      "signature": "__init__(self, zlist: Any | None=None, kmin_3d: float | None=0.01, kmax_3d: float | None=4.5, kmin_1d: float | None=0.01, kmax_1d: float | None=7.0, n_k_bins: int | None=20, n_mu_bins: int | None=16, boxsize: float | None=67.5, bounds: Any | None=None) -> None",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `zlist`, `kmin_3d`, `kmin_1d`, `n_k_bins`, `n_mu_bins`, `boxsize`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0105",
+      "file": "forestflow/model_fits/arinyo.py",
+      "qualified_name": "ArinyoFitter._prepare_mpg_bin_geometry",
+      "line": 118,
+      "signature": "_prepare_mpg_bin_geometry(self, kmax_iMpc: float=20.0) -> None",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `kmax_iMpc`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0106",
+      "file": "forestflow/model_fits/arinyo.py",
+      "qualified_name": "ArinyoFitter._initial_parameters_from_simulation",
+      "line": 157,
+      "signature": "_initial_parameters_from_simulation(self, sim: Mapping[str, Any], standard_simulations: Sequence[Mapping[str, Any]] | None=None) -> dict[str, Any]",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `sim`, `standard_simulations`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `KeyError`, `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0107",
+      "file": "forestflow/model_fits/arinyo.py",
+      "qualified_name": "ArinyoFitter._initial_parameters_from_simulation.<locals>.same_identity_value",
+      "line": 196,
+      "signature": "same_identity_value(left, right)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `left`, `right`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0108",
+      "file": "forestflow/model_fits/arinyo.py",
+      "qualified_name": "ArinyoFitter.prepare_simulation",
+      "line": 226,
+      "signature": "prepare_simulation(self, sim: Mapping[str, Any], *, standard_simulations: Sequence[Mapping[str, Any]] | None=None, is_mpg: bool=True) -> None",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `sim`, `standard_simulations`. Existing prose may describe these, but there are no matching canonical entries."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0109",
+      "file": "forestflow/model_fits/arinyo.py",
+      "qualified_name": "ArinyoFitter.prepare_measurements",
+      "line": 283,
+      "signature": "prepare_measurements(self, *, z: float, cosmo_params: Mapping[str, Any], k3d_Mpc: ArrayLike, mu3d: ArrayLike, p3d_Mpc: ArrayLike, std_p3d: ArrayLike, k1d_Mpc: ArrayLike, p1d_Mpc: ArrayLike, std_p1d: ArrayLike, ini_params: Mapping[str, Any] | None=None) -> None",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `z`, `cosmo_params`, `k3d_Mpc`, `mu3d`, `p3d_Mpc`, `std_p3d`, `k1d_Mpc`, `p1d_Mpc`, `std_p1d`, `ini_params`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0110",
+      "file": "forestflow/model_fits/arinyo.py",
+      "qualified_name": "ArinyoFitter._warn_non_mpg_centre_evaluation",
+      "line": 344,
+      "signature": "_warn_non_mpg_centre_evaluation() -> None",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0111",
+      "file": "forestflow/model_fits/arinyo.py",
+      "qualified_name": "ArinyoFitter._prepare_mpg_hybrid_geometry",
+      "line": 355,
+      "signature": "_prepare_mpg_hybrid_geometry(self) -> None",
+      "detected_gaps": [
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0112",
+      "file": "forestflow/model_fits/arinyo.py",
+      "qualified_name": "ArinyoFitter._build_model",
+      "line": 407,
+      "signature": "_build_model(self, sim: Any) -> tuple[Any, ...]",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `sim`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0113",
+      "file": "forestflow/model_fits/arinyo.py",
+      "qualified_name": "ArinyoFitter._prepare_p3d",
+      "line": 438,
+      "signature": "_prepare_p3d(self, sim: Any) -> tuple[Any, ...]",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `sim`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0114",
+      "file": "forestflow/model_fits/arinyo.py",
+      "qualified_name": "ArinyoFitter._prepare_p1d",
+      "line": 477,
+      "signature": "_prepare_p1d(self, sim: Any) -> tuple[Any, ...]",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `sim`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0115",
+      "file": "forestflow/model_fits/arinyo.py",
+      "qualified_name": "ArinyoFitter.params_to_dict",
+      "line": 508,
+      "signature": "params_to_dict(self, params: Mapping[str, Any]) -> Any",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0116",
+      "file": "forestflow/model_fits/arinyo.py",
+      "qualified_name": "ArinyoFitter.params_from_dict",
+      "line": 527,
+      "signature": "params_from_dict(self, params: Mapping[str, Any]) -> Any",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0117",
+      "file": "forestflow/model_fits/arinyo.py",
+      "qualified_name": "ArinyoFitter.predict",
+      "line": 547,
+      "signature": "predict(self, params: ArrayLike) -> tuple[Any, ...]",
+      "detected_gaps": [
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0118",
+      "file": "forestflow/model_fits/arinyo.py",
+      "qualified_name": "ArinyoFitter.save_results",
+      "line": 602,
+      "signature": "save_results(self, filename: str | Path, *, snapshots: Sequence[Mapping[str, Any]], initial_chi2: ArrayLike, chi2: ArrayLike, success: ArrayLike, message: ArrayLike, arinyo: Mapping[str, ArrayLike], simulation_label: str, postproc: str) -> Path",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `filename`, `snapshots`, `initial_chi2`, `chi2`, `success`, `message`, `arinyo`, `simulation_label`, `postproc`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `KeyError`, `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0119",
+      "file": "forestflow/model_fits/arinyo.py",
+      "qualified_name": "ArinyoFitter._warn_if_final_parameters_near_bounds",
+      "line": 662,
+      "signature": "_warn_if_final_parameters_near_bounds(self, fraction: float=0.01) -> None",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `fraction`. Existing prose may describe these, but there are no matching canonical entries."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0120",
+      "file": "forestflow/model_fits/arinyo.py",
+      "qualified_name": "ArinyoFitter.chi2",
+      "line": 683,
+      "signature": "chi2(self, params: Mapping[str, Any]) -> Any",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0121",
+      "file": "forestflow/model_fits/arinyo.py",
+      "qualified_name": "ArinyoFitter.residuals",
+      "line": 713,
+      "signature": "residuals(self, params: Mapping[str, Any]) -> tuple[Any, ...]",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0122",
+      "file": "forestflow/model_fits/arinyo.py",
+      "qualified_name": "ArinyoFitter.fit",
+      "line": 735,
+      "signature": "fit(self, x0: ArrayLike | None=None, bounds: Sequence[Any] | None=None, method: str='L-BFGS-B', maxiter: int=500, ftol: Any=0.01, xatol: Any=1e-05, **kwargs: Mapping[str, Any]) -> Any",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0123",
+      "file": "forestflow/model_fits/arinyo.py",
+      "qualified_name": "ArinyoFitter.fit_iterative",
+      "line": 796,
+      "signature": "fit_iterative(self, niter: int | None=20, ftol: float | None=0.01) -> Any",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `niter`, `ftol`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0124",
+      "file": "forestflow/model_fits/arinyo.py",
+      "qualified_name": "ArinyoFitter.plot_fit",
+      "line": 850,
+      "signature": "plot_fit(self, params: Any | None=None, normalized: bool | None=True, figsize: Sequence[Any] | None=(8, 8)) -> tuple[Any, ...]",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `normalized`, `figsize`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0125",
+      "file": "forestflow/model_fits/arinyo.py",
+      "qualified_name": "ArinyoFitter.plot_residuals",
+      "line": 949,
+      "signature": "plot_residuals(self, params: Any | None=None, figsize: Sequence[Any] | None=(8, 8)) -> tuple[Any, ...]",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `figsize`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0126",
+      "file": "forestflow/model_fits/errors.py",
+      "qualified_name": "_get_err_p1d",
+      "line": 6,
+      "signature": "_get_err_p1d(x: Any, alpha: int | None=4, xmin: float | None=0.1, xmax: int | None=5, ymin: int | None=1, ymax: int | None=4) -> NDArray[Any]",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `x`, `alpha`, `xmin`, `xmax`, `ymin`, `ymax`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0127",
+      "file": "forestflow/model_fits/errors.py",
+      "qualified_name": "_get_err_p3d",
+      "line": 33,
+      "signature": "_get_err_p3d(x: Any, alpha: float | None=0.2, xmin: float | None=0.1, xmax: int | None=5, ymin: int | None=3, ymax: int | None=20) -> NDArray[Any]",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `x`, `alpha`, `xmin`, `xmax`, `ymin`, `ymax`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0128",
+      "file": "forestflow/plots/covariance.py",
+      "qualified_name": "plot_l1o_correlation",
+      "line": 7,
+      "signature": "plot_l1o_correlation(cov_zk, *, ax=None)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `cov_zk`, `ax`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0129",
+      "file": "forestflow/plots/covariance.py",
+      "qualified_name": "plot_l1o_errors",
+      "line": 21,
+      "signature": "plot_l1o_errors(zz, k_Mpc, rel_diff, cov_zk, *, ax=None)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `zz`, `k_Mpc`, `rel_diff`, `cov_zk`, `ax`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0130",
+      "file": "forestflow/plots/l1O_p1d.py",
+      "qualified_name": "plot_p1d_L1O",
+      "line": 13,
+      "signature": "plot_p1d_L1O(z_use: Any, k_p1d_Mpc: ArrayLike, fractional_errors: ArrayLike, savename: Any | None=None, fontsize: int=20, kmax_1d_fit: Any=3) -> Any | None",
+      "detected_gaps": [
+        "Convert non-NumPy section headings: `Parameters:`, `Returns:`.",
+        "Replace placeholder descriptions with concrete meaning for `z_use`, `k_p1d_Mpc`, `kmax_1d_fit`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d",
+        "Provide canonical `Parameters` entries for `fractional_errors`, `savename`. Existing prose may describe these, but there are no matching canonical entries."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0131",
+      "file": "forestflow/plots/l1O_p3d.py",
+      "qualified_name": "plot_p3d_L1O",
+      "line": 12,
+      "signature": "plot_p3d_L1O(z_use: Any, k_Mpc: ArrayLike, mu: ArrayLike, residual: ArrayLike, mu_bins: ArrayLike, savename: Any | None=None, fontsize: int=20, kmax_3d_fit: Any=3, legend: bool=False) -> Any | None",
+      "detected_gaps": [
+        "Convert non-NumPy section headings: `Parameters:`, `Returns:`.",
+        "Replace placeholder descriptions with concrete meaning for `z_use`, `mu`, `residual`, `mu_bins`, `kmax_3d_fit`, `legend`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d",
+        "Provide canonical `Parameters` entries for `savename`. Existing prose may describe these, but there are no matching canonical entries."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0132",
+      "file": "forestflow/plots/motivate_model.py",
+      "qualified_name": "plot_motivate_model",
+      "line": 14,
+      "signature": "plot_motivate_model(knew: ArrayLike, munew: ArrayLike, mu_bins: Any, rebin_p3d: ArrayLike, rebin_model_p3d: ArrayLike, rebin_kaiser_p3d: ArrayLike, rebin_plin: ArrayLike, folder: Any | None=None, ftsize: int | None=20, kmax_fit: int | None=3) -> None",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `mu_bins`, `rebin_p3d`, `rebin_model_p3d`, `rebin_kaiser_p3d`, `rebin_plin`, `kmax_fit`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0133",
+      "file": "forestflow/plots/params_z.py",
+      "qualified_name": "plot_arinyo_z",
+      "line": 13,
+      "signature": "plot_arinyo_z(z_central: Any, Arinyo_central: Any, Arinyo_seed: Any, Arinyo_both: Any, folder_fig: Any | None=None, ftsize: int | None=20) -> None",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `z_central`, `Arinyo_central`, `Arinyo_seed`, `Arinyo_both`, `folder_fig`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0134",
+      "file": "forestflow/plots/params_z.py",
+      "qualified_name": "plot_forestflow_z",
+      "line": 176,
+      "signature": "plot_forestflow_z(z_central: Any, Arinyo_central: Any, Arinyo_emu: Any, Arinyo_emu_std: Any, folder_fig: Any | None=None, ftsize: int | None=20) -> None",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `z_central`, `Arinyo_central`, `Arinyo_emu`, `Arinyo_emu_std`, `folder_fig`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0135",
+      "file": "forestflow/plots/plot_routines.py",
+      "qualified_name": "plot_template",
+      "line": 11,
+      "signature": "plot_template(ax: Any, ax2: Any | None=None, ay2: Any | None=None, xlabel: Any | None=None, ylabel: Any | None=None, title: Any | None=None, legend: Any | None=None, legend_loc: str | None='best', ftsize: int | None=17, extra_xaxis: bool | None=False, extra_yaxis: bool | None=False, xcolor: str | None='k', ycolor: str | None='k', xcolor2: str | None='k', ycolor2: str | None='k', ylabelpad: Any | None=None, handlelength: int | None=2, legend_title: Any | None=None, legend_columns: int | None=1, ftsize_legend: int | None=15, title_fontsize: str | None='x-large') -> None",
+      "detected_gaps": [
+        "Summary does not end with a period.",
+        "Replace placeholder descriptions with concrete meaning for `ax`, `ax2`, `ay2`, `xlabel`, `ylabel`, `title`, `legend`, `legend_loc`, `extra_xaxis`, `extra_yaxis`, `xcolor`, `ycolor`, `xcolor2`, `ycolor2`, `ylabelpad`, `handlelength`, `legend_title`, `legend_columns`, `ftsize_legend`, `title_fontsize`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0136",
+      "file": "forestflow/plots/plot_routines.py",
+      "qualified_name": "plot_vec",
+      "line": 132,
+      "signature": "plot_vec(cen: Any, vv: Any, length: Any, ax: Any, label: Any, col: Any, direction: Any | None=None) -> None",
+      "detected_gaps": [
+        "Summary does not end with a period.",
+        "Replace placeholder descriptions with concrete meaning for `cen`, `vv`, `length`, `ax`, `label`, `col`, `direction`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0137",
+      "file": "forestflow/plots/plot_routines.py",
+      "qualified_name": "density_estimation",
+      "line": 178,
+      "signature": "density_estimation(m1: Any, m2: Any, ntt: Any | None=100j) -> tuple[Any, ...]",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `m1`, `m2`, `ntt`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0138",
+      "file": "forestflow/plots/plot_routines.py",
+      "qualified_name": "find_confidence_interval",
+      "line": 210,
+      "signature": "find_confidence_interval(x: Any, pdf: Any, confidence_level: Any) -> Any",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `pdf`, `confidence_level`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0139",
+      "file": "forestflow/plots/plots_v0.py",
+      "qualified_name": "plot_test_parz",
+      "line": 31,
+      "signature": "plot_test_parz(Archive3D: Any, p3d_emu: ArrayLike, sim_label: Any) -> None",
+      "detected_gaps": [
+        "Summary does not end with a period.",
+        "Replace placeholder descriptions with concrete meaning for `Archive3D`, `p3d_emu`, `sim_label`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0140",
+      "file": "forestflow/plots/plots_v0.py",
+      "qualified_name": "plot_test_p3d",
+      "line": 81,
+      "signature": "plot_test_p3d(ind_book: Any, Archive3D: Any, p3d_emu: ArrayLike, sim_label: Any, plot_emu: bool | None=True, training_type: str | None='Arinyo') -> None",
+      "detected_gaps": [
+        "Summary does not end with a period.",
+        "Replace placeholder descriptions with concrete meaning for `ind_book`, `Archive3D`, `p3d_emu`, `sim_label`, `plot_emu`, `training_type`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0141",
+      "file": "forestflow/plots/plots_v0.py",
+      "qualified_name": "plot_compare_p3d_smooth",
+      "line": 170,
+      "signature": "plot_compare_p3d_smooth(like: Any, parameters1: Any, parameters2: Any | None=None, save_fig: str | None=None, err_bar_all: bool | None=False, sim_label: Any='', plot_data: bool=True, plot_p1d: bool=True, plot_legend_1: bool=False) -> Any | None",
+      "detected_gaps": [
+        "Convert non-NumPy section headings: `Parameters:`, `Returns:`.",
+        "Replace placeholder descriptions with concrete meaning for `like`, `parameters1`, `parameters2`, `sim_label`, `plot_data`, `plot_p1d`, `plot_legend_1`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d",
+        "Provide canonical `Parameters` entries for `save_fig`, `err_bar_all`. Existing prose may describe these, but there are no matching canonical entries."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0142",
+      "file": "forestflow/plots/plots_v0.py",
+      "qualified_name": "plot_err_uncertainty",
+      "line": 466,
+      "signature": "plot_err_uncertainty(emulator: ArrayLike, archive: Any, sim_labels: str, mu_lims_p3d: ArrayLike, z: float, val_scaling: float=1.0, colors: Sequence[Any]=['deepskyblue', 'goldenrod']) -> Any | None",
+      "detected_gaps": [
+        "Convert non-NumPy section headings: `Parameters:`, `Returns:`.",
+        "Provide canonical `Parameters` entries for `sim_labels`, `mu_lims_p3d`, `z`, `val_scaling`, `colors`. Existing prose may describe these, but there are no matching canonical entries."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0143",
+      "file": "forestflow/plots/plots_v0.py",
+      "qualified_name": "plot_p1d_LzO",
+      "line": 589,
+      "signature": "plot_p1d_LzO(archive: Any, z_use: Any, fractional_errors: ArrayLike, savename: Any | None=None, fontsize: int | None=20, fact_kmin: int | None=4) -> None",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `archive`, `z_use`, `fractional_errors`, `savename`, `fontsize`, `fact_kmin`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0144",
+      "file": "forestflow/plots/plots_v0.py",
+      "qualified_name": "plot_paramspace",
+      "line": 682,
+      "signature": "plot_paramspace(params_emulator: Mapping[str, Any], errors: ArrayLike, colourbar_lab: Any='$P_{\\\\rm 3D}$ uncertainty', vmin: Any=0, vmax: Any=1) -> Any | None",
+      "detected_gaps": [
+        "Convert non-NumPy section headings: `Parameters:`, `Returns:`.",
+        "Replace placeholder descriptions with concrete meaning for `colourbar_lab`, `vmin`, `vmax`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d",
+        "Provide canonical `Parameters` entries for `params_emulator`, `errors`. Existing prose may describe these, but there are no matching canonical entries."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0145",
+      "file": "forestflow/plots/plots_v1.py",
+      "qualified_name": "plot_test_parz",
+      "line": 17,
+      "signature": "plot_test_parz(Archive3D: Any, p3d_emu: ArrayLike, sim_label: Any) -> None",
+      "detected_gaps": [
+        "Summary does not end with a period.",
+        "Replace placeholder descriptions with concrete meaning for `Archive3D`, `p3d_emu`, `sim_label`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0146",
+      "file": "forestflow/plots/plots_v1.py",
+      "qualified_name": "plot_test_p3d",
+      "line": 67,
+      "signature": "plot_test_p3d(ind_book: Any, Archive3D: Any, p3d_emu: ArrayLike, sim_label: Any) -> None",
+      "detected_gaps": [
+        "Summary does not end with a period.",
+        "Replace placeholder descriptions with concrete meaning for `ind_book`, `Archive3D`, `p3d_emu`, `sim_label`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0147",
+      "file": "forestflow/plots/plots_v1.py",
+      "qualified_name": "params_numpy2dict",
+      "line": 122,
+      "signature": "params_numpy2dict(params: ArrayLike) -> dict[str, Any]",
+      "detected_gaps": [
+        "Convert non-NumPy section headings: `Args:`, `Returns:`.",
+        "Provide canonical `Parameters` entries for `params`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0148",
+      "file": "forestflow/plots/plots_v1.py",
+      "qualified_name": "plot_compare_p3d_smooth",
+      "line": 148,
+      "signature": "plot_compare_p3d_smooth(self, parameters1: Any, parameters2: Any | None=None, error_fit_3d: ArrayLike | None=None, error_fit_1d: ArrayLike | None=None, save_fig: str | None=None, err_bar_all: bool | None=False, sim_label: Any='', plot_data: bool=False) -> Any | None",
+      "detected_gaps": [
+        "Convert non-NumPy section headings: `Parameters:`, `Returns:`.",
+        "Replace placeholder descriptions with concrete meaning for `parameters1`, `parameters2`, `sim_label`, `plot_data`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d",
+        "Provide canonical `Parameters` entries for `error_fit_3d`, `error_fit_1d`, `save_fig`, `err_bar_all`. Existing prose may describe these, but there are no matching canonical entries."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0149",
+      "file": "forestflow/plots/test_sims.py",
+      "qualified_name": "plot_p3d_snap",
+      "line": 15,
+      "signature": "plot_p3d_snap(folder_out: Any, k_Mpc: Any, mu: Any, p3d_sim: ArrayLike, p3d_emu: ArrayLike, p3d_std_emu: ArrayLike, mu_bins: Any, ftsize: int | None=20, kmax_3d: int | None=4, kmax_3d_fit: int | None=3) -> None",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `folder_out`, `k_Mpc`, `p3d_sim`, `p3d_emu`, `p3d_std_emu`, `mu_bins`, `kmax_3d`, `kmax_3d_fit`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0150",
+      "file": "forestflow/plots/test_sims.py",
+      "qualified_name": "plot_p1d_snap",
+      "line": 171,
+      "signature": "plot_p1d_snap(folder_out: Any, k_p1d_Mpc: ArrayLike, p1d_sim: ArrayLike, p1d_emu: ArrayLike, p1d_std_emu: ArrayLike, ftsize: int | None=20, kmax_1d: int | None=4, kmax_1d_fit: int | None=3) -> None",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `folder_out`, `k_p1d_Mpc`, `p1d_sim`, `p1d_emu`, `p1d_std_emu`, `kmax_1d`, `kmax_1d_fit`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0151",
+      "file": "forestflow/plots/test_sims.py",
+      "qualified_name": "plot_p3d_test_sims",
+      "line": 279,
+      "signature": "plot_p3d_test_sims(sim_labels: Any, k_Mpc: ArrayLike, mu: ArrayLike, residual: ArrayLike, mu_bins: ArrayLike, savename: Any | None=None, fontsize: int=20, kmax_3d_fit: Any=3) -> Any | None",
+      "detected_gaps": [
+        "Convert non-NumPy section headings: `Parameters:`, `Returns:`.",
+        "Replace placeholder descriptions with concrete meaning for `sim_labels`, `mu`, `residual`, `mu_bins`, `kmax_3d_fit`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d",
+        "Provide canonical `Parameters` entries for `savename`. Existing prose may describe these, but there are no matching canonical entries."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0152",
+      "file": "forestflow/plots/test_sims.py",
+      "qualified_name": "plot_p1d_test_sims",
+      "line": 426,
+      "signature": "plot_p1d_test_sims(sim_labels: Any, k_p1d_Mpc: ArrayLike, fractional_errors: ArrayLike, savename: Any | None=None, fontsize: int=20, kmax_1d_fit: Any=3) -> Any | None",
+      "detected_gaps": [
+        "Convert non-NumPy section headings: `Parameters:`, `Returns:`.",
+        "Replace placeholder descriptions with concrete meaning for `sim_labels`, `k_p1d_Mpc`, `kmax_1d_fit`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d",
+        "Provide canonical `Parameters` entries for `fractional_errors`, `savename`. Existing prose may describe these, but there are no matching canonical entries."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0153",
+      "file": "forestflow/priors/core.py",
+      "qualified_name": "get_arinyo_priors",
+      "line": 12,
+      "signature": "get_arinyo_priors(z: int | float, tag: str | None='DESI_DR1_P1D', return_all: bool | None=False) -> Any",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `tag`, `return_all`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0154",
+      "file": "forestflow/priors/core.py",
+      "qualified_name": "get_IGM_priors",
+      "line": 77,
+      "signature": "get_IGM_priors(z: int | float, tag: str | None='DESI_DR1_P1D', return_all: bool | None=False) -> Any",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `tag`, `return_all`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0155",
+      "file": "forestflow/priors/paper/importance.py",
+      "qualified_name": "fit_gaussian",
+      "line": 19,
+      "signature": "fit_gaussian(samples: Any, make_plot: bool | None=True) -> Any",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0156",
+      "file": "forestflow/priors/paper/importance.py",
+      "qualified_name": "gaussian_chi2",
+      "line": 104,
+      "signature": "gaussian_chi2(x: Any, y: Any, x_val: Any, y_val: Any, x_err: ArrayLike, y_err: ArrayLike, r: Any) -> Any",
+      "detected_gaps": [
+        "Summary does not end with a period.",
+        "Replace placeholder descriptions with concrete meaning for `x_val`, `y_val`, `x_err`, `y_err`, `r`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0157",
+      "file": "forestflow/priors/paper/importance.py",
+      "qualified_name": "combine_inplace",
+      "line": 140,
+      "signature": "combine_inplace(samples: ArrayLike, fit: Any) -> Any",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `fit`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0158",
+      "file": "forestflow/priors/paper/importance.py",
+      "qualified_name": "combine",
+      "line": 180,
+      "signature": "combine(samples: ArrayLike, fit: Any, label: Any) -> Any",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `fit`, `label`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0159",
+      "file": "forestflow/priors/paper/load.py",
+      "qualified_name": "load_BAO_data",
+      "line": 17,
+      "signature": "load_BAO_data(nn: int | None=10000) -> NDArray[Any]",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `nn`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0160",
+      "file": "forestflow/priors/paper/load.py",
+      "qualified_name": "load_p1d_data",
+      "line": 115,
+      "signature": "load_p1d_data(lab_sample: str | None='desi', zeff: float | None=2.33) -> NDArray[Any]",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `lab_sample`, `zeff`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0161",
+      "file": "forestflow/priors/paper/load.py",
+      "qualified_name": "load_p1d_chain_for_forestflow",
+      "line": 168,
+      "signature": "load_p1d_chain_for_forestflow(lab_sample: str | None='desi') -> NDArray[Any]",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `lab_sample`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0162",
+      "file": "forestflow/priors/paper/load.py",
+      "qualified_name": "load_map_igm_p3d",
+      "line": 196,
+      "signature": "load_map_igm_p3d(lab_sample: str | None='desi', zeff: float | None=2.33) -> NDArray[Any]",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `lab_sample`, `zeff`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0163",
+      "file": "forestflow/priors/paper/load.py",
+      "qualified_name": "load_bao_weights",
+      "line": 245,
+      "signature": "load_bao_weights() -> tuple[Any, ...]",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0164",
+      "file": "forestflow/priors/paper/plots.py",
+      "qualified_name": "plot_bsig8_betafsigma8",
+      "line": 21,
+      "signature": "plot_bsig8_betafsigma8(samples: ArrayLike, ftsize: int | None=18) -> None",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0165",
+      "file": "forestflow/priors/paper/plots.py",
+      "qualified_name": "plot_bao_biases",
+      "line": 81,
+      "signature": "plot_bao_biases(samples: ArrayLike, ftsize: int | None=22) -> None",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0166",
+      "file": "forestflow/priors/paper/plots.py",
+      "qualified_name": "plot_comb_bdsig8_befsig8",
+      "line": 146,
+      "signature": "plot_comb_bdsig8_befsig8(samples: ArrayLike, ftsize: int | None=24) -> None",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0167",
+      "file": "forestflow/priors/paper/plots.py",
+      "qualified_name": "plot_comb_bd_be_beta",
+      "line": 194,
+      "signature": "plot_comb_bd_be_beta(samples: ArrayLike, ftsize: int | None=20) -> None",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0168",
+      "file": "forestflow/priors/paper/plots.py",
+      "qualified_name": "plot_sig8",
+      "line": 235,
+      "signature": "plot_sig8(samples: ArrayLike, ftsize: int | None=20) -> None",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0169",
+      "file": "forestflow/priors/paper/plots.py",
+      "qualified_name": "plot_sig8z",
+      "line": 338,
+      "signature": "plot_sig8z(samples: ArrayLike, ftsize: int | None=20) -> None",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0170",
+      "file": "forestflow/priors/paper/plots.py",
+      "qualified_name": "plot_fsig8z",
+      "line": 462,
+      "signature": "plot_fsig8z(samples: ArrayLike, ftsize: int | None=20) -> None",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0171",
+      "file": "forestflow/priors/paper/plots.py",
+      "qualified_name": "plot_sig8z233",
+      "line": 575,
+      "signature": "plot_sig8z233(samples: ArrayLike, ftsize: int | None=20) -> None",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0172",
+      "file": "forestflow/priors/paper/plots.py",
+      "qualified_name": "plot_compressed",
+      "line": 612,
+      "signature": "plot_compressed(samples: ArrayLike, ftsize: int | None=20) -> None",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0173",
+      "file": "forestflow/priors/paper/plots.py",
+      "qualified_name": "plot_bdelta_beta_beta",
+      "line": 650,
+      "signature": "plot_bdelta_beta_beta(samples: ArrayLike, ftsize: int | None=20) -> None",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0174",
+      "file": "forestflow/priors/paper/plots.py",
+      "qualified_name": "plot_P3D_small_params",
+      "line": 688,
+      "signature": "plot_P3D_small_params(samples: ArrayLike, ftsize: int | None=20) -> None",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0175",
+      "file": "forestflow/priors/paper/plots.py",
+      "qualified_name": "table_cosmo_igm",
+      "line": 725,
+      "signature": "table_cosmo_igm(dict_out_all: Mapping[str, Any]) -> Any",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `dict_out_all`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0176",
+      "file": "forestflow/priors/paper/plots.py",
+      "qualified_name": "table_cosmo_igm.<locals>.format_pm",
+      "line": 740,
+      "signature": "format_pm(val: Any, err: ArrayLike, sig: int | None=2) -> Any",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `val`, `err`, `sig`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0177",
+      "file": "forestflow/priors/paper/plots.py",
+      "qualified_name": "plot_bias_beta_zev",
+      "line": 786,
+      "signature": "plot_bias_beta_zev(bao_data: ArrayLike, dict_mapping: Mapping[str, Any], plot_bias_eta: bool | None=False, z0: float | None=3.0, ftsize: int | None=24) -> Any",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0178",
+      "file": "forestflow/priors/paper/plots.py",
+      "qualified_name": "plot_bias_beta_zev.<locals>.fit_pow",
+      "line": 812,
+      "signature": "fit_pow(z: Any, a: Any, b: Any) -> Any",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `a`, `b`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0179",
+      "file": "forestflow/priors/paper/plots.py",
+      "qualified_name": "plot_bias_beta_zev.<locals>.fit_pol",
+      "line": 833,
+      "signature": "fit_pol(z: Any, a: Any, b: Any, c: Any, d: Any) -> Any",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `a`, `b`, `c`, `d`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0180",
+      "file": "forestflow/priors/paper/plots.py",
+      "qualified_name": "plot_bias_beta_zev_val",
+      "line": 1018,
+      "signature": "plot_bias_beta_zev_val(dict_mapping: Mapping[str, Any], plot_bias_eta: bool | None=False, ftsize: int | None=24) -> None",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0181",
+      "file": "forestflow/priors/paper/plots.py",
+      "qualified_name": "plot_p3d_small_z",
+      "line": 1139,
+      "signature": "plot_p3d_small_z(dict_mapping: Mapping[str, Any], z0: int | None=3, ftsize: int | None=24) -> Any",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0182",
+      "file": "forestflow/priors/paper/plots.py",
+      "qualified_name": "plot_p3d_small_z.<locals>.fit_func",
+      "line": 1160,
+      "signature": "fit_func(z: Any, a: Any, b: Any, c: Any, d: Any) -> Any",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `a`, `b`, `c`, `d`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0183",
+      "file": "forestflow/priors/paper/plots.py",
+      "qualified_name": "plot_p3d_validation",
+      "line": 1252,
+      "signature": "plot_p3d_validation(knew3d: ArrayLike, munew3d: ArrayLike, data_pip: ArrayLike, data_sim: ArrayLike, ftsize: int | None=24) -> None",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `knew3d`, `munew3d`, `data_pip`, `data_sim`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0184",
+      "file": "forestflow/priors/paper/set_samples.py",
+      "qualified_name": "set_getdist_samples",
+      "line": 17,
+      "signature": "set_getdist_samples(BAO: Any, P1D: ArrayLike) -> NDArray[Any]",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `BAO`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0185",
+      "file": "forestflow/priors/paper/set_samples.py",
+      "qualified_name": "set_process_p1d_chain",
+      "line": 155,
+      "signature": "set_process_p1d_chain(lab_sample: ArrayLike, nn: int | None=10000, seed: int | None=12345, store_p1d: bool | None=False) -> None",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `lab_sample`, `nn`, `store_p1d`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0186",
+      "file": "forestflow/priors/paper/set_samples.py",
+      "qualified_name": "set_input_process_p1d_chain",
+      "line": 306,
+      "signature": "set_input_process_p1d_chain(lab_sample: ArrayLike, zeff: float | None=2.33) -> tuple[Any, ...]",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `lab_sample`, `zeff`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0187",
+      "file": "forestflow/priors/paper/set_samples.py",
+      "qualified_name": "set_cmbspa_sig8z",
+      "line": 392,
+      "signature": "set_cmbspa_sig8z(nsamples: int | None=200, nz: int | None=20) -> None",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `nsamples`, `nz`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0188",
+      "file": "forestflow/priors/paper/set_samples.py",
+      "qualified_name": "sample_cosmo_dict",
+      "line": 439,
+      "signature": "sample_cosmo_dict(base: Any, n_samples: int | None=1, rng: Any | None=None) -> NDArray[Any]",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `base`, `n_samples`, `rng`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0189",
+      "file": "forestflow/priors/paper/set_samples.py",
+      "qualified_name": "load_k_mu_accel2",
+      "line": 482,
+      "signature": "load_k_mu_accel2() -> tuple[Any, ...]",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0190",
+      "file": "forestflow/priors/paper/set_samples.py",
+      "qualified_name": "set_desifs_sig8z",
+      "line": 508,
+      "signature": "set_desifs_sig8z(nsamples: int | None=5000) -> None",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `nsamples`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0191",
+      "file": "forestflow/priors/paper/set_samples.py",
+      "qualified_name": "set_map_igm_p3d",
+      "line": 616,
+      "signature": "set_map_igm_p3d(lab_sample: ArrayLike, pars_chain: ArrayLike, store_p1d: bool | None=False, store_p3d: bool | None=False, old_emu: bool | None=True) -> None",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `lab_sample`, `pars_chain`, `store_p1d`, `store_p3d`, `old_emu`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d",
+        "Review explicit raises `NotImplementedError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0192",
+      "file": "forestflow/statistics/binning.py",
+      "qualified_name": "logarithmic_bin_edges",
+      "line": 6,
+      "signature": "logarithmic_bin_edges(centres, edges=None, *, name='k')",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `centres`, `edges`, `name`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0193",
+      "file": "forestflow/statistics/binning.py",
+      "qualified_name": "linear_bin_edges",
+      "line": 36,
+      "signature": "linear_bin_edges(centres, edges=None, *, name='coordinate')",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `centres`, `edges`, `name`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0194",
+      "file": "forestflow/statistics/covariance.py",
+      "qualified_name": "compute_Gaussian_cov",
+      "line": 6,
+      "signature": "compute_Gaussian_cov(kpar: ArrayLike, kperp: ArrayLike, P3D: ArrayLike, vol: Any) -> Any",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `kpar`, `kperp`, `P3D`, `vol`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0195",
+      "file": "forestflow/statistics/fisher.py",
+      "qualified_name": "compute_arinyo_derivatives",
+      "line": 8,
+      "signature": "compute_arinyo_derivatives(trans_data: ArrayLike, data_model: ArrayLike, model_Arinyo: Any, hh: float | None=1e-06) -> Any",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `trans_data`, `data_model`, `model_Arinyo`, `hh`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0196",
+      "file": "forestflow/statistics/fisher.py",
+      "qualified_name": "compute_fisher",
+      "line": 104,
+      "signature": "compute_fisher(data_model: ArrayLike, weight_3d: float | None=1.0, weight_1d: float | None=1.0) -> Any",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `data_model`, `weight_3d`, `weight_1d`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0197",
+      "file": "forestflow/statistics/fisher.py",
+      "qualified_name": "get_fisher",
+      "line": 150,
+      "signature": "get_fisher(transf_data: ArrayLike, pars_model: Any, model_Arinyo: Any, weight_3d: float | None=1.0, weight_1d: float | None=1.0, noise: Mapping[str, Any] | None={'n_noise': 10000, 'keep_all_noise': False, 'Lbox_Mpc': 1000}) -> Any",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `transf_data`, `pars_model`, `model_Arinyo`, `weight_3d`, `weight_1d`, `noise`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0198",
+      "file": "forestflow/statistics/mock_power.py",
+      "qualified_name": "make_arinyo_mock_power",
+      "line": 8,
+      "signature": "make_arinyo_mock_power(model_parameters, arinyo_model, n_3d=100, n_1d=100, k_min_1d_iMpc=0.1, k_max_1d_iMpc=5.0, k_min_3d_iMpc=0.1, k_max_3d_iMpc=5.0, noise=None)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `model_parameters`, `arinyo_model`, `n_3d`, `n_1d`, `k_min_1d_iMpc`, `k_max_1d_iMpc`, `k_min_3d_iMpc`, `k_max_3d_iMpc`, `noise`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0199",
+      "file": "forestflow/statistics/p1d.py",
+      "qualified_name": "P1DIntegrator.__init__",
+      "line": 27,
+      "signature": "__init__(self, k_perp_min_iMpc=0.001, k_perp_max_iMpc=100.0, n_k_perp=48, method='simpson', max_cached_geometries=8)",
+      "detected_gaps": [
+        "No docstring: write an implementation-specific summary and the applicable NumPy sections.",
+        "Provide canonical `Parameters` entries for `k_perp_min_iMpc`, `k_perp_max_iMpc`, `n_k_perp`, `method`, `max_cached_geometries`.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0200",
+      "file": "forestflow/statistics/p1d.py",
+      "qualified_name": "P1DIntegrator._geometry_key",
+      "line": 61,
+      "signature": "_geometry_key(self, k_par_iMpc)",
+      "detected_gaps": [
+        "No docstring: write an implementation-specific summary and the applicable NumPy sections.",
+        "Provide canonical `Parameters` entries for `k_par_iMpc`.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0201",
+      "file": "forestflow/statistics/p1d.py",
+      "qualified_name": "P1DIntegrator.geometry",
+      "line": 66,
+      "signature": "geometry(self, k_par_iMpc)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `k_par_iMpc`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0202",
+      "file": "forestflow/statistics/p1d.py",
+      "qualified_name": "P1DIntegrator.clear_geometry_cache",
+      "line": 88,
+      "signature": "clear_geometry_cache(self)",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0203",
+      "file": "forestflow/statistics/p1d.py",
+      "qualified_name": "P1DIntegrator.integrate",
+      "line": 92,
+      "signature": "integrate(self, p3d_Mpc)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `p3d_Mpc`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0204",
+      "file": "forestflow/statistics/p1d.py",
+      "qualified_name": "P1DIntegrator.__call__",
+      "line": 102,
+      "signature": "__call__(self, linear, z, k_par_iMpc, p3d_kpar_kperp, p3d_params=None, **kwargs)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `linear`, `z`, `k_par_iMpc`, `p3d_kpar_kperp`, `p3d_params`, `kwargs`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0205",
+      "file": "forestflow/statistics/p1d.py",
+      "qualified_name": "P1D_Mpc",
+      "line": 130,
+      "signature": "P1D_Mpc(linear, z, k_par_iMpc, p3d_kpar_kperp, p3d_params=None, integrator=None, **kwargs)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `linear`, `z`, `k_par_iMpc`, `p3d_kpar_kperp`, `p3d_params`, `integrator`, `kwargs`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0206",
+      "file": "forestflow/statistics/p1d.py",
+      "qualified_name": "P1D_kms",
+      "line": 144,
+      "signature": "P1D_kms(linear, z, k_par_ikms, p3d_kpar_kperp, dkms_diMpc, p3d_params=None, integrator=None, **kwargs)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `linear`, `z`, `k_par_ikms`, `p3d_kpar_kperp`, `dkms_diMpc`, `p3d_params`, `integrator`, `kwargs`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0207",
+      "file": "forestflow/statistics/p1d.py",
+      "qualified_name": "P1D_Mpc_bin_averaged",
+      "line": 180,
+      "signature": "P1D_Mpc_bin_averaged(linear, z, k_par_iMpc, p1d_fun, p1d_params=None, k_par_edges=None, fine_factor=8, **kwargs)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `linear`, `z`, `k_par_iMpc`, `p1d_fun`, `p1d_params`, `k_par_edges`, `fine_factor`, `kwargs`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0208",
+      "file": "forestflow/statistics/p1d.py",
+      "qualified_name": "p1d_from_p3d",
+      "line": 209,
+      "signature": "p1d_from_p3d(linear, k_par_iMpc, p3d_kpar_kperp, z, p3d_params=None, volume_Mpc3=None, n_realizations=1000, seed=0, integrator=None)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `linear`, `k_par_iMpc`, `p3d_kpar_kperp`, `z`, `p3d_params`, `volume_Mpc3`, `n_realizations`, `seed`, `integrator`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0209",
+      "file": "forestflow/statistics/p3d.py",
+      "qualified_name": "_validate_fine_factor",
+      "line": 21,
+      "signature": "_validate_fine_factor(fine_factor)",
+      "detected_gaps": [
+        "No docstring: write an implementation-specific summary and the applicable NumPy sections.",
+        "Provide canonical `Parameters` entries for `fine_factor`.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0210",
+      "file": "forestflow/statistics/p3d.py",
+      "qualified_name": "_uniform_edges",
+      "line": 26,
+      "signature": "_uniform_edges(centres, edges, name, minimum=None, maximum=None)",
+      "detected_gaps": [
+        "No docstring: write an implementation-specific summary and the applicable NumPy sections.",
+        "Provide canonical `Parameters` entries for `centres`, `edges`, `name`, `minimum`, `maximum`.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0211",
+      "file": "forestflow/statistics/p3d.py",
+      "qualified_name": "P3D_Mpc_k_mu_bin_averaged",
+      "line": 37,
+      "signature": "P3D_Mpc_k_mu_bin_averaged(linear, z, k_iMpc=None, mu=None, P3D_model=None, P3D_params=None, k_iMpc_edges=None, mu_edges=None, fine_factor=8, **kwargs)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `linear`, `z`, `k_iMpc`, `mu`, `P3D_model`, `P3D_params`, `k_iMpc_edges`, `mu_edges`, `fine_factor`, `kwargs`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0212",
+      "file": "forestflow/statistics/p3d.py",
+      "qualified_name": "P3D_Mpc_k_mu_mode_averaged",
+      "line": 118,
+      "signature": "P3D_Mpc_k_mu_mode_averaged(linear, z, P3D_model, P3D_params=None, *, k_mu_modes, k_iMpc=None, mu=None, k_iMpc_edges=None, mu_edges=None, **kwargs)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `linear`, `z`, `P3D_model`, `P3D_params`, `k_mu_modes`, `k_iMpc`, `mu`, `k_iMpc_edges`, `mu_edges`, `kwargs`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0213",
+      "file": "forestflow/statistics/p3d.py",
+      "qualified_name": "P3D_Mpc_k_mu_hybrid_averaged",
+      "line": 191,
+      "signature": "P3D_Mpc_k_mu_hybrid_averaged(linear, z, P3D_model, P3D_params=None, *, k_mu_modes, k_iMpc_edges, mu_edges, max_discrete_modes=256, fine_factor=4, **kwargs)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `linear`, `z`, `P3D_model`, `P3D_params`, `k_mu_modes`, `k_iMpc_edges`, `mu_edges`, `max_discrete_modes`, `fine_factor`, `kwargs`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0214",
+      "file": "forestflow/statistics/p3d.py",
+      "qualified_name": "P3D_Mpc_kpar_kperp_bin_averaged",
+      "line": 266,
+      "signature": "P3D_Mpc_kpar_kperp_bin_averaged(linear, z, k_par_iMpc, k_perp_iMpc, p3d_kpar_kperp, P3D_params=None, k_par_edges=None, k_perp_edges=None, fine_factor=8, **kwargs)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `linear`, `z`, `k_par_iMpc`, `k_perp_iMpc`, `p3d_kpar_kperp`, `P3D_params`, `k_par_edges`, `k_perp_edges`, `fine_factor`, `kwargs`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0215",
+      "file": "forestflow/statistics/px.py",
+      "qualified_name": "compute_px_from_p3d_kmu_Mpc",
+      "line": 13,
+      "signature": "compute_px_from_p3d_kmu_Mpc(kp_Mpc: ArrayLike, rt_Mpc: ArrayLike, p3d_func_kmu_Mpc: Callable[..., Any], hankl_kt_Mpc_min: float=1e-07, hankl_kt_Mpc_max: float=1000.0, hankl_nkt: int=2 ** 11, interp_rt_Mpc_min: float=0.005, interp_rt_Mpc_max: float=0.2, p3d_k_Mpc_max: float=200.0) -> NDArray[Any]",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `kp_Mpc`, `rt_Mpc`, `p3d_func_kmu_Mpc`, `hankl_kt_Mpc_min`, `hankl_kt_Mpc_max`, `hankl_nkt`, `interp_rt_Mpc_min`, `interp_rt_Mpc_max`, `p3d_k_Mpc_max`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0216",
+      "file": "forestflow/statistics/px.py",
+      "qualified_name": "compute_px_from_p3d_kmu_Mpc.<locals>.p3d_kpar_kperp",
+      "line": 28,
+      "signature": "p3d_kpar_kperp(_linear, _z, k_par_iMpc, k_perp_iMpc, _parameters)",
+      "detected_gaps": [
+        "No docstring: write an implementation-specific summary and the applicable NumPy sections.",
+        "Provide canonical `Parameters` entries for `_linear`, `_z`, `k_par_iMpc`, `k_perp_iMpc`, `_parameters`.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0217",
+      "file": "forestflow/statistics/px.py",
+      "qualified_name": "Px_Mpc",
+      "line": 50,
+      "signature": "Px_Mpc(linear: Any, z: ArrayLike, kpars: ArrayLike, rperp_Mpc: ArrayLike, p3d_fun_Mpc: Callable[..., Any], p3d_params: Mapping[str, Any] | None=None, max_k_for_p3d: ArrayLike=200, **kwargs: Mapping[str, Any]) -> Any",
+      "detected_gaps": [
+        "Summary does not end with a period.",
+        "Replace placeholder descriptions with concrete meaning for `p3d_fun_Mpc`, `max_k_for_p3d`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d",
+        "Provide canonical `Parameters` entries for `linear`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Reconcile documented names absent from the signature: `p3d_fun_mpc`. Retain only legitimate forwarded kwargs with an explicit forwarding explanation."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0218",
+      "file": "forestflow/statistics/px.py",
+      "qualified_name": "Px_Mpc_detailed",
+      "line": 121,
+      "signature": "Px_Mpc_detailed(linear: Any, z: ArrayLike, kpar_iMpc: ArrayLike, rperp_Mpc: ArrayLike, p3d_fun_Mpc: Callable[..., Any], min_kperp: ArrayLike=10.0 ** (-7), max_kperp: ArrayLike=10.0 ** 3, nkperp: int | None=2 ** 11, interpmin: float=0.005, interpmax: float=0.2, p3d_params: Mapping[str, Any] | None=None, max_k_for_p3d: ArrayLike=200, **kwargs: Mapping[str, Any]) -> Any",
+      "detected_gaps": [
+        "Summary does not end with a period.",
+        "Replace placeholder descriptions with concrete meaning for `max_k_for_p3d`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d",
+        "Provide canonical `Parameters` entries for `linear`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0219",
+      "file": "forestflow/statistics/px.py",
+      "qualified_name": "Px_Mpc_detailed.<locals>.p1d_p3d_kpar_kperp",
+      "line": 309,
+      "signature": "p1d_p3d_kpar_kperp(linear, z_value, k_par_iMpc, k_perp_iMpc, parameters, **p3d_kwargs)",
+      "detected_gaps": [
+        "No docstring: write an implementation-specific summary and the applicable NumPy sections.",
+        "Provide canonical `Parameters` entries for `linear`, `z_value`, `k_par_iMpc`, `k_perp_iMpc`, `parameters`, `p3d_kwargs`.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0220",
+      "file": "forestflow/statistics/rebin_p3d.py",
+      "qualified_name": "get_P3D_k_mu_bin_edges",
+      "line": 23,
+      "signature": "get_P3D_k_mu_bin_edges(k_max_iMpc=None, Lbox_Mpc=MPG_P3D_BINNING['Lbox_Mpc'], k_grid_max_iMpc=MPG_P3D_BINNING['k_grid_max_iMpc'], n_k_bins=MPG_P3D_BINNING['n_k_bins'], n_mu_bins=MPG_P3D_BINNING['n_mu_bins'])",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `k_max_iMpc`, `Lbox_Mpc`, `k_grid_max_iMpc`, `n_k_bins`, `n_mu_bins`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0221",
+      "file": "forestflow/statistics/rebin_p3d.py",
+      "qualified_name": "rebin_P3D_Mpc_mode_weighted",
+      "line": 55,
+      "signature": "rebin_P3D_Mpc_mode_weighted(k_iMpc: Any, mu: Any, P3D_Mpc: ArrayLike, k_mu_modes: Any, n_mu_bins: int=4, return_mode_counts: bool=False) -> NDArray[Any]",
+      "detected_gaps": [
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0222",
+      "file": "forestflow/statistics/rebin_p3d.py",
+      "qualified_name": "rebin_P3D_Mpc_mode_weighted.<locals>.weighted_mean",
+      "line": 94,
+      "signature": "weighted_mean(values, weights)",
+      "detected_gaps": [
+        "No docstring: write an implementation-specific summary and the applicable NumPy sections.",
+        "Provide canonical `Parameters` entries for `values`, `weights`.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0223",
+      "file": "forestflow/statistics/rebin_p3d.py",
+      "qualified_name": "get_P3D_k_mu_modes",
+      "line": 128,
+      "signature": "get_P3D_k_mu_modes(k_max_iMpc: int | float, Lbox_Mpc: float=67.5, k_grid_max_iMpc: int | float=20, n_k_bins: int=20, n_mu_bins: int=16) -> NDArray[Any]",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `n_k_bins`, `n_mu_bins`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0224",
+      "file": "forestflow/statistics/rebin_p3d.py",
+      "qualified_name": "p3d_allkmu",
+      "line": 195,
+      "signature": "p3d_allkmu(model: Callable[..., Any], zs: Any, arinyo: Any, kmu_modes: Any, nk: int | None=14, nmu: int | None=16, compute_plin: bool | None=True) -> NDArray[Any]",
+      "detected_gaps": [
+        "Summary does not end with a period.",
+        "Replace placeholder descriptions with concrete meaning for `model`, `zs`, `arinyo`, `kmu_modes`, `nk`, `nmu`, `compute_plin`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0225",
+      "file": "forestflow/utils/arrays.py",
+      "qualified_name": "broadcast_leading_dimensions",
+      "line": 6,
+      "signature": "broadcast_leading_dimensions(values, target)",
+      "detected_gaps": [
+        "Provide canonical `Parameters` entries for `values`, `target`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0226",
+      "file": "forestflow/utils/cache.py",
+      "qualified_name": "memorize",
+      "line": 10,
+      "signature": "memorize(func: Callable[..., Any]) -> Callable[..., Any]",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0227",
+      "file": "forestflow/utils/cache.py",
+      "qualified_name": "memorize.<locals>.wrapper",
+      "line": 28,
+      "signature": "wrapper(*args: Any, **kwargs: Any) -> Any",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `args`, `kwargs`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0228",
+      "file": "forestflow/utils/cache.py",
+      "qualified_name": "memoize_numpy_arrays",
+      "line": 59,
+      "signature": "memoize_numpy_arrays(func: Callable[..., Any], max_history: int | None=2) -> Callable[..., Any]",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0229",
+      "file": "forestflow/utils/cache.py",
+      "qualified_name": "memoize_numpy_arrays.<locals>.wrapper",
+      "line": 78,
+      "signature": "wrapper(*args: Any, **kwargs: Any) -> Any",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `args`, `kwargs`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0230",
+      "file": "forestflow/utils/cache.py",
+      "qualified_name": "memoize_pytorch",
+      "line": 115,
+      "signature": "memoize_pytorch(func: Callable[..., Any]) -> Callable[..., Any]",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0231",
+      "file": "forestflow/utils/cache.py",
+      "qualified_name": "memoize_pytorch.<locals>.wrapper",
+      "line": 133,
+      "signature": "wrapper(*args: Any, **kwargs: Any) -> Any",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `args`, `kwargs`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0232",
+      "file": "forestflow/utils/chains.py",
+      "qualified_name": "purge_chains",
+      "line": 9,
+      "signature": "purge_chains(ln_prop_chains: ArrayLike, nsplit: int | None=5, abs_diff: int | None=5, minval: Any=-1000) -> Any",
+      "detected_gaps": [
+        "Summary does not end with a period.",
+        "Replace placeholder descriptions with concrete meaning for `ln_prop_chains`, `nsplit`, `abs_diff`, `minval`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0233",
+      "file": "forestflow/utils/chains.py",
+      "qualified_name": "init_chains",
+      "line": 54,
+      "signature": "init_chains(parameters: Any, nwalkers: int | float, bounds: Mapping[str, Any], seed: int | None=0, attraction: int | None=1, min_attraction: float | None=0.05) -> Any",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `parameters`, `attraction`, `min_attraction`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0234",
+      "file": "forestflow/utils/chains.py",
+      "qualified_name": "load_Arinyo_chains",
+      "line": 117,
+      "signature": "load_Arinyo_chains(archive: Any, folder_chains: str | None='/pscratch/sd/l/lcabayol/P3D/p3d_fits_new/', sim_label: Any | None=None, z: Any | None=None, chain_samp: int | None=10000, kmax_3d: int | None=3, kmax_1d: int | None=3, noise_3d: float | None=0.01, noise_1d: float | None=0.01, training_type: str | None='Arinyo_min_q1_q2') -> NDArray[Any]",
+      "detected_gaps": [
+        "Convert non-NumPy section headings: `Returns:`.",
+        "Replace placeholder descriptions with concrete meaning for `folder_chains`, `sim_label`, `chain_samp`, `training_type`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
+        "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0235",
+      "file": "forestflow/utils/parameters.py",
+      "qualified_name": "params_numpy2dict",
+      "line": 9,
+      "signature": "params_numpy2dict(params: ArrayLike) -> dict[str, Any]",
+      "detected_gaps": [
+        "Convert non-NumPy section headings: `Args:`, `Returns:`.",
+        "Provide canonical `Parameters` entries for `params`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0236",
+      "file": "forestflow/utils/parameters.py",
+      "qualified_name": "params_numpy2dict_minimizer",
+      "line": 25,
+      "signature": "params_numpy2dict_minimizer(params: ArrayLike) -> dict[str, Any]",
+      "detected_gaps": [
+        "Convert non-NumPy section headings: `Args:`, `Returns:`.",
+        "Provide canonical `Parameters` entries for `params`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0237",
+      "file": "forestflow/utils/parameters.py",
+      "qualified_name": "params_numpy2dict_minimizerz",
+      "line": 47,
+      "signature": "params_numpy2dict_minimizerz(params: ArrayLike) -> dict[str, Any]",
+      "detected_gaps": [
+        "Convert non-NumPy section headings: `Args:`, `Returns:`.",
+        "Provide canonical `Parameters` entries for `params`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0238",
+      "file": "forestflow/utils/parameters.py",
+      "qualified_name": "transform_arinyo_params",
+      "line": 67,
+      "signature": "transform_arinyo_params(dict_arinyo_params: Mapping[str, Any], fcosmo: Any) -> Any",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0239",
+      "file": "forestflow/utils/statistics.py",
+      "qualified_name": "sort_dict",
+      "line": 9,
+      "signature": "sort_dict(dct: Sequence[Any], keys: Sequence[Any]) -> list[Any]",
+      "detected_gaps": [
+        "Convert non-NumPy section headings: `Args:`, `Returns:`.",
+        "Provide canonical `Parameters` entries for `dct`, `keys`. Existing prose may describe these, but there are no matching canonical entries.",
+        "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0240",
+      "file": "forestflow/utils/statistics.py",
+      "qualified_name": "get_covariance",
+      "line": 28,
+      "signature": "get_covariance(x: Any, y: Any, return_corr: bool | None=False) -> NDArray[Any]",
+      "detected_gaps": [
+        "Replace placeholder descriptions with concrete meaning for `x`, `y`. Specify physical/API role, valid values and units/shapes rather than \u201cused by the calculation.\u201d"
+      ],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0241",
+      "file": "forestflow/utils/statistics.py",
+      "qualified_name": "sigma68",
+      "line": 63,
+      "signature": "sigma68(data: ArrayLike) -> NDArray[Any]",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    },
+    {
+      "id": "ForestFlow-0242",
+      "file": "forestflow/utils/system.py",
+      "qualified_name": "print_memory_usage",
+      "line": 7,
+      "signature": "print_memory_usage(step_description: str | PathLike[str]) -> None",
+      "detected_gaps": [],
+      "status": "pending",
+      "evidence": "",
+      "blocker": ""
+    }
+  ],
+  "classes": [
+    {
+      "id": "ForestFlow-class-001",
+      "file": "forestflow/archive/gadget_archive.py",
+      "qualified_name": "GadgetArchive3D",
+      "line": 28,
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "ForestFlow-class-002",
+      "file": "forestflow/emulator/bundle.py",
+      "qualified_name": "ModelBundleError",
+      "line": 16,
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "ForestFlow-class-003",
+      "file": "forestflow/emulator/p1d.py",
+      "qualified_name": "P1DEmulator",
+      "line": 13,
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "ForestFlow-class-004",
+      "file": "forestflow/emulator/p3d_cinn.py",
+      "qualified_name": "P3DEmulator",
+      "line": 73,
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "ForestFlow-class-005",
+      "file": "forestflow/emulator/training.py",
+      "qualified_name": "Transf_data",
+      "line": 93,
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "ForestFlow-class-006",
+      "file": "forestflow/model/arinyo.py",
+      "qualified_name": "ArinyoModel",
+      "line": 16,
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "ForestFlow-class-007",
+      "file": "forestflow/model/linear.py",
+      "qualified_name": "LinearTheoryGrid",
+      "line": 11,
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "ForestFlow-class-008",
+      "file": "forestflow/model/linear.py",
+      "qualified_name": "LinearTheory",
+      "line": 30,
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "ForestFlow-class-009",
+      "file": "forestflow/model_fits/arinyo.py",
+      "qualified_name": "ArinyoFitter",
+      "line": 25,
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "ForestFlow-class-010",
+      "file": "forestflow/model_fits/data.py",
+      "qualified_name": "FitData",
+      "line": 8,
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": "ForestFlow-class-011",
+      "file": "forestflow/statistics/p1d.py",
+      "qualified_name": "P1DIntegrator",
+      "line": 17,
+      "status": "pending",
+      "evidence": ""
+    }
+  ],
+  "validation": [],
+  "progress_note": "Started from complete-docstring-plan on 2026-10-02; statuses change only after source and relevant callers/tests are reviewed."
+}

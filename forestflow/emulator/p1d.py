@@ -11,7 +11,8 @@ from .p3d_cinn import P3DEmulator
 
 
 class P1DEmulator:
-    """Adapt a ForestFlow P3D bundle into a stateful P1D emulator.
+    """
+    Adapt a ForestFlow P3D bundle into a stateful P1D emulator.
 
     The cosmology and linear theory are attached lazily, allowing this module
     to be imported without initializing the LaCE cosmology stack.

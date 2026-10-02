@@ -77,20 +77,23 @@ if save_data:
         Path(forestflow.__file__).resolve().parents[1]
         / "data"
         / "covariance"
-        / f"l1O_cov_{emulator_label}.npz"
+        / f"l1O_cov_{emulator_label}.npy"
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    np.savez(
-        output_path,
-        emulator_label=emulator_label,
-        zz=zz,
-        k_Mpc=k_Mpc,
-        cov_k=cov_k,
-        cov_zk=cov_zk,
-        p1d_Mpc_orig=p1d_Mpc_orig,
-        p1d_Mpc_sm=p1d_Mpc_sm,
-        p1d_Mpc_emu=p1d_Mpc_emu,
-        rel_diff=rel_diff,
-        mask=mask,
-    )
+    covariance_data = {
+        "emulator_label": emulator_label,
+        "zz": zz,
+        "k_Mpc": k_Mpc,
+        "k_Mpc_k": k_Mpc,
+        "zz_zk": np.repeat(zz, len(k_Mpc)),
+        "k_Mpc_zk": np.tile(k_Mpc, len(zz)),
+        "cov_k": cov_k,
+        "cov_zk": cov_zk,
+        "p1d_Mpc_orig": p1d_Mpc_orig,
+        "p1d_Mpc_sm": p1d_Mpc_sm,
+        "p1d_Mpc_emu": p1d_Mpc_emu,
+        "rel_diff": rel_diff,
+        "mask": mask,
+    }
+    np.save(output_path, covariance_data)
     print(f"Saved {output_path}")

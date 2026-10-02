@@ -4,7 +4,8 @@ import numpy as np
 
 
 def logarithmic_bin_edges(centres, edges=None, *, name="k"):
-    """Return explicit edges or infer them from strictly log-spaced centres.
+    """
+    Return explicit edges or infer them from strictly log-spaced centres.
 
     A single centre is intrinsically insufficient to determine bin widths, so
     callers must provide edges in that case.

@@ -15,7 +15,8 @@ from forestflow.statistics.binning import logarithmic_bin_edges
 
 
 class P1DIntegrator:
-    """Project Cartesian P3D to P1D with cached integration geometry.
+    """
+    Project Cartesian P3D to P1D with cached integration geometry.
 
     The P3D callable must have the signature
     ``p3d_kpar_kperp(linear, z, k_par_iMpc, k_perp_iMpc, parameters)``.
@@ -32,6 +33,25 @@ class P1DIntegrator:
         method="simpson",
         max_cached_geometries=8,
     ):
+        """Configure a reusable transverse P3D-to-P1D quadrature.
+
+        Parameters
+        ----------
+        k_perp_min_iMpc, k_perp_max_iMpc : float, default=1e-3, 100.0
+            Inclusive transverse comoving-wavenumber range in 1/Mpc.
+        n_k_perp : int, default=48
+            Number of log-spaced quadrature nodes. Simpson integration needs
+            at least three nodes; Gauss--Legendre needs at least one.
+        method : {"simpson", "gauss_legendre"}, default="simpson"
+            Quadrature in ``ln(k_perp)``.
+        max_cached_geometries : int, default=8
+            Number of recently used parallel-wavenumber grids retained in the
+            in-memory geometry cache. Zero disables caching.
+
+        Notes
+        -----
+        The projection is ``integral dln(k_perp) k_perp**2 P3D/(2*pi)``.
+        """
         if method not in {"simpson", "gauss_legendre"}:
             raise ValueError("method must be 'simpson' or 'gauss_legendre'")
         minimum_nodes = 3 if method == "simpson" else 1
@@ -130,7 +150,8 @@ _DEFAULT_P1D_INTEGRATOR = P1DIntegrator()
 def P1D_Mpc(
     linear, z, k_par_iMpc, p3d_kpar_kperp, p3d_params=None, integrator=None, **kwargs
 ):
-    """Project Cartesian P3D into P1D in Mpc units.
+    """
+    Project Cartesian P3D into P1D in Mpc units.
 
     ``p3d_kpar_kperp`` must accept ``(linear, z, k_par_iMpc, k_perp_iMpc,
     parameters)``. Pass a :class:`P1DIntegrator` for a non-default quadrature.
@@ -151,7 +172,8 @@ def P1D_kms(
     integrator=None,
     **kwargs,
 ):
-    """Project Cartesian Mpc-space P3D into P1D in velocity units.
+    """
+    Project Cartesian Mpc-space P3D into P1D in velocity units.
 
     ``p3d_kpar_kperp`` must accept ``(linear, z, k_par_iMpc, k_perp_iMpc,
     parameters)``. The same Mpc-space integrator is used before applying the one-power P1D
@@ -187,7 +209,8 @@ def P1D_Mpc_bin_averaged(
     fine_factor=8,
     **kwargs,
 ):
-    """Evaluate a P1D function on fine logarithmic bins and average them.
+    """
+    Evaluate a P1D function on fine logarithmic bins and average them.
 
     Unlike :func:`P1D_Mpc`, ``p1d_fun`` is already a one-dimensional callable
     with signature ``p1d_fun(linear, z, k_par_iMpc, parameters)``.
@@ -217,7 +240,8 @@ def p1d_from_p3d(
     seed=0,
     integrator=None,
 ):
-    """Project Cartesian P3D and optionally draw finite-volume Gaussian realizations.
+    """
+    Project Cartesian P3D and optionally draw finite-volume Gaussian realizations.
 
     The deterministic and realization projections use the same
     :class:`P1DIntegrator` object and therefore exactly the same quadrature.

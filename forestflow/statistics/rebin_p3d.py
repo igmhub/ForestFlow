@@ -27,7 +27,8 @@ def get_P3D_k_mu_bin_edges(
     n_k_bins=MPG_P3D_BINNING["n_k_bins"],
     n_mu_bins=MPG_P3D_BINNING["n_mu_bins"],
 ):
-    """Return the exact logarithmic k and uniform mu edges of MPG P3D bins.
+    """
+    Return the exact logarithmic k and uniform mu edges of MPG P3D bins.
 
     The lowest k edge is exactly the fundamental mode ``2 pi / Lbox_Mpc``.
     Passing ``k_max_iMpc`` retains complete native bins through the first edge
@@ -60,7 +61,8 @@ def rebin_P3D_Mpc_mode_weighted(
     n_mu_bins: int = 4,
     return_mode_counts: bool = False,
 ) -> NDArray[Any]:
-    """Mode-weighted rebinning of measured ``P3D_Mpc(k, mu)``.
+    """
+    Mode-weighted rebinning of measured ``P3D_Mpc(k, mu)``.
 
     This is the discrete-Fourier-mode counterpart to
     :func:`forestflow.statistics.p3d.P3D_Mpc_k_mu_bin_averaged`.

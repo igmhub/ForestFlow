@@ -82,7 +82,8 @@ def write_manifest(
 def load_manifest(
     model_path: str | Path, transform_path: str | Path | None
 ) -> dict[str, Any] | None:
-    """Validate a bundle manifest before loading its NumPy or Torch payloads.
+    """
+    Validate a bundle manifest before loading its NumPy or Torch payloads.
 
     Legacy bundles without a manifest remain readable and return ``None``.
     """

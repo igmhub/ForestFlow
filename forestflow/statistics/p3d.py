@@ -46,7 +46,8 @@ def P3D_Mpc_k_mu_bin_averaged(
     fine_factor=8,
     **kwargs,
 ):
-    """Average a ``P3D_Mpc(k, mu)`` callable over continuous rectangular bins.
+    """
+    Average a ``P3D_Mpc(k, mu)`` callable over continuous rectangular bins.
 
     ``P3D_model`` must accept ``(linear, z, k_iMpc, mu, parameters)``.  With
     explicit ``k_iMpc_edges`` and ``mu_edges``, ``k_iMpc`` and ``mu`` may be
@@ -128,7 +129,8 @@ def P3D_Mpc_k_mu_mode_averaged(
     mu_edges=None,
     **kwargs,
 ):
-    """Average a P3D model over exact finite-volume Fourier modes.
+    """
+    Average a P3D model over exact finite-volume Fourier modes.
 
     Provide exactly one geometry description: both ``k_iMpc`` and ``mu``
     centres, or both ``k_iMpc_edges`` and ``mu_edges``.  The model itself is
@@ -201,7 +203,8 @@ def P3D_Mpc_k_mu_hybrid_averaged(
     fine_factor=4,
     **kwargs,
 ):
-    """Predict finite-volume P3D bins with exact low-mode cells and fast high-mode cells.
+    """
+    Predict finite-volume P3D bins with exact low-mode cells and fast high-mode cells.
 
     Bins containing at most ``max_discrete_modes`` Fourier modes are evaluated
     at their exact lattice coordinates.  Populated bins above that threshold
@@ -267,7 +270,8 @@ def P3D_Mpc_kpar_kperp_bin_averaged(
     linear, z, k_par_iMpc, k_perp_iMpc, p3d_kpar_kperp, P3D_params=None,
     k_par_edges=None, k_perp_edges=None, fine_factor=8, **kwargs
 ):
-    """Average a Cartesian ``P3D_Mpc(k_parallel, k_perp)`` callable over bins.
+    """
+    Average a Cartesian ``P3D_Mpc(k_parallel, k_perp)`` callable over bins.
 
     ``k_parallel`` bins are linearly averaged, so they may include zero or be
     signed.  ``k_perp`` bins are logarithmically averaged and must be positive.
