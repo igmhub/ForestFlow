@@ -17,17 +17,24 @@ from lace.cosmo import cosmology
 def load_BAO_data(nn: int | None=10000) -> NDArray[Any]:
 
     """
-    Load BAO data.
+    Load hard-coded DR1/DR2 BAO chains and derived bias combinations.
 
     Parameters
     ----------
-    nn : int, optional
-        Nn used by the calculation.
+    nn : int, default=10000
+        Number of multivariate-normal draws for each external high-S/N fit.
 
     Returns
     -------
-    object
-        Computed result or generated analysis product.
+    dict
+        Results grouped by ``dr1``, ``dr2``, ``dr1_hsnr``, and ``dr2_hsnr``.
+        Entries include derived bias combinations, weights where available,
+        and DR2 redshift weights.
+
+    Notes
+    -----
+    This analysis helper reads project-local absolute paths rather than a
+    package-distributed data resource.
     """
     zeff = 2.33
     class_planck = cosmology.Cosmology(cosmo_label="Planck18_noBAO")
@@ -115,19 +122,20 @@ def load_BAO_data(nn: int | None=10000) -> NDArray[Any]:
 def load_p1d_data(lab_sample: str | None="desi", zeff: float | None=2.33) -> NDArray[Any]:
 
     """
-    Load one-dimensional power spectrum data.
+    Load P1D-chain-derived cosmology and forest quantities at one redshift.
 
     Parameters
     ----------
-    lab_sample : str, optional
-        Lab sample used by the calculation.
-    zeff : float, optional
-        Zeff used by the calculation.
+    lab_sample : str, default="desi"
+        P1D sample label passed to :func:`load_map_igm_p3d`.
+    zeff : float, default=2.33
+        Effective redshift used to compute the Planck18 growth rate.
 
     Returns
     -------
-    object
-        Computed result or generated analysis product.
+    dict
+        P1D-derived arrays including bias combinations, IGM parameters, and
+        linear-amplitude summary parameters.
     """
     class_planck = cosmology.Cosmology(cosmo_label="Planck18")
     planck_f = class_planck.get_growth_rate(zeff)
@@ -167,17 +175,22 @@ def load_p1d_data(lab_sample: str | None="desi", zeff: float | None=2.33) -> NDA
 
 def load_p1d_chain_for_forestflow(lab_sample: str | None="desi") -> NDArray[Any]:
     """
-    Load one-dimensional power spectrum chain for forestflow.
+    Load a cached P1D prior chain, generating it on cache miss.
 
     Parameters
     ----------
-    lab_sample : str, optional
-        Lab sample used by the calculation.
+    lab_sample : str, default="desi"
+        Sample label incorporated into the intermediate filename.
 
     Returns
     -------
-    object
-        Computed result or generated analysis product.
+    dict
+        Serialized P1D prior-chain product.
+
+    Notes
+    -----
+    A missing file triggers :func:`set_process_p1d_chain`, which writes the
+    expected intermediate product in ``int_data_figs``.
     """
     try:
         data = np.load(
@@ -195,19 +208,20 @@ def load_p1d_chain_for_forestflow(lab_sample: str | None="desi") -> NDArray[Any]
 
 def load_map_igm_p3d(lab_sample: str | None="desi", zeff: float | None=2.33) -> NDArray[Any]:
     """
-    Load map intergalactic-medium three-dimensional power spectrum.
+    Load mapped P1D-to-P3D IGM samples, generating them on cache miss.
 
     Parameters
     ----------
-    lab_sample : str, optional
-        Lab sample used by the calculation.
-    zeff : float, optional
-        Zeff used by the calculation.
+    lab_sample : str, default="desi"
+        Sample label incorporated into the intermediate filename.
+    zeff : float, default=2.33
+        Effective redshift used to convert beta to velocity-gradient bias.
 
     Returns
     -------
-    object
-        Computed result or generated analysis product.
+    dict
+        Mapped emulator and forest parameter samples, augmented with signed
+        ``bias_delta`` and ``bias_eta`` arrays.
     """
     try:
         data = np.load(
@@ -245,12 +259,14 @@ def load_map_igm_p3d(lab_sample: str | None="desi", zeff: float | None=2.33) -> 
 def load_bao_weights() -> tuple[Any, ...]:
 
     """
-    Load bao weights.
+    Load and smooth the hard-coded DR2 BAO redshift-weight curve.
 
     Returns
     -------
-    tuple
-        Computed result or generated analysis product.
+    zhist : ndarray
+        Redshifts reconstructed from FITS logarithmic wavelengths.
+    hist_smooth : ndarray
+        Normalized squared-weight curve smoothed with a Savitzky--Golay filter.
     """
     from scipy.signal import savgol_filter
 

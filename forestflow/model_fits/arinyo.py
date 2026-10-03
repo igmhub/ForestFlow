@@ -1,4 +1,5 @@
-"""Implementation backend for :mod:`forestflow.model_fits`.
+"""
+Implementation backend for :mod:`forestflow.model_fits`.
 
 Users should import :class:`ArinyoFitter` from ``forestflow.model_fits``.  This
 module remains at its historical location to avoid breaking local workflows.
@@ -24,7 +25,12 @@ from forestflow.archive.gadget_archive import MPG_SIM_REDSHIFTS
 
 class ArinyoFitter:
     """
-    Fit the Arinyo model to P3D and P1D measurements.
+    Fit the Arinyo model jointly to three- and one-dimensional spectra.
+
+    MP-Gadget snapshots use finite-volume hybrid mode averages for P3D.
+    Arbitrary measurements can instead be supplied at bin centres through
+    :meth:`prepare_measurements`. Preparing data stores :class:`FitData` on
+    :attr:`data`; :meth:`fit` then exposes :attr:`result` and :attr:`best_params`.
     """
 
     # Keep the linear-theory grid exactly aligned with the MP-Gadget archive.
@@ -56,28 +62,31 @@ class ArinyoFitter:
         bounds: Any | None = None,
     ) -> None:
         """
-        Initialize the instance.
+        Initialize scale cuts, native MP-Gadget geometry, and bounds.
 
         Parameters
         ----------
-        zlist : object
-            Zlist used by the calculation.
+        zlist : array_like of float, optional
+            Redshifts at which to construct linear theory for archive fits.
+            Defaults to the MP-Gadget archive redshift grid.
         kmin_3d : float, optional
-            Kmin 3d used by the calculation.
+            Inclusive lower P3D wavenumber cut in ``Mpc^-1``.
         kmax_3d : float, optional
-            Maximum three-dimensional wavenumber included in the fit.
+            Exclusive upper P3D wavenumber cut in ``Mpc^-1``.
         kmin_1d : float, optional
-            Kmin 1d used by the calculation.
+            Inclusive lower P1D wavenumber cut in ``Mpc^-1``.
         kmax_1d : float, optional
-            Maximum one-dimensional wavenumber included in the fit.
+            Exclusive upper P1D wavenumber cut in ``Mpc^-1``.
         n_k_bins : int, optional
-            N k bins used by the calculation.
+            Number of native logarithmic P3D radial bins.
         n_mu_bins : int, optional
-            N mu bins used by the calculation.
+            Number of native P3D cosine-angle bins between zero and one.
         boxsize : float, optional
-            Boxsize used by the calculation.
-        bounds : object, optional
-            Lower and upper bounds for each parameter.
+            MP-Gadget box side length in Mpc, used to reconstruct discrete
+            Fourier modes.
+        bounds : sequence of tuple of float, optional
+            Lower and upper bounds in :attr:`PARAM_NAMES` order. Built-in
+            bounds are used when omitted.
         """
         self.zlist = (
             self.DEFAULT_ZLIST.copy()
@@ -116,7 +125,20 @@ class ArinyoFitter:
         self._prepare_mpg_bin_geometry()
 
     def _prepare_mpg_bin_geometry(self, kmax_iMpc: float = 20.0) -> None:
-        """Define native MP-Gadget P3D bin geometry for hybrid averaging."""
+        """
+        Define native MP-Gadget P3D bins selected by configured cuts.
+
+        Parameters
+        ----------
+        kmax_iMpc : float, default=20.0
+            Largest native archive radial wavenumber in ``Mpc^-1``. Bin edges
+            retain this parent geometry when the fit selects a lower subset.
+
+        Raises
+        ------
+        ValueError
+            If the configured P3D cuts select no native radial bins.
+        """
 
         lnk_max = np.log(kmax_iMpc)
         lnk_min = np.log(2.0 * np.pi / self.boxsize)
@@ -159,7 +181,29 @@ class ArinyoFitter:
         sim: Mapping[str, Any],
         standard_simulations: Sequence[Mapping[str, Any]] | None = None,
     ) -> dict[str, Any]:
-        """Return local parameters or the matching standard-postprocessing fit."""
+        """
+        Return stored parameters or a matching standard-postprocessing fit.
+
+        Parameters
+        ----------
+        sim : mapping
+            Archive snapshot. A local ``Arinyo_min`` mapping takes priority.
+        standard_simulations : sequence of mapping, optional
+            Standard Cabayol23 snapshots used as fallback for corrected data.
+            If omitted, matching snapshots are loaded once when possible.
+
+        Returns
+        -------
+        dict
+            Independent copy of initialization parameters.
+
+        Raises
+        ------
+        ValueError
+            If fallback identity fields match multiple snapshots.
+        KeyError
+            If no local or unambiguous fallback fit exists.
+        """
         if "Arinyo_min" in sim:
             return dict(sim["Arinyo_min"])
 
@@ -194,7 +238,19 @@ class ArinyoFitter:
             )
 
             def same_identity_value(left, right):
-                """Compare archive identifiers without coercing string fields."""
+                """
+                Compare numeric identifiers tolerantly and strings exactly.
+
+                Parameters
+                ----------
+                left, right : object
+                    Archive identity values to compare.
+
+                Returns
+                -------
+                bool
+                    Whether the values denote the same archive identity.
+                """
                 try:
                     return bool(np.isclose(float(left), float(right)))
                 except (TypeError, ValueError):
@@ -230,7 +286,8 @@ class ArinyoFitter:
         standard_simulations: Sequence[Mapping[str, Any]] | None = None,
         is_mpg: bool = True,
     ) -> None:
-        """Prepare one simulation for fitting.
+        """
+        Prepare one simulation for fitting.
 
         The snapshot's ``Arinyo_min`` values initialize the fit when present.
         For corrected measurements without a stored fit, the matching snapshot
@@ -241,6 +298,12 @@ class ArinyoFitter:
 
         Parameters
         ----------
+        sim : mapping
+            Archive snapshot containing cosmology, spectra, and identity
+            metadata.
+        standard_simulations : sequence of mapping, optional
+            Standard Cabayol23 snapshots consulted only when corrected data
+            does not retain ``Arinyo_min``.
         is_mpg : bool, default=True
             Treat the input as an MP-Gadget measurement and evaluate P3D with
             finite-volume hybrid averaging. Set this explicitly to ``False``
@@ -294,13 +357,32 @@ class ArinyoFitter:
         std_p1d: ArrayLike,
         ini_params: Mapping[str, Any] | None = None,
     ) -> None:
-        """Prepare arbitrary P3D and P1D measurements for a direct Arinyo fit.
+        """
+        Prepare arbitrary P3D and P1D measurements for a direct Arinyo fit.
 
         Unlike :meth:`prepare_simulation`, this method does not assume an
         archive schema or rebin P3D. The supplied P3D coordinates and relative
         uncertainties are used directly, making it suitable for an external
         simulation or measurement such as Astrid. Wavenumbers are in Mpc^-1;
         P3D and P1D are in Mpc^3 and Mpc, respectively.
+
+        Parameters
+        ----------
+        z : float
+            Measurement redshift.
+        cosmo_params : mapping
+            Parameters accepted by :class:`lace.cosmo.cosmology.Cosmology`.
+        k3d_Mpc, mu3d, p3d_Mpc, std_p3d : array_like
+            Matching P3D coordinates, values, and positive fractional errors.
+        k1d_Mpc, p1d_Mpc, std_p1d : array_like
+            Matching P1D coordinates, values, and positive fractional errors.
+        ini_params : mapping, optional
+            Initial Arinyo parameters; model defaults are used if omitted.
+
+        Raises
+        ------
+        ValueError
+            If corresponding arrays differ in shape or an error is non-positive.
         """
         k3d_Mpc = np.asarray(k3d_Mpc, dtype=float)
         mu3d = np.asarray(mu3d, dtype=float)
@@ -342,7 +424,9 @@ class ArinyoFitter:
 
     @staticmethod
     def _warn_non_mpg_centre_evaluation() -> None:
-        """Warn when finite-volume MP-Gadget geometry is unavailable."""
+        """
+        Warn when finite-volume MP-Gadget geometry is unavailable.
+        """
         warnings.warn(
             "NON-MP-GADGET P3D FIT: evaluating the model at supplied bin "
             "centres instead of finite-volume mode averages. This is an "
@@ -353,11 +437,17 @@ class ArinyoFitter:
         )
 
     def _prepare_mpg_hybrid_geometry(self) -> None:
-        """Construct and cache only the MP-Gadget modes needed by this fit.
+        """
+        Construct and cache only the MP-Gadget modes needed by this fit.
 
         The discrete lattice grows cubically with its maximum wavenumber.  It
         is therefore essential to stop at the final fitted bin edge rather
-        than construct the archive's complete 20 iMpc lattice.
+        than construct the archive's complete 20 ``Mpc^-1`` lattice.
+
+        Raises
+        ------
+        ValueError
+            If selected native radial bins are empty or non-contiguous.
         """
         # Use the exact native rows selected from the simulation data, not
         # approximate analytic bin centres.  This remains valid when a user
@@ -385,7 +475,7 @@ class ArinyoFitter:
 
         # Preserve the native 20-iMpc parent bin definition, but generate
         # lattice vectors only through the highest bin participating in the
-        # current fit (typically ~4.9 iMpc for kmax_3d=4.5).
+        # current fit (typically approximately 4.9 Mpc^-1 for kmax_3d=4.5).
         all_modes = get_P3D_k_mu_modes(
             self.k_bin_edges_fit[-1],
             Lbox_Mpc=self.boxsize,
@@ -406,17 +496,20 @@ class ArinyoFitter:
 
     def _build_model(self, sim: Any) -> tuple[Any, ...]:
         """
-        Build the cosmology, Arinyo model and linear theory.
+        Build or retrieve the cosmology-dependent Arinyo model.
 
         Parameters
         ----------
-        sim : object
-            Sim used by the calculation.
+        sim : mapping
+            Archive snapshot containing ``cosmo_params`` and, when available,
+            a simulation label used as part of the model-cache key.
 
         Returns
         -------
-        tuple
-            Result produced when the function is used to build the cosmology, arinyo model and linear theory.
+        linear : object
+            Linear-theory object evaluated on :attr:`zlist`.
+        power_model : ArinyoModel
+            Model constructed for the snapshot cosmology.
         """
 
         cosmo_params = sim["cosmo_params"]
@@ -437,17 +530,18 @@ class ArinyoFitter:
 
     def _prepare_p3d(self, sim: Any) -> tuple[Any, ...]:
         """
-        Extract the fitted 3D power spectrum.
+        Extract selected P3D rows and assign empirical fractional errors.
 
         Parameters
         ----------
-        sim : object
-            Sim used by the calculation.
+        sim : mapping
+            Archive snapshot containing ``k3d_Mpc``, ``mu3d``, and
+            ``p3d_Mpc`` arrays on the native MP-Gadget radial-bin grid.
 
         Returns
         -------
-        tuple
-            Result produced when the function is used to extract the fitted 3d power spectrum.
+        k3d, mu3d, p3d, std_p3d : ndarray
+            Scale-selected coordinates, P3D, and empirical fractional errors.
         """
 
         mask = (sim["k3d_Mpc"][:, 0] >= self.kmin_3d) & (
@@ -476,17 +570,17 @@ class ArinyoFitter:
 
     def _prepare_p1d(self, sim: Any) -> tuple[Any, ...]:
         """
-        Extract the fitted 1D power spectrum.
+        Extract selected P1D values and assign empirical fractional errors.
 
         Parameters
         ----------
-        sim : object
-            Sim used by the calculation.
+        sim : mapping
+            Archive snapshot containing ``k_Mpc`` and ``p1d_Mpc`` arrays.
 
         Returns
         -------
-        tuple
-            Result produced when the function is used to extract the fitted 1d power spectrum.
+        k1d, p1d, std_p1d : ndarray
+            Scale-selected coordinates, P1D, and empirical fractional errors.
         """
 
         mask = (sim["k_Mpc"] >= self.kmin_1d) & (sim["k_Mpc"] < self.kmax_1d)
@@ -507,17 +601,19 @@ class ArinyoFitter:
 
     def params_to_dict(self, params: Mapping[str, Any]) -> Any:
         """
-        Convert a parameter vector into an Arinyo parameter dictionary.
+        Map a parameter vector to names in :attr:`PARAM_NAMES` order.
 
         Parameters
         ----------
-        params : dict
-            Model parameter values.
+        params : array_like
+            Ordered Arinyo parameter vector. Extra entries are ignored by
+            ``zip`` and too few entries produce a correspondingly incomplete
+            mapping.
 
         Returns
         -------
-        object
-            Result produced when the function is used to convert a parameter vector into an arinyo parameter dictionary.
+        dict
+            Parameter names paired with vector entries.
         """
 
         params = np.asarray(params)
@@ -526,17 +622,22 @@ class ArinyoFitter:
 
     def params_from_dict(self, params: Mapping[str, Any]) -> Any:
         """
-        Convert an Arinyo parameter dictionary into a parameter vector.
+        Return an Arinyo parameter vector in :attr:`PARAM_NAMES` order.
 
         Parameters
         ----------
-        params : dict
-            Model parameter values.
+        params : mapping
+            Arinyo parameter values keyed by every name in :attr:`PARAM_NAMES`.
 
         Returns
         -------
-        object
-            Result produced when the function is used to convert an arinyo parameter dictionary into a parameter vector.
+        ndarray
+            Floating-point parameter vector.
+
+        Raises
+        ------
+        KeyError
+            If a required Arinyo parameter is absent.
         """
 
         return np.array(
@@ -546,20 +647,25 @@ class ArinyoFitter:
 
     def predict(self, params: ArrayLike) -> tuple[Any, ...]:
         """
-        Evaluate the Arinyo model for the current simulation.
+        Evaluate the Arinyo model on the currently prepared measurement grid.
 
         Parameters
         ----------
         params : array-like
-            Parameter vector.
+            Arinyo vector in :attr:`PARAM_NAMES` order.
 
         Returns
         -------
         p3d : ndarray
-            Model P3D evaluated on the simulation grid.
-
+            Model P3D. This is hybrid mode-averaged for MP-Gadget data and
+            point-evaluated for direct measurements.
         p1d : ndarray
-            Model P1D.
+            Point-evaluated model P1D.
+
+        Raises
+        ------
+        ValueError
+            If hybrid geometry cannot reproduce the selected P3D shape.
         """
 
         ari_par = self.params_to_dict(params)
@@ -612,11 +718,42 @@ class ArinyoFitter:
         simulation_label: str,
         postproc: str,
     ) -> Path:
-        """Save a portable collection of Arinyo fits and archive identities.
+        """
+        Save a portable collection of Arinyo fits and archive identities.
 
         This is shared by notebooks and batch scripts.  ``snapshots`` defines
         the archive identity columns; all result arrays must have one entry
         per snapshot.  Parameter names always remain ordinary API names.
+
+        Parameters
+        ----------
+        filename : path-like
+            Output filename passed to :func:`numpy.save`.
+        snapshots : sequence of mapping
+            Snapshot metadata containing redshift and optional archive index
+            fields.
+        initial_chi2, chi2, success, message : array_like
+            One result value per snapshot.
+        arinyo : mapping of array_like
+            One array per name in :attr:`PARAM_NAMES`, each with one entry per
+            snapshot.
+        simulation_label : str
+            Simulation identity stored in the payload.
+        postproc : str
+            Post-processing label stored in the payload.
+
+        Returns
+        -------
+        pathlib.Path
+            Path written by :func:`numpy.save`.
+
+        Raises
+        ------
+        ValueError
+            If a result or parameter array does not have one entry per
+            snapshot.
+        KeyError
+            If ``arinyo`` omits a required parameter.
         """
         snapshots = list(snapshots)
         n_snapshots = len(snapshots)
@@ -660,7 +797,14 @@ class ArinyoFitter:
         return output
 
     def _warn_if_final_parameters_near_bounds(self, fraction: float = 0.01) -> None:
-        """Print a warning for final parameters within a bound-range fraction."""
+        """
+        Print warnings for fitted parameters close to finite bounds.
+
+        Parameters
+        ----------
+        fraction : float, default=0.01
+            Relative width of either bound edge treated as near-bound.
+        """
         for name, value, (lower, upper) in zip(
             self.PARAM_NAMES, self.best_params, self.bounds
         ):
@@ -691,13 +835,14 @@ class ArinyoFitter:
 
         Parameters
         ----------
-        params : dict
-            Model parameter values.
+        params : array_like
+            Arinyo vector in :attr:`PARAM_NAMES` order.
 
         Returns
         -------
-        object
-            Result produced when the function is used to chi-square objective function.
+        float
+            Sum of the P3D and P1D mean squared normalized fractional
+            residuals. Non-finite trial evaluations return ``1e100``.
         """
 
         # Invalid trial points can overflow the nonlinear model. They are not
@@ -712,17 +857,19 @@ class ArinyoFitter:
 
     def residuals(self, params: Mapping[str, Any]) -> tuple[Any, ...]:
         """
-        Return fractional residuals.
+        Return model-to-measurement fractional residuals.
 
         Parameters
         ----------
-        params : dict
-            Model parameter values.
+        params : array_like
+            Arinyo vector in :attr:`PARAM_NAMES` order.
 
         Returns
         -------
-        tuple
-            Result produced when the function is used to return fractional residuals.
+        residuals_3d : ndarray
+            ``P3D_model / P3D_data - 1`` on the prepared P3D grid.
+        residuals_1d : ndarray
+            ``P1D_model / P1D_data - 1`` on the prepared P1D grid.
         """
 
         p3d, p1d = self.predict(params)
@@ -748,26 +895,29 @@ class ArinyoFitter:
         Parameters
         ----------
         x0 : array-like, optional
-            Initial guess. If None, uses the true simulation parameters.
+            Initial vector. If omitted, uses prepared initialization parameters.
         bounds : sequence, optional
-            scipy.optimize bounds.
+            Bounds forwarded to :func:`scipy.optimize.minimize`; omitted
+            bounds leave the optimizer unconstrained.
         method : str
             Optimization method.
         maxiter : int
-            Maximum number of iterations.
+            Maximum optimizer iterations (or evaluations for Nelder-Mead).
 
         Returns
         -------
-        OptimizeResult
+        scipy.optimize.OptimizeResult
+            SciPy result, also stored on :attr:`result`.
 
         Other Parameters
         ----------------
-        ftol : object
-            Relative function-value convergence tolerance.
-        xatol : object
-            Absolute parameter convergence tolerance.
-        kwargs : dict
-            Additional keyword arguments forwarded to the underlying calculation.
+        ftol : float, default=1e-2
+            Function convergence tolerance; forwarded according to ``method``.
+        xatol : float, default=1e-5
+            Nelder-Mead absolute parameter convergence tolerance.
+        **kwargs
+            Additional SciPy optimizer options. They are merged with
+            ``maxiter`` and method-specific tolerances.
         """
 
         if x0 is None:
@@ -799,19 +949,19 @@ class ArinyoFitter:
         ftol: float | None = 1e-2,
     ) -> Any:
         """
-        Alternate L-BFGS-B and Nelder-Mead until convergence.
+        Alternate L-BFGS-B and Nelder-Mead until improvement is small.
 
         Parameters
         ----------
         niter : int, optional
-            Niter used by the calculation.
+            Maximum number of alternating optimization calls.
         ftol : float, optional
-            Ftol used by the calculation.
+            Stop when consecutive objective values improve by less than this.
 
         Returns
         -------
-        object
-            Result produced when the function is used to alternate l-bfgs-b and nelder-mead until convergence.
+        scipy.optimize.OptimizeResult
+            Final result, also retained on :attr:`result`.
         """
 
         x = self.params_from_dict(self.data.ini_params.copy())
@@ -854,21 +1004,24 @@ class ArinyoFitter:
         figsize: Sequence[Any] | None = (8, 8),
     ) -> tuple[Any, ...]:
         """
-        Compare the fitted model to the simulation.
+        Compare P3D/P1D measurements with a specified Arinyo model.
 
         Parameters
         ----------
         params : object, optional
-            Model parameter values.
+            Arinyo vector to plot. Defaults to :attr:`best_params`.
         normalized : bool, optional
-            Normalized used by the calculation.
+            Plot dimensionless P3D and P1D forms when true; otherwise plot
+            the dimensional spectra.
         figsize : tuple, optional
-            Figsize used by the calculation.
+            Matplotlib figure size in inches.
 
         Returns
         -------
-        tuple
-            Result produced when the function is used to compare the fitted model to the simulation.
+        fig : matplotlib.figure.Figure
+            Newly created comparison figure.
+        ax : ndarray of matplotlib.axes.Axes
+            Two axes: P3D followed by P1D.
         """
 
         if params is None:
@@ -952,19 +1105,21 @@ class ArinyoFitter:
         figsize: Sequence[Any] | None = (8, 8),
     ) -> tuple[Any, ...]:
         """
-        Plot fractional residuals.
+        Plot P3D/P1D fractional residuals and their assigned error bands.
 
         Parameters
         ----------
         params : object, optional
-            Model parameter values.
+            Arinyo vector to plot. Defaults to :attr:`best_params`.
         figsize : tuple, optional
-            Figsize used by the calculation.
+            Matplotlib figure size in inches.
 
         Returns
         -------
-        tuple
-            Result produced when the function is used to plot fractional residuals.
+        fig : matplotlib.figure.Figure
+            Newly created residual figure.
+        ax : ndarray of matplotlib.axes.Axes
+            Two axes: P3D followed by P1D.
         """
 
         if params is None:

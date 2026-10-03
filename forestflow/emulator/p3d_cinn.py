@@ -49,7 +49,9 @@ _LEGACY_MODEL_DOMAINS = {
 }
 
 def _normalise_model_domain(domain: Mapping[str, Any] | None) -> dict[str, Any]:
-    """Validate and copy emulator-domain metadata."""
+    """
+    Validate and copy emulator-domain metadata.
+    """
     if domain is None:
         return {}
     result = dict(domain)
@@ -274,31 +276,42 @@ class P3DEmulator:
 
     @property
     def kp_iMpc(self) -> float:
-        """Linear-power pivot wavenumber in inverse Mpc."""
+        """
+        Linear-power pivot wavenumber in inverse Mpc.
+        """
         return self._domain_value("kp_iMpc")
 
     @property
     def kmax_3d_iMpc(self) -> float:
-        """Maximum P3D fitting cut used to calibrate this emulator."""
+        """
+        Maximum P3D fitting cut used to calibrate this emulator.
+        """
         return self._domain_value("kmax_3d_iMpc")
 
     @property
     def kmax_1d_iMpc(self) -> float:
-        """Maximum P1D fitting cut used to calibrate this emulator."""
+        """
+        Maximum P1D fitting cut used to calibrate this emulator.
+        """
         return self._domain_value("kmax_1d_iMpc")
 
     @property
     def zmax(self) -> float:
-        """Maximum supported redshift."""
+        """
+        Maximum supported redshift.
+        """
         return self._domain_value("zmax")
 
     @property
     def list_sim_cube(self) -> list[str]:
-        """Simulation labels that define the emulator training domain."""
+        """
+        Simulation labels that define the emulator training domain.
+        """
         return self._domain_value("list_sim_cube")
 
     def compile(self, mode: str = "reduce-overhead") -> None:
-        """Compile the network for faster repeated inference.
+        """
+        Compile the network for faster repeated inference.
 
         The first evaluation of each new input shape triggers PyTorch
         compilation and is therefore slower. Subsequent evaluations, such as

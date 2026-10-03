@@ -1,25 +1,28 @@
-"""Archive measurement helpers."""
+"""
+Archive measurement helpers.
+"""
 from typing import Any
 import numpy as np
 
 def get_sim_power(sim: Any, kmax_1d_Mpc: int | None=4, kmax_3d_Mpc: int | None=5) -> Any:
 
     """
-    Return simulation power.
+    Extract finite simulation P1D and P3D samples below k cuts.
 
     Parameters
     ----------
-    sim : object
-        Sim used by the calculation.
-    kmax_1d_Mpc : int, optional
-        Kmax 1d mpc used by the calculation.
-    kmax_3d_Mpc : int, optional
-        Kmax 3d mpc used by the calculation.
+    sim : mapping
+        Simulation snapshot containing P1D/P3D arrays and their native
+        wavenumber coordinates.
+    kmax_1d_Mpc : float, optional, default: 4
+        Maximum retained one-dimensional wavenumber in ``1 / Mpc``.
+    kmax_3d_Mpc : float, optional, default: 5
+        Maximum retained three-dimensional wavenumber in ``1 / Mpc``.
 
     Returns
     -------
-    object
-        Result produced when the function is used to return simulation power.
+    dict
+        Filtered P1D and P3D coordinates and power arrays.
     """
     data = {}
 

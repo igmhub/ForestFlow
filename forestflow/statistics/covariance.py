@@ -1,29 +1,28 @@
-"""Analytic covariance statistics."""
+"""
+Analytic covariance statistics.
+"""
 from typing import Any
 from numpy.typing import ArrayLike
 import numpy as np
 
 def compute_Gaussian_cov(kpar: ArrayLike, kperp: ArrayLike, P3D: ArrayLike, vol: Any) -> Any:
-
-    # linear
     """
-    Compute Gaussian covariance.
+    Compute diagonal Gaussian P3D standard deviations from mode counts.
 
     Parameters
     ----------
-    kpar : numpy.ndarray
-        Kpar used by the calculation.
-    kperp : numpy.ndarray
-        Kperp used by the calculation.
-    P3D : numpy.ndarray
-        P3d used by the calculation.
-    vol : object
-        Vol used by the calculation.
+    kpar, kperp : ndarray, shape (n_kpar, n_kperp)
+        Cartesian comoving wavenumber grid in ``1 / Mpc``.
+    P3D : array_like
+        P3D values flattened in the same cell order as the k grids, in
+        ``Mpc**3``.
+    vol : float
+        Simulation volume in ``Mpc**3``.
 
     Returns
     -------
-    object
-        Result produced when the function is used to compute gaussian covariance.
+    ndarray
+        Per-cell Gaussian standard deviations in ``Mpc**3``.
     """
     dkpar = kpar[1, 0] - kpar[0, 0]
 

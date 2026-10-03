@@ -1,4 +1,5 @@
-"""P1D interface built from a ForestFlow P3D emulator.
+"""
+P1D interface built from a ForestFlow P3D emulator.
 
 This adapter is owned by ForestFlow.  It turns predicted Arinyo parameters and
 linear theory into P1D predictions for likelihood clients such as cup1d.
@@ -19,7 +20,8 @@ class P1DEmulator:
     """
 
     def __init__(self, name_emu="forest_mpg_fix", compile_model=True):
-        """Load a named P3D bundle.
+        """
+        Load a named P3D bundle.
 
         Parameters
         ----------
@@ -41,7 +43,9 @@ class P1DEmulator:
         self._prediction_cache = None
 
     def set_cosmology(self, cosmo_params_dict):
-        """Set the cosmology used for subsequent Arinyo and P1D predictions."""
+        """
+        Set the cosmology used for subsequent Arinyo and P1D predictions.
+        """
         # Kept lazy so a P3D-only ForestFlow installation does not need LaCE.
         from lace.cosmo import cosmology
 
@@ -54,7 +58,9 @@ class P1DEmulator:
         self._linear_cosmology_parameters = None
 
     def _effective_cosmology_parameters(self, new_cosmo_params):
-        """Return the complete cosmology represented by one linear grid."""
+        """
+        Return the complete cosmology represented by one linear grid.
+        """
 
         parameters = dict(self.cosmo_params_dict)
         if new_cosmo_params is not None:
@@ -62,7 +68,8 @@ class P1DEmulator:
         return parameters
 
     def set_linear_theory(self, z, new_cosmo_params=None):
-        """Build or reuse linear theory at the requested redshifts.
+        """
+        Build or reuse linear theory at the requested redshifts.
 
         Parameters
         ----------
@@ -94,13 +101,17 @@ class P1DEmulator:
         self._linear_cosmology_parameters = requested_cosmology
 
     def _prediction_key(self, parameters, latent_index=None):
-        """Return a stable key for one set of emulator inputs."""
+        """
+        Return a stable key for one set of emulator inputs.
+        """
 
         values = tuple(float(parameters[name]) for name in self.emu_params)
         return (latent_index, values) if latent_index is not None else values
 
     def _evaluate_emulator(self, emulator_calls, **kwargs):
-        """Evaluate ForestFlow efficiently for cup1d's small CPU batches."""
+        """
+        Evaluate ForestFlow efficiently for cup1d's small CPU batches.
+        """
 
         # A likelihood point is independent work. For the small network
         # batches used here, thread start-up costs more than it saves; sampler
@@ -109,7 +120,9 @@ class P1DEmulator:
             return self.emulator.evaluate(emulator_calls, **kwargs)
 
     def prime_prediction_cache(self, emulator_calls):
-        """Evaluate many redshift inputs in one ForestFlow network batch."""
+        """
+        Evaluate many redshift inputs in one ForestFlow network batch.
+        """
 
         unique_inputs = {}
         for emulator_call in emulator_calls:
@@ -139,14 +152,17 @@ class P1DEmulator:
                 }
 
     def clear_prediction_cache(self):
-        """Discard predictions retained for one batched likelihood call."""
+        """
+        Discard predictions retained for one batched likelihood call.
+        """
 
         self._prediction_cache = None
 
     def emulate_p1d_Mpc(
         self, zs, k_iMpc, emulator_parameters, cosmology_parameters=None
     ):
-        """Return P1D in Mpc for scalar or leading-batch inputs.
+        """
+        Return P1D in Mpc for scalar or leading-batch inputs.
 
         A two-dimensional ``k_iMpc`` array is one evaluation over redshift. A
         three-dimensional ``(batch, redshift, k)`` array dispatches internally
@@ -168,7 +184,9 @@ class P1DEmulator:
         return self._emulate_p1d_Mpc_scalar(zs, k_iMpc, emulator_parameters)
 
     def _emulate_p1d_Mpc_scalar(self, zs, k_iMpc, emulator_parameters):
-        """Evaluate the scalar/redshift-vector P1D implementation."""
+        """
+        Evaluate the scalar/redshift-vector P1D implementation.
+        """
         if self.linear is None:
             raise RuntimeError(
                 "Call set_linear_theory before evaluating ForestFlow P1D"
@@ -207,7 +225,8 @@ class P1DEmulator:
     def _emulate_p1d_Mpc_batch(
         self, zs, k_iMpc, emulator_parameters, cosmo_params_batch
     ):
-        """Evaluate ForestFlow for ``(batch, redshift, k)`` inputs.
+        """
+        Evaluate ForestFlow for ``(batch, redshift, k)`` inputs.
 
         The cINN is evaluated once over flattened batch/redshift rows. Linear
         theory remains one inexpensive rescaling per cosmology because each
@@ -237,37 +256,51 @@ class P1DEmulator:
 
     @property
     def kp_iMpc(self):
-        """Pivot wavenumber stored in the ForestFlow emulator metadata."""
+        """
+        Pivot wavenumber stored in the ForestFlow emulator metadata.
+        """
         return self.emulator.kp_iMpc
 
     @property
     def kmax_3d_iMpc(self):
-        """Maximum P3D fitting cut stored in the emulator metadata."""
+        """
+        Maximum P3D fitting cut stored in the emulator metadata.
+        """
         return self.emulator.kmax_3d_iMpc
 
     @property
     def kmax_1d_iMpc(self):
-        """Maximum P1D fitting cut stored in the emulator metadata."""
+        """
+        Maximum P1D fitting cut stored in the emulator metadata.
+        """
         return self.emulator.kmax_1d_iMpc
 
     @property
     def zmax(self):
-        """Maximum redshift stored in the ForestFlow emulator metadata."""
+        """
+        Maximum redshift stored in the ForestFlow emulator metadata.
+        """
         return self.emulator.zmax
 
     @property
     def list_sim_cube(self):
-        """Training simulations stored in the ForestFlow emulator metadata."""
+        """
+        Training simulations stored in the ForestFlow emulator metadata.
+        """
         return self.emulator.list_sim_cube
 
     @property
     def kp_Mpc(self):
-        """Common emulator API name; its units are inverse Mpc."""
+        """
+        Common emulator API name; its units are inverse Mpc.
+        """
         return self.kp_iMpc
 
 
 def _same_cosmology(first, second):
-    """Compare effective cosmology mappings, including their key sets."""
+    """
+    Compare effective cosmology mappings, including their key sets.
+    """
 
     if first is None or second is None or first.keys() != second.keys():
         return False

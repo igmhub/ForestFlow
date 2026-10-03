@@ -24,30 +24,25 @@ def plot_motivate_model(
     kmax_fit: int | None=3,
 ) -> None:
     """
-    Plot motivate model.
+    Plot rebinned P3D, fitted model, and linear-only comparison.
 
     Parameters
     ----------
-    knew : numpy.ndarray or dict
-        Rebinned wavenumbers.
-    munew : numpy.ndarray or dict
-        Rebinned line-of-sight angle cosines.
-    mu_bins : object
-        Mu bins used by the calculation.
-    rebin_p3d : numpy.ndarray or dict
-        Rebin p3d used by the calculation.
-    rebin_model_p3d : numpy.ndarray or dict
-        Rebin model p3d used by the calculation.
-    rebin_kaiser_p3d : numpy.ndarray or dict
-        Rebin kaiser p3d used by the calculation.
-    rebin_plin : numpy.ndarray or dict
-        Rebin plin used by the calculation.
-    folder : object, optional
-        Output directory.
-    ftsize : int, optional
+    knew, munew : array_like of shape (n_k, n_mu)
+        Rebinned wavenumbers in ``Mpc^-1`` and line-of-sight cosines.
+        ``munew`` is accepted for API compatibility; labels use ``mu_bins``.
+    mu_bins : array_like of shape (n_mu + 1,)
+        Angular-bin edges.
+    rebin_p3d, rebin_model_p3d, rebin_kaiser_p3d, rebin_plin : array_like
+        Rebinned simulation, full model, linear-only Kaiser model, and linear
+        power values. All arrays must align with ``knew``.
+    folder : path-like, optional
+        Directory prefix to which ``motivate.pdf`` and ``motivate.png`` are
+        written. No file is written when omitted.
+    ftsize : int, default=20
         Base font size in points.
-    kmax_fit : int, optional
-        Kmax fit used by the calculation.
+    kmax_fit : float, default=3
+        Vertical fit-limit marker in ``Mpc^-1``.
     """
     fig, ax = plt.subplots(2, figsize=(8, 8), sharex=True, height_ratios=[3, 1])
 

@@ -17,26 +17,21 @@ from getdist import plots
 
 
 def fit_gaussian(samples: Any, make_plot: bool | None=True) -> Any:
-
-    # assume `samples` is an MCSamples object
     """
-    Compute Gaussian approximation of the 2D distribution from samples.
+    Fit a weighted Gaussian to two BAO-derived GetDist parameters.
 
     Parameters
     ----------
-    samples : MCSamples
-        An MCSamples object containing the samples of the distribution.
-    make_plot : bool, optional
-        If True, make a GetDist plot of the samples with the Gaussian approximation.
-        Default is True.
+    samples : getdist.MCSamples
+        Samples containing ``b_delta_sigma8`` and ``b_eta_f_sigma8``.
+    make_plot : bool, default=True
+        Overlay 68% and 95% fitted ellipses on a new GetDist figure.
 
     Returns
     -------
-    fits : dict
-        A dictionary containing the Gaussian approximation parameters:
-            "x_val", "y_val" : the mean values of x and y
-            "x_err", "y_err" : the standard deviations of x and y
-            "r" : the correlation coefficient between x and y
+    dict
+        Weighted means, standard deviations, and correlation under keys
+        ``x_val``, ``y_val``, ``x_err``, ``y_err``, and ``r``.
     """
     p1, p2 = "b_delta_sigma8", "b_eta_f_sigma8"
 
@@ -103,31 +98,23 @@ def fit_gaussian(samples: Any, make_plot: bool | None=True) -> Any:
 
 def gaussian_chi2(x: Any, y: Any, x_val: Any, y_val: Any, x_err: ArrayLike, y_err: ArrayLike, r: Any) -> Any:
     """
-    Given central values and errors for Delta_L^2 and n_eff, and its
-    cross-correlation coefficient r, compute Gaussian delta chi^2 at
-    points (neff,DL2).
+    Compute a correlated two-dimensional Gaussian chi-squared.
 
     Parameters
     ----------
-    x : object
-        Input values.
-    y : object
-        Target values.
-    x_val : object
-        X val used by the calculation.
-    y_val : object
-        Y val used by the calculation.
-    x_err : numpy.ndarray or dict
-        X err used by the calculation.
-    y_err : numpy.ndarray or dict
-        Y err used by the calculation.
-    r : object
-        R used by the calculation.
+    x, y : array_like
+        Coordinates at which to evaluate the Gaussian.
+    x_val, y_val : float
+        Gaussian mean coordinates.
+    x_err, y_err : float
+        Marginal standard deviations.
+    r : float
+        Correlation coefficient.
 
     Returns
     -------
-    object
-        Computed result or generated analysis product.
+    ndarray or float
+        Correlated Gaussian chi-squared.
     """
     chi2 = (
         (y - y_val) ** 2 / y_err**2
@@ -138,22 +125,20 @@ def gaussian_chi2(x: Any, y: Any, x_val: Any, y_val: Any, x_err: ArrayLike, y_er
 
 
 def combine_inplace(samples: ArrayLike, fit: Any) -> Any:
-
-    # assume `samples` is an MCSamples object
     """
-    Combine inplace.
+    Reweight an ``MCSamples`` object in place using a Gaussian fit.
 
     Parameters
     ----------
-    samples : numpy.ndarray or dict
-        Posterior samples to plot or process.
-    fit : object
-        Fit used by the calculation.
+    samples : getdist.MCSamples
+        Samples whose log-likelihood weights are modified in place.
+    fit : mapping
+        Output of :func:`fit_gaussian`.
 
     Returns
     -------
-    object
-        Computed result or generated analysis product.
+    getdist.MCSamples
+        The same, now reweighted, object.
     """
     p1, p2 = "b_delta_sigma8", "b_eta_f_sigma8"
 
@@ -180,21 +165,21 @@ def combine_inplace(samples: ArrayLike, fit: Any) -> Any:
 def combine(samples: ArrayLike, fit: Any, label: Any) -> Any:
 
     """
-    Combine the requested values.
+    Return a copied ``MCSamples`` object reweighted by a Gaussian fit.
 
     Parameters
     ----------
-    samples : numpy.ndarray or dict
-        Posterior samples to plot or process.
-    fit : object
-        Fit used by the calculation.
-    label : object
-        Label used by the calculation.
+    samples : getdist.MCSamples
+        Source samples, left unmodified.
+    fit : mapping
+        Output of :func:`fit_gaussian`.
+    label : str
+        Label assigned to the copied samples.
 
     Returns
     -------
-    object
-        Computed result or generated analysis product.
+    getdist.MCSamples
+        Copied samples with Gaussian importance weights applied.
     """
     p1, p2 = "b_delta_sigma8", "b_eta_f_sigma8"
 

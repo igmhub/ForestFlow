@@ -1,4 +1,6 @@
-"""Synthetic Arinyo power measurements for forecasts and Fisher studies."""
+"""
+Synthetic Arinyo power measurements for forecasts and Fisher studies.
+"""
 
 import numpy as np
 

@@ -14,7 +14,13 @@ from forestflow.utils import broadcast_leading_dimensions
 
 
 class ArinyoModel:
-    """Arinyo flux-power model evaluated from a supplied linear-theory grid."""
+    """
+    Evaluate the Arinyo flux-power model from LaCE linear theory.
+
+    Model coefficients follow ``ARINYO_PARAMETER_NAMES``. In particular, the
+    large-scale redshift-space factor is ``(bias + bias_eta*f*mu**2)**2``;
+    ``bias_eta`` is not interchangeable with beta.
+    """
 
     def __init__(
         self,
@@ -50,7 +56,8 @@ class ArinyoModel:
         k_perp_iMpc: ArrayLike,
         ari_pp: Mapping[str, Any],
     ) -> NDArray[Any]:
-        """Evaluate Cartesian Arinyo P3D in comoving units.
+        """
+        Evaluate Cartesian Arinyo P3D in comoving units.
 
         Parameters
         ----------
@@ -89,7 +96,9 @@ class ArinyoModel:
         return self.P3D_Mpc_k_mu(linear, z, k_iMpc, mu, ari_pp)
 
     def _arinyo_kernel(self, linP_Mpc, fz, k_iMpc, mu, ari_pp):
-        """Evaluate the Arinyo nonlinear flux-power kernel."""
+        """
+        Evaluate the Arinyo nonlinear flux-power kernel.
+        """
         bias = broadcast_leading_dimensions(ari_pp["bias"], k_iMpc)
         bias_eta = broadcast_leading_dimensions(ari_pp["bias_eta"], k_iMpc)
         q1 = broadcast_leading_dimensions(ari_pp["q1"], k_iMpc)
@@ -113,7 +122,8 @@ class ArinyoModel:
         mu: float,
         ari_pp: Mapping[str, Any],
     ) -> float:
-        """Evaluate Arinyo P3D on wavenumber--angle coordinates.
+        """
+        Evaluate Arinyo P3D on wavenumber--angle coordinates.
 
         Parameters
         ----------
@@ -196,7 +206,9 @@ class ArinyoModel:
         Lbox_Mpc=100,
         epsilon=0.0,
     ):
-        """Return a Gaussian finite-volume realization of Cartesian P3D."""
+        """
+        Return a Gaussian finite-volume realization of Cartesian P3D.
+        """
         from forestflow.statistics.covariance import compute_Gaussian_cov
 
         p3d_Mpc = self.P3D_Mpc_kpar_kperp(linear, z, k_par_iMpc, k_perp_iMpc, ari_pp)
@@ -212,7 +224,8 @@ class ArinyoModel:
     def P1D_Mpc(
         self, linear: Any, z: int | float, k_par_iMpc: Any, ari_pp: Any
     ) -> NDArray[Any]:
-        """Project this model's Cartesian P3D directly into P1D.
+        """
+        Project this model's Cartesian P3D directly into P1D.
 
         Scalar, redshift-vector, and leading-batch inputs are dispatched by
         :func:`forestflow.statistics.p1d.P1D_Mpc`; Arinyo has no separate
@@ -236,29 +249,34 @@ class ArinyoModel:
         Lbox_Mpc: Any = 100,
     ) -> NDArray[Any]:
         """
-        Compute the one-dimensional power spectrum (P1D) for the specified values of parallel wavenumber (k_par).
+        Project a Gaussian finite-volume P3D realization into P1D.
 
-        The error between simulations with Lbox_Mpc2 and Lbox_Mpc scales like fact = (Lbox_Mpc2/Lbox_Mpc)**(3/2).
-
-        The covariance matrix is fully uncorrelated
-
-        Parameters:
-            z (float): Redshift at which to compute the P1D. It modifies the linear power spectrum but not the value of the Arinyo parameters
-            k_par (array-like): Array or list of values for the parallel wavenumber (k_par) for which the P1D should be computed.
-            ari_pp (dict, optional): Additional parameters for the model. Defaults to an empty dictionary `{}`.
-            new_cosmo_params (dict, optional): New cosmology parameters. Defaults to `None`, which means the existing cosmology will be used.
-
-        Returns:
-            array-like: Computed values of the one-dimensional power spectrum (P1D) for the given `k_par` values.
-
-        Other Parameters
-        ----------------
-        linear : object
+        Parameters
+        ----------
+        linear : forestflow.model.linear.LinearTheoryGrid
             Precomputed linear-theory grid.
-        seed : int
-            Random-number generator seed.
-        Lbox_Mpc : object
-            Simulation-box length in megaparsecs.
+        z : float or array_like
+            Redshift coordinate accepted by ``linear``.
+        k_par_iMpc : array_like
+            Parallel comoving wavenumbers in ``1 / Mpc``.
+        ari_pp : mapping or None
+            Arinyo coefficients forwarded to the noisy Cartesian P3D model.
+        seed : int, default: 0
+            Random seed for the independent Gaussian P3D perturbations.
+        Lbox_Mpc : float, default: 100
+            Cubic simulation-box side length in comoving Mpc, used to set mode
+            counts in the diagonal Gaussian covariance.
+
+        Returns
+        -------
+        ndarray
+            Noisy P1D in comoving Mpc units, with the same scalar/redshift/
+            leading-batch conventions as :meth:`P1D_Mpc`.
+
+        Notes
+        -----
+        The stochastic perturbation is diagonal in the Cartesian P3D cells;
+        it represents finite-volume Gaussian scatter, not emulator uncertainty.
         """
 
         return compute_P1D(
@@ -279,7 +297,8 @@ class ArinyoModel:
         ari_pp: Any,
         new_cosmo_params: int | None = None,
     ) -> NDArray[Any]:
-        """Project Arinyo P3D into transverse cross power.
+        """
+        Project Arinyo P3D into transverse cross power.
 
         Parameters
         ----------

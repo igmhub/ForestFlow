@@ -1,4 +1,6 @@
-"""Leave-one-out covariance calculations for ForestFlow emulators."""
+"""
+Leave-one-out covariance calculations for ForestFlow emulators.
+"""
 
 import numpy as np
 
@@ -14,7 +16,31 @@ def data_for_l10_forest(
     fit_label="Arinyo_min",
     kmax_Mpc=4.0,
 ):
-    """Evaluate ForestFlow L1O emulators against their omitted simulations."""
+    """
+    Evaluate ForestFlow L1O emulators against omitted simulations.
+
+    Parameters
+    ----------
+    archive : GadgetArchive3D
+        Archive supplying training snapshots and hypercube simulation labels.
+    emulator_label : str, default: "forest_mpg"
+        L1O bundle-name prefix.
+    fit_label : str, default: "Arinyo_min"
+        Snapshot key providing fitted Arinyo parameters for smooth P1D.
+    kmax_Mpc : float, default: 4
+        Strict upper P1D wavenumber cut in ``1 / Mpc``.
+
+    Returns
+    -------
+    tuple
+        Redshifts, selected k grid, original/smooth/emulated P1D arrays with
+        shape ``(n_simulations, n_z, n_k)``, and an availability mask.
+
+    Raises
+    ------
+    ValueError
+        If reference snapshots are absent or selected k grids differ.
+    """
     nsam = len(archive.list_sim_cube)
     suite = archive.list_sim_cube[0].split("_")[0]
     reference = [

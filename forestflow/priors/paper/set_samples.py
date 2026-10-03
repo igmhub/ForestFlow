@@ -17,19 +17,21 @@ from cup1d.likelihood.pipeline import Args
 def set_getdist_samples(BAO: Any, P1D: ArrayLike) -> NDArray[Any]:
 
     """
-    Set getdist samples.
+    Construct named GetDist containers for BAO and P1D prior samples.
 
     Parameters
     ----------
-    BAO : object
-        Bao used by the calculation.
-    P1D : numpy.ndarray or dict
-        One-dimensional power-spectrum values.
+    BAO : mapping
+        BAO sample arrays keyed by survey configuration, as returned by
+        :func:`forestflow.priors.paper.load.load_BAO_data`.
+    P1D : mapping
+        P1D-derived arrays as returned by
+        :func:`forestflow.priors.paper.load.load_p1d_data`.
 
     Returns
     -------
-    object
-        Computed result or generated analysis product.
+    dict of getdist.MCSamples
+        Named BAO configurations plus the ``p1d`` sample collection.
     """
     names = [
         "b_delta_sigma8",
@@ -155,18 +157,22 @@ def set_getdist_samples(BAO: Any, P1D: ArrayLike) -> NDArray[Any]:
 def set_process_p1d_chain(lab_sample: ArrayLike, nn: int | None=10000, seed: int | None=12345, store_p1d: bool | None=False) -> None:
 
     """
-    Set process one-dimensional power spectrum chain.
+    Subsample a cup1d P1D chain and write derived ForestFlow priors.
 
     Parameters
     ----------
-    lab_sample : numpy.ndarray or dict
-        Lab sample used by the calculation.
-    nn : int, optional
-        Nn used by the calculation.
-    seed : int, optional
+    lab_sample : {"desi", "accel2"}
+        Source-chain configuration.
+    nn : int, default=10000
+        Number of posterior samples selected without replacement.
+    seed : int, default=12345
         Random-number generator seed.
-    store_p1d : bool, optional
-        Store p1d used by the calculation.
+    store_p1d : bool, default=False
+        Also store contaminant-included and uncontaminated P1D predictions.
+
+    Notes
+    -----
+    The function writes intermediate ``.npy`` products in ``int_data_figs``.
     """
     pip, chain, d2star, nstar, zs, zeff = set_input_process_p1d_chain(lab_sample)
 
@@ -305,19 +311,27 @@ def set_process_p1d_chain(lab_sample: ArrayLike, nn: int | None=10000, seed: int
 
 def set_input_process_p1d_chain(lab_sample: ArrayLike, zeff: float | None=2.33) -> tuple[Any, ...]:
     """
-    Set input process one-dimensional power spectrum chain.
+    Load a configured cup1d pipeline and flattened posterior chain.
 
     Parameters
     ----------
-    lab_sample : numpy.ndarray or dict
-        Lab sample used by the calculation.
-    zeff : float, optional
-        Zeff used by the calculation.
+    lab_sample : {"desi", "accel2"}
+        Hard-coded source-chain configuration.
+    zeff : float, default=2.33
+        Effective redshift inserted into the configuration's redshift grid.
 
     Returns
     -------
-    tuple
-        Computed result or generated analysis product.
+    pipeline : cup1d.likelihood.pipeline.Pipeline
+        Pipeline configured for the selected source.
+    chain : ndarray, shape (n_samples, 53)
+        Flattened cube-coordinate posterior chain.
+    d2star, nstar : ndarray, shape (n_samples,)
+        Blob-derived linear-power summaries.
+    zs : ndarray
+        Analysis redshift grid.
+    zeff : float
+        Effective redshift used by downstream conversions.
     """
     if lab_sample == "desi":
         pip = Pipeline()
@@ -393,14 +407,18 @@ def set_cmbspa_sig8z(nsamples: int | None=200, nz: int | None=20) -> None:
 
     # CMB-SPA Table 1 https://arxiv.org/abs/2506.20707v1
     """
-    Set cmbspa sig8z.
+    Sample CMB-SPA cosmologies and write their sigma8-redshift product.
 
     Parameters
     ----------
-    nsamples : int, optional
-        Nsamples used by the calculation.
-    nz : int, optional
-        Nz used by the calculation.
+    nsamples : int, default=200
+        Number of cosmological draws.
+    nz : int, default=20
+        Number of redshifts between 2 and 4.4.
+
+    Notes
+    -----
+    Writes ``int_data_figs/cmbspa_sig8z.npy``.
     """
     cosmo_full_cmbspa = {
         "H0": 67.24,
@@ -438,21 +456,22 @@ def set_cmbspa_sig8z(nsamples: int | None=200, nz: int | None=20) -> None:
 
 def sample_cosmo_dict(base: Any, n_samples: int | None=1, rng: Any | None=None) -> NDArray[Any]:
     """
-    Sample cosmo dict.
+    Draw cosmology dictionaries from independent normal input errors.
 
     Parameters
     ----------
-    base : object
-        Base used by the calculation.
-    n_samples : int, optional
-        N samples used by the calculation.
-    rng : object, optional
-        Rng used by the calculation.
+    base : mapping
+        Fiducial cosmology; ``err_<name>`` keys set normal standard deviations.
+        ``log_As`` is converted to linear ``As`` in each output mapping.
+    n_samples : int, default=1
+        Number of dictionaries to draw.
+    rng : numpy.random.Generator or int, optional
+        Generator or seed forwarded to :func:`numpy.random.default_rng`.
 
     Returns
     -------
-    object
-        Computed result or generated analysis product.
+    list of dict
+        Drawn cosmology dictionaries suitable for ``Cosmology`` construction.
     """
     rng = np.random.default_rng(rng)
 
@@ -481,12 +500,14 @@ def sample_cosmo_dict(base: Any, n_samples: int | None=1, rng: Any | None=None) 
 
 def load_k_mu_accel2() -> tuple[Any, ...]:
     """
-    Load k mu accel2.
+    Load Accel2 P3D data and construct a uniformly sampled mu grid.
 
     Returns
     -------
-    tuple
-        Computed result or generated analysis product.
+    knew3d, munew3d : ndarray
+        Wavenumber and cosine-angle grids of shape ``(n_k, 25)``.
+    data_accel2 : mapping
+        Data returned by cup1d's Accel2 loader.
     """
     from cup1d.p1ds.simulations.data_accel2 import load_data
 
@@ -511,12 +532,16 @@ def set_desifs_sig8z(nsamples: int | None=5000) -> None:
 
     # Table1
     """
-    Set desifs sig8z.
+    Sample DESI full-shape cosmologies and write sigma8-growth products.
 
     Parameters
     ----------
-    nsamples : int, optional
-        Nsamples used by the calculation.
+    nsamples : int, default=5000
+        Number of independent cosmological draws for each tracer sample.
+
+    Notes
+    -----
+    Writes ``int_data_figs/sig8_desi.npy``.
     """
     desi_fs_zeff = np.array([0.295, 0.510, 0.706, 0.930, 1.317, 1.491])
 
@@ -618,20 +643,30 @@ def set_map_igm_p3d(
 ) -> None:
 
     """
-    Set map intergalactic-medium three-dimensional power spectrum.
+    Map P1D posterior samples to emulator Arinyo and optional power outputs.
 
     Parameters
     ----------
-    lab_sample : numpy.ndarray or dict
-        Lab sample used by the calculation.
-    pars_chain : numpy.ndarray or dict
-        Pars chain used by the calculation.
-    store_p1d : bool, optional
-        Store p1d used by the calculation.
-    store_p3d : bool, optional
-        Store p3d used by the calculation.
-    old_emu : bool, optional
-        Old emu used by the calculation.
+    lab_sample : str
+        Source sample label. ``"accel2"`` provides the implemented P3D grid.
+    pars_chain : mapping of ndarray
+        Processed P1D posterior product containing IGM and cosmology arrays.
+    store_p1d : bool, default=False
+        Store modeled P1D arrays where their grid is implemented.
+    store_p3d : bool, default=False
+        Store modeled P3D arrays where their grid is implemented.
+    old_emu : bool, default=True
+        Use the legacy paper emulator. Set false to use the current emulator
+        bundle, whose historical comment notes lower accuracy for this study.
+
+    Raises
+    ------
+    NotImplementedError
+        If power storage is requested for a non-Accel2 sample without grids.
+
+    Notes
+    -----
+    Writes an intermediate mapping under ``int_data_figs``.
     """
     import forestflow
     from forestflow.model.arinyo import ArinyoModel

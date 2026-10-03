@@ -1,4 +1,5 @@
-"""Generic P3D bin averages for model callables.
+"""
+Generic P3D bin averages for model callables.
 
 These utilities describe continuous bin geometry.  They are distinct from
 :mod:`forestflow.statistics.rebin_p3d`, whose routines reweight discrete

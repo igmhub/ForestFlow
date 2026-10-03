@@ -1,4 +1,6 @@
-"""Shared utility helpers."""
+"""
+Shared utility helpers.
+"""
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -8,23 +10,24 @@ import numpy as np
 
 def purge_chains(ln_prop_chains: ArrayLike, nsplit: int | None=5, abs_diff: int | None=5, minval: Any=-1000) -> Any:
     """
-    Purge emcee chains that have not converged
+    Flag walkers with stable and sufficiently high log-probability chunks.
 
     Parameters
     ----------
-    ln_prop_chains : numpy.ndarray
-        Ln prop chains used by the calculation.
-    nsplit : int, optional
-        Nsplit used by the calculation.
-    abs_diff : int, optional
-        Abs diff used by the calculation.
-    minval : object
-        Minval used by the calculation.
+    ln_prop_chains : ndarray
+        Log posterior values with sampling steps on axis zero and walkers on
+        the remaining axis.
+    nsplit : int, default: 5
+        Number of temporal chunks for stability checks.
+    abs_diff : float, default: 5
+        Maximum permitted chunk-mean deviation from each walker mean.
+    minval : float, default: -1000
+        Strict lower log-probability threshold for all chunks.
 
     Returns
     -------
-    object
-        Result produced when the function is used to purge emcee chains that have not converged.
+    ndarray of bool
+        Per-walker convergence flags.
     """
     # split each walker in nsplit chunks
     split_arr = np.array_split(ln_prop_chains, nsplit, axis=0)
@@ -59,29 +62,28 @@ def init_chains(
     attraction: int | None=1,
     min_attraction: float | None=0.05,
 ) -> Any:
-
     """
-    Initialize chains.
+    Initialize bounded ensemble-walker positions with Latin hypercubes.
 
     Parameters
     ----------
-    parameters : object
-        Parameters used by the calculation.
-    nwalkers : int or float
-        Number of ensemble walkers.
-    bounds : dict
-        Lower and upper bounds for each parameter.
-    seed : int, optional
-        Seed for the random-number generator.
-    attraction : int, optional
-        Attraction used by the calculation.
-    min_attraction : float, optional
-        Min attraction used by the calculation.
+    parameters : mapping
+        Central parameter values in output-column order.
+    nwalkers : int
+        Number of ensemble positions.
+    bounds : mapping
+        Inclusive lower/upper bounds keyed by parameter name.
+    seed : int, default: 0
+        Latin-hypercube random seed.
+    attraction : float, default: 1
+        Fraction of each prior interval sampled around the supplied center.
+    min_attraction : float, default: 0.05
+        Lower clamp applied to ``attraction``.
 
     Returns
     -------
-    object
-        Result produced when the function is used to initialize chains.
+    ndarray, shape (nwalkers, n_parameters)
+        Initial positions clipped back inside the configured bounds.
     """
     from scipy.stats import qmc
 
@@ -127,37 +129,45 @@ def load_Arinyo_chains(
     training_type: str | None="Arinyo_min_q1_q2",
 ) -> NDArray[Any]:
     """
-    Load Arinyo model chains from stored files for all the training LH simulations.
-
-    This function loads Arinyo model chains corresponding to different simulations from saved files.
-    It extracts relevant information such as simulation label, scaling factor, redshift, and other parameters
-    to construct the file tag for each simulation. The loaded chains are then processed and returned.
-
-    Returns:
-        np.array: Array containing Arinyo model chains for all simulations.
+    Load and randomly resample legacy on-disk Arinyo posterior chains.
 
     Parameters
     ----------
     archive : object
-        Simulation archive containing the requested data.
-    folder_chains : str, optional
-        Folder chains used by the calculation.
-    sim_label : object, optional
-        Sim label used by the calculation.
-    z : object, optional
-        Redshift.
-    chain_samp : int, optional
-        Chain samp used by the calculation.
-    kmax_3d : int, optional
-        Maximum three-dimensional wavenumber included in the fit.
-    kmax_1d : int, optional
-        Maximum one-dimensional wavenumber included in the fit.
+        Archive associated with the requested fit. In the all-training-data
+        branch, the historical implementation instead reads ``Archive3D``
+        from module/global scope.
+    folder_chains : path-like, default="/pscratch/sd/l/lcabayol/P3D/p3d_fits_new/"
+        Directory containing ``.npz`` files with a ``chain`` array.
+    sim_label : str, optional
+        Specific simulation label. If omitted, load one resampled chain for
+        every training snapshot.
+    z : float, optional
+        Redshift required when ``sim_label`` is supplied.
+    chain_samp : int, default=10000
+        Number of draws sampled with replacement from each stored chain.
+    kmax_3d, kmax_1d : float, default=3
+        P3D/P1D fit cuts encoded into the legacy filename tag in ``Mpc^-1``.
     noise_3d : float, optional
         Relative three-dimensional noise level.
     noise_1d : float, optional
         Relative one-dimensional noise level.
-    training_type : str, optional
-        Training type used by the calculation.
+    training_type : {"Arinyo_min_q1_q2"}, optional
+        When selected, transform stored q-plus/q-minus coordinates to q1/q2.
+
+    Returns
+    -------
+    ndarray
+        Shape ``(chain_samp, n_parameters)`` for a specific simulation, or
+        ``(n_training_snapshots, chain_samp, 8)`` when ``sim_label`` is omitted.
+
+    Raises
+    ------
+    ValueError
+        If a specific ``sim_label`` is provided without ``z``.
+    FileNotFoundError
+        If the filename constructed from the requested legacy fit settings is
+        absent.
     """
     print("Loading Arinyo chains")
 

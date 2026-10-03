@@ -1,4 +1,6 @@
-"""Self-describing, checksum-validated ForestFlow emulator bundles."""
+"""
+Self-describing, checksum-validated ForestFlow emulator bundles.
+"""
 
 from __future__ import annotations
 
@@ -14,16 +16,42 @@ MODEL_BUNDLE_SCHEMA_VERSION = 1
 
 
 class ModelBundleError(RuntimeError):
-    """A model bundle is missing, corrupted, or incompatible."""
+    """
+    Raised when a model bundle is missing, corrupted, or incompatible.
+    """
 
 
 def manifest_path(model_path: str | Path) -> Path:
-    """Return the manifest path for a model-path prefix."""
+    """
+    Return the manifest filename associated with a model prefix.
+
+    Parameters
+    ----------
+    model_path : str or path-like
+        Weights prefix without the generated manifest suffix.
+
+    Returns
+    -------
+    pathlib.Path
+        ``<model_path>_manifest.json``.
+    """
     return Path(str(model_path) + "_manifest.json")
 
 
 def sha256(path: str | Path) -> str:
-    """Return the SHA-256 digest of a model artefact."""
+    """
+    Compute the SHA-256 digest of an emulator bundle artefact.
+
+    Parameters
+    ----------
+    path : str or path-like
+        Binary file to hash.
+
+    Returns
+    -------
+    str
+        Lowercase hexadecimal digest.
+    """
     digest = hashlib.sha256()
     with Path(path).open("rb") as stream:
         for block in iter(lambda: stream.read(1024 * 1024), b""):
@@ -32,7 +60,15 @@ def sha256(path: str | Path) -> str:
 
 
 def runtime_versions() -> dict[str, str]:
-    """Record the numerical runtime used to train a model."""
+    """
+    Report versions of numerical dependencies used to train a model.
+
+    Returns
+    -------
+    dict of str to str
+        Python and relevant package versions; absent optional packages are
+        recorded as ``"unavailable"``.
+    """
     result = {"python": ".".join(map(str, sys.version_info[:3]))}
     for package in ("numpy", "scipy", "torch", "freia", "lace"):
         try:
@@ -47,7 +83,28 @@ def write_manifest(
     transform_path: str | Path | None,
     training_provenance: Mapping[str, Any] | None = None,
 ) -> Path:
-    """Write a manifest for a weights, metadata, and transformation bundle."""
+    """
+    Write checksums and provenance for a complete emulator bundle.
+
+    Parameters
+    ----------
+    model_path : str or path-like
+        Weights prefix for ``.pt`` and ``_metadata.npy`` artefacts.
+    transform_path : str or path-like, optional
+        Transformation artefact included in the inventory.
+    training_provenance : mapping, optional
+        JSON-serializable training metadata.
+
+    Returns
+    -------
+    pathlib.Path
+        Written JSON manifest path.
+
+    Raises
+    ------
+    FileNotFoundError
+        If required bundle artefacts are absent.
+    """
     import forestflow
 
     model_path = Path(model_path)
@@ -83,9 +140,25 @@ def load_manifest(
     model_path: str | Path, transform_path: str | Path | None
 ) -> dict[str, Any] | None:
     """
-    Validate a bundle manifest before loading its NumPy or Torch payloads.
+    Validate a bundle manifest before loading NumPy or Torch payloads.
 
-    Legacy bundles without a manifest remain readable and return ``None``.
+    Parameters
+    ----------
+    model_path : str or path-like
+        Weights prefix for the bundle.
+    transform_path : str or path-like, optional
+        Transformation file supplied to the loader.
+
+    Returns
+    -------
+    dict or None
+        Parsed validated manifest, or ``None`` for a legacy bundle without one.
+
+    Raises
+    ------
+    ModelBundleError
+        If a manifest is unreadable, incompatible, incomplete, or has missing
+        or checksum-mismatched artefacts.
     """
     model_path = Path(model_path)
     path_manifest = manifest_path(model_path)

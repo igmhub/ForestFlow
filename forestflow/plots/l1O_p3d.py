@@ -21,37 +21,27 @@ def plot_p3d_L1O(
     legend: bool=False,
 ) -> Any | None:
     """
-    Plot the fractional errors in the P3D statistic for different redshifts and mu bins.
+    Plot P3D leave-one-out fractional-error summaries by redshift and mu.
 
-    Parameters:
-    - archive: The dataset archive containing the training data.
-    - fractional_errors: Fractional errors in the P3D statistic for different redshifts and mu bins.
-    - savename: The name of the file to save the plot.
-
-    Returns:
-    None
-
-    Plots:
-    - Subplots showing fractional errors in P3D for different redshifts and mu bins.
-
-    Other Parameters
-    ----------------
-    z_use : object
-        Z use used by the calculation.
-    k_Mpc : numpy.ndarray
-        Wavenumbers in inverse megaparsecs.
-    mu : numpy.ndarray
-        Mu used by the calculation.
-    residual : numpy.ndarray
-        Residual used by the calculation.
-    mu_bins : numpy.ndarray
-        Mu bins used by the calculation.
-    fontsize : int
+    Parameters
+    ----------
+    z_use : array_like
+        Redshifts defining the subplot order.
+    k_Mpc, mu : array_like of shape (n_k, n_mu)
+        Rebinned P3D wavenumbers in ``Mpc^-1`` and angle cosines. ``mu`` is
+        accepted for API compatibility; bin labels derive from ``mu_bins``.
+    residual : array_like of shape (n_folds, n_z, n_k, n_mu)
+        Fractional emulator residuals.
+    mu_bins : array_like of shape (n_mu + 1,)
+        Angular-bin edges.
+    savename : path-like, optional
+        Filename used to save the current figure.
+    fontsize : int, default=20
         Base font size in points.
-    kmax_3d_fit : object
-        Kmax 3d fit used by the calculation.
-    legend : bool
-        Legend used by the calculation.
+    kmax_3d_fit : float, default=3
+        Vertical fit-limit marker in ``Mpc^-1``.
+    legend : bool, default=False
+        Draw angular-bin legends when true.
     """
 
     # Create subplots with shared y-axis and x-axis

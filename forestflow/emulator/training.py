@@ -18,25 +18,25 @@ from forestflow.statistics.fisher import get_fisher
 def get_training_data(list_sims: Any, zmin: int | None=0, zmax: int | None=10, drop_sim: Any | None=None, type_fit: str | None="Arinyo_min") -> Any:
 
     """
-    Return training data.
+    Collect emulator inputs and Arinyo targets from archive snapshots.
 
     Parameters
     ----------
-    list_sims : object
-        List sims used by the calculation.
-    zmin : int, optional
-        Zmin used by the calculation.
-    zmax : int, optional
-        Zmax used by the calculation.
-    drop_sim : object, optional
-        Drop sim used by the calculation.
-    type_fit : str, optional
-        Type fit used by the calculation.
+    list_sims : sequence of mapping
+        Archive snapshots containing emulator inputs, cosmology, and fitted
+        Arinyo parameters.
+    zmin, zmax : float, default: 0, 10
+        Inclusive redshift selection bounds.
+    drop_sim : str, optional
+        Simulation label excluded from the returned training rows.
+    type_fit : str, default: "Arinyo_min"
+        Snapshot key holding target Arinyo parameter mappings.
 
     Returns
     -------
-    object
-        Result produced when the function is used to return training data.
+    dict
+        ``input_par``, ``other_par``, and ``output_par`` mappings with aligned
+        one-dimensional arrays in archive iteration order.
     """
     input_params = ["Delta2_p", "n_p", "mF", "sigT_Mpc", "gamma", "kF_Mpc"]
     other_params = ["z", "As", "ns"]
@@ -92,7 +92,11 @@ def get_training_data(list_sims: Any, zmin: int | None=0, zmax: int | None=10, d
 
 class Transf_data(object):
     """
-    Class transf data
+    Transform, standardize, whiten, and globally scale emulator data.
+
+    The object records invertible transformations for selected positive and
+    negative physical parameters. Input and output dictionaries retain their
+    parameter names while values may be scalar or leading sample arrays.
     """
 
     def __init__(
@@ -105,25 +109,28 @@ class Transf_data(object):
         type_fit: str | None="Arinyo_min",
     ) -> None:
         """
-        1. Set standarize for the input and output parameters (self.stand_input and self.stand_output)
-        2. Get Fisher matrix for the transf + stand output parameters
-        3. Set whitening for the output parameters (self.white_output)
-        4. Set global norm for the output parameters (self.alpha_output)
+        Construct transformations or restore them from a saved file.
 
         Parameters
         ----------
-        dict_all_params : object, optional
-            Dict all params used by the calculation.
-        sim_model : object, optional
-            Sim model used by the calculation.
-        preload_file : object, optional
-            Preload file used by the calculation.
-        save_file : object, optional
-            Save file used by the calculation.
-        compute_fisher : bool, optional
-            Compute fisher used by the calculation.
-        type_fit : str, optional
-            Type fit used by the calculation.
+        dict_all_params : mapping, optional
+            Training-data mapping containing ``input_par`` and ``output_par``.
+            Required unless ``preload_file`` is supplied.
+        sim_model : mapping, optional
+            Representative simulation used to calculate output Fisher weights.
+        preload_file : str or path-like, optional
+            Saved transformation mapping to load instead of recomputing.
+        save_file : str or path-like, optional
+            Destination for computed transformation metadata.
+        compute_fisher : bool, default: False
+            Calculate whitening and global scaling from an Arinyo Fisher matrix.
+        type_fit : str, default: "Arinyo_min"
+            Simulation key providing Arinyo targets for Fisher construction.
+
+        Raises
+        ------
+        ValueError
+            If required data or the Fisher reference simulation is missing.
         """
 
         if preload_file is None:
@@ -201,16 +208,15 @@ class Transf_data(object):
         return
 
     def set_standarize(self, dict_params: Mapping[str, Any], type_stand: str | None="input") -> None:
-
         """
-        Set standarize.
+        Calculate per-parameter transformed means and standard deviations.
 
         Parameters
         ----------
-        dict_params : dict
-            Dict params used by the calculation.
-        type_stand : str, optional
-            Type stand used by the calculation.
+        dict_params : mapping of array_like
+            Physical parameter samples keyed by parameter name.
+        type_stand : {"input", "output"}, default: "input"
+            Attribute receiving the calculated standardization mapping.
         """
         t_params = self.transform(dict_params, direct=True)
 
@@ -229,16 +235,15 @@ class Transf_data(object):
         return
 
     def set_whitening(self, fisher: Any, type_stand: str | None="output") -> None:
-
         """
-        Set whitening.
+        Derive a Cholesky whitening matrix from a parameter Fisher matrix.
 
         Parameters
         ----------
-        fisher : object
-            Fisher used by the calculation.
-        type_stand : str, optional
-            Type stand used by the calculation.
+        fisher : mapping of mapping
+            Square Fisher-matrix entries keyed by ordered parameter names.
+        type_stand : {"input", "output"}, default: "output"
+            Attribute receiving the resulting upper-triangular matrix.
         """
         npars = len(fisher)
         # the fisher matrix is computed in the transf_stand space
@@ -257,16 +262,15 @@ class Transf_data(object):
         return
 
     def set_global_norm(self, dict_params: Mapping[str, Any], type_stand: str | None="output") -> None:
-
         """
-        Set global norm.
+        Set the common 95th-percentile absolute scaling for parameters.
 
         Parameters
         ----------
-        dict_params : dict
-            Dict params used by the calculation.
-        type_stand : str, optional
-            Type stand used by the calculation.
+        dict_params : mapping of array_like
+            Aligned transformed parameter samples.
+        type_stand : {"input", "output"}, default: "output"
+            Attribute receiving the scalar normalization.
         """
         npars = len(dict_params)
         key = list(dict_params.keys())[0]
@@ -284,19 +288,20 @@ class Transf_data(object):
 
     def transform(self, dict_params: Mapping[str, Any], direct: bool | None=True) -> Any:
         """
-        The input params are expected to be the original ones
+        Transform physical parameter values to or from emulator space.
 
         Parameters
         ----------
-        dict_params : dict
-            Dict params used by the calculation.
-        direct : bool, optional
-            Direct used by the calculation.
+        dict_params : mapping of array_like
+            Parameter values keyed by their emulator names.
+        direct : bool, default: True
+            Apply forward logarithms for ``bias``, ``kvav``, and ``Delta2_p``;
+            use inverse transformations when false.
 
         Returns
         -------
-        object
-            Result produced when the function is used to the input params are expected to be the original ones.
+        dict
+            Transformed mapping with values retaining their input shapes.
         """
 
         t_params = {}
@@ -331,23 +336,23 @@ class Transf_data(object):
         return t_params
 
     def standarize(self, dict_params: Mapping[str, Any], direct: bool | None=True, type_stand: str | None="input") -> Any:
-
         """
-        Standardize the requested values.
+        Apply or undo per-parameter standardization.
 
         Parameters
         ----------
-        dict_params : dict
-            Dict params used by the calculation.
-        direct : bool, optional
-            Direct used by the calculation.
-        type_stand : str, optional
-            Type stand used by the calculation.
+        dict_params : mapping of array_like
+            Values keyed by parameter name.
+        direct : bool, default: True
+            Subtract stored means and divide by standard deviations; invert
+            this operation when false.
+        type_stand : {"input", "output"}, default: "input"
+            Stored standardization mapping to use.
 
         Returns
         -------
-        object
-            Result produced when the function is used to standardize the requested values.
+        dict
+            Standardized or restored values retaining input shapes.
         """
         if type_stand == "input":
             stand = self.stand_input
@@ -368,23 +373,23 @@ class Transf_data(object):
         return s_params
 
     def whitening(self, dict_params: Mapping[str, Any], direct: bool | None=True, type_stand: str | None="output") -> Any:
-
         """
-        Whiten the requested values.
+        Apply or undo the stored Fisher-derived whitening matrix.
 
         Parameters
         ----------
-        dict_params : dict
-            Dict params used by the calculation.
-        direct : bool, optional
-            Direct used by the calculation.
-        type_stand : str, optional
-            Type stand used by the calculation.
+        dict_params : mapping of array_like
+            Aligned parameter arrays keyed in whitening-matrix order.
+        direct : bool, default: True
+            Multiply by the whitening matrix; solve the inverse system when
+            false.
+        type_stand : {"input", "output"}, default: "output"
+            Stored whitening matrix to use.
 
         Returns
         -------
-        object
-            Result produced when the function is used to whiten the requested values.
+        dict
+            Whitened or restored parameter mapping.
         """
         if type_stand == "output":
             weight = self.white_output
@@ -412,23 +417,22 @@ class Transf_data(object):
         return w_params
 
     def global_norm(self, dict_params: Mapping[str, Any], direct: bool | None=True, type_stand: str | None="output") -> Any:
-
         """
-        Normalize norm.
+        Apply or undo the common global normalization factor.
 
         Parameters
         ----------
-        dict_params : dict
-            Dict params used by the calculation.
-        direct : bool, optional
-            Direct used by the calculation.
-        type_stand : str, optional
-            Type stand used by the calculation.
+        dict_params : mapping of array_like
+            Parameter values to scale.
+        direct : bool, default: True
+            Divide by the stored factor; multiply by it when false.
+        type_stand : {"input", "output"}, default: "output"
+            Stored factor to use.
 
         Returns
         -------
-        object
-            Result produced when the function is used to normalize norm.
+        dict
+            Normalized or restored parameter mapping.
         """
         if type_stand == "output":
             alpha = self.alpha_output
@@ -445,23 +449,23 @@ class Transf_data(object):
         return n_params
 
     def transf_stand(self, dict_params: Mapping[str, Any], direct: bool | None=True, type_stand: str | None="input") -> Any:
-
         """
-        Transform stand.
+        Apply or undo the physical transformation and standardization.
 
         Parameters
         ----------
-        dict_params : dict
-            Dict params used by the calculation.
-        direct : bool, optional
-            Direct used by the calculation.
-        type_stand : str, optional
-            Type stand used by the calculation.
+        dict_params : mapping of array_like
+            Physical values for forward operation or standardized values for
+            inverse operation.
+        direct : bool, default: True
+            Apply forward transformation and standardization when true.
+        type_stand : {"input", "output"}, default: "input"
+            Statistics mapping to use.
 
         Returns
         -------
-        object
-            Result produced when the function is used to transform stand.
+        dict
+            Transformed-and-standardized or restored physical values.
         """
         if direct:
             dir_t_params = self.transform(dict_params, direct=True)
@@ -480,23 +484,23 @@ class Transf_data(object):
         return out_params
 
     def transf_stand_white(self, dict_params: Mapping[str, Any], direct: bool | None=True, type_stand: str | None="output") -> Any:
-
         """
-        Transform stand white.
+        Apply or undo transformation, standardization, and whitening.
 
         Parameters
         ----------
-        dict_params : dict
-            Dict params used by the calculation.
-        direct : bool, optional
-            Direct used by the calculation.
-        type_stand : str, optional
-            Type stand used by the calculation.
+        dict_params : mapping of array_like
+            Physical values for forward operation or whitened values for the
+            inverse operation.
+        direct : bool, default: True
+            Apply the forward pipeline when true.
+        type_stand : {"input", "output"}, default: "output"
+            Transformation statistics and whitening matrix to use.
 
         Returns
         -------
-        object
-            Result produced when the function is used to transform stand white.
+        dict
+            Whitened values or restored physical values.
         """
         if direct:
             dir_ts_params = self.transf_stand(
@@ -519,23 +523,23 @@ class Transf_data(object):
         return out_params
 
     def transf_stand_white_norm(self, dict_params: Mapping[str, Any], direct: bool | None=True, type_stand: str | None="output") -> Any:
-
         """
-        Transform stand white norm.
+        Apply or undo the complete emulator output-preprocessing pipeline.
 
         Parameters
         ----------
-        dict_params : dict
-            Dict params used by the calculation.
-        direct : bool, optional
-            Direct used by the calculation.
-        type_stand : str, optional
-            Type stand used by the calculation.
+        dict_params : mapping of array_like
+            Physical values for forward operation or fully normalized values
+            for inverse operation.
+        direct : bool, default: True
+            Apply transformation, standardization, whitening, and global norm.
+        type_stand : {"input", "output"}, default: "output"
+            Stored output preprocessing quantities to use.
 
         Returns
         -------
-        object
-            Result produced when the function is used to transform stand white norm.
+        dict
+            Fully normalized values or restored physical values.
         """
         if direct:
             dir_tsw_params = self.transf_stand_white(

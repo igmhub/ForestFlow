@@ -1,4 +1,5 @@
-"""Legacy redshift-dependent fitting implementation.
+"""
+Legacy redshift-dependent fitting implementation.
 
 Retained for historical analyses only.  New fits should use
 :class:`forestflow.model_fits.ArinyoFitter` independently for each snapshot.

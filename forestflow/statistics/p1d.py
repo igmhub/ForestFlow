@@ -1,4 +1,5 @@
-"""P1D projections and bin averaging.
+"""
+P1D projections and bin averaging.
 
 A P1D projection always integrates a P3D callable over transverse wavenumber.
 Consequently, the sole P3D callable contract in this module is
@@ -33,7 +34,8 @@ class P1DIntegrator:
         method="simpson",
         max_cached_geometries=8,
     ):
-        """Configure a reusable transverse P3D-to-P1D quadrature.
+        """
+        Configure a reusable transverse P3D-to-P1D quadrature.
 
         Parameters
         ----------
@@ -84,7 +86,9 @@ class P1DIntegrator:
         return contiguous.shape, contiguous.dtype.str, digest
 
     def geometry(self, k_par_iMpc):
-        """Return cached grids of ``k_parallel`` and ``k_perp`` in inverse Mpc."""
+        """
+        Return cached grids of ``k_parallel`` and ``k_perp`` in inverse Mpc.
+        """
         key = self._geometry_key(k_par_iMpc)
         cached = self._geometry_cache.get(key)
         if cached is not None:
@@ -106,11 +110,15 @@ class P1DIntegrator:
         return geometry
 
     def clear_geometry_cache(self):
-        """Discard cached k-parallel/k-perpendicular grids."""
+        """
+        Discard cached k-parallel/k-perpendicular grids.
+        """
         self._geometry_cache.clear()
 
     def integrate(self, p3d_Mpc):
-        """Integrate P3D values whose final axis is this integrator's k_perp grid."""
+        """
+        Integrate P3D values whose final axis is this integrator's k_perp grid.
+        """
         p3d_Mpc = np.asarray(p3d_Mpc)
         if p3d_Mpc.shape[-1] != self.n_k_perp:
             raise ValueError("last P3D axis must match integrator.n_k_perp")
@@ -122,7 +130,9 @@ class P1DIntegrator:
     def __call__(
         self, linear, z, k_par_iMpc, p3d_kpar_kperp, p3d_params=None, **kwargs
     ):
-        """Evaluate a Cartesian P3D callable and project it into P1D in Mpc."""
+        """
+        Evaluate a Cartesian P3D callable and project it into P1D in Mpc.
+        """
         z = np.asarray(z)
         k_par_iMpc = np.asarray(k_par_iMpc, dtype=float)
         if (

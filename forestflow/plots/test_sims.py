@@ -25,30 +25,26 @@ def plot_p3d_snap(
     kmax_3d_fit: int | None=3,
 ) -> None:
     """
-    Plot three-dimensional power spectrum snapshot.
+    Plot P3D simulation/emulator comparison and fractional residuals.
 
     Parameters
     ----------
-    folder_out : object
-        Folder out used by the calculation.
-    k_Mpc : object
-        K mpc used by the calculation.
-    mu : object
-        Cosines of the angles to the line of sight.
-    p3d_sim : numpy.ndarray or dict
-        P3d sim used by the calculation.
-    p3d_emu : numpy.ndarray or dict
-        P3d emu used by the calculation.
-    p3d_std_emu : numpy.ndarray or dict
-        P3d std emu used by the calculation.
-    mu_bins : object
-        Mu bins used by the calculation.
+    folder_out : path-like
+        Output directory prefix; ``p3d_snap.png`` and ``p3d_snap.pdf`` are
+        written there.
+    k_Mpc, mu : array_like of shape (n_k, n_mu)
+        Rebinned wavenumbers in ``Mpc^-1`` and line-of-sight cosines. ``mu``
+        is retained for API compatibility and is not used directly.
+    p3d_sim, p3d_emu, p3d_std_emu : array_like of shape (n_k, n_mu)
+        Simulation, emulator mean, and emulator one-sigma uncertainty.
+    mu_bins : array_like of shape (n_mu + 1,)
+        Angular-bin edges used for labels.
     ftsize : int, optional
         Base font size in points.
-    kmax_3d : int, optional
-        Kmax 3d used by the calculation.
-    kmax_3d_fit : int, optional
-        Kmax 3d fit used by the calculation.
+    kmax_3d : float, default=4
+        Retained API parameter; this implementation does not apply it.
+    kmax_3d_fit : float, default=3
+        Vertical fit-limit marker in ``Mpc^-1``.
     """
     fig, axs = plt.subplots(
         2, 1, figsize=(8, 6), sharex=True, height_ratios=[3, 1]
@@ -180,26 +176,23 @@ def plot_p1d_snap(
     kmax_1d_fit: int | None=3,
 ) -> None:
     """
-    Plot one-dimensional power spectrum snapshot.
+    Plot P1D simulation/emulator comparison and fractional residuals.
 
     Parameters
     ----------
-    folder_out : object
-        Folder out used by the calculation.
-    k_p1d_Mpc : numpy.ndarray or dict
-        K p1d mpc used by the calculation.
-    p1d_sim : numpy.ndarray or dict
-        P1d sim used by the calculation.
-    p1d_emu : numpy.ndarray or dict
-        P1d emu used by the calculation.
-    p1d_std_emu : numpy.ndarray or dict
-        P1d std emu used by the calculation.
+    folder_out : path-like
+        Output directory prefix; ``p1d_snap.png`` and ``p1d_snap.pdf`` are
+        written there.
+    k_p1d_Mpc : array_like of shape (n_k,)
+        P1D wavenumbers in ``Mpc^-1``.
+    p1d_sim, p1d_emu, p1d_std_emu : array_like of shape (n_k,)
+        Simulation, emulator mean, and emulator one-sigma uncertainty.
     ftsize : int, optional
         Base font size in points.
-    kmax_1d : int, optional
-        Kmax 1d used by the calculation.
-    kmax_1d_fit : int, optional
-        Kmax 1d fit used by the calculation.
+    kmax_1d : float, default=4
+        Largest plotted wavenumber in ``Mpc^-1``.
+    kmax_1d_fit : float, default=3
+        Vertical fit-limit marker in ``Mpc^-1``.
     """
     fig, axs = plt.subplots(
         2, 1, figsize=(8, 6), sharex=True, height_ratios=[3, 1]
@@ -287,35 +280,25 @@ def plot_p3d_test_sims(
     kmax_3d_fit: Any=3,
 ) -> Any | None:
     """
-    Plot the fractional errors in the P3D statistic for different redshifts and mu bins.
+    Plot P3D emulator residual summaries for named test simulations.
 
-    Parameters:
-    - archive: The dataset archive containing the training data.
-    - fractional_errors: Fractional errors in the P3D statistic for different redshifts and mu bins.
-    - savename: The name of the file to save the plot.
-
-    Returns:
-    None
-
-    Plots:
-    - Subplots showing fractional errors in P3D for different redshifts and mu bins.
-
-    Other Parameters
-    ----------------
-    sim_labels : object
-        Sim labels used by the calculation.
-    k_Mpc : numpy.ndarray
-        Wavenumbers in inverse megaparsecs.
-    mu : numpy.ndarray
-        Mu used by the calculation.
-    residual : numpy.ndarray
-        Residual used by the calculation.
-    mu_bins : numpy.ndarray
-        Mu bins used by the calculation.
-    fontsize : int
+    Parameters
+    ----------
+    sim_labels : sequence of str
+        MP-Gadget test labels supported by the internal display mapping.
+    k_Mpc, mu : array_like of shape (n_k, n_mu)
+        Rebinned wavenumbers in ``Mpc^-1`` and angle cosines. ``mu`` is
+        accepted for API compatibility and is not directly used.
+    residual : array_like of shape (n_sim, n_realizations, n_k, n_mu)
+        Fractional emulator residuals.
+    mu_bins : array_like of shape (n_mu + 1,)
+        Angular-bin edges.
+    savename : path-like, optional
+        Filename used to save the current figure.
+    fontsize : int, default=20
         Base font size in points.
-    kmax_3d_fit : object
-        Kmax 3d fit used by the calculation.
+    kmax_3d_fit : float, default=3
+        Vertical fit-limit marker in ``Mpc^-1``.
     """
 
     dict_labels = {
@@ -432,28 +415,22 @@ def plot_p1d_test_sims(
     kmax_1d_fit: Any=3,
 ) -> Any | None:
     """
-    Plot the fractional errors in the P1D statistic for different redshifts.
+    Plot P1D emulator residual summaries for named test simulations.
 
-    Parameters:
-    - fractional_errors: Fractional errors in the P1D statistic for different redshifts.
-    - savename: The name of the file to save the plot.
-
-    Returns:
-    None
-
-    Plots:
-    - Subplots showing fractional errors in P1D for different redshifts.
-
-    Other Parameters
-    ----------------
-    sim_labels : object
-        Sim labels used by the calculation.
-    k_p1d_Mpc : numpy.ndarray
-        K p1d mpc used by the calculation.
-    fontsize : int
+    Parameters
+    ----------
+    sim_labels : sequence of str
+        MP-Gadget test labels supported by the internal display mapping.
+    k_p1d_Mpc : array_like of shape (n_k,)
+        P1D wavenumbers in ``Mpc^-1``.
+    fractional_errors : array_like of shape (n_sim, n_realizations, n_k)
+        Fractional emulator residuals.
+    savename : path-like, optional
+        Filename used to save the current figure.
+    fontsize : int, default=20
         Base font size in points.
-    kmax_1d_fit : object
-        Kmax 1d fit used by the calculation.
+    kmax_1d_fit : float, default=3
+        Vertical fit-limit marker in ``Mpc^-1``.
     """
 
     # kmin = 2 * np.pi / 67.5 * fact_kmin
