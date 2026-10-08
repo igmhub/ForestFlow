@@ -7,7 +7,6 @@ from numpy.typing import NDArray
 
 import numpy as np
 from getdist import loadMCSamples
-from vega import FitResults
 from forestflow.priors.paper.set_samples import set_process_p1d_chain, set_map_igm_p3d
 from astropy.io import fits
 
@@ -36,6 +35,8 @@ def load_BAO_data(nn: int | None=10000) -> NDArray[Any]:
     This analysis helper reads project-local absolute paths rather than a
     package-distributed data resource.
     """
+    from vega import FitResults
+
     zeff = 2.33
     class_planck = cosmology.Cosmology(cosmo_label="Planck18_noBAO")
     planck_sig8 = class_planck.get_sigma8(zeff)

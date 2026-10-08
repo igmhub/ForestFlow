@@ -9,9 +9,7 @@ import os
 import numpy as np
 from getdist import MCSamples
 
-from cup1d.likelihood.pipeline import Pipeline
 from lace.cosmo import cosmology, rescale_cosmology
-from cup1d.likelihood.pipeline import Args
 
 
 def set_getdist_samples(BAO: Any, P1D: ArrayLike) -> NDArray[Any]:
@@ -322,8 +320,8 @@ def set_input_process_p1d_chain(lab_sample: ArrayLike, zeff: float | None=2.33) 
 
     Returns
     -------
-    pipeline : cup1d.likelihood.pipeline.Pipeline
-        Pipeline configured for the selected source.
+    pipeline : cup1d.inference.analysis.Analysis
+        Analysis configured for the selected source.
     chain : ndarray, shape (n_samples, 53)
         Flattened cube-coordinate posterior chain.
     d2star, nstar : ndarray, shape (n_samples,)
@@ -333,8 +331,11 @@ def set_input_process_p1d_chain(lab_sample: ArrayLike, zeff: float | None=2.33) 
     zeff : float
         Effective redshift used by downstream conversions.
     """
+    from cup1d.inference.analysis import Analysis
+    from cup1d.configuration.args import Args
+
     if lab_sample == "desi":
-        pip = Pipeline()
+        pip = Analysis(create_output=False)
         # local
         base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1"
         folder = os.path.join(base, "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/")
@@ -345,37 +346,26 @@ def set_input_process_p1d_chain(lab_sample: ArrayLike, zeff: float | None=2.33) 
 
     elif lab_sample == "accel2":
         ## set pipeline
-        emu = "mpg"
-        fit_type = "global_opt"
-        mcmc_conf = "test"
         path_data = "jjchaves"
         cov_label = "DESIY1_QMLE3"
         data_label = "accel2"
-        name_variation = "sim_" + data_label
 
         zmin = 2.2
         zmax = 4.2
 
-        args = Args(
+        args = Args.from_baseline(
+            synthetic=True,
             data_label=data_label,
             cov_label=cov_label,
-            emulator_label="CH24_" + emu + "cen_gpr",
+            emulator_label="lace_mpg",
             true_cosmo_label=data_label,
             apply_smoothing=True,
             add_noise=False,
             seed_noise=0,
             emu_cov_type="full",
-        )
-
-        args.set_baseline(
-            fit_type=fit_type,
-            fix_cosmo=False,
             fid_cosmo_label=data_label,
-            P1D_type=cov_label,
-            name_variation=name_variation,
             z_min=zmin,
             z_max=zmax,
-            mcmc_conf=mcmc_conf,
         )
 
         if path_data == "jjchaves":
@@ -385,7 +375,7 @@ def set_input_process_p1d_chain(lab_sample: ArrayLike, zeff: float | None=2.33) 
         elif path_data == "nersc":
             args.path_data = "/global/cfs/cdirs/desi/users/ravouxco/accel2/shared_files/frontier_grid"
 
-        pip = Pipeline(args)
+        pip = Analysis(args, create_output=False)
 
         ## load chain
         folder = "/home/jchaves/Proyectos/projects/lya/data/accel2/chains/chain_1/"

@@ -101,18 +101,50 @@ class ArinyoModel:
         """
         bias = broadcast_leading_dimensions(ari_pp["bias"], k_iMpc)
         bias_eta = broadcast_leading_dimensions(ari_pp["bias_eta"], k_iMpc)
+        lowk_bias = bias + bias_eta * fz * mu**2
+        return linP_Mpc * lowk_bias**2 * self.nonlinear_correction(
+            linP_Mpc, k_iMpc, mu, ari_pp
+        )
+
+    @staticmethod
+    def nonlinear_correction(linP_Mpc, k_iMpc, mu, ari_pp):
+        """Return the dimensionless Arinyo nonlinear correction ``D_NL``.
+
+        Parameters
+        ----------
+        linP_Mpc : array_like
+            Linear matter power spectrum in Mpc^3.
+        k_iMpc : array_like
+            Comoving wavenumber in 1/Mpc.
+        mu : array_like
+            Absolute line-of-sight cosine.
+        ari_pp : mapping
+            Named ``q1``, ``q2``, ``kvav``, ``av``, ``bv``, and ``kp``
+            coefficients. Values may have leading batch dimensions.
+
+        Returns
+        -------
+        numpy.ndarray
+            ``exp[Delta2 * (q1 + q2 * Delta2) *
+            (1 - k**av / kvav * abs(mu)**bv) - (k / kp)**2]``.
+
+        Notes
+        -----
+        This bias-free factor is public so correlation-function consumers can
+        apply it exactly once while retaining their own tracer Kaiser terms.
+        ``k`` is in 1/Mpc and ``linP_Mpc`` is in Mpc^3.
+        """
         q1 = broadcast_leading_dimensions(ari_pp["q1"], k_iMpc)
         q2 = broadcast_leading_dimensions(ari_pp["q2"], k_iMpc)
         av = broadcast_leading_dimensions(ari_pp["av"], k_iMpc)
         kvav = broadcast_leading_dimensions(ari_pp["kvav"], k_iMpc)
         bv = broadcast_leading_dimensions(ari_pp["bv"], k_iMpc)
         kp = broadcast_leading_dimensions(ari_pp["kp"], k_iMpc)
-        lowk_bias = bias + bias_eta * fz * mu**2
         delta2 = k_iMpc**3 * linP_Mpc / (2 * np.pi**2)
         nonlin = delta2 * (q1 + q2 * delta2)
-        velocity = k_iMpc**av / kvav * mu**bv
+        velocity = k_iMpc**av / kvav * np.abs(mu)**bv
         pressure = (k_iMpc / kp) ** 2
-        return linP_Mpc * lowk_bias**2 * np.exp(nonlin * (1 - velocity) - pressure)
+        return np.exp(nonlin * (1 - velocity) - pressure)
 
     def P3D_Mpc_k_mu(
         self,
