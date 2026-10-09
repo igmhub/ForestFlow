@@ -867,6 +867,11 @@ class P3DEmulator:
         Nrealizations: Optional[int] = None,
         seed: int = 0,
         latent_indices: Optional[Sequence[int]] = None,
+        *,
+        sampler: str = "gaussian",
+        statistic: str = "mean",
+        aggregation_space: str = "transformed",
+        draw_policy: str = "legacy",
     ) -> Dict[str, np.ndarray]:
         """
         Predict Arinyo coefficients using the trained emulator.
@@ -887,6 +892,15 @@ class P3DEmulator:
         latent_indices : sequence of int, optional
             Latent block assigned to each input. This allows a larger batch to
             reproduce the random samples used by independent redshift batches.
+        sampler : {"gaussian", "antithetic", "sobol"}, default="gaussian"
+            Latent sampler. Antithetic sampling uses paired ``z`` and ``-z``.
+        statistic : {"mean", "median"}, default="mean"
+            Statistic used to reduce latent predictions.
+        aggregation_space : {"transformed", "physical"}, default="transformed"
+            Reduce before or after inverse output transformation. The default
+            reproduces the historical prediction.
+        draw_policy : {"legacy", "nested"}, default="legacy"
+            Nested draws retain the same per-group prefix as N increases.
 
         Returns
         -------
@@ -918,6 +932,18 @@ class P3DEmulator:
         # Set default number of realizations
         if Nrealizations is None:
             Nrealizations = self.Nrealizations
+        if not isinstance(Nrealizations, (int, np.integer)) or Nrealizations < 1:
+            raise ValueError("Nrealizations must be a positive integer")
+        if sampler not in {"gaussian", "antithetic", "sobol"}:
+            raise ValueError("sampler must be 'gaussian', 'antithetic', or 'sobol'")
+        if statistic not in {"mean", "median"}:
+            raise ValueError("statistic must be 'mean' or 'median'")
+        if aggregation_space not in {"transformed", "physical"}:
+            raise ValueError("aggregation_space must be 'transformed' or 'physical'")
+        if draw_policy not in {"legacy", "nested"}:
+            raise ValueError("draw_policy must be 'legacy' or 'nested'")
+        if sampler == "antithetic" and Nrealizations % 2:
+            raise ValueError("antithetic sampling requires an even Nrealizations")
 
         # Prepare conditioned inputs
         neval = len(emu_params)
@@ -925,17 +951,20 @@ class P3DEmulator:
 
         # Generate predictions
         generator = torch.Generator(device=condition.device).manual_seed(seed)
-        mean_prediction = self._generate_predictions(
+        prediction = self._generate_predictions(
             condition,
             neval,
             Nrealizations,
             generator,
             seed=seed,
             latent_indices=latent_indices,
+            sampler=sampler,
+            draw_policy=draw_policy,
         )
 
-        # Process and transform predictions
-        return self._process_predictions(mean_prediction, neval)
+        return self._aggregate_predictions(
+            prediction, neval, statistic, aggregation_space
+        )
 
     def _prepare_condition_tensor(
         self, emu_params: List[Dict[str, float]], neval: int, Nrealizations: int
@@ -977,7 +1006,9 @@ class P3DEmulator:
         generator: torch.Generator,
         seed: Optional[int] = None,
         latent_indices: Optional[Sequence[int]] = None,
-    ) -> np.ndarray:
+        sampler: str = "gaussian",
+        draw_policy: str = "legacy",
+    ) -> torch.Tensor:
         """
         Generate predictions from the cINN model.
 
@@ -999,8 +1030,9 @@ class P3DEmulator:
 
         Returns
         -------
-        np.ndarray
-            Mean latent prediction with shape ``(neval, dim_inputSpace)``.
+        torch.Tensor
+            Per-realization transformed predictions with shape
+            ``(neval, Nrealizations, dim_inputSpace)``.
         """
         # Setup conditions for the cINN
         aran = np.arange(neval * Nrealizations)
@@ -1026,15 +1058,21 @@ class P3DEmulator:
             device.type,
             device.index,
             latent_indices_key,
+            sampler,
+            draw_policy,
         )
         if seed is not None and self._latent_cache_key == cache_key:
             z_test = self._latent_cache
         else:
-            latent = torch.randn(
-                n_latent_groups * Nrealizations,
-                self.dim_inputSpace,
-                generator=generator,
-                device=device,
+            latent = self._draw_latents(
+                n_latent_groups,
+                Nrealizations,
+                device,
+                seed,
+                generator,
+                sampler,
+                draw_policy,
+                latent_indices if latent_indices is not None else None,
             )
             if latent_indices is None:
                 z_test = latent
@@ -1055,12 +1093,95 @@ class P3DEmulator:
         with torch.no_grad():
             out_emu, _ = self.emulator(z_test, condition, rev=True)
 
-        return (
-            out_emu.reshape(neval, Nrealizations, self.dim_inputSpace)
-            .mean(dim=1)
-            .cpu()
-            .numpy()
+        return out_emu.reshape(neval, Nrealizations, self.dim_inputSpace)
+
+    def _draw_latents(
+        self,
+        n_groups,
+        n_realizations,
+        device,
+        seed,
+        generator,
+        sampler,
+        draw_policy,
+        latent_indices,
+    ):
+        """Draw latent vectors with reproducible group and prefix semantics."""
+
+        if draw_policy == "legacy" and sampler == "gaussian":
+            return torch.randn(
+                n_groups * n_realizations,
+                self.dim_inputSpace,
+                generator=generator,
+                device=device,
+            )
+
+        draws = []
+        for group in range(n_groups):
+            group_seed = int(seed) + 1_000_003 * group
+            if sampler == "sobol":
+                engine = torch.quasirandom.SobolEngine(
+                    self.dim_inputSpace, scramble=True, seed=group_seed
+                )
+                uniform = engine.draw(n_realizations).to(device=device)
+                eps = torch.finfo(uniform.dtype).eps
+                latent = torch.erfinv(uniform.clamp(eps, 1.0 - eps) * 2.0 - 1.0)
+                latent = latent * np.sqrt(2.0)
+            else:
+                group_generator = torch.Generator(device=device).manual_seed(group_seed)
+                if sampler == "antithetic":
+                    half = torch.randn(
+                        n_realizations // 2,
+                        self.dim_inputSpace,
+                        generator=group_generator,
+                        device=device,
+                    )
+                    latent = torch.cat((half, -half), dim=0)
+                else:
+                    latent = torch.randn(
+                        n_realizations,
+                        self.dim_inputSpace,
+                        generator=group_generator,
+                        device=device,
+                    )
+            draws.append(latent)
+
+        # The caller applies ``latent_indices`` after this group-major layout,
+        # matching the historical Gaussian implementation.
+        return torch.stack(draws).reshape(
+            n_groups * n_realizations, self.dim_inputSpace
         )
+
+    def _aggregate_predictions(self, prediction, neval, statistic, aggregation_space):
+        """Reduce latent predictions in transformed or physical output space."""
+
+        if aggregation_space == "transformed":
+            if statistic == "mean":
+                reduced = prediction.mean(dim=1)
+            else:
+                # quantile uses the midpoint of the two central values for an
+                # even realization count, matching numpy.median below.
+                reduced = torch.quantile(prediction, 0.5, dim=1)
+            return self._process_predictions(reduced.cpu().numpy(), neval)
+
+        samples = {
+            name: prediction[:, :, index].cpu().numpy()
+            for index, name in enumerate(self.output_labels)
+        }
+        physical = self.transf_data.transf_stand(
+            samples, type_stand="output", direct=False
+        )
+        result = {}
+        for name, values in physical.items():
+            values = np.asarray(values)
+            result[name] = (
+                values.mean(axis=1)
+                if statistic == "mean"
+                else np.median(values, axis=1)
+            )
+            if neval == 1:
+                result[name] = result[name][0]
+        return result
 
     def _process_predictions(
         self, mean_prediction: np.ndarray, neval: int
