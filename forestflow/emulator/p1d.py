@@ -19,7 +19,16 @@ class P1DEmulator:
     to be imported without initializing the LaCE cosmology stack.
     """
 
-    def __init__(self, name_emu="forest_mpg_fix", compile_model=True):
+    def __init__(
+        self,
+        name_emu="forest_mpg_fix",
+        compile_model=True,
+        *,
+        sampler="gaussian",
+        statistic="mean",
+        aggregation_space="transformed",
+        draw_policy="legacy",
+    ):
         """
         Load a named P3D bundle.
 
@@ -41,6 +50,22 @@ class P1DEmulator:
         self.linear = None
         self._linear_cosmology_parameters = None
         self._prediction_cache = None
+        self.sampling_options = {
+            "sampler": sampler,
+            "statistic": statistic,
+            "aggregation_space": aggregation_space,
+            "draw_policy": draw_policy,
+        }
+
+    def set_sampling_options(self, **options):
+        """Update P3D latent-sampling settings and clear cached predictions."""
+
+        allowed = set(self.sampling_options)
+        unknown = set(options) - allowed
+        if unknown:
+            raise ValueError(f"Unknown sampling options: {sorted(unknown)}")
+        self.sampling_options.update(options)
+        self.clear_prediction_cache()
 
     def set_cosmology(self, cosmo_params_dict):
         """
@@ -106,7 +131,9 @@ class P1DEmulator:
         """
 
         values = tuple(float(parameters[name]) for name in self.emu_params)
-        return (latent_index, values) if latent_index is not None else values
+        sampling = tuple(sorted(self.sampling_options.items()))
+        key = (sampling, values)
+        return (latent_index, key) if latent_index is not None else key
 
     def _evaluate_emulator(self, emulator_calls, **kwargs):
         """
@@ -117,7 +144,9 @@ class P1DEmulator:
         # batches used here, thread start-up costs more than it saves; sampler
         # or MPI parallelism remains available across likelihood points.
         with threadpool_limits(limits=1):
-            return self.emulator.evaluate(emulator_calls, **kwargs)
+            return self.emulator.evaluate(
+                emulator_calls, **self.sampling_options, **kwargs
+            )
 
     def prime_prediction_cache(self, emulator_calls):
         """

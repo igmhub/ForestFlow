@@ -1130,19 +1130,33 @@ class P3DEmulator:
             else:
                 group_generator = torch.Generator(device=device).manual_seed(group_seed)
                 if sampler == "antithetic":
-                    half = torch.randn(
-                        n_realizations // 2,
-                        self.dim_inputSpace,
-                        generator=group_generator,
-                        device=device,
+                    # Generate one vector at a time: torch's vectorized normal
+                    # kernels need not retain a prefix across requested shapes.
+                    half = torch.stack(
+                        [
+                            torch.randn(
+                                self.dim_inputSpace,
+                                generator=group_generator,
+                                device=device,
+                            )
+                            for _ in range(n_realizations // 2)
+                        ]
                     )
-                    latent = torch.cat((half, -half), dim=0)
+                    # Interleaving makes a smaller even-N sequence a prefix
+                    # of a larger one while preserving each z, -z pair.
+                    latent = torch.stack((half, -half), dim=1).reshape(
+                        n_realizations, self.dim_inputSpace
+                    )
                 else:
-                    latent = torch.randn(
-                        n_realizations,
-                        self.dim_inputSpace,
-                        generator=group_generator,
-                        device=device,
+                    latent = torch.stack(
+                        [
+                            torch.randn(
+                                self.dim_inputSpace,
+                                generator=group_generator,
+                                device=device,
+                            )
+                            for _ in range(n_realizations)
+                        ]
                     )
             draws.append(latent)
 
