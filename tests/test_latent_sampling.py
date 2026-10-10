@@ -43,6 +43,27 @@ def test_sobol_draws_are_reproducible_and_finite():
     assert torch.isfinite(first).all()
 
 
+def test_sobol_antithetic_draws_are_paired():
+    emulator = _emulator_stub()
+    values = emulator._draw_latents(
+        1, 16, torch.device("cpu"), 7, None, "sobol_antithetic", "nested", None
+    ).reshape(1, 16, 3)
+    torch.testing.assert_close(values[:, 0::2], -values[:, 1::2])
+
+
+def test_stable_group_ids_do_not_depend_on_chunk_membership():
+    emulator = _emulator_stub()
+    combined = emulator._draw_latents(
+        2, 16, torch.device("cpu"), 12, None, "sobol", "nested", None,
+        latent_group_ids=[41, 93],
+    ).reshape(2, 16, 3)
+    alone = emulator._draw_latents(
+        1, 16, torch.device("cpu"), 12, None, "sobol", "nested", None,
+        latent_group_ids=[93],
+    ).reshape(1, 16, 3)
+    torch.testing.assert_close(combined[1], alone[0])
+
+
 def test_p1d_adapter_forwards_sampling_options_and_invalidates_cache():
     class FakeP3D:
         def __init__(self):

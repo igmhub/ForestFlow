@@ -70,7 +70,12 @@ class P1DIntegrator:
         log_max = np.log(k_perp_max_iMpc)
         if method == "simpson":
             self.ln_k_perp = np.linspace(log_min, log_max, self.n_k_perp)
-            self.weights = None
+            # Simpson integration is linear. Integrating an identity matrix
+            # once gives the exact weights used by scipy for this grid,
+            # including its even-node endpoint convention.
+            self.weights = simpson(
+                np.eye(self.n_k_perp), x=self.ln_k_perp, axis=0
+            )
         else:
             nodes, weights = np.polynomial.legendre.leggauss(self.n_k_perp)
             midpoint = 0.5 * (log_min + log_max)
@@ -123,8 +128,6 @@ class P1DIntegrator:
         if p3d_Mpc.shape[-1] != self.n_k_perp:
             raise ValueError("last P3D axis must match integrator.n_k_perp")
         integrand = p3d_Mpc * self.k_perp_iMpc**2 / (2 * np.pi)
-        if self.method == "simpson":
-            return simpson(integrand, x=self.ln_k_perp, axis=-1)
         return np.sum(integrand * self.weights, axis=-1)
 
     def __call__(

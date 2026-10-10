@@ -126,7 +126,7 @@ class P3DEmulator:
         weight_decay: float = 1e-4,
         use_val_set: bool = False,
         adamw: bool = True,
-        Nrealizations: int = 2000,
+        Nrealizations: int = 2048,
         training_provenance: Optional[Mapping[str, Any]] = None,
         model_domain: Optional[Mapping[str, Any]] = None,
         compile_model: bool = False,
@@ -168,7 +168,7 @@ class P3DEmulator:
             Whether to reserve 20% of training data for validation.
         adamw : bool, default=True
             If True use AdamW optimizer, otherwise use Adam.
-        Nrealizations : int, default=2000
+        Nrealizations : int, default=2048
             Default number of latent space realizations for evaluation.
         training_provenance : mapping, optional
             Archive, selection, and preprocessing details to preserve in the
@@ -867,8 +867,9 @@ class P3DEmulator:
         Nrealizations: Optional[int] = None,
         seed: int = 0,
         latent_indices: Optional[Sequence[int]] = None,
+        latent_group_ids: Optional[Sequence[int]] = None,
         *,
-        sampler: str = "sobol",
+        sampler: str = "sobol_antithetic",
         statistic: str = "mean",
         aggregation_space: str = "transformed",
         draw_policy: str = "nested",
@@ -892,7 +893,11 @@ class P3DEmulator:
         latent_indices : sequence of int, optional
             Latent block assigned to each input. This allows a larger batch to
             reproduce the random samples used by independent redshift batches.
-        sampler : {"gaussian", "antithetic", "sobol"}, default="sobol"
+        latent_group_ids : sequence of int, optional
+            Stable group identities, one per input. These make nested draws
+            independent of evaluation chunking. Cannot be combined with
+            ``latent_indices``.
+        sampler : {"gaussian", "antithetic", "sobol", "sobol_antithetic"}, default="sobol_antithetic"
             Latent sampler. Antithetic sampling uses paired ``z`` and ``-z``.
         statistic : {"mean", "median"}, default="mean"
             Statistic used to reduce latent predictions.
@@ -934,16 +939,18 @@ class P3DEmulator:
             Nrealizations = self.Nrealizations
         if not isinstance(Nrealizations, (int, np.integer)) or Nrealizations < 1:
             raise ValueError("Nrealizations must be a positive integer")
-        if sampler not in {"gaussian", "antithetic", "sobol"}:
-            raise ValueError("sampler must be 'gaussian', 'antithetic', or 'sobol'")
+        if sampler not in {"gaussian", "antithetic", "sobol", "sobol_antithetic"}:
+            raise ValueError("sampler must be 'gaussian', 'antithetic', 'sobol', or 'sobol_antithetic'")
         if statistic not in {"mean", "median"}:
             raise ValueError("statistic must be 'mean' or 'median'")
         if aggregation_space not in {"transformed", "physical"}:
             raise ValueError("aggregation_space must be 'transformed' or 'physical'")
         if draw_policy not in {"legacy", "nested"}:
             raise ValueError("draw_policy must be 'legacy' or 'nested'")
-        if sampler == "antithetic" and Nrealizations % 2:
+        if sampler in {"antithetic", "sobol_antithetic"} and Nrealizations % 2:
             raise ValueError("antithetic sampling requires an even Nrealizations")
+        if latent_indices is not None and latent_group_ids is not None:
+            raise ValueError("latent_indices and latent_group_ids are mutually exclusive")
 
         # Prepare conditioned inputs
         neval = len(emu_params)
@@ -958,6 +965,7 @@ class P3DEmulator:
             generator,
             seed=seed,
             latent_indices=latent_indices,
+            latent_group_ids=latent_group_ids,
             sampler=sampler,
             draw_policy=draw_policy,
         )
@@ -1006,6 +1014,7 @@ class P3DEmulator:
         generator: torch.Generator,
         seed: Optional[int] = None,
         latent_indices: Optional[Sequence[int]] = None,
+        latent_group_ids: Optional[Sequence[int]] = None,
         sampler: str = "gaussian",
         draw_policy: str = "legacy",
     ) -> torch.Tensor:
@@ -1040,7 +1049,13 @@ class P3DEmulator:
 
         n_samples = neval * Nrealizations
         device = condition.device
-        if latent_indices is None:
+        if latent_group_ids is not None:
+            latent_group_ids = np.asarray(latent_group_ids, dtype=np.int64)
+            if latent_group_ids.shape != (neval,):
+                raise ValueError("latent_group_ids must contain one integer per input")
+            latent_indices_key = ("stable", tuple(latent_group_ids.tolist()))
+            n_latent_groups = neval
+        elif latent_indices is None:
             latent_indices_key = None
             n_latent_groups = neval
         else:
@@ -1073,8 +1088,9 @@ class P3DEmulator:
                 sampler,
                 draw_policy,
                 latent_indices if latent_indices is not None else None,
+                latent_group_ids,
             )
-            if latent_indices is None:
+            if latent_group_ids is not None or latent_indices is None:
                 z_test = latent
             else:
                 z_test = latent.reshape(
@@ -1105,6 +1121,7 @@ class P3DEmulator:
         sampler,
         draw_policy,
         latent_indices,
+        latent_group_ids=None,
     ):
         """Draw latent vectors with reproducible group and prefix semantics."""
 
@@ -1118,15 +1135,22 @@ class P3DEmulator:
 
         draws = []
         for group in range(n_groups):
-            group_seed = int(seed) + 1_000_003 * group
-            if sampler == "sobol":
+            group_identity = group if latent_group_ids is None else int(latent_group_ids[group])
+            # Keep hashed stable identities within torch's accepted seed range.
+            group_seed = (int(seed) + 1_000_003 * group_identity) % (2**63 - 1)
+            if sampler in {"sobol", "sobol_antithetic"}:
                 engine = torch.quasirandom.SobolEngine(
                     self.dim_inputSpace, scramble=True, seed=group_seed
                 )
-                uniform = engine.draw(n_realizations).to(device=device)
+                n_base = n_realizations // 2 if sampler == "sobol_antithetic" else n_realizations
+                uniform = engine.draw(n_base).to(device=device)
                 eps = torch.finfo(uniform.dtype).eps
                 latent = torch.erfinv(uniform.clamp(eps, 1.0 - eps) * 2.0 - 1.0)
                 latent = latent * np.sqrt(2.0)
+                if sampler == "sobol_antithetic":
+                    latent = torch.stack((latent, -latent), dim=1).reshape(
+                        n_realizations, self.dim_inputSpace
+                    )
             else:
                 group_generator = torch.Generator(device=device).manual_seed(group_seed)
                 if sampler == "antithetic":

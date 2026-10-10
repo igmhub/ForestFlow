@@ -5,6 +5,8 @@ This adapter is owned by ForestFlow.  It turns predicted Arinyo parameters and
 linear theory into P1D predictions for likelihood clients such as cup1d.
 """
 
+import hashlib
+
 import numpy as np
 from threadpoolctl import threadpool_limits
 
@@ -24,7 +26,7 @@ class P1DEmulator:
         name_emu="forest_mpg_fix",
         compile_model=True,
         *,
-        sampler="sobol",
+        sampler="sobol_antithetic",
         statistic="mean",
         aggregation_space="transformed",
         draw_policy="nested",
@@ -175,7 +177,17 @@ class P1DEmulator:
         for start in range(0, len(items), 128):
             chunk = items[start : start + 128]
             keys = [item[0] for item in chunk]
-            predictions = self._evaluate_emulator([item[1] for item in chunk])
+            group_ids = [
+                int.from_bytes(
+                    hashlib.blake2b(repr(key).encode(), digest_size=7).digest(),
+                    byteorder="little",
+                    signed=False,
+                )
+                for key in keys
+            ]
+            predictions = self._evaluate_emulator(
+                [item[1] for item in chunk], latent_group_ids=group_ids
+            )
             for index, key in enumerate(keys):
                 self._prediction_cache[key] = {
                     name: np.asarray(predictions[name]).reshape(-1)[index]
