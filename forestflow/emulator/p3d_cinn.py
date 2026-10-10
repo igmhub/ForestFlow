@@ -126,7 +126,7 @@ class P3DEmulator:
         weight_decay: float = 1e-4,
         use_val_set: bool = False,
         adamw: bool = True,
-        Nrealizations: int = 1000,
+        Nrealizations: int = 2000,
         training_provenance: Optional[Mapping[str, Any]] = None,
         model_domain: Optional[Mapping[str, Any]] = None,
         compile_model: bool = False,
@@ -168,7 +168,7 @@ class P3DEmulator:
             Whether to reserve 20% of training data for validation.
         adamw : bool, default=True
             If True use AdamW optimizer, otherwise use Adam.
-        Nrealizations : int, default=1000
+        Nrealizations : int, default=2000
             Default number of latent space realizations for evaluation.
         training_provenance : mapping, optional
             Archive, selection, and preprocessing details to preserve in the
@@ -868,10 +868,10 @@ class P3DEmulator:
         seed: int = 0,
         latent_indices: Optional[Sequence[int]] = None,
         *,
-        sampler: str = "gaussian",
+        sampler: str = "sobol",
         statistic: str = "mean",
         aggregation_space: str = "transformed",
-        draw_policy: str = "legacy",
+        draw_policy: str = "nested",
     ) -> Dict[str, np.ndarray]:
         """
         Predict Arinyo coefficients using the trained emulator.
@@ -892,14 +892,14 @@ class P3DEmulator:
         latent_indices : sequence of int, optional
             Latent block assigned to each input. This allows a larger batch to
             reproduce the random samples used by independent redshift batches.
-        sampler : {"gaussian", "antithetic", "sobol"}, default="gaussian"
+        sampler : {"gaussian", "antithetic", "sobol"}, default="sobol"
             Latent sampler. Antithetic sampling uses paired ``z`` and ``-z``.
         statistic : {"mean", "median"}, default="mean"
             Statistic used to reduce latent predictions.
         aggregation_space : {"transformed", "physical"}, default="transformed"
             Reduce before or after inverse output transformation. The default
             reproduces the historical prediction.
-        draw_policy : {"legacy", "nested"}, default="legacy"
+        draw_policy : {"legacy", "nested"}, default="nested"
             Nested draws retain the same per-group prefix as N increases.
 
         Returns

@@ -41,6 +41,13 @@ EXPECTED_ARINYO = {
     "kp": 15.507150014342459,
     "q2": 0.266083656536723,
 }
+
+LEGACY_SAMPLING = {
+    "sampler": "gaussian",
+    "statistic": "mean",
+    "aggregation_space": "transformed",
+    "draw_policy": "legacy",
+}
 EXPECTED_P3D_MPC = np.array(
     [16.32021349, 2.03299192, 0.26704328]
 )
@@ -80,7 +87,9 @@ def central_prediction():
         )
     torch.set_num_threads(1)
     emulator = P3DEmulator(key="forest_mpg", Nrealizations=3000)
-    arinyo = _scalar_prediction(emulator.evaluate(CENTRAL_INPUT, seed=0))
+    arinyo = _scalar_prediction(
+        emulator.evaluate(CENTRAL_INPUT, seed=0, **LEGACY_SAMPLING)
+    )
     return emulator, arinyo
 
 
@@ -135,7 +144,9 @@ def test_saved_emulator_reload_preserves_prediction(central_prediction, tmp_path
         Nrealizations=3000,
     )
 
-    actual = _scalar_prediction(reloaded.evaluate(CENTRAL_INPUT, seed=0))
+    actual = _scalar_prediction(
+        reloaded.evaluate(CENTRAL_INPUT, seed=0, **LEGACY_SAMPLING)
+    )
     for name in expected:
         assert actual[name] == pytest.approx(expected[name], rel=0, abs=0)
 

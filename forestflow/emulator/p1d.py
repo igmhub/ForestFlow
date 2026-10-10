@@ -24,10 +24,11 @@ class P1DEmulator:
         name_emu="forest_mpg_fix",
         compile_model=True,
         *,
-        sampler="gaussian",
+        sampler="sobol",
         statistic="mean",
         aggregation_space="transformed",
-        draw_policy="legacy",
+        draw_policy="nested",
+        seed=0,
     ):
         """
         Load a named P3D bundle.
@@ -55,6 +56,7 @@ class P1DEmulator:
             "statistic": statistic,
             "aggregation_space": aggregation_space,
             "draw_policy": draw_policy,
+            "seed": seed,
         }
 
     def set_sampling_options(self, **options):

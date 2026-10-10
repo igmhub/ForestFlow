@@ -41,17 +41,20 @@ torch.set_num_threads(1)
 # must be even.
 
 # %%
-SMOKE = True
-COUNTS = (32, 128, 512) if SMOKE else tuple(2**power for power in range(5, 15))
-REFERENCE_COUNT = 4096 if SMOKE else 65536
-SEEDS = (3, 17, 91) if SMOKE else tuple(range(16))
+# COUNTS = (1000, 5000, 10000)
+COUNTS = (1000, 2000)
+REFERENCE_COUNT = 100000
+SEEDS = (3, 17, 91, 134, 201, 303, 404, 505, 606, 707)
 METHODS = (
-    ("gaussian", "mean", "transformed", "nested"),
-    ("antithetic", "mean", "transformed", "nested"),
+    # ("gaussian", "mean", "transformed", "nested"),
+    # ("antithetic", "mean", "transformed", "nested"),
+    # ("gaussian", "median", "transformed", "nested"),
+    # ("gaussian", "mean", "physical", "nested"),
+    # ("gaussian", "median", "physical", "nested"),
     ("sobol", "mean", "transformed", "nested"),
-    ("gaussian", "median", "transformed", "nested"),
-    ("gaussian", "mean", "physical", "nested"),
-    ("gaussian", "median", "physical", "nested"),
+    ("sobol", "mean", "physical", "nested"),
+    ("sobol", "median", "transformed", "nested"),
+    ("sobol", "median", "physical", "nested"),
 )
 
 INPUT = {
@@ -130,17 +133,39 @@ for method in METHODS:
                 }
             )
 
+summary = []
 for method in METHODS:
-    selected = [row for row in rows if row["method"] == method]
-    x = np.asarray([row["count"] for row in selected])
-    y = np.asarray([row["max_relative_error"] for row in selected])
-    plt.scatter(x, y, label="/".join(method), alpha=0.75)
-plt.xscale("log")
-plt.yscale("log")
-plt.xlabel("ForestFlow realizations")
-plt.ylabel("max relative Arinyo error")
-plt.legend(fontsize=7)
-plt.show()
+    for count in COUNTS:
+        selected = [row for row in rows if row["method"] == method and row["count"] == count]
+        precision = np.asarray([row["max_relative_error"] for row in selected])
+        seconds = np.asarray([row["seconds"] for row in selected])
+        summary.append({"method": method, "count": count,
+                        "precision_mean": precision.mean(), "precision_std": precision.std(ddof=1),
+                        "time_mean_seconds": seconds.mean(), "time_std_seconds": seconds.std(ddof=1)})
+
+fig, (precision_axis, time_axis) = plt.subplots(1, 2, figsize=(12, 4))
+for method in METHODS:
+    selected = [row for row in summary if row["method"] == method]
+    counts = np.asarray([row["count"] for row in selected])
+    precision_axis.errorbar(counts, [row["precision_mean"] for row in selected],
+                            yerr=[row["precision_std"] for row in selected], marker="o", capsize=3,
+                            label="/".join(method))
+    time_axis.errorbar(counts, [row["time_mean_seconds"] for row in selected],
+                       yerr=[row["time_std_seconds"] for row in selected], marker="o", capsize=3,
+                       label="/".join(method))
+for axis in (precision_axis, time_axis):
+    axis.set_xscale("log")
+    axis.legend(fontsize=6)
+precision_axis.set_yscale("log")
+precision_axis.set_xlabel("ForestFlow realizations")
+precision_axis.set_ylabel("mean max relative Arinyo error ± seed std")
+time_axis.set_xlabel("ForestFlow realizations")
+time_axis.set_ylabel("mean evaluation time [s] ± seed std")
+fig.tight_layout()
+for row in summary:
+    print(f"{'/'.join(row['method'])}, N={row['count']:6d}: "
+          f"precision={row['precision_mean']:.3e} ± {row['precision_std']:.3e}; "
+          f"time={row['time_mean_seconds']:.4f} ± {row['time_std_seconds']:.4f} s")
 
 
 # %% [markdown]
