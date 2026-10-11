@@ -974,6 +974,64 @@ class P3DEmulator:
             prediction, neval, statistic, aggregation_space
         )
 
+    def evaluate_transformed(
+        self,
+        emu_params: Union[Dict[str, float], List[Dict[str, float]]],
+        Nrealizations: Optional[int] = None,
+        seed: int = 0,
+        latent_indices: Optional[Sequence[int]] = None,
+        latent_group_ids: Optional[Sequence[int]] = None,
+        *,
+        sampler: str = "sobol_antithetic",
+        statistic: str = "mean",
+        draw_policy: str = "nested",
+    ) -> Dict[str, np.ndarray]:
+        """Predict reduced coefficients in ForestFlow output space.
+
+        The returned values use the output transformation and standardization
+        stored with this emulator.  This is the native target space for a
+        deterministic student emulator.  Only a transformed-space reduction is
+        supported because reducing after inverse transformation is a different
+        scientific estimator.
+        """
+        if not hasattr(self, "emulator"):
+            raise ValueError("Emulator not initialized. Please train or load a model first.")
+        if isinstance(emu_params, dict):
+            emu_params = [emu_params]
+        if Nrealizations is None:
+            Nrealizations = self.Nrealizations
+        if not isinstance(Nrealizations, (int, np.integer)) or Nrealizations < 1:
+            raise ValueError("Nrealizations must be a positive integer")
+        if sampler not in {"gaussian", "antithetic", "sobol", "sobol_antithetic"}:
+            raise ValueError("unsupported sampler")
+        if statistic not in {"mean", "median"}:
+            raise ValueError("statistic must be 'mean' or 'median'")
+        if draw_policy not in {"legacy", "nested"}:
+            raise ValueError("draw_policy must be 'legacy' or 'nested'")
+        if sampler in {"antithetic", "sobol_antithetic"} and Nrealizations % 2:
+            raise ValueError("antithetic sampling requires an even Nrealizations")
+        if latent_indices is not None and latent_group_ids is not None:
+            raise ValueError("latent_indices and latent_group_ids are mutually exclusive")
+        neval = len(emu_params)
+        condition = self._prepare_condition_tensor(emu_params, neval, Nrealizations)
+        generator = torch.Generator(device=condition.device).manual_seed(seed)
+        prediction = self._generate_predictions(
+            condition, neval, Nrealizations, generator, seed=seed,
+            latent_indices=latent_indices, latent_group_ids=latent_group_ids,
+            sampler=sampler, draw_policy=draw_policy,
+        )
+        if statistic == "mean":
+            reduced = prediction.mean(dim=1)
+        else:
+            reduced = torch.quantile(prediction, 0.5, dim=1)
+        result = {
+            name: reduced[:, index].cpu().numpy()
+            for index, name in enumerate(self.output_labels)
+        }
+        if neval == 1:
+            return {name: value[0] for name, value in result.items()}
+        return result
+
     def _prepare_condition_tensor(
         self, emu_params: List[Dict[str, float]], neval: int, Nrealizations: int
     ) -> torch.Tensor:

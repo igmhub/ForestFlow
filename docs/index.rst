@@ -11,6 +11,7 @@ spectrum and provides tools for fitting, integration, and validation.
    installation
    conventions
    workflow
+   deterministic_distillation
    fitting
    tutorials
    api

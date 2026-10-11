@@ -47,6 +47,10 @@ class P1DEmulator:
 
         self.emu_params = self.emulator.input_labels
         self.emulator_label = name_emu
+        # cup1d uses these attributes only when it constructs a mock from a
+        # simulation P1D. Reuse the exact CH24 MPG smoothing calibration used
+        # by ``lace_mpg`` so both validation paths prepare the same mock.
+        self._mock_smoothing_emulator = None
 
         self.cosmo_params_dict = None
         self.model_Arinyo = None
@@ -60,6 +64,47 @@ class P1DEmulator:
             "draw_policy": draw_policy,
             "seed": seed,
         }
+
+    def _get_mock_smoothing_emulator(self):
+        """Return LaCE's MPG mock-smoothing calibration on demand."""
+
+        if self._mock_smoothing_emulator is None:
+            from lace.emulator import emulator_manager
+
+            self._mock_smoothing_emulator = emulator_manager.set_emulator(
+                emulator_label="CH24_mpgcen_gpr"
+            )
+        return self._mock_smoothing_emulator
+
+    @property
+    def emu_type(self):
+        """LaCE smoothing representation used for synthetic MPG mocks."""
+
+        return self._get_mock_smoothing_emulator().emu_type
+
+    @property
+    def kmax_Mpc(self):
+        """Maximum wavenumber of the MPG mock-smoothing calibration."""
+
+        return self._get_mock_smoothing_emulator().kmax_Mpc
+
+    @property
+    def input_norm(self):
+        """Normalization grid used by the MPG mock-smoothing calibration."""
+
+        return self._get_mock_smoothing_emulator().input_norm
+
+    @property
+    def norm_imF(self):
+        """LaCE MPG mean-flux normalization callable for mock smoothing."""
+
+        return self._get_mock_smoothing_emulator().norm_imF
+
+    @property
+    def func_poly(self):
+        """LaCE MPG polynomial callable, retaining its fitted signature."""
+
+        return self._get_mock_smoothing_emulator().func_poly
 
     def set_sampling_options(self, **options):
         """Update P3D latent-sampling settings and clear cached predictions."""
