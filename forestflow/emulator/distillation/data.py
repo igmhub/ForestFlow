@@ -10,6 +10,7 @@ from scipy.stats import qmc
 
 @dataclass(frozen=True)
 class TeacherSamplingConfig:
+    """Controls for stochastic teacher labels used in distillation."""
     realizations: int = 4096
     seed: int = 0
     sampler: str = "sobol_antithetic"
@@ -24,6 +25,7 @@ class TeacherSamplingConfig:
 
 @dataclass(frozen=True)
 class DatasetSplit:
+    """Normalized inputs and transformed teacher targets for one data split."""
     inputs: np.ndarray
     targets: np.ndarray
     input_labels: tuple[str, ...]
@@ -49,7 +51,8 @@ def build_input_design(
     bounds: Mapping[str, tuple[float, float]], count: int, *, seed: int = 0,
     validity: Callable[[Mapping[str, float]], bool] | None = None,
 ) -> list[dict[str, float]]:
-    """Create a reproducible scrambled-Sobol physical input design.
+    """
+    Create a reproducible scrambled-Sobol physical input design.
 
     ``bounds`` is only a proposal domain.  Callers should provide ``validity``
     when combinations in the bounding box are not physically supported.
@@ -115,7 +118,8 @@ def _teacher_prediction(teacher, inputs, sampling: TeacherSamplingConfig, *, bat
 
 
 def generate_teacher_dataset(teacher, inputs: Sequence[Mapping[str, float]], sampling: TeacherSamplingConfig = TeacherSamplingConfig(), *, batch_size: int = 64) -> DatasetSplit:
-    """Generate transformed-mean labels from a frozen ForestFlow teacher.
+    """
+    Generate transformed-mean labels from a frozen ForestFlow teacher.
 
     ``inputs`` must already be a physically valid, split-isolated design.  The
     function uses stable group IDs so labels do not depend on batching.
@@ -134,7 +138,8 @@ def generate_teacher_dataset(teacher, inputs: Sequence[Mapping[str, float]], sam
 
 def calibrate_teacher_sampling(teacher, inputs: Sequence[Mapping[str, float]],
                                configurations: Sequence[TeacherSamplingConfig], *, batch_size: int = 64):
-    """Measure independent-scramble transformed-label scatter for each count.
+    """
+    Measure independent-scramble transformed-label scatter for each count.
 
     The reported scatter is a direct numerical diagnostic, not a calibrated
     physical emulator uncertainty.  Supply at least two replicates in every

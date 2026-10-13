@@ -7,6 +7,7 @@ from torch import nn
 
 @dataclass(frozen=True)
 class MLPConfig:
+    """Architecture settings for a deterministic transformed-space MLP."""
     input_dim: int
     output_dim: int
     hidden_dim: int = 64

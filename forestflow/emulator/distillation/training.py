@@ -12,6 +12,7 @@ from .network import MLPConfig, build_mlp
 
 @dataclass(frozen=True)
 class TrainingConfig:
+    """Optimization settings for a deterministic student network."""
     learning_rate: float = 1e-3
     weight_decay: float = 1e-6
     batch_size: int = 256
@@ -22,6 +23,7 @@ class TrainingConfig:
 
 @dataclass
 class TrainingResult:
+    """Best checkpoint and learning curves from one student training run."""
     model: torch.nn.Module
     best_epoch: int
     best_validation_mse: float

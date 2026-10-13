@@ -6,6 +6,7 @@ import numpy as np
 
 @dataclass(frozen=True)
 class CoefficientValidation:
+    """Per-coefficient transformed-space residual summary."""
     bias: np.ndarray
     rmse: np.ndarray
     mae: np.ndarray
@@ -27,13 +28,15 @@ def validate_coefficients(prediction: np.ndarray, reference: np.ndarray) -> Coef
 
 @dataclass(frozen=True)
 class ObservableValidation:
+    """Scale-normalized observable residual summary."""
     rms_fractional: float
     percentile_99_abs_fractional: float
     maximum_abs_fractional: float
 
 
 def validate_observable(student, teacher, fixtures, observable) -> ObservableValidation:
-    """Compare an observable evaluated with student and teacher coefficients.
+    """
+    Compare an observable evaluated with student and teacher coefficients.
 
     ``fixtures`` supplies the physically consistent inputs and any linear-theory
     context required by ``observable(coefficients, fixture)``.  This deliberately

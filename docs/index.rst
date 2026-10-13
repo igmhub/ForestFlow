@@ -12,6 +12,7 @@ spectrum and provides tools for fitting, integration, and validation.
    conventions
    workflow
    deterministic_distillation
+   arinyo_gp
    fitting
    tutorials
    api
