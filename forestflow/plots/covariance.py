@@ -1,11 +1,27 @@
-"""Plots for leave-one-out ForestFlow covariance calculations."""
+"""
+Plots for leave-one-out ForestFlow covariance calculations.
+"""
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 
 def plot_l1o_correlation(cov_zk, *, ax=None):
-    """Plot the redshift-wavenumber correlation matrix."""
+    """
+    Plot a leave-one-out redshift--wavenumber correlation matrix.
+
+    Parameters
+    ----------
+    cov_zk : array_like of shape (n_bins, n_bins)
+        Covariance of flattened redshift--wavenumber residuals.
+    ax : matplotlib.axes.Axes, optional
+        Axes to draw into. A new figure and axes are created when omitted.
+
+    Returns
+    -------
+    matplotlib.axes.Axes
+        Axes containing the correlation image and colorbar.
+    """
     if ax is None:
         _, ax = plt.subplots()
 
@@ -19,7 +35,28 @@ def plot_l1o_correlation(cov_zk, *, ax=None):
 
 
 def plot_l1o_errors(zz, k_Mpc, rel_diff, cov_zk, *, ax=None):
-    """Plot L1O standard deviations and absolute mean biases by redshift."""
+    """
+    Plot leave-one-out standard deviations and absolute biases by redshift.
+
+    Parameters
+    ----------
+    zz : array_like of shape (n_z,)
+        Redshift values.
+    k_Mpc : array_like of shape (n_k,)
+        Wavenumbers in ``Mpc^-1``.
+    rel_diff : array_like of shape (n_folds, n_z, n_k)
+        Fractional prediction residuals.
+    cov_zk : array_like of shape (n_z * n_k, n_z * n_k)
+        Covariance for the flattened residual vector.
+    ax : matplotlib.axes.Axes, optional
+        Axes to draw into. A new axes is created when omitted.
+
+    Returns
+    -------
+    matplotlib.axes.Axes
+        Axes containing one solid standard-deviation line and one dashed bias
+        line per redshift.
+    """
     if ax is None:
         _, ax = plt.subplots()
 

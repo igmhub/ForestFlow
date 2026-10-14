@@ -1,4 +1,6 @@
-"""Shared utility helpers."""
+"""
+Shared utility helpers.
+"""
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -8,39 +10,25 @@ import torch
 import functools
 
 def memorize(func: Callable[..., Any]) -> Callable[..., Any]:
-    # Initialize a dictionary to store the previous input parameters and result
     """
-    Memoize the requested values.
+    Memoize hashable positional and keyword arguments without eviction.
 
     Parameters
     ----------
     func : callable
-        Function to wrap.
+        Function whose arguments and keyword values are hashable.
 
     Returns
     -------
-    object
-        Result produced when the function is used to memoize the requested values.
+    callable
+        Wrapped function returning cached object identities for repeated calls.
     """
     cache = {}
 
     @functools.wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
-        # Convert arguments and keyword arguments to a tuple of their values
         """
-        Call the wrapped function, reusing a cached result when available.
-
-        Parameters
-        ----------
-        args : object
-            Args used by the calculation.
-        kwargs : object
-            Kwargs used by the calculation.
-
-        Returns
-        -------
-        object
-            Result produced when the function is used to call the wrapped function, reusing a cached result when available.
+        Call the wrapped function and reuse an exact argument cache entry.
         """
         key = (args, tuple(kwargs.items()))
 
@@ -57,40 +45,28 @@ def memorize(func: Callable[..., Any]) -> Callable[..., Any]:
     return wrapper
 
 def memoize_numpy_arrays(func: Callable[..., Any], max_history: int | None=2) -> Callable[..., Any]:
-    # Initialize a dictionary to store the previous results for each key
     """
-    Memoize numpy arrays.
+    Memoize positional NumPy-array calls with bounded insertion history.
 
     Parameters
     ----------
     func : callable
         Function to wrap.
-    max_history : int, optional
-        Maximum number of results retained in the cache.
+    max_history : int, default: 2
+        Maximum number of entries retained; ``None`` is not supported by the
+        current eviction comparison.
 
     Returns
     -------
-    object
-        Result produced when the function is used to memoize numpy arrays.
+    callable
+        Wrapped function keyed by positional array shapes and values. Keyword
+        arguments are forwarded but are not part of the cache key.
     """
     cache = {}
 
     def wrapper(*args: Any, **kwargs: Any) -> Any:
-        # Convert NumPy arrays to a tuple of their shapes and contents
         """
-        Call the wrapped function, reusing a cached result when available.
-
-        Parameters
-        ----------
-        args : object
-            Args used by the calculation.
-        kwargs : object
-            Kwargs used by the calculation.
-
-        Returns
-        -------
-        object
-            Result produced when the function is used to call the wrapped function, reusing a cached result when available.
+        Call the wrapped function and reuse a positional-array cache entry.
         """
         key = tuple(
             (a.shape, tuple(a.flat)) if isinstance(a, np.ndarray) else a for a in args
@@ -113,9 +89,8 @@ def memoize_numpy_arrays(func: Callable[..., Any], max_history: int | None=2) ->
     return wrapper
 
 def memoize_pytorch(func: Callable[..., Any]) -> Callable[..., Any]:
-    # Initialize a dictionary to store the previous input tensors and result
     """
-    Memoize pytorch.
+    Memoize PyTorch tensor calls using shape and host-value snapshots.
 
     Parameters
     ----------
@@ -124,28 +99,15 @@ def memoize_pytorch(func: Callable[..., Any]) -> Callable[..., Any]:
 
     Returns
     -------
-    object
-        Result produced when the function is used to memoize pytorch.
+    callable
+        Wrapped function with unbounded exact-value tensor cache.
     """
     cache = {}
 
     @functools.wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
-        # Convert PyTorch tensors to tuples of their shapes and contents
         """
-        Call the wrapped function, reusing a cached result when available.
-
-        Parameters
-        ----------
-        args : object
-            Args used by the calculation.
-        kwargs : object
-            Kwargs used by the calculation.
-
-        Returns
-        -------
-        object
-            Result produced when the function is used to call the wrapped function, reusing a cached result when available.
+        Call the wrapped function and reuse an exact tensor cache entry.
         """
         args_key = tuple(
             (a.shape, tuple(a.flatten().tolist())) if isinstance(a, torch.Tensor) else a

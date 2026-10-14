@@ -11,21 +11,28 @@ import forestflow
 
 def get_arinyo_priors(z: int | float, tag: str | None="DESI_DR1_P1D", return_all: bool | None=False) -> Any:
     """
-    Return Arinyo priors.
+    Interpolate packaged DESI DR1 P1D Arinyo-prior summaries at redshift.
 
     Parameters
     ----------
     z : int or float
         Redshift.
-    tag : str, optional
-        Tag used by the calculation.
-    return_all : bool, optional
-        Return all used by the calculation.
+    tag : {"DESI_DR1_P1D"}, default="DESI_DR1_P1D"
+        Packaged prior calibration to load.
+    return_all : bool, default=False
+        Return the loaded redshift-grid samples along with interpolated
+        summaries.
 
     Returns
     -------
-    object
-        Result produced when the function is used to return arinyo priors.
+    dict or tuple of (dict, dict)
+        Per-parameter ``mean``, ``std``, fifth-percentile, and 95th-percentile
+        mappings; additionally the raw stored prior data when requested.
+
+    Raises
+    ------
+    ValueError
+        If ``tag`` is unsupported or ``z`` lies outside stored redshifts.
     """
     if tag == "DESI_DR1_P1D":
         fname = "priors_arinyo_from_p1d.npy"
@@ -76,21 +83,28 @@ def get_arinyo_priors(z: int | float, tag: str | None="DESI_DR1_P1D", return_all
 
 def get_IGM_priors(z: int | float, tag: str | None="DESI_DR1_P1D", return_all: bool | None=False) -> Any:
     """
-    Return intergalactic-medium priors.
+    Interpolate packaged DESI DR1 P1D IGM-prior summaries at redshift.
 
     Parameters
     ----------
     z : int or float
         Redshift.
-    tag : str, optional
-        Tag used by the calculation.
-    return_all : bool, optional
-        Return all used by the calculation.
+    tag : {"DESI_DR1_P1D"}, default="DESI_DR1_P1D"
+        Packaged prior calibration to load.
+    return_all : bool, default=False
+        Return the loaded redshift-grid samples along with interpolated
+        summaries.
 
     Returns
     -------
-    object
-        Result produced when the function is used to return intergalactic-medium priors.
+    dict or tuple of (dict, dict)
+        Per-parameter ``mean``, ``std``, fifth-percentile, and 95th-percentile
+        mappings; additionally raw stored prior data when requested.
+
+    Raises
+    ------
+    ValueError
+        If ``tag`` is unsupported or ``z`` lies outside stored redshifts.
     """
     if tag == "DESI_DR1_P1D":
         fname = "priors_cosmo_IGM_from_p1d.npy"

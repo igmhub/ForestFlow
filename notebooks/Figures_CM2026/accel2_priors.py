@@ -33,8 +33,6 @@ from forestflow.priors.paper.load import load_map_igm_p3d
 from forestflow.priors.paper.set_samples import load_k_mu_accel2
 from forestflow.priors.paper.plots import plot_p3d_validation, plot_bias_beta_zev_val
 
-np.__version__
-
 # %%
 knew3d, munew3d, data_accel2 = load_k_mu_accel2()
 data = load_map_igm_p3d(lab_sample="accel2")

@@ -1,4 +1,6 @@
-"""Numerical derivatives and Fisher-information helpers."""
+"""
+Numerical derivatives and Fisher-information helpers.
+"""
 from collections.abc import Mapping
 from typing import Any
 from numpy.typing import ArrayLike
@@ -6,25 +8,24 @@ import numpy as np
 from forestflow.statistics.mock_power import make_arinyo_mock_power
 
 def compute_arinyo_derivatives(trans_data: ArrayLike, data_model: ArrayLike, model_Arinyo: Any, hh: float | None=1e-6) -> Any:
-
     """
-    Compute Arinyo derivatives.
+    Compute central finite-difference Arinyo derivatives in transformed space.
 
     Parameters
     ----------
-    trans_data : numpy.ndarray
-        Trans data used by the calculation.
-    data_model : numpy.ndarray
-        Data model used by the calculation.
-    model_Arinyo : object
-        Model arinyo used by the calculation.
-    hh : float, optional
-        Hh used by the calculation.
+    trans_data : forestflow.emulator.training.Transf_data
+        Output transformation mapping used for finite-difference coordinates.
+    data_model : mapping
+        Model redshift, Arinyo parameters, and P3D/P1D coordinate grids.
+    model_Arinyo : forestflow.model.arinyo.ArinyoModel
+        Model evaluated at plus/minus transformed parameter steps.
+    hh : float, default: 1e-6
+        Central-difference step in standardized transformed coordinates.
 
     Returns
     -------
-    object
-        Result produced when the function is used to compute arinyo derivatives.
+    dict
+        ``P3D_der`` and ``P1D_der`` mappings keyed by fitted Arinyo parameter.
     """
     data = {}
     data["P3D_der"] = {}
@@ -102,23 +103,20 @@ def compute_arinyo_derivatives(trans_data: ArrayLike, data_model: ArrayLike, mod
     return data
 
 def compute_fisher(data_model: ArrayLike, weight_3d: float | None=1.0, weight_1d: float | None=1.0) -> Any:
-
     """
-    Compute Fisher matrix.
+    Contract P1D/P3D derivatives with diagonal measurement variances.
 
     Parameters
     ----------
-    data_model : numpy.ndarray
-        Data model used by the calculation.
-    weight_3d : float, optional
-        Weight 3d used by the calculation.
-    weight_1d : float, optional
-        Weight 1d used by the calculation.
+    data_model : mapping
+        Arinyo derivatives and ``std_P3D_Mpc``/``std_P1D_Mpc`` arrays.
+    weight_3d, weight_1d : float, default: 1
+        Relative weights multiplying P3D and P1D Fisher contributions.
 
     Returns
     -------
-    object
-        Result produced when the function is used to compute fisher matrix.
+    dict of dict
+        Fisher-matrix entries keyed by Arinyo parameters, excluding ``beta``.
     """
     fisher = {}
 
@@ -157,27 +155,27 @@ def get_fisher(
 ) -> Any:
 
     """
-    Return Fisher matrix.
+    Generate mock power, derivatives, and an Arinyo Fisher matrix.
 
     Parameters
     ----------
-    transf_data : numpy.ndarray
-        Transf data used by the calculation.
-    pars_model : object
-        Pars model used by the calculation.
-    model_Arinyo : object
-        Model arinyo used by the calculation.
-    weight_3d : float, optional
-        Weight 3d used by the calculation.
-    weight_1d : float, optional
-        Weight 1d used by the calculation.
-    noise : dict, optional
-        Noise used by the calculation.
+    transf_data : forestflow.emulator.training.Transf_data
+        Transformation used for derivative coordinates.
+    pars_model : dict
+        Model mapping mutated in place with synthetic power, uncertainties, and
+        derivatives.
+    model_Arinyo : forestflow.model.arinyo.ArinyoModel
+        Physical Arinyo model.
+    weight_3d, weight_1d : float, default: 1
+        Relative P3D/P1D Fisher weights.
+    noise : mapping, optional
+        Synthetic finite-volume noise configuration forwarded to
+        :func:`make_arinyo_mock_power`.
 
     Returns
     -------
-    object
-        Result produced when the function is used to return fisher matrix.
+    dict of dict
+        Fisher-matrix entries in transformed Arinyo coordinates.
     """
     power = make_arinyo_mock_power(pars_model, model_Arinyo, noise=noise)
     pars_model["linear"] = power["linear"]

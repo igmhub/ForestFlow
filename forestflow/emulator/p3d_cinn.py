@@ -49,7 +49,9 @@ _LEGACY_MODEL_DOMAINS = {
 }
 
 def _normalise_model_domain(domain: Mapping[str, Any] | None) -> dict[str, Any]:
-    """Validate and copy emulator-domain metadata."""
+    """
+    Validate and copy emulator-domain metadata.
+    """
     if domain is None:
         return {}
     result = dict(domain)
@@ -124,7 +126,7 @@ class P3DEmulator:
         weight_decay: float = 1e-4,
         use_val_set: bool = False,
         adamw: bool = True,
-        Nrealizations: int = 1000,
+        Nrealizations: int = 2048,
         training_provenance: Optional[Mapping[str, Any]] = None,
         model_domain: Optional[Mapping[str, Any]] = None,
         compile_model: bool = False,
@@ -166,7 +168,7 @@ class P3DEmulator:
             Whether to reserve 20% of training data for validation.
         adamw : bool, default=True
             If True use AdamW optimizer, otherwise use Adam.
-        Nrealizations : int, default=1000
+        Nrealizations : int, default=2048
             Default number of latent space realizations for evaluation.
         training_provenance : mapping, optional
             Archive, selection, and preprocessing details to preserve in the
@@ -274,31 +276,42 @@ class P3DEmulator:
 
     @property
     def kp_iMpc(self) -> float:
-        """Linear-power pivot wavenumber in inverse Mpc."""
+        """
+        Linear-power pivot wavenumber in inverse Mpc.
+        """
         return self._domain_value("kp_iMpc")
 
     @property
     def kmax_3d_iMpc(self) -> float:
-        """Maximum P3D fitting cut used to calibrate this emulator."""
+        """
+        Maximum P3D fitting cut used to calibrate this emulator.
+        """
         return self._domain_value("kmax_3d_iMpc")
 
     @property
     def kmax_1d_iMpc(self) -> float:
-        """Maximum P1D fitting cut used to calibrate this emulator."""
+        """
+        Maximum P1D fitting cut used to calibrate this emulator.
+        """
         return self._domain_value("kmax_1d_iMpc")
 
     @property
     def zmax(self) -> float:
-        """Maximum supported redshift."""
+        """
+        Maximum supported redshift.
+        """
         return self._domain_value("zmax")
 
     @property
     def list_sim_cube(self) -> list[str]:
-        """Simulation labels that define the emulator training domain."""
+        """
+        Simulation labels that define the emulator training domain.
+        """
         return self._domain_value("list_sim_cube")
 
     def compile(self, mode: str = "reduce-overhead") -> None:
-        """Compile the network for faster repeated inference.
+        """
+        Compile the network for faster repeated inference.
 
         The first evaluation of each new input shape triggers PyTorch
         compilation and is therefore slower. Subsequent evaluations, such as
@@ -854,6 +867,12 @@ class P3DEmulator:
         Nrealizations: Optional[int] = None,
         seed: int = 0,
         latent_indices: Optional[Sequence[int]] = None,
+        latent_group_ids: Optional[Sequence[int]] = None,
+        *,
+        sampler: str = "sobol_antithetic",
+        statistic: str = "mean",
+        aggregation_space: str = "transformed",
+        draw_policy: str = "nested",
     ) -> Dict[str, np.ndarray]:
         """
         Predict Arinyo coefficients using the trained emulator.
@@ -874,6 +893,19 @@ class P3DEmulator:
         latent_indices : sequence of int, optional
             Latent block assigned to each input. This allows a larger batch to
             reproduce the random samples used by independent redshift batches.
+        latent_group_ids : sequence of int, optional
+            Stable group identities, one per input. These make nested draws
+            independent of evaluation chunking. Cannot be combined with
+            ``latent_indices``.
+        sampler : {"gaussian", "antithetic", "sobol", "sobol_antithetic"}, default="sobol_antithetic"
+            Latent sampler. Antithetic sampling uses paired ``z`` and ``-z``.
+        statistic : {"mean", "median"}, default="mean"
+            Statistic used to reduce latent predictions.
+        aggregation_space : {"transformed", "physical"}, default="transformed"
+            Reduce before or after inverse output transformation. The default
+            reproduces the historical prediction.
+        draw_policy : {"legacy", "nested"}, default="nested"
+            Nested draws retain the same per-group prefix as N increases.
 
         Returns
         -------
@@ -905,6 +937,20 @@ class P3DEmulator:
         # Set default number of realizations
         if Nrealizations is None:
             Nrealizations = self.Nrealizations
+        if not isinstance(Nrealizations, (int, np.integer)) or Nrealizations < 1:
+            raise ValueError("Nrealizations must be a positive integer")
+        if sampler not in {"gaussian", "antithetic", "sobol", "sobol_antithetic"}:
+            raise ValueError("sampler must be 'gaussian', 'antithetic', 'sobol', or 'sobol_antithetic'")
+        if statistic not in {"mean", "median"}:
+            raise ValueError("statistic must be 'mean' or 'median'")
+        if aggregation_space not in {"transformed", "physical"}:
+            raise ValueError("aggregation_space must be 'transformed' or 'physical'")
+        if draw_policy not in {"legacy", "nested"}:
+            raise ValueError("draw_policy must be 'legacy' or 'nested'")
+        if sampler in {"antithetic", "sobol_antithetic"} and Nrealizations % 2:
+            raise ValueError("antithetic sampling requires an even Nrealizations")
+        if latent_indices is not None and latent_group_ids is not None:
+            raise ValueError("latent_indices and latent_group_ids are mutually exclusive")
 
         # Prepare conditioned inputs
         neval = len(emu_params)
@@ -912,17 +958,79 @@ class P3DEmulator:
 
         # Generate predictions
         generator = torch.Generator(device=condition.device).manual_seed(seed)
-        mean_prediction = self._generate_predictions(
+        prediction = self._generate_predictions(
             condition,
             neval,
             Nrealizations,
             generator,
             seed=seed,
             latent_indices=latent_indices,
+            latent_group_ids=latent_group_ids,
+            sampler=sampler,
+            draw_policy=draw_policy,
         )
 
-        # Process and transform predictions
-        return self._process_predictions(mean_prediction, neval)
+        return self._aggregate_predictions(
+            prediction, neval, statistic, aggregation_space
+        )
+
+    def evaluate_transformed(
+        self,
+        emu_params: Union[Dict[str, float], List[Dict[str, float]]],
+        Nrealizations: Optional[int] = None,
+        seed: int = 0,
+        latent_indices: Optional[Sequence[int]] = None,
+        latent_group_ids: Optional[Sequence[int]] = None,
+        *,
+        sampler: str = "sobol_antithetic",
+        statistic: str = "mean",
+        draw_policy: str = "nested",
+    ) -> Dict[str, np.ndarray]:
+        """Predict reduced coefficients in ForestFlow output space.
+
+        The returned values use the output transformation and standardization
+        stored with this emulator.  This is the native target space for a
+        deterministic student emulator.  Only a transformed-space reduction is
+        supported because reducing after inverse transformation is a different
+        scientific estimator.
+        """
+        if not hasattr(self, "emulator"):
+            raise ValueError("Emulator not initialized. Please train or load a model first.")
+        if isinstance(emu_params, dict):
+            emu_params = [emu_params]
+        if Nrealizations is None:
+            Nrealizations = self.Nrealizations
+        if not isinstance(Nrealizations, (int, np.integer)) or Nrealizations < 1:
+            raise ValueError("Nrealizations must be a positive integer")
+        if sampler not in {"gaussian", "antithetic", "sobol", "sobol_antithetic"}:
+            raise ValueError("unsupported sampler")
+        if statistic not in {"mean", "median"}:
+            raise ValueError("statistic must be 'mean' or 'median'")
+        if draw_policy not in {"legacy", "nested"}:
+            raise ValueError("draw_policy must be 'legacy' or 'nested'")
+        if sampler in {"antithetic", "sobol_antithetic"} and Nrealizations % 2:
+            raise ValueError("antithetic sampling requires an even Nrealizations")
+        if latent_indices is not None and latent_group_ids is not None:
+            raise ValueError("latent_indices and latent_group_ids are mutually exclusive")
+        neval = len(emu_params)
+        condition = self._prepare_condition_tensor(emu_params, neval, Nrealizations)
+        generator = torch.Generator(device=condition.device).manual_seed(seed)
+        prediction = self._generate_predictions(
+            condition, neval, Nrealizations, generator, seed=seed,
+            latent_indices=latent_indices, latent_group_ids=latent_group_ids,
+            sampler=sampler, draw_policy=draw_policy,
+        )
+        if statistic == "mean":
+            reduced = prediction.mean(dim=1)
+        else:
+            reduced = torch.quantile(prediction, 0.5, dim=1)
+        result = {
+            name: reduced[:, index].cpu().numpy()
+            for index, name in enumerate(self.output_labels)
+        }
+        if neval == 1:
+            return {name: value[0] for name, value in result.items()}
+        return result
 
     def _prepare_condition_tensor(
         self, emu_params: List[Dict[str, float]], neval: int, Nrealizations: int
@@ -964,7 +1072,10 @@ class P3DEmulator:
         generator: torch.Generator,
         seed: Optional[int] = None,
         latent_indices: Optional[Sequence[int]] = None,
-    ) -> np.ndarray:
+        latent_group_ids: Optional[Sequence[int]] = None,
+        sampler: str = "gaussian",
+        draw_policy: str = "legacy",
+    ) -> torch.Tensor:
         """
         Generate predictions from the cINN model.
 
@@ -986,8 +1097,9 @@ class P3DEmulator:
 
         Returns
         -------
-        np.ndarray
-            Mean latent prediction with shape ``(neval, dim_inputSpace)``.
+        torch.Tensor
+            Per-realization transformed predictions with shape
+            ``(neval, Nrealizations, dim_inputSpace)``.
         """
         # Setup conditions for the cINN
         aran = np.arange(neval * Nrealizations)
@@ -995,7 +1107,13 @@ class P3DEmulator:
 
         n_samples = neval * Nrealizations
         device = condition.device
-        if latent_indices is None:
+        if latent_group_ids is not None:
+            latent_group_ids = np.asarray(latent_group_ids, dtype=np.int64)
+            if latent_group_ids.shape != (neval,):
+                raise ValueError("latent_group_ids must contain one integer per input")
+            latent_indices_key = ("stable", tuple(latent_group_ids.tolist()))
+            n_latent_groups = neval
+        elif latent_indices is None:
             latent_indices_key = None
             n_latent_groups = neval
         else:
@@ -1013,17 +1131,24 @@ class P3DEmulator:
             device.type,
             device.index,
             latent_indices_key,
+            sampler,
+            draw_policy,
         )
         if seed is not None and self._latent_cache_key == cache_key:
             z_test = self._latent_cache
         else:
-            latent = torch.randn(
-                n_latent_groups * Nrealizations,
-                self.dim_inputSpace,
-                generator=generator,
-                device=device,
+            latent = self._draw_latents(
+                n_latent_groups,
+                Nrealizations,
+                device,
+                seed,
+                generator,
+                sampler,
+                draw_policy,
+                latent_indices if latent_indices is not None else None,
+                latent_group_ids,
             )
-            if latent_indices is None:
+            if latent_group_ids is not None or latent_indices is None:
                 z_test = latent
             else:
                 z_test = latent.reshape(
@@ -1042,12 +1167,117 @@ class P3DEmulator:
         with torch.no_grad():
             out_emu, _ = self.emulator(z_test, condition, rev=True)
 
-        return (
-            out_emu.reshape(neval, Nrealizations, self.dim_inputSpace)
-            .mean(dim=1)
-            .cpu()
-            .numpy()
+        return out_emu.reshape(neval, Nrealizations, self.dim_inputSpace)
+
+    def _draw_latents(
+        self,
+        n_groups,
+        n_realizations,
+        device,
+        seed,
+        generator,
+        sampler,
+        draw_policy,
+        latent_indices,
+        latent_group_ids=None,
+    ):
+        """Draw latent vectors with reproducible group and prefix semantics."""
+
+        if draw_policy == "legacy" and sampler == "gaussian":
+            return torch.randn(
+                n_groups * n_realizations,
+                self.dim_inputSpace,
+                generator=generator,
+                device=device,
+            )
+
+        draws = []
+        for group in range(n_groups):
+            group_identity = group if latent_group_ids is None else int(latent_group_ids[group])
+            # Keep hashed stable identities within torch's accepted seed range.
+            group_seed = (int(seed) + 1_000_003 * group_identity) % (2**63 - 1)
+            if sampler in {"sobol", "sobol_antithetic"}:
+                engine = torch.quasirandom.SobolEngine(
+                    self.dim_inputSpace, scramble=True, seed=group_seed
+                )
+                n_base = n_realizations // 2 if sampler == "sobol_antithetic" else n_realizations
+                uniform = engine.draw(n_base).to(device=device)
+                eps = torch.finfo(uniform.dtype).eps
+                latent = torch.erfinv(uniform.clamp(eps, 1.0 - eps) * 2.0 - 1.0)
+                latent = latent * np.sqrt(2.0)
+                if sampler == "sobol_antithetic":
+                    latent = torch.stack((latent, -latent), dim=1).reshape(
+                        n_realizations, self.dim_inputSpace
+                    )
+            else:
+                group_generator = torch.Generator(device=device).manual_seed(group_seed)
+                if sampler == "antithetic":
+                    # Generate one vector at a time: torch's vectorized normal
+                    # kernels need not retain a prefix across requested shapes.
+                    half = torch.stack(
+                        [
+                            torch.randn(
+                                self.dim_inputSpace,
+                                generator=group_generator,
+                                device=device,
+                            )
+                            for _ in range(n_realizations // 2)
+                        ]
+                    )
+                    # Interleaving makes a smaller even-N sequence a prefix
+                    # of a larger one while preserving each z, -z pair.
+                    latent = torch.stack((half, -half), dim=1).reshape(
+                        n_realizations, self.dim_inputSpace
+                    )
+                else:
+                    latent = torch.stack(
+                        [
+                            torch.randn(
+                                self.dim_inputSpace,
+                                generator=group_generator,
+                                device=device,
+                            )
+                            for _ in range(n_realizations)
+                        ]
+                    )
+            draws.append(latent)
+
+        # The caller applies ``latent_indices`` after this group-major layout,
+        # matching the historical Gaussian implementation.
+        return torch.stack(draws).reshape(
+            n_groups * n_realizations, self.dim_inputSpace
         )
+
+    def _aggregate_predictions(self, prediction, neval, statistic, aggregation_space):
+        """Reduce latent predictions in transformed or physical output space."""
+
+        if aggregation_space == "transformed":
+            if statistic == "mean":
+                reduced = prediction.mean(dim=1)
+            else:
+                # quantile uses the midpoint of the two central values for an
+                # even realization count, matching numpy.median below.
+                reduced = torch.quantile(prediction, 0.5, dim=1)
+            return self._process_predictions(reduced.cpu().numpy(), neval)
+
+        samples = {
+            name: prediction[:, :, index].cpu().numpy()
+            for index, name in enumerate(self.output_labels)
+        }
+        physical = self.transf_data.transf_stand(
+            samples, type_stand="output", direct=False
+        )
+        result = {}
+        for name, values in physical.items():
+            values = np.asarray(values)
+            result[name] = (
+                values.mean(axis=1)
+                if statistic == "mean"
+                else np.median(values, axis=1)
+            )
+            if neval == 1:
+                result[name] = result[name][0]
+        return result
 
     def _process_predictions(
         self, mean_prediction: np.ndarray, neval: int

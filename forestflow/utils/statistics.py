@@ -1,4 +1,6 @@
-"""Shared utility helpers."""
+"""
+Shared utility helpers.
+"""
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -8,14 +10,19 @@ import numpy as np
 
 def sort_dict(dct: Sequence[Any], keys: Sequence[Any]) -> list[Any]:
     """
-    Sort a list of dictionaries based on specified keys.
+    Reorder every mapping in place to a specified key order.
 
-    Args:
-        dct (list): List of dictionaries to be sorted.
-        keys (list): List of keys to sort the dictionaries by.
+    Parameters
+    ----------
+    dct : sequence of dict
+        Mutable mappings to reorder.
+    keys : sequence
+        Required key order. Every key must exist in every mapping.
 
-    Returns:
-        list: The sorted list of dictionaries.
+    Returns
+    -------
+    list
+        The same list of mutated mappings.
     """
     for d in dct:
         sorted_d = {
@@ -26,23 +33,24 @@ def sort_dict(dct: Sequence[Any], keys: Sequence[Any]) -> list[Any]:
     return dct
 
 def get_covariance(x: Any, y: Any, return_corr: bool | None=False) -> NDArray[Any]:
-    # Calculate the mean and standard deviation along each column
     """
-    Return covariance.
+    Estimate a clipped covariance around a supplied reference vector.
 
     Parameters
     ----------
-    x : object
-        X used by the calculation.
-    y : object
-        Y used by the calculation.
-    return_corr : bool, optional
+    x : ndarray, shape (n_samples, n_parameters)
+        Sample matrix. Rows farther than three column standard deviations are
+        removed before covariance estimation.
+    y : array_like, shape (n_parameters,)
+        Reference vector subtracted from retained samples.
+    return_corr : bool, default: False
         Whether to return the correlation matrix with the covariance.
 
     Returns
     -------
-    object
-        Result produced when the function is used to return covariance.
+    ndarray or tuple of ndarray
+        Sample covariance; when requested, also the correlation coefficient
+        matrix computed from that covariance.
     """
     mean_x = np.mean(x, axis=0)
     std_dev_x = np.std(x, axis=0)
@@ -62,17 +70,17 @@ def get_covariance(x: Any, y: Any, return_corr: bool | None=False) -> NDArray[An
 
 def sigma68(data: ArrayLike) -> NDArray[Any]:
     """
-    Compute sigma68.
+    Return half the central 68-percent interval along the sample axis.
 
     Parameters
     ----------
-    data : numpy.ndarray
-        Input data.
+    data : array_like
+        Samples on axis zero; NaNs are ignored by the percentile calculation.
 
     Returns
     -------
-    object
-        Result produced when the function is used to compute sigma68.
+    ndarray
+        ``0.5 * (q84 - q16)`` with all non-sample axes retained.
     """
     return 0.5 * (
         np.nanquantile(data, q=0.84, axis=0) - np.nanquantile(data, q=0.16, axis=0)

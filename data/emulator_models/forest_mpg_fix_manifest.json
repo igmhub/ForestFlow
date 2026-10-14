@@ -1,0 +1,39 @@
+{
+  "artefacts": {
+    "metadata": {
+      "filename": "forest_mpg_fix_metadata.npy",
+      "sha256": "f1f6e53f7c5f6cba0957fab904d0d22af04aa69d620554b661dd12098a34c72c"
+    },
+    "transformations": {
+      "filename": "forest_mpg_fix_transf.npy",
+      "sha256": "249f274399d13b47607e9cc88bd69eaf474457707418ae7aa5e5dabb2e48a998"
+    },
+    "weights": {
+      "filename": "forest_mpg_fix.pt",
+      "sha256": "2d4eaf73fc2b83966521f257e8c243ad927d968d7bd6ef68b18dc959d13da806"
+    }
+  },
+  "dependencies": {
+    "freia": "0.2",
+    "lace": "0.0.dev434+unknown.gf132780ac9a3153029a86c11915fedca051c435b",
+    "numpy": "2.5.1",
+    "python": "3.12.13",
+    "scipy": "1.18.0",
+    "torch": "2.13.0"
+  },
+  "forestflow_version": "0+unknown",
+  "schema_version": 1,
+  "training_provenance": {
+    "includes_mpg_central": true,
+    "kmax_1d_iMpc": 6.0,
+    "kmax_3d_iMpc": 4.5,
+    "leave_one_out": false,
+    "postproc": "Cabayol23_fixp3d",
+    "train_seed": 32,
+    "training_data_fingerprint": "0c3e0d85741175ee488fc8645f1a67ad28887c02705dca773716b9ef82da80ef",
+    "transformation_file": "/home/jchaves/Proyectos/projects/lya/igmhub/ForestFlow/data/emulator_models/forest_mpg_fix_transf.npy",
+    "type_fit": "arinyo_fixp3d",
+    "use_validation_set": false,
+    "zmax": 4.6
+  }
+}

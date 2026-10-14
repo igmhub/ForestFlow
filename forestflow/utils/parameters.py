@@ -1,4 +1,6 @@
-"""Shared utility helpers."""
+"""
+Shared utility helpers.
+"""
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -8,13 +10,17 @@ from forestflow.conventions import ARINYO_PARAMETER_NAMES
 
 def params_numpy2dict(params: ArrayLike) -> dict[str, Any]:
     """
-    Convert a NumPy array of parameters to a dictionary.
+    Map ordered Arinyo parameters to their canonical names.
 
-    Args:
-        params (numpy.ndarray): Array of parameters.
+    Parameters
+    ----------
+    params : array_like
+        One-dimensional values in ``ARINYO_PARAMETER_NAMES`` order.
 
-    Returns:
-        dict: Dictionary containing the parameters with their corresponding names.
+    Returns
+    -------
+    dict
+        Parameter mapping preserving individual array/scalar values.
     """
     param_names = ARINYO_PARAMETER_NAMES
     dict_param = {}
@@ -24,13 +30,18 @@ def params_numpy2dict(params: ArrayLike) -> dict[str, Any]:
 
 def params_numpy2dict_minimizer(params: ArrayLike) -> dict[str, Any]:
     """
-    Convert a NumPy array of parameters to a dictionary.
+    Map minimizer coordinates to physical Arinyo parameters.
 
-    Args:
-        params (numpy.ndarray): Array of parameters.
+    Parameters
+    ----------
+    params : array_like
+        Values in canonical order; ``q1`` and ``q2`` are interpreted as their
+        stored sum/difference coordinates when both are present.
 
-    Returns:
-        dict: Dictionary containing the parameters with their corresponding names.
+    Returns
+    -------
+    dict
+        Physical Arinyo parameter mapping.
     """
     param_names = ARINYO_PARAMETER_NAMES
     dict_param = {}
@@ -46,13 +57,17 @@ def params_numpy2dict_minimizer(params: ArrayLike) -> dict[str, Any]:
 
 def params_numpy2dict_minimizerz(params: ArrayLike) -> dict[str, Any]:
     """
-    Convert a NumPy array of parameters to a dictionary.
+    Map redshift-fit Arinyo output to its symmetric q1/q2 representation.
 
-    Args:
-        params (numpy.ndarray): Array of parameters.
+    Parameters
+    ----------
+    params : mapping
+        Redshift-dependent minimizer parameter mapping.
 
-    Returns:
-        dict: Dictionary containing the parameters with their corresponding names.
+    Returns
+    -------
+    dict
+        Parameter mapping with ``q1`` and ``q2`` set to half the stored q1.
     """
     dict_param = {}
     for key in params:
@@ -66,19 +81,20 @@ def params_numpy2dict_minimizerz(params: ArrayLike) -> dict[str, Any]:
 
 def transform_arinyo_params(dict_arinyo_params: Mapping[str, Any], fcosmo: Any) -> Any:
     """
-    Transform Arinyo parameters.
+    Convert beta/kvav parameterization to Arinyo model parameters.
 
     Parameters
     ----------
-    dict_arinyo_params : dict
-        Arinyo parameter mapping.
-    fcosmo : object
-        Cosmological growth rate.
+    dict_arinyo_params : mapping
+        Arinyo mapping potentially containing ``beta`` and ``kvav``.
+    fcosmo : float or array_like
+        Dimensionless cosmological growth rate used for ``bias_eta``.
 
     Returns
     -------
-    object
-        Result produced when the function is used to transform arinyo parameters.
+    dict
+        Mapping with ``bias_eta = bias * beta / fcosmo`` and
+        ``kv = kvav**(1 / av)`` where applicable.
     """
     dict_arinyo_params_out = {}
     for key in dict_arinyo_params.keys():

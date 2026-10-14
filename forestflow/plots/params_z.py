@@ -19,21 +19,19 @@ def plot_arinyo_z(
     ftsize: int | None=20,
 ) -> None:
     """
-    Plot Arinyo z.
+    Plot redshift evolution of central, seed, and combined Arinyo fits.
 
     Parameters
     ----------
-    z_central : object
-        Z central used by the calculation.
-    Arinyo_central : object
-        Arinyo central used by the calculation.
-    Arinyo_seed : object
-        Arinyo seed used by the calculation.
-    Arinyo_both : object
-        Arinyo both used by the calculation.
-    folder_fig : object, optional
-        Folder fig used by the calculation.
-    ftsize : int, optional
+    z_central : array_like
+        Redshifts corresponding to every fit mapping.
+    Arinyo_central, Arinyo_seed, Arinyo_both : sequence of mapping
+        Per-redshift Arinyo parameter fits for central, seed, and combined
+        measurements.
+    folder_fig : path-like, optional
+        Directory prefix to which ``arinyo_z.png`` and ``arinyo_z.pdf`` are
+        written when supplied.
+    ftsize : int, default=20
         Base font size in points.
     """
     z_central = np.array(z_central)
@@ -182,21 +180,19 @@ def plot_forestflow_z(
     ftsize: int | None=20,
 ) -> None:
     """
-    Plot forestflow z.
+    Plot redshift evolution of fitted and ForestFlow-predicted parameters.
 
     Parameters
     ----------
-    z_central : object
-        Z central used by the calculation.
-    Arinyo_central : object
-        Arinyo central used by the calculation.
-    Arinyo_emu : object
-        Arinyo emu used by the calculation.
-    Arinyo_emu_std : object
-        Arinyo emu std used by the calculation.
-    folder_fig : object, optional
-        Folder fig used by the calculation.
-    ftsize : int, optional
+    z_central : array_like
+        Redshifts corresponding to every input mapping.
+    Arinyo_central, Arinyo_emu, Arinyo_emu_std : sequence of mapping
+        Per-redshift fitted values, emulator predictions, and emulator
+        prediction standard deviations.
+    folder_fig : path-like, optional
+        Directory prefix to which the two ForestFlow redshift-evolution files
+        are written when supplied.
+    ftsize : int, default=20
         Base font size in points.
     """
     z_central = np.array(z_central)

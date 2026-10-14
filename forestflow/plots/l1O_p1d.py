@@ -19,28 +19,22 @@ def plot_p1d_L1O(
     kmax_1d_fit: Any=3,
 ) -> Any | None:
     """
-    Plot the fractional errors in the P1D statistic for different redshifts.
+    Plot P1D leave-one-out fractional-error summaries at each redshift.
 
-    Parameters:
-    - fractional_errors: Fractional errors in the P1D statistic for different redshifts.
-    - savename: The name of the file to save the plot.
-
-    Returns:
-    None
-
-    Plots:
-    - Subplots showing fractional errors in P1D for different redshifts.
-
-    Other Parameters
-    ----------------
-    z_use : object
-        Z use used by the calculation.
-    k_p1d_Mpc : numpy.ndarray
-        K p1d mpc used by the calculation.
-    fontsize : int
+    Parameters
+    ----------
+    z_use : array_like
+        Redshifts defining the subplot order.
+    k_p1d_Mpc : array_like
+        P1D wavenumbers in ``Mpc^-1``.
+    fractional_errors : array_like of shape (n_folds, n_z, n_k)
+        Fractional emulator residuals.
+    savename : path-like, optional
+        Filename used to save the current figure. The figure is not closed.
+    fontsize : int, default=20
         Base font size in points.
-    kmax_1d_fit : object
-        Kmax 1d fit used by the calculation.
+    kmax_1d_fit : float, default=3
+        Vertical fit-limit marker in ``Mpc^-1``.
     """
 
     # kmin = 2 * np.pi / 67.5 * fact_kmin

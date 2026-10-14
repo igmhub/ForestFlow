@@ -1,10 +1,13 @@
-"""Utilities for evaluating model predictions averaged over measured bins."""
+"""
+Utilities for evaluating model predictions averaged over measured bins.
+"""
 
 import numpy as np
 
 
 def logarithmic_bin_edges(centres, edges=None, *, name="k"):
-    """Return explicit edges or infer them from strictly log-spaced centres.
+    """
+    Return explicit edges or infer them from strictly log-spaced centres.
 
     A single centre is intrinsically insufficient to determine bin widths, so
     callers must provide edges in that case.
@@ -34,7 +37,9 @@ def logarithmic_bin_edges(centres, edges=None, *, name="k"):
 
 
 def linear_bin_edges(centres, edges=None, *, name="coordinate"):
-    """Return explicit edges or infer midpoint edges from increasing centres."""
+    """
+    Return explicit edges or infer midpoint edges from increasing centres.
+    """
     centres = np.asarray(centres, dtype=float)
     if centres.ndim != 1 or centres.size == 0 or not np.all(np.isfinite(centres)):
         raise ValueError(f"{name} centres must be a non-empty finite 1D array")

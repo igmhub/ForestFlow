@@ -1,4 +1,6 @@
-"""Neural-network construction helpers for the P3D emulator."""
+"""
+Neural-network construction helpers for the P3D emulator.
+"""
 from collections.abc import Mapping
 from typing import Any
 import hashlib
@@ -6,7 +8,20 @@ import numpy as np
 import torch
 
 def _training_data_fingerprint(training_data: Mapping[str, Mapping[str, Any]]) -> str:
-    """Return a stable digest of the exact standardized data used for training."""
+    """
+    Return a stable digest of exact input/output training-array bytes.
+
+    Parameters
+    ----------
+    training_data : mapping
+        ``input_par`` and ``output_par`` mappings in deterministic insertion
+        order.
+
+    Returns
+    -------
+    str
+        SHA-256 digest including field names, dtypes, shapes, and bytes.
+    """
     digest = hashlib.sha256()
     for group in ("input_par", "output_par"):
         digest.update(group.encode("utf-8"))

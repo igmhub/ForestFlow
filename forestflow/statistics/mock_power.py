@@ -1,4 +1,6 @@
-"""Synthetic Arinyo power measurements for forecasts and Fisher studies."""
+"""
+Synthetic Arinyo power measurements for forecasts and Fisher studies.
+"""
 
 import numpy as np
 
@@ -16,7 +18,8 @@ def make_arinyo_mock_power(
     k_max_3d_iMpc=5.0,
     noise=None,
 ):
-    """Build deterministic or finite-volume synthetic Arinyo P3D and P1D data.
+    """
+    Build deterministic or finite-volume synthetic Arinyo P3D and P1D data.
 
     ``model_parameters`` must contain ``z`` and ``Arinyo``. All input and
     output wavenumbers use inverse Mpc, and powers use the corresponding Mpc

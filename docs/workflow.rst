@@ -124,7 +124,7 @@ redshifts. The portable model saved on disk remains the ordinary PyTorch model.
    from forestflow.model.arinyo import ArinyoModel
 
    model = ArinyoModel(cosmo)
-   linear = model.linear_theory(z)
+   linear = model.linear.get_linear_theory([z])
    k_iMpc = np.geomspace(0.1, 4.0, 80)
    mu = np.linspace(0.0, 1.0, 6)
    k2d_iMpc, mu2d = np.meshgrid(k_iMpc, mu, indexing="ij")

@@ -27,12 +27,11 @@ MPG_SIM_REDSHIFTS = np.arange(2.0, 4.6, 0.25)
 
 class GadgetArchive3D(GadgetArchive):
     """
-    Archive helpers for 3D Gadget simulations.
+    Extend the LaCE MP-Gadget archive with ForestFlow P3D products.
 
-    Extends `GadgetArchive` with methods to load training and testing
-    data, attach Arinyo minimizer results (individual snapshots and
-    joint/redshift-parameterized fits), and to compute summary priors
-    for Arinyo and IGM parameters over redshift ranges.
+    The archive owns native MP-Gadget P3D binning, relative-error products,
+    ForestFlow emulator inputs, and optional per-snapshot Arinyo fits. Its
+    snapshots use inverse comoving-Mpc wavenumbers and comoving-volume P3D.
     """
 
     def __init__(
@@ -45,25 +44,23 @@ class GadgetArchive3D(GadgetArchive):
         addcentral: bool | None = False,
     ) -> None:
         """
-        Archive class for 3D simulations
-
-        It calls the Lace GadgetArchive class and adds the Arinyo parameters
+        Initialize an MP-Gadget P3D archive and attach standard fit data.
 
         Parameters
         ----------
-        base_folder : object, optional
-            Base folder used by the calculation.
-        file_errors : object, optional
-            File errors used by the calculation.
-        postproc : str, optional
+        base_folder : str or path-like, optional
+            ForestFlow repository root containing distributed archive products.
+        file_errors : str or path-like, optional
+            ``.npz`` file containing relative P1D/P3D error templates.
+        postproc : str, default: "Cabayol23_fixp3d"
             Post-processing used by the calculation. Defaults to the corrected
             ``"Cabayol23_fixp3d"`` MP-Gadget P3D archive.
-        kp_Mpc : object, optional
-            Kp mpc used by the calculation.
-        average : str, optional
-            Average used by the calculation.
-        addcentral : bool, optional
-            Addcentral used by the calculation.
+        kp_Mpc : float, optional
+            Comoving linear-power pivot in ``1 / Mpc`` forwarded to LaCE.
+        average : str, default: "both"
+            Phase/axis averaging selection used to construct training data.
+        addcentral : bool, default: False
+            Append held-out central MP-Gadget snapshots to ``training_data``.
         """
 
         if base_folder == None:
@@ -111,7 +108,20 @@ class GadgetArchive3D(GadgetArchive):
             self.training_data.extend(central_data)
 
     def get_P3D_k_mu_bin_edges(self, k_max_iMpc=None):
-        """Return the native MP-Gadget P3D bin edges used by this archive."""
+        """
+        Return native MP-Gadget P3D bin edges used by this archive.
+
+        Parameters
+        ----------
+        k_max_iMpc : float, optional
+            Upper comoving wavenumber in ``1 / Mpc``. The standard maximum is
+            used when omitted.
+
+        Returns
+        -------
+        tuple of ndarray
+            One-dimensional k and direction-cosine bin-edge arrays.
+        """
         return get_P3D_k_mu_bin_edges(k_max_iMpc, **self.P3D_binning)
 
     def get_training_data(
@@ -120,7 +130,8 @@ class GadgetArchive3D(GadgetArchive):
         emu_params: list[str] | None = None,
         **kwargs: Any,
     ) -> list[dict[str, Any]]:
-        """Return MPG training snapshots with ForestFlow's standard inputs.
+        """
+        Return MPG training snapshots with ForestFlow's standard inputs.
 
         Parameters
         ----------
@@ -136,6 +147,19 @@ class GadgetArchive3D(GadgetArchive):
         **kwargs
             Selection options accepted by LaCE's base archive method, such as
             ``average``, ``val_scaling``, and redshift or simulation cuts.
+
+        Returns
+        -------
+        list of dict
+            Training snapshots in inherited archive order, optionally filtered
+            to requested simulation labels.
+
+        Raises
+        ------
+        TypeError
+            If labels or emulator parameters have unsupported types.
+        ValueError
+            If a requested label is not an MP-Gadget hypercube simulation.
         """
         # Preserve the inherited positional API for downstream callers that
         # supplied the emulator input list as the first argument.
@@ -235,7 +259,8 @@ class GadgetArchive3D(GadgetArchive):
         return testing_data
 
     def get_central_seed_average(self) -> list[dict[str, Any]]:
-        """Return mean-flux-consistent averages of central and seed snapshots.
+        """
+        Return mean-flux-consistent averages of central and seed snapshots.
 
         The two MP-Gadget realizations have the same cosmology and native
         Fourier grid.  Scalar IGM summaries are averaged arithmetically,
@@ -244,17 +269,56 @@ class GadgetArchive3D(GadgetArchive):
         The returned snapshots are labelled ``"mpg_central_seed"`` and retain
         the central fit as their initial condition.  If its corrected combined
         fit file exists, it is attached as ``arinyo_fixp3d``.
+
+        Returns
+        -------
+        list of dict
+            Combined central/seed snapshots, preserving central coordinates.
+
+        Raises
+        ------
+        KeyError
+            If either realization has missing or unmatched snapshot identities.
+        ValueError
+            If matching snapshots have incompatible grid shapes or zero mean
+            flux.
         """
         central = self.get_testing_data("mpg_central")
         seed = self.get_testing_data("mpg_seed")
         identity_fields = ("z", "ind_snap", "ind_phase", "ind_axis", "ind_rescaling")
 
         def identity_value(value: Any) -> Any:
+            """
+            Normalize a scalar field for stable snapshot-identity matching.
+
+            Parameters
+            ----------
+            value : object
+                Snapshot identity-field value.
+
+            Returns
+            -------
+            object
+                Python scalar with float values rounded to ten decimals.
+            """
             if isinstance(value, np.generic):
                 value = value.item()
             return round(float(value), 10) if isinstance(value, float) else value
 
         def identity(snapshot: dict[str, Any]) -> tuple[Any, ...]:
+            """
+            Build the complete matching key for one archive snapshot.
+
+            Parameters
+            ----------
+            snapshot : dict
+                Archive snapshot containing all identity fields.
+
+            Returns
+            -------
+            tuple
+                Normalized redshift, snapshot, phase, axis, and rescaling key.
+            """
             return tuple(identity_value(snapshot[field]) for field in identity_fields)
 
         seed_by_identity = {identity(snapshot): snapshot for snapshot in seed}
@@ -322,12 +386,26 @@ class GadgetArchive3D(GadgetArchive):
         return combined
 
     def add_arinyo_fixp3d(self, archive: list[dict[str, Any]]) -> None:
-        """Attach corrected-postprocessing Arinyo fits as ``arinyo_fixp3d``.
+        """
+        Attach corrected-postprocessing Arinyo fits as ``arinyo_fixp3d``.
 
         Fits are matched to archive entries through their complete saved
         snapshot identity, rather than through list order.  This retains the
         corrected-fit parameters alongside the legacy ``Arinyo_min`` and
         ``Arinyo_lowk`` fields.
+
+        Parameters
+        ----------
+        archive : list of dict
+            Snapshots mutated in place with matching ``arinyo_fixp3d``
+            parameter mappings when corrected fit files are available.
+
+        Raises
+        ------
+        KeyError
+            If a fit lacks identity fields or a snapshot has no matching fit.
+        ValueError
+            If a corrected fit has incompatible metadata or duplicate rows.
         """
         fit_folder = os.path.join(
             self.base_folder, "data", "best_arinyo", "cabayol23_fixp3d"
@@ -335,12 +413,37 @@ class GadgetArchive3D(GadgetArchive):
         identity_fields = ("z", "ind_snap", "ind_phase", "ind_axis", "ind_rescaling")
 
         def identity_value(value: Any) -> Any:
-            """Normalize numpy scalars while retaining string-valued axes."""
+            """
+            Normalize one identity component while retaining string axes.
+
+            Parameters
+            ----------
+            value : object
+                Snapshot or fit identity-field value.
+
+            Returns
+            -------
+            object
+                Python scalar with floats rounded to ten decimals.
+            """
             if isinstance(value, np.generic):
                 value = value.item()
             return round(float(value), 10) if isinstance(value, float) else value
 
         def snapshot_identity(source: dict[str, Any]) -> tuple[Any, ...]:
+            """
+            Build a normalized identity key from snapshot-like data.
+
+            Parameters
+            ----------
+            source : dict
+                Mapping containing required identity fields.
+
+            Returns
+            -------
+            tuple
+                Normalized identity components in archive matching order.
+            """
             return tuple(identity_value(source[field]) for field in identity_fields)
 
         labels = {snapshot["sim_label"] for snapshot in archive}
@@ -394,35 +497,34 @@ class GadgetArchive3D(GadgetArchive):
         kmax_1d: int | None = 4,
     ) -> Any:
         """
-        Arinyo fits considering each snapshot separately
+        Attach independently fitted Arinyo parameters to archive snapshots.
 
         Parameters
         ----------
-        archive : object
-            Simulation archive containing the requested data.
-        sim_label : object, optional
-            Sim label used by the calculation.
-        kmax_3d : int, optional
-            Maximum three-dimensional wavenumber included in the fit.
-        kmax_1d : int, optional
-            Maximum one-dimensional wavenumber included in the fit.
+        archive : sequence of dict
+            Snapshots mutated in place with ``Arinyo_min`` mappings.
+        sim_label : str, optional
+            Simulation label. ``"mpg_hypercube"`` loads all 30 hypercube fit
+            files; another label loads its single fit product.
+        kmax_3d, kmax_1d : float, default: 5, 4
+            P3D/P1D fitting cuts in ``1 / Mpc`` encoded in fit filenames.
 
-        Returns
-        -------
-        object
-            Result produced when the function is used to arinyo fits considering each snapshot separately.
+        Raises
+        ------
+        ValueError
+            If an archive entry disagrees with its expected hypercube label.
         """
 
         def get_flag_out(
             ind_sim: Any, kmax_3d: int | float, kmax_1d: int | float
         ) -> Any:
             """
-            Return flag out.
+            Build the stored filename stem for one independent fit.
 
             Parameters
             ----------
-            ind_sim : object
-                Ind sim used by the calculation.
+            ind_sim : str
+                Simulation label encoded in the fit product name.
             kmax_3d : int or float
                 Maximum three-dimensional wavenumber included in the fit.
             kmax_1d : int or float
@@ -430,8 +532,8 @@ class GadgetArchive3D(GadgetArchive):
 
             Returns
             -------
-            object
-                Result produced when the function is used to return flag out.
+            str
+                Independent-fit product filename stem.
             """
             flag = (
                 "fit_sim_label_"
@@ -528,14 +630,20 @@ class GadgetArchive3D(GadgetArchive):
         self, archive: Any, sim_label: str | None = "mpg_hypercube"
     ) -> None:
         """
-        Add Arinyo minimizer indiv lowk.
+        Attach low-k independent Arinyo fits to archive snapshots.
 
         Parameters
         ----------
-        archive : object
-            Simulation archive containing the requested data.
-        sim_label : str, optional
-            Sim label used by the calculation.
+        archive : sequence of dict
+            Snapshots mutated in place with ``Arinyo_lowk`` mappings.
+        sim_label : str, default: "mpg_hypercube"
+            Fit label. ``"mpg_seed"`` uses the central low-k fit only as an
+            initial-condition substitute.
+
+        Raises
+        ------
+        ValueError
+            If the archive contains more snapshots than the low-k fit product.
         """
         # The seed simulation has no standalone low-k Arinyo fit yet.  Its
         # measurements remain untouched; only its initial conditions use the
@@ -576,37 +684,30 @@ class GadgetArchive3D(GadgetArchive):
         kmax_1d: int | None = 3,
     ) -> Any:
         """
-        Fits parameterizing the redshift dependence of the Arinyo params
+        Attach redshift-parameterized Arinyo fits to archive snapshots.
 
         Parameters
         ----------
-        archive : object
-            Simulation archive containing the requested data.
-        sim_label : object, optional
-            Sim label used by the calculation.
-        kmax_3d : int, optional
-            Maximum three-dimensional wavenumber included in the fit.
-        kmax_1d : int, optional
-            Maximum one-dimensional wavenumber included in the fit.
-
-        Returns
-        -------
-        object
-            Result produced when the function is used to fits parameterizing the redshift dependence of the arinyo params.
+        archive : sequence of dict
+            Snapshots mutated in place with ``Arinyo_minz`` mappings.
+        sim_label : str, optional
+            Simulation label; ``"mpg_hypercube"`` selects all hypercube fits.
+        kmax_3d, kmax_1d : float, default: 3, 3
+            P3D/P1D fitting cuts in ``1 / Mpc`` encoded in fit filenames.
         """
 
         def get_flag_out(
             ind_sim: Any, val_scaling: Any, kmax_3d: int | float, kmax_1d: int | float
         ) -> Any:
             """
-            Return flag out.
+            Build the stored filename stem for one joint redshift fit.
 
             Parameters
             ----------
-            ind_sim : object
-                Ind sim used by the calculation.
-            val_scaling : object
-                Val scaling used by the calculation.
+            ind_sim : str
+                Simulation label.
+            val_scaling : float
+                Optical-depth rescaling encoded to two decimal places.
             kmax_3d : int or float
                 Maximum three-dimensional wavenumber included in the fit.
             kmax_1d : int or float
@@ -614,8 +715,8 @@ class GadgetArchive3D(GadgetArchive):
 
             Returns
             -------
-            object
-                Result produced when the function is used to return flag out.
+            str
+                Joint-fit product filename stem.
             """
             flag = (
                 "fit_sim_label_"
@@ -631,19 +732,20 @@ class GadgetArchive3D(GadgetArchive):
 
         def paramz_to_paramind(z: int | float, paramz: Any) -> Any:
             """
-            Convert to paramind.
+            Evaluate log10-polynomial Arinyo histories at redshifts.
 
             Parameters
             ----------
-            z : int or float
-                Redshift.
-            paramz : object
-                Paramz used by the calculation.
+            z : array_like
+                Redshifts at which to evaluate the fit.
+            paramz : mapping
+                Polynomial coefficient arrays keyed by Arinyo parameter.
 
             Returns
             -------
-            object
-                Result produced when the function is used to convert to paramind.
+            list of dict
+                One physical parameter mapping per redshift, after exponentiating
+                the fitted base-10 polynomials.
             """
             paramind = []
             for ii in range(len(z)):

@@ -27,6 +27,7 @@ dependencies = [
     "matplotlib",
     "torch",
     "threadpoolctl",
+    "scikit-learn",
     "freia",
     "lace",
 ]

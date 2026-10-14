@@ -32,52 +32,51 @@ def plot_template(
     title_fontsize: str | None="x-large",
 ) -> None:
     """
-    Template for all plots
+    Apply common labels, title, and optional legend formatting to axes.
 
     Parameters
     ----------
-    ax : object
-        Ax used by the calculation.
-    ax2 : object, optional
-        Ax2 used by the calculation.
-    ay2 : object, optional
-        Ay2 used by the calculation.
+    ax : matplotlib.axes.Axes
+        Primary axes to configure.
+    ax2, ay2 : matplotlib.axes.Axes, optional
+        Reserved secondary axes. Tick formatting for these axes is currently
+        disabled, so they are accepted only for API compatibility.
     xlabel : object, optional
-        Xlabel used by the calculation.
+        Primary x-axis label.
     ylabel : object, optional
-        Ylabel used by the calculation.
+        Primary y-axis label.
     title : object, optional
-        Title used by the calculation.
+        Axes title.
     legend : object, optional
-        Legend used by the calculation.
+        Set to ``0`` to create a legend from plotted artists.
     legend_loc : str, optional
-        Legend loc used by the calculation.
+        Matplotlib legend location.
     ftsize : int, optional
         Base font size in points.
     extra_xaxis : bool, optional
-        Extra xaxis used by the calculation.
+        Reserved API-compatibility flag; currently has no effect.
     extra_yaxis : bool, optional
-        Extra yaxis used by the calculation.
+        Reserved API-compatibility flag; currently has no effect.
     xcolor : str, optional
-        Xcolor used by the calculation.
+        Primary x-label color.
     ycolor : str, optional
-        Ycolor used by the calculation.
+        Primary y-label color.
     xcolor2 : str, optional
-        Xcolor2 used by the calculation.
+        Reserved secondary x-axis color; currently unused.
     ycolor2 : str, optional
-        Ycolor2 used by the calculation.
+        Reserved secondary y-axis color; currently unused.
     ylabelpad : object, optional
-        Ylabelpad used by the calculation.
+        Padding between the y label and axes.
     handlelength : int, optional
-        Handlelength used by the calculation.
+        Legend handle length.
     legend_title : object, optional
-        Legend title used by the calculation.
+        Legend title.
     legend_columns : int, optional
-        Legend columns used by the calculation.
+        Number of legend columns.
     ftsize_legend : int, optional
-        Ftsize legend used by the calculation.
+        Legend font size in points.
     title_fontsize : str, optional
-        Title fontsize used by the calculation.
+        Font-size specifier for the legend title.
     """
 
     # fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(8, 6))
@@ -131,24 +130,23 @@ def plot_template(
 
 def plot_vec(cen: Any, vv: Any, length: Any, ax: Any, label: Any, col: Any, direction: Any | None=None) -> None:
     """
-    Plot vectors
+    Draw a scaled quiver vector, optionally reorienting it upward-right.
 
     Parameters
     ----------
-    cen : object
-        Cen used by the calculation.
-    vv : object
-        Vv used by the calculation.
-    length : object
-        Length used by the calculation.
-    ax : object
-        Ax used by the calculation.
-    label : object
-        Label used by the calculation.
-    col : object
-        Col used by the calculation.
-    direction : object, optional
-        Direction used by the calculation.
+    cen, vv : array_like of shape (2,)
+        Vector origin and Cartesian components.
+    length : float
+        Reference vector length used to set the quiver scale.
+    ax : matplotlib.axes.Axes
+        Axes receiving the quiver artist.
+    label : str
+        Legend label for the vector.
+    col : matplotlib color
+        Quiver color.
+    direction : {"up_right"}, optional
+        When ``"up_right"``, flip components as needed to place the arrow in
+        an upward-right orientation.
     """
 
     # vectors look up and right
@@ -177,21 +175,19 @@ def plot_vec(cen: Any, vv: Any, length: Any, ax: Any, label: Any, col: Any, dire
 
 def density_estimation(m1: Any, m2: Any, ntt: Any | None=100j) -> tuple[Any, ...]:
     """
-    Estimate estimation.
+    Estimate a two-dimensional Gaussian-kernel density on a regular grid.
 
     Parameters
     ----------
-    m1 : object
-        M1 used by the calculation.
-    m2 : object
-        M2 used by the calculation.
-    ntt : complex, optional
-        Ntt used by the calculation.
+    m1, m2 : array_like of shape (n_samples,)
+        Sample coordinates.
+    ntt : complex, default=100j
+        ``numpy.mgrid`` complex-step specification for both grid dimensions.
 
     Returns
     -------
-    tuple
-        Computed result or generated analysis product.
+    X, Y, Z : ndarray
+        Mesh coordinates and Gaussian KDE values.
     """
     xmin = np.min(m1) * 0.95
     xmax = np.max(m1) * 1.05
@@ -209,20 +205,21 @@ def density_estimation(m1: Any, m2: Any, ntt: Any | None=100j) -> tuple[Any, ...
 
 def find_confidence_interval(x: Any, pdf: Any, confidence_level: Any) -> Any:
     """
-    Find confidence interval.
+    Return the probability-mass difference above a trial density level.
 
     Parameters
     ----------
-    x : object
-        Input values.
-    pdf : object
-        Pdf used by the calculation.
-    confidence_level : object
-        Confidence level used by the calculation.
+    x : float
+        Trial density threshold.
+    pdf : array_like
+        Discretized probability-density values.
+    confidence_level : float
+        Target enclosed probability mass.
 
     Returns
     -------
-    object
-        Computed result or generated analysis product.
+    float
+        Mass above ``x`` minus ``confidence_level``; useful as a root-finding
+        objective for a highest-density contour.
     """
     return pdf[pdf > x].sum() - confidence_level

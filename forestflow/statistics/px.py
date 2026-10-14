@@ -1,4 +1,6 @@
-"""Cross-power (Px) projections from three-dimensional flux power."""
+"""
+Cross-power (Px) projections from three-dimensional flux power.
+"""
 
 from collections.abc import Callable, Mapping
 from typing import Any
@@ -21,7 +23,9 @@ def compute_px_from_p3d_kmu_Mpc(
     interp_rt_Mpc_max: float = 0.2,
     p3d_k_Mpc_max: float = 200.0,
 ) -> NDArray[Any]:
-    """Compute Px for a math-only ``P3D(k, mu)`` callable."""
+    """
+    Compute Px for a math-only ``P3D(k, mu)`` callable.
+    """
 
     # Convert the public polar callable once at the Px boundary.  All
     # downstream P1D projections therefore receive Cartesian coordinates.

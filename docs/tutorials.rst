@@ -54,6 +54,11 @@ Other directories
    ``Emulator_precision.ipynb`` compares the corrected emulator against saved
    ``arinyo_fixp3d`` fits for testing and training simulations.
 
+``notebooks/emulator/sampling_convergence.py``
+   Compare latent samplers, realization counts, and coefficient aggregation
+   choices through coefficient, P1D, and optional likelihood diagnostics.
+   Use the measured convergence results to assess a sampling configuration.
+
 ``notebooks/developers``
    Exploratory, historical, or maintenance workflows; APIs and external paths
    here may not be supported.

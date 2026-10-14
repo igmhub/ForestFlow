@@ -16,16 +16,16 @@ from forestflow.plot_routines import plot_template
 
 def plot_test_parz(Archive3D: Any, p3d_emu: ArrayLike, sim_label: Any) -> None:
     """
-    Precision of emulator for target sim
+    Compare fitted and emulator Arinyo parameters across a test simulation.
 
     Parameters
     ----------
     Archive3D : object
-        Archive3d used by the calculation.
-    p3d_emu : numpy.ndarray or dict
-        P3d emu used by the calculation.
-    sim_label : object
-        Sim label used by the calculation.
+        Archive exposing ``get_testing_data`` and ``emu_params``.
+    p3d_emu : object
+        Emulator exposing ``predict_Arinyos``.
+    sim_label : str
+        Test-simulation label passed to the archive.
     """
 
     # load data
@@ -66,18 +66,18 @@ def plot_test_parz(Archive3D: Any, p3d_emu: ArrayLike, sim_label: Any) -> None:
 
 def plot_test_p3d(ind_book: Any, Archive3D: Any, p3d_emu: ArrayLike, sim_label: Any) -> None:
     """
-    Precision of emulator for target sim
+    Plot P3D comparison for one snapshot of a test simulation.
 
     Parameters
     ----------
-    ind_book : object
-        Ind book used by the calculation.
+    ind_book : int
+        Index of the requested snapshot in archive testing data.
     Archive3D : object
-        Archive3d used by the calculation.
-    p3d_emu : numpy.ndarray or dict
-        P3d emu used by the calculation.
-    sim_label : object
-        Sim label used by the calculation.
+        Archive exposing testing data and relative-error arrays.
+    p3d_emu : object
+        Emulator exposing ``predict_Arinyos``.
+    sim_label : str
+        Test-simulation label passed to the archive.
     """
 
     # load data
@@ -121,13 +121,17 @@ def plot_test_p3d(ind_book: Any, Archive3D: Any, p3d_emu: ArrayLike, sim_label: 
 
 def params_numpy2dict(params: ArrayLike) -> dict[str, Any]:
     """
-    Convert a NumPy array of parameters to a dictionary.
+    Map the legacy eight-component emulator vector to parameter names.
 
-    Args:
-        params (numpy.ndarray): Array of parameters.
+    Parameters
+    ----------
+    params : array_like of shape (8,)
+        Legacy emulator output ordered as bias, beta, and six ``d1_*`` terms.
 
-    Returns:
-        dict: Dictionary containing the parameters with their corresponding names.
+    Returns
+    -------
+    dict
+        Mapping from legacy parameter names to vector entries.
     """
     param_names = [
         "bias",
@@ -157,37 +161,30 @@ def plot_compare_p3d_smooth(
     plot_data: bool=False,
 ) -> Any | None:
     """
-    Compare data and best-fitting model.
+    Compare one or two legacy P3D model parameter mappings.
 
-    Parameters:
-        parameters (dict): Dictionary of fitting parameters.
-        error_fit_3d (array, optional): Array of 3D fitting errors (default: None).
-        error_fit_1d (array, optional): Array of 1D fitting errors (default: None).
-        save_fig (str, optional): File path to save the figure (default: None).
-        err_bar_all (bool, optional): Flag to enable error bars for all data points (default: False).
+    Parameters
+    ----------
+    self : object
+        Legacy likelihood-like object exposing data, fit masks, and
+        ``get_model_3d``.
+    parameters1, parameters2 : mapping
+        Primary and optional comparison parameter mappings.
+    error_fit_3d, error_fit_1d : array_like, optional
+        Relative error arrays used for plotted error bars.
+    save_fig : path-like, optional
+        Filename used to save the generated figure.
+    err_bar_all : bool, default=False
+        Draw error bars on every plotted point rather than selected points.
+    sim_label : str, default=""
+        Prefix displayed in the figure title.
+    plot_data : bool, default=False
+        Plot measured P3D values and ratios when true.
 
-    Note:
-        - This method compares the data and the best-fitting model.
-        - It plots the comparison using subplots for 3D fitting, 1D fitting, and cosmic variance errors.
-        - The `parameters` argument should be a dictionary of fitting parameters required to compute the model.
-        - The `error_fit_3d` and `error_fit_1d` arrays provide the fitting errors for the 3D and 1D data, respectively.
-        - If `error_fit_3d` is provided and `err_bar_all` is True, error bars will be shown for all data points in the 3D fitting plot.
-        - If `error_fit_1d` is provided and `err_bar_all` is True, error bars will be shown for all data points in the 1D fitting plot.
-        - If `save_fig` is provided, the plot will be saved to the specified file path.
-
-    Returns:
-        None
-
-    Other Parameters
-    ----------------
-    parameters1 : object
-        Parameters1 used by the calculation.
-    parameters2 : object
-        Parameters2 used by the calculation.
-    sim_label : object
-        Sim label used by the calculation.
-    plot_data : bool
-        Plot data used by the calculation.
+    Notes
+    -----
+    This helper creates a figure but deliberately returns ``None``. Supplying
+    ``save_fig`` writes it with :func:`matplotlib.pyplot.savefig`.
     """
 
     fig, ax = plt.subplots(

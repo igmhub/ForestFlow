@@ -22,14 +22,19 @@ def plot_bsig8_betafsigma8(samples: ArrayLike, ftsize: int | None=18) -> None:
 
     # --- plotting ---
     """
-    Plot bsig8 betafsigma8.
+    Plot P1D and BAO constraints on two bias-amplitude combinations.
 
     Parameters
     ----------
-    samples : numpy.ndarray or dict
-        Posterior samples to plot or process.
-    ftsize : int, optional
+    samples : mapping of getdist.MCSamples
+        Containers keyed by ``p1d``, ``dr1``, ``dr2``, ``dr1_hsnr``, and
+        ``dr2_hsnr``.
+    ftsize : int, default=18
         Base font size in points.
+
+    Notes
+    -----
+    Writes ``figs/nocomb_bdsig8_befsig8.{pdf,png}``.
     """
     g = plots.get_subplot_plotter(width_inch=8)
     g.settings.lab_fontsize = ftsize
@@ -81,14 +86,19 @@ def plot_bsig8_betafsigma8(samples: ArrayLike, ftsize: int | None=18) -> None:
 def plot_bao_biases(samples: ArrayLike, ftsize: int | None=22) -> None:
 
     """
-    Plot bao biases.
+    Plot BAO-only constraints on legacy bias and beta parameters.
 
     Parameters
     ----------
-    samples : numpy.ndarray or dict
-        Posterior samples to plot or process.
-    ftsize : int, optional
+    samples : mapping of getdist.MCSamples
+        Containers keyed by ``dr1``, ``dr2``, ``dr1_hsnr``, and ``dr2_hsnr``;
+        labels on these objects are updated in place.
+    ftsize : int, default=22
         Base font size in points.
+
+    Notes
+    -----
+    Writes ``figs/bao_biases.{pdf,png}``.
     """
     g = plots.get_subplot_plotter(width_inch=8)
     g.settings.lab_fontsize = ftsize + 2
@@ -147,14 +157,19 @@ def plot_comb_bdsig8_befsig8(samples: ArrayLike, ftsize: int | None=24) -> None:
 
     # --- plotting ---
     """
-    Plot comb bdsig8 befsig8.
+    Plot P1D, DR2 BAO, and combined bias-amplitude constraints.
 
     Parameters
     ----------
-    samples : numpy.ndarray or dict
-        Posterior samples to plot or process.
-    ftsize : int, optional
+    samples : mapping of getdist.MCSamples
+        Containers keyed by ``p1d``, ``dr2_hsnr``, and ``p1d_dr2``. The P1D
+        smoothing settings are updated in place.
+    ftsize : int, default=24
         Base font size in points.
+
+    Notes
+    -----
+    Writes ``figs/comb_bdsig8_befsig8.{pdf,png}``.
     """
     g = plots.get_subplot_plotter(width_inch=8)
     g.settings.lab_fontsize = ftsize + 2
@@ -195,14 +210,18 @@ def plot_comb_bd_be_beta(samples: ArrayLike, ftsize: int | None=20) -> None:
 
     # --- plotting ---
     """
-    Plot comb bd be beta.
+    Plot P1D, DR2 BAO, and combined bias--beta constraints.
 
     Parameters
     ----------
-    samples : numpy.ndarray or dict
-        Posterior samples to plot or process.
-    ftsize : int, optional
+    samples : mapping of getdist.MCSamples
+        Containers keyed by ``p1d``, ``dr2_hsnr``, and ``p1d_dr2``.
+    ftsize : int, default=20
         Base font size in points.
+
+    Notes
+    -----
+    Writes the corresponding combination figure in ``figs``.
     """
     g = plots.get_subplot_plotter(width_inch=8)
     g.settings.lab_fontsize = ftsize
@@ -237,14 +256,20 @@ def plot_sig8(samples: ArrayLike, ftsize: int | None=20) -> None:
     # DESY6 Table IV https://arxiv.org/pdf/2601.14559
     # DES 3x2pt LCDM
     """
-    Plot sig8.
+    Compare inferred present-day sigma8 with fixed external constraints.
 
     Parameters
     ----------
-    samples : numpy.ndarray or dict
-        Posterior samples to plot or process.
-    ftsize : int, optional
+    samples : mapping of getdist.MCSamples
+        Containers keyed by ``p1d``, ``p1d_dr1``, and ``p1d_dr2`` with a
+        ``sigma8_z0`` parameter.
+    ftsize : int, default=20
         Base font size in points.
+
+    Notes
+    -----
+    Writes ``figs/sig8.{pdf,png}``; the external reference values are encoded
+    in this paper-specific helper.
     """
     mu_des = 0.751
     sigma_des = 0.035
@@ -339,14 +364,20 @@ def plot_sig8z(samples: ArrayLike, ftsize: int | None=20) -> None:
 
     # load CMB-SPA
     """
-    Plot sig8z.
+    Plot inferred sigma8 at z=2.33 alongside external redshift constraints.
 
     Parameters
     ----------
-    samples : numpy.ndarray or dict
-        Posterior samples to plot or process.
-    ftsize : int, optional
+    samples : mapping of getdist.MCSamples
+        Containers keyed by ``p1d``, ``p1d_dr1``, and ``p1d_dr2`` with a
+        ``sigma8`` parameter.
+    ftsize : int, default=20
         Base font size in points.
+
+    Notes
+    -----
+    Missing CMB-SPA or DESI intermediate files trigger their corresponding
+    sample-generation helpers. Writes ``figs/sig8z.{pdf,png}``.
     """
     try:
         data = np.load("int_data_figs/sig8_cmb_spa.npy", allow_pickle=True).item()
@@ -463,13 +494,19 @@ def plot_fsig8z(samples: ArrayLike, ftsize: int | None=20) -> None:
 
     # load CMB-SPA
     """
-    Plot fsig8z.
+    Plot growth-amplitude reference measurements and P1D constraints.
 
     Parameters
     ----------
-    samples : numpy.ndarray or dict
-        Posterior samples to plot or process.
-    ftsize : int, optional
+    samples : mapping of getdist.MCSamples
+        Containers keyed by ``p1d``, ``p1d_dr1``, and ``p1d_dr2``.
+    ftsize : int, default=20
+        Base font size in points.
+
+    Notes
+    -----
+    Reads or regenerates the CMB-SPA intermediate product and writes
+    ``figs/fsig8z.{pdf,png}``.
         Base font size in points.
     """
     try:
@@ -575,14 +612,18 @@ def plot_fsig8z(samples: ArrayLike, ftsize: int | None=20) -> None:
 def plot_sig8z233(samples: ArrayLike, ftsize: int | None=20) -> None:
     # --- plotting ---
     """
-    Plot sig8z233.
+    Plot one-dimensional sigma8(z=2.33) posterior comparisons.
 
     Parameters
     ----------
-    samples : numpy.ndarray or dict
-        Posterior samples to plot or process.
-    ftsize : int, optional
+    samples : mapping of getdist.MCSamples
+        Containers keyed by ``p1d``, ``p1d_dr1``, and ``p1d_dr2``.
+    ftsize : int, default=20
         Base font size in points.
+
+    Notes
+    -----
+    Writes ``figs/sig8z233.{pdf,png}``.
     """
     g = plots.get_subplot_plotter(width_inch=8)
     g.settings.lab_fontsize = ftsize
@@ -612,14 +653,19 @@ def plot_sig8z233(samples: ArrayLike, ftsize: int | None=20) -> None:
 def plot_compressed(samples: ArrayLike, ftsize: int | None=20) -> None:
     # --- plotting ---
     """
-    Plot compressed.
+    Plot compressed linear-power posterior constraints.
 
     Parameters
     ----------
-    samples : numpy.ndarray or dict
-        Posterior samples to plot or process.
-    ftsize : int, optional
+    samples : mapping of getdist.MCSamples
+        Containers keyed by ``p1d``, ``p1d_dr1``, and ``p1d_dr2`` with
+        ``Delta2star`` and ``nstar`` parameters.
+    ftsize : int, default=20
         Base font size in points.
+
+    Notes
+    -----
+    Writes ``figs/delta2star_nstar.{pdf,png}``.
     """
     g = plots.get_subplot_plotter(width_inch=8)
     g.settings.lab_fontsize = ftsize
@@ -651,14 +697,18 @@ def plot_bdelta_beta_beta(samples: ArrayLike, ftsize: int | None=20) -> None:
 
     # --- plotting ---
     """
-    Plot bdelta beta beta.
+    Plot P1D and combined bias-delta, bias-eta, and beta constraints.
 
     Parameters
     ----------
-    samples : numpy.ndarray or dict
-        Posterior samples to plot or process.
-    ftsize : int, optional
+    samples : mapping of getdist.MCSamples
+        Containers keyed by ``p1d``, ``p1d_dr1``, and ``p1d_dr2``.
+    ftsize : int, default=20
         Base font size in points.
+
+    Notes
+    -----
+    Writes ``figs/bdelta_beta_beta.{pdf,png}``.
     """
     g = plots.get_subplot_plotter(width_inch=8)
     g.settings.lab_fontsize = ftsize
@@ -688,14 +738,19 @@ def plot_bdelta_beta_beta(samples: ArrayLike, ftsize: int | None=20) -> None:
 def plot_P3D_small_params(samples: ArrayLike, ftsize: int | None=20) -> None:
 
     """
-    Plot three-dimensional power spectrum small parameters.
+    Plot P1D and combined nonlinear Arinyo-parameter constraints.
 
     Parameters
     ----------
-    samples : numpy.ndarray or dict
-        Posterior samples to plot or process.
-    ftsize : int, optional
+    samples : mapping of getdist.MCSamples
+        Containers keyed by ``p1d``, ``p1d_dr1``, and ``p1d_dr2`` with the
+        six displayed nonlinear parameters.
+    ftsize : int, default=20
         Base font size in points.
+
+    Notes
+    -----
+    Writes the nonlinear-parameter triangle plot in ``figs``.
     """
     g = plots.get_subplot_plotter(width_inch=10)
     g.settings.lab_fontsize = ftsize
@@ -725,35 +780,29 @@ def plot_P3D_small_params(samples: ArrayLike, ftsize: int | None=20) -> None:
 def table_cosmo_igm(dict_out_all: Mapping[str, Any]) -> Any:
 
     """
-    Create cosmo intergalactic-medium.
+    Print a LaTeX-style table of IGM summary statistics by redshift.
 
     Parameters
     ----------
-    dict_out_all : dict
-        Dict out all used by the calculation.
-
-    Returns
-    -------
-    object
-        Computed result or generated analysis product.
+    dict_out_all : mapping
+        Mapping with ``zs`` and ``emu_params`` sample arrays for ``Delta2_p``,
+        ``mF``, ``sigT_Mpc``, ``gamma``, and ``kF_Mpc``.
     """
     def format_pm(val: Any, err: ArrayLike, sig: int | None=2) -> Any:
         """
-        Format a value and uncertainty with plus-minus notation.
+        Format a value and uncertainty using significant uncertainty digits.
 
         Parameters
         ----------
-        val : object
-            Val used by the calculation.
-        err : numpy.ndarray or dict
-            Err used by the calculation.
-        sig : int, optional
-            Sig used by the calculation.
+        val, err : float
+            Central value and one-sigma uncertainty.
+        sig : int, default=2
+            Number of significant digits retained for the uncertainty.
 
         Returns
         -------
-        object
-            Computed result or generated analysis product.
+        str
+            Math-mode ``value \\pm uncertainty`` string.
         """
         import math
 
@@ -787,70 +836,61 @@ def plot_bias_beta_zev(bao_data: ArrayLike, dict_mapping: Mapping[str, Any], plo
 
     # from mpl_toolkits.axes_grid1.inset_locator import inset_axes
     """
-    Plot bias beta zev.
+    Compare P1D redshift evolution of biases with BAO constraints.
 
     Parameters
     ----------
-    bao_data : numpy.ndarray or dict
-        Baryon acoustic oscillation measurements.
-    dict_mapping : dict
-        Mapping containing the analysis data sets.
-    plot_bias_eta : bool, optional
+    bao_data : mapping
+        BAO summary samples and DR2 redshift-weight curve.
+    dict_mapping : mapping
+        P1D-to-P3D mapping containing ``zs`` and ``forest_out`` samples.
+    plot_bias_eta : bool, default=False
         Whether to plot the velocity-gradient bias.
-    z0 : float, optional
-        Reference redshift.
-    ftsize : int, optional
+    z0 : float, default=3.0
+        Pivot redshift for local fitting functions.
+    ftsize : int, default=24
         Base font size in points.
 
-    Returns
-    -------
-    object
-        Computed result or generated analysis product.
+    Notes
+    -----
+    Writes PNG, PDF, and NumPy figure-data products under ``figs``.
     """
     from scipy.optimize import curve_fit
 
     def fit_pow(z: Any, a: Any, b: Any) -> Any:
         """
-        Evaluate the power-law fit.
+        Evaluate a pivoted power law.
 
         Parameters
         ----------
-        z : object
-            Redshift.
-        a : object
-            A used by the calculation.
-        b : object
-            B used by the calculation.
+        z : array_like
+            Redshifts.
+        a, b : float
+            Amplitude and exponent at the enclosing function's pivot.
 
         Returns
         -------
-        object
-            Computed result or generated analysis product.
+        ndarray
+            Model values at ``z``.
         """
         x = (1 + z) / (1 + z0)
         return a * x**b
 
     def fit_pol(z: Any, a: Any, b: Any, c: Any, d: Any) -> Any:
         """
-        Evaluate the polynomial fit.
+        Evaluate a cubic polynomial in pivoted redshift.
 
         Parameters
         ----------
-        z : object
-            Redshift.
-        a : object
-            A used by the calculation.
-        b : object
-            B used by the calculation.
-        c : object
-            C used by the calculation.
-        d : object
-            D used by the calculation.
+        z : array_like
+            Redshifts.
+        a, b, c, d : float
+            Constant through cubic coefficients.
 
         Returns
         -------
-        object
-            Computed result or generated analysis product.
+        ndarray
+            Model values at ``z``.
         """
         x = (1 + z) / (1 + z0)
         return a + b * x + c * x**2 + d * x**3
@@ -1018,16 +1058,20 @@ def plot_bias_beta_zev(bao_data: ArrayLike, dict_mapping: Mapping[str, Any], plo
 def plot_bias_beta_zev_val(dict_mapping: Mapping[str, Any], plot_bias_eta: bool | None=False, ftsize: int | None=24) -> None:
 
     """
-    Plot bias beta zev val.
+    Compare inferred bias evolution with fixed validation-simulation fits.
 
     Parameters
     ----------
-    dict_mapping : dict
-        Mapping containing the analysis data sets.
-    plot_bias_eta : bool, optional
+    dict_mapping : mapping
+        P1D-to-P3D mapping containing ``zs`` and ``forest_out`` samples.
+    plot_bias_eta : bool, default=False
         Whether to plot the velocity-gradient bias.
-    ftsize : int, optional
+    ftsize : int, default=24
         Base font size in points.
+
+    Notes
+    -----
+    Writes PNG, PDF, and NumPy figure-data products under ``figs``.
     """
     fig_data = {}
 
@@ -1139,45 +1183,38 @@ def plot_bias_beta_zev_val(dict_mapping: Mapping[str, Any], plot_bias_eta: bool 
 def plot_p3d_small_z(dict_mapping: Mapping[str, Any], z0: int | None=3, ftsize: int | None=24) -> Any:
 
     """
-    Plot three-dimensional power spectrum small z.
+    Plot fitted nonlinear Arinyo parameters as functions of redshift.
 
     Parameters
     ----------
-    dict_mapping : dict
-        Mapping containing the analysis data sets.
-    z0 : int, optional
-        Reference redshift.
-    ftsize : int, optional
+    dict_mapping : mapping
+        P1D-to-P3D mapping containing ``zs`` and ``forest_out`` samples.
+    z0 : float, default=3
+        Pivot redshift for cubic fits.
+    ftsize : int, default=24
         Base font size in points.
 
-    Returns
-    -------
-    object
-        Computed result or generated analysis product.
+    Notes
+    -----
+    Writes PNG, PDF, and NumPy figure-data products under ``figs``.
     """
     from scipy.optimize import curve_fit
 
     def fit_func(z: Any, a: Any, b: Any, c: Any, d: Any) -> Any:
         """
-        Evaluate the fitting function.
+        Evaluate a cubic polynomial in pivoted redshift.
 
         Parameters
         ----------
-        z : object
-            Redshift.
-        a : object
-            A used by the calculation.
-        b : object
-            B used by the calculation.
-        c : object
-            C used by the calculation.
-        d : object
-            D used by the calculation.
+        z : array_like
+            Redshifts.
+        a, b, c, d : float
+            Constant through cubic coefficients.
 
         Returns
         -------
-        object
-            Computed result or generated analysis product.
+        ndarray
+            Model values at ``z``.
         """
         x = (1 + z) / (1 + z0)
         return a + b * x + c * x**2 + d * x**3
@@ -1252,20 +1289,23 @@ def plot_p3d_small_z(dict_mapping: Mapping[str, Any], z0: int | None=3, ftsize: 
 def plot_p3d_validation(knew3d: ArrayLike, munew3d: ArrayLike, data_pip: ArrayLike, data_sim: ArrayLike, ftsize: int | None=24) -> None:
 
     """
-    Plot three-dimensional power spectrum validation.
+    Compare mapped P3D predictions with Accel2 validation measurements.
 
     Parameters
     ----------
-    knew3d : numpy.ndarray or dict
-        Knew3d used by the calculation.
-    munew3d : numpy.ndarray or dict
-        Munew3d used by the calculation.
-    data_pip : numpy.ndarray or dict
-        Data pip used by the calculation.
-    data_sim : numpy.ndarray or dict
-        Data sim used by the calculation.
-    ftsize : int, optional
+    knew3d, munew3d : array_like of shape (n_k, n_mu)
+        Model wavenumber grid in ``Mpc^-1`` and cosine-angle grid.
+    data_pip : mapping
+        Mapped P1D-chain product with ``zs`` and ``forest_out`` P3D/linear
+        power arrays.
+    data_sim : mapping
+        Accel2 validation data with P3D and angular-coordinate arrays.
+    ftsize : int, default=24
         Base font size in points.
+
+    Notes
+    -----
+    Writes PNG, PDF, and NumPy figure-data products under ``figs``.
     """
     from matplotlib.patches import Patch
 

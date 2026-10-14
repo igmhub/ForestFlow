@@ -67,6 +67,11 @@ exclude_patterns = [
     "Thumbs.db",
     ".DS_Store",
     "old_code",
+    # Do not publish experimental emulators through cached autosummary pages.
+    # Supported emulator modules are enumerated explicitly in api.rst.
+    "generated/forestflow.emulator.rst",
+    "generated/forestflow.emulator.arinyo_gp*",
+    "generated/forestflow.emulator.distillation*",
 ]
 intersphinx_mapping = {}
 if os.environ.get("FORESTFLOW_DOCS_INTERSPHINX") == "1":

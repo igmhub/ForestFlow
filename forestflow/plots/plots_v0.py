@@ -30,16 +30,16 @@ from forestflow.utils import params_numpy2dict, sigma68
 
 def plot_test_parz(Archive3D: Any, p3d_emu: ArrayLike, sim_label: Any) -> None:
     """
-    Precision of emulator for target sim
+    Compare fitted and emulator Arinyo parameters for a test simulation.
 
     Parameters
     ----------
     Archive3D : object
-        Archive3d used by the calculation.
-    p3d_emu : numpy.ndarray or dict
-        P3d emu used by the calculation.
-    sim_label : object
-        Sim label used by the calculation.
+        Archive exposing ``get_testing_data``.
+    p3d_emu : object
+        Emulator exposing ``predict_Arinyos`` for snapshot mappings.
+    sim_label : str
+        Test-simulation label passed to the archive.
     """
 
     # load data
@@ -87,22 +87,22 @@ def plot_test_p3d(
     training_type: str | None="Arinyo",
 ) -> None:
     """
-    Precision of emulator for target sim
+    Plot legacy likelihood comparison for one test-simulation snapshot.
 
     Parameters
     ----------
-    ind_book : object
-        Ind book used by the calculation.
+    ind_book : int
+        Index of the requested snapshot within testing data.
     Archive3D : object
-        Archive3d used by the calculation.
-    p3d_emu : numpy.ndarray or dict
-        P3d emu used by the calculation.
-    sim_label : object
-        Sim label used by the calculation.
-    plot_emu : bool, optional
-        Plot emu used by the calculation.
-    training_type : str, optional
-        Training type used by the calculation.
+        Archive exposing testing data and relative-error arrays.
+    p3d_emu : object
+        Legacy emulator used to obtain Arinyo predictions.
+    sim_label : str
+        Test-simulation label passed to the archive.
+    plot_emu : bool, default=True
+        Include the emulator parameter prediction in the comparison.
+    training_type : str, default="Arinyo"
+        Legacy emulator output convention passed through the plotting path.
     """
 
     # load data
@@ -179,43 +179,31 @@ def plot_compare_p3d_smooth(
     plot_legend_1: bool=False,
 ) -> Any | None:
     """
-    Compare data and best-fitting model.
+    Compare one or two legacy P3D/P1D model parameter mappings.
 
-    Parameters:
-        parameters (dict): Dictionary of fitting parameters.
-        error_fit_3d (array, optional): Array of 3D fitting errors (default: None).
-        error_fit_1d (array, optional): Array of 1D fitting errors (default: None).
-        save_fig (str, optional): File path to save the figure (default: None).
-        err_bar_all (bool, optional): Flag to enable error bars for all data points (default: False).
-
-    Note:
-        - This method compares the data and the best-fitting model.
-        - It plots the comparison using subplots for 3D fitting, 1D fitting, and cosmic variance errors.
-        - The `parameters` argument should be a dictionary of fitting parameters required to compute the model.
-        - The `error_fit_3d` and `error_fit_1d` arrays provide the fitting errors for the 3D and 1D data, respectively.
-        - If `error_fit_3d` is provided and `err_bar_all` is True, error bars will be shown for all data points in the 3D fitting plot.
-        - If `error_fit_1d` is provided and `err_bar_all` is True, error bars will be shown for all data points in the 1D fitting plot.
-        - If `save_fig` is provided, the plot will be saved to the specified file path.
-
-    Returns:
-        None
-
-    Other Parameters
-    ----------------
+    Parameters
+    ----------
     like : object
-        Like used by the calculation.
-    parameters1 : object
-        Parameters1 used by the calculation.
-    parameters2 : object
-        Parameters2 used by the calculation.
-    sim_label : object
-        Sim label used by the calculation.
-    plot_data : bool
-        Plot data used by the calculation.
-    plot_p1d : bool
-        Plot p1d used by the calculation.
-    plot_legend_1 : bool
-        Plot legend 1 used by the calculation.
+        Legacy likelihood-like object exposing measured arrays, masks, error
+        arrays, and ``get_model_3d``/``get_model_1d`` methods.
+    parameters1, parameters2 : mapping
+        Primary and optional comparison parameter mappings.
+    save_fig : path-like, optional
+        Filename used to save the current figure.
+    err_bar_all : bool, default=False
+        Draw all available error bars rather than a reduced selection.
+    sim_label : str, default=""
+        Prefix displayed in the figure title.
+    plot_data : bool, default=True
+        Draw measured spectra and model/data ratios.
+    plot_p1d : bool, default=True
+        Include P1D panels; false creates only P3D panels.
+    plot_legend_1 : bool, default=False
+        Draw the additional first legend when true.
+
+    Notes
+    -----
+    This legacy helper creates a matplotlib figure and returns ``None``.
     """
 
     if plot_p1d:
@@ -473,27 +461,24 @@ def plot_err_uncertainty(
     colors: Sequence[Any]=["deepskyblue", "goldenrod"],
 ) -> Any | None:
     """
-    Plot the percent error and uncertainty in P1D and P3D for different simulation labels.
+    Plot emulator percent errors and covariance uncertainties for test data.
 
-    Parameters:
-    - sim_labels (list): List of simulation labels for which the predictions are plotted.
-    - mu_lims_p3d (tuple): Tuple defining the range of mu values to consider in the P3D plot.
-    - z (float): Redshift value.
-    - val_scaling (float, optional): Scaling factor for validation data. Defaults to 1.0.
-    - colors (list, optional): List of colors for each simulation label in the plot. Defaults to ['deepskyblue', 'goldenrod'].
-
-    Returns:
-    None
-
-    Plots:
-    - Two horizontally aligned panels (P1D and P3D) with percent error and uncertainty.
-
-    Other Parameters
-    ----------------
-    emulator : numpy.ndarray
-        Trained emulator.
+    Parameters
+    ----------
+    emulator : object
+        Legacy emulator exposing P1D/P3D prediction and simulation-access APIs.
     archive : object
-        Simulation archive.
+        Archive containing native P3D grids and test simulations.
+    sim_labels : sequence of str
+        Test-simulation labels to compare.
+    mu_lims_p3d : tuple of float
+        Inclusive cosine-angle range selected for the P3D panel.
+    z : float
+        Test-snapshot redshift.
+    val_scaling : float, default=1.0
+        Optical-depth scaling used to select the validation snapshot.
+    colors : sequence, default=("deepskyblue", "goldenrod")
+        One matplotlib color per simulation label.
     """
 
     # Extract data from Archive3D
@@ -595,22 +580,22 @@ def plot_p1d_LzO(
     fact_kmin: int | None=4,
 ) -> None:
     """
-    Plot one-dimensional power spectrum LzO.
+    Plot leave-redshift-out P1D residual summaries.
 
     Parameters
     ----------
     archive : object
-        Archive used by the calculation.
-    z_use : object
-        Z use used by the calculation.
-    fractional_errors : numpy.ndarray or dict
-        Fractional errors used by the calculation.
-    savename : object, optional
-        Savename used by the calculation.
-    fontsize : int, optional
-        Fontsize used by the calculation.
-    fact_kmin : int, optional
-        Fact kmin used by the calculation.
+        Archive whose first training snapshot supplies the P1D grid.
+    z_use : array_like
+        Redshifts defining the subplot order.
+    fractional_errors : array_like of shape (n_folds, n_z, n_k)
+        Fractional emulator residuals.
+    savename : path-like, optional
+        Filename used to save the current figure.
+    fontsize : int, default=20
+        Base font size in points.
+    fact_kmin : int, default=4
+        Multiple of the fundamental box mode drawn as a vertical marker.
     """
     kmin = 2 * np.pi / 67.5 * fact_kmin
 
@@ -687,23 +672,19 @@ def plot_paramspace(
     vmax: Any=1,
 ) -> Any | None:
     """
-    Plot parameter space with uncertainties in a 2x2 grid.
+    Visualize median P3D uncertainty across four emulator-parameter planes.
 
-    Parameters:
-    - params_emulator (numpy array): Emulator parameters. (Nsim*Nz,6)
-    - errors (numpy array): Uncertainties corresponding to each point. (Nsim*Nz,Nk)
-
-    Returns:
-    - None
-
-    Other Parameters
-    ----------------
-    colourbar_lab : object
-        Colourbar lab used by the calculation.
-    vmin : object
-        Vmin used by the calculation.
-    vmax : object
-        Vmax used by the calculation.
+    Parameters
+    ----------
+    params_emulator : array_like of shape (n_samples, n_parameters)
+        Emulator input samples; columns zero through four are used by the
+        fixed legacy scatter-panel layout.
+    errors : array_like of shape (n_samples, n_k)
+        P3D uncertainty values; their median colors each sample.
+    colourbar_lab : str, default="$P_{\\rm 3D}$ uncertainty"
+        Colorbar label.
+    vmin, vmax : float, default=0, 1
+        Color normalization limits.
     """
     # Create a 2x2 grid of subplots
     fig, axs = plt.subplots(2, 2, figsize=(8, 6), sharey="row")

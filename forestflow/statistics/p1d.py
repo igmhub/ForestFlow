@@ -1,4 +1,5 @@
-"""P1D projections and bin averaging.
+"""
+P1D projections and bin averaging.
 
 A P1D projection always integrates a P3D callable over transverse wavenumber.
 Consequently, the sole P3D callable contract in this module is
@@ -15,7 +16,8 @@ from forestflow.statistics.binning import logarithmic_bin_edges
 
 
 class P1DIntegrator:
-    """Project Cartesian P3D to P1D with cached integration geometry.
+    """
+    Project Cartesian P3D to P1D with cached integration geometry.
 
     The P3D callable must have the signature
     ``p3d_kpar_kperp(linear, z, k_par_iMpc, k_perp_iMpc, parameters)``.
@@ -32,6 +34,26 @@ class P1DIntegrator:
         method="simpson",
         max_cached_geometries=8,
     ):
+        """
+        Configure a reusable transverse P3D-to-P1D quadrature.
+
+        Parameters
+        ----------
+        k_perp_min_iMpc, k_perp_max_iMpc : float, default=1e-3, 100.0
+            Inclusive transverse comoving-wavenumber range in 1/Mpc.
+        n_k_perp : int, default=48
+            Number of log-spaced quadrature nodes. Simpson integration needs
+            at least three nodes; Gauss--Legendre needs at least one.
+        method : {"simpson", "gauss_legendre"}, default="simpson"
+            Quadrature in ``ln(k_perp)``.
+        max_cached_geometries : int, default=8
+            Number of recently used parallel-wavenumber grids retained in the
+            in-memory geometry cache. Zero disables caching.
+
+        Notes
+        -----
+        The projection is ``integral dln(k_perp) k_perp**2 P3D/(2*pi)``.
+        """
         if method not in {"simpson", "gauss_legendre"}:
             raise ValueError("method must be 'simpson' or 'gauss_legendre'")
         minimum_nodes = 3 if method == "simpson" else 1
@@ -48,7 +70,12 @@ class P1DIntegrator:
         log_max = np.log(k_perp_max_iMpc)
         if method == "simpson":
             self.ln_k_perp = np.linspace(log_min, log_max, self.n_k_perp)
-            self.weights = None
+            # Simpson integration is linear. Integrating an identity matrix
+            # once gives the exact weights used by scipy for this grid,
+            # including its even-node endpoint convention.
+            self.weights = simpson(
+                np.eye(self.n_k_perp), x=self.ln_k_perp, axis=0
+            )
         else:
             nodes, weights = np.polynomial.legendre.leggauss(self.n_k_perp)
             midpoint = 0.5 * (log_min + log_max)
@@ -64,7 +91,9 @@ class P1DIntegrator:
         return contiguous.shape, contiguous.dtype.str, digest
 
     def geometry(self, k_par_iMpc):
-        """Return cached grids of ``k_parallel`` and ``k_perp`` in inverse Mpc."""
+        """
+        Return cached grids of ``k_parallel`` and ``k_perp`` in inverse Mpc.
+        """
         key = self._geometry_key(k_par_iMpc)
         cached = self._geometry_cache.get(key)
         if cached is not None:
@@ -86,23 +115,27 @@ class P1DIntegrator:
         return geometry
 
     def clear_geometry_cache(self):
-        """Discard cached k-parallel/k-perpendicular grids."""
+        """
+        Discard cached k-parallel/k-perpendicular grids.
+        """
         self._geometry_cache.clear()
 
     def integrate(self, p3d_Mpc):
-        """Integrate P3D values whose final axis is this integrator's k_perp grid."""
+        """
+        Integrate P3D values whose final axis is this integrator's k_perp grid.
+        """
         p3d_Mpc = np.asarray(p3d_Mpc)
         if p3d_Mpc.shape[-1] != self.n_k_perp:
             raise ValueError("last P3D axis must match integrator.n_k_perp")
         integrand = p3d_Mpc * self.k_perp_iMpc**2 / (2 * np.pi)
-        if self.method == "simpson":
-            return simpson(integrand, x=self.ln_k_perp, axis=-1)
         return np.sum(integrand * self.weights, axis=-1)
 
     def __call__(
         self, linear, z, k_par_iMpc, p3d_kpar_kperp, p3d_params=None, **kwargs
     ):
-        """Evaluate a Cartesian P3D callable and project it into P1D in Mpc."""
+        """
+        Evaluate a Cartesian P3D callable and project it into P1D in Mpc.
+        """
         z = np.asarray(z)
         k_par_iMpc = np.asarray(k_par_iMpc, dtype=float)
         if (
@@ -130,7 +163,8 @@ _DEFAULT_P1D_INTEGRATOR = P1DIntegrator()
 def P1D_Mpc(
     linear, z, k_par_iMpc, p3d_kpar_kperp, p3d_params=None, integrator=None, **kwargs
 ):
-    """Project Cartesian P3D into P1D in Mpc units.
+    """
+    Project Cartesian P3D into P1D in Mpc units.
 
     ``p3d_kpar_kperp`` must accept ``(linear, z, k_par_iMpc, k_perp_iMpc,
     parameters)``. Pass a :class:`P1DIntegrator` for a non-default quadrature.
@@ -151,7 +185,8 @@ def P1D_kms(
     integrator=None,
     **kwargs,
 ):
-    """Project Cartesian Mpc-space P3D into P1D in velocity units.
+    """
+    Project Cartesian Mpc-space P3D into P1D in velocity units.
 
     ``p3d_kpar_kperp`` must accept ``(linear, z, k_par_iMpc, k_perp_iMpc,
     parameters)``. The same Mpc-space integrator is used before applying the one-power P1D
@@ -187,7 +222,8 @@ def P1D_Mpc_bin_averaged(
     fine_factor=8,
     **kwargs,
 ):
-    """Evaluate a P1D function on fine logarithmic bins and average them.
+    """
+    Evaluate a P1D function on fine logarithmic bins and average them.
 
     Unlike :func:`P1D_Mpc`, ``p1d_fun`` is already a one-dimensional callable
     with signature ``p1d_fun(linear, z, k_par_iMpc, parameters)``.
@@ -217,7 +253,8 @@ def p1d_from_p3d(
     seed=0,
     integrator=None,
 ):
-    """Project Cartesian P3D and optionally draw finite-volume Gaussian realizations.
+    """
+    Project Cartesian P3D and optionally draw finite-volume Gaussian realizations.
 
     The deterministic and realization projections use the same
     :class:`P1DIntegrator` object and therefore exactly the same quadrature.

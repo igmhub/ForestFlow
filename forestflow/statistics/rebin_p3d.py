@@ -27,7 +27,8 @@ def get_P3D_k_mu_bin_edges(
     n_k_bins=MPG_P3D_BINNING["n_k_bins"],
     n_mu_bins=MPG_P3D_BINNING["n_mu_bins"],
 ):
-    """Return the exact logarithmic k and uniform mu edges of MPG P3D bins.
+    """
+    Return the exact logarithmic k and uniform mu edges of MPG P3D bins.
 
     The lowest k edge is exactly the fundamental mode ``2 pi / Lbox_Mpc``.
     Passing ``k_max_iMpc`` retains complete native bins through the first edge
@@ -60,7 +61,8 @@ def rebin_P3D_Mpc_mode_weighted(
     n_mu_bins: int = 4,
     return_mode_counts: bool = False,
 ) -> NDArray[Any]:
-    """Mode-weighted rebinning of measured ``P3D_Mpc(k, mu)``.
+    """
+    Mode-weighted rebinning of measured ``P3D_Mpc(k, mu)``.
 
     This is the discrete-Fourier-mode counterpart to
     :func:`forestflow.statistics.p3d.P3D_Mpc_k_mu_bin_averaged`.
@@ -143,15 +145,16 @@ def get_P3D_k_mu_modes(
         Simulation-box side length in Mpc.
     k_grid_max_iMpc : float, default=20
         Largest wavenumber used to construct the parent logarithmic grid.
-    n_k_bins : int, optional
-        N k bins used by the calculation.
-    n_mu_bins : int, optional
-        N mu bins used by the calculation.
+    n_k_bins : int, default: 20
+        Number of logarithmic radial bins in the parent grid.
+    n_mu_bins : int, default: 16
+        Number of uniform absolute-direction-cosine bins.
 
     Returns
     -------
-    object
-        Result produced when the function is used to get k and mu of p3d modes.
+    dict of str to ndarray
+        Populated cell arrays named ``"i_j_k"`` and ``"i_j_mu"``. k values
+        are in ``1 / Mpc`` and mu values lie in ``[0, 1]``.
     """
 
     k_iMpc_edges, mu_edges = get_P3D_k_mu_bin_edges(
@@ -202,29 +205,28 @@ def p3d_allkmu(
     compute_plin: bool | None = True,
 ) -> NDArray[Any]:
     """
-    Get p3d and plin for all k-mu bins
+    Average model P3D and optionally linear power over discrete mode bins.
 
     Parameters
     ----------
-    model : callable
-        Model used by the calculation.
-    zs : object
-        Zs used by the calculation.
-    arinyo : object
-        Arinyo used by the calculation.
-    kmu_modes : object
-        Kmu modes used by the calculation.
-    nk : int, optional
-        Nk used by the calculation.
-    nmu : int, optional
-        Nmu used by the calculation.
-    compute_plin : bool, optional
-        Compute plin used by the calculation.
+    model : object
+        Model exposing ``P3D_Mpc`` and a linear-power evaluator.
+    zs : float or array_like
+        Model redshift coordinate.
+    arinyo : mapping
+        Arinyo parameter mapping.
+    kmu_modes : mapping
+        Exact mode mapping returned by :func:`get_P3D_k_mu_modes`.
+    nk, nmu : int, default: 14, 16
+        Output radial and direction-cosine bin counts.
+    compute_plin : bool, default: True
+        Also return bin-averaged linear three-dimensional power.
 
     Returns
     -------
-    object
-        Result produced when the function is used to get p3d and plin for all k-mu bins.
+    ndarray or tuple of ndarray
+        ``(n_k, n_mu)`` P3D in ``Mpc**3``, optionally paired with the
+        corresponding bin-averaged linear power.
     """
     p3d = np.zeros((nk, nmu))
     if compute_plin:
