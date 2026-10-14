@@ -11,7 +11,12 @@ Core models
    forestflow.archive
    forestflow.model
    forestflow.statistics
-   forestflow.emulator
+   forestflow.emulator.p3d_cinn
+   forestflow.emulator.p1d
+   forestflow.emulator.training
+   forestflow.emulator.network
+   forestflow.emulator.bundle
+   forestflow.emulator.covariance
 
 Training and inference
 ----------------------
