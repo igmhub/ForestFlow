@@ -84,7 +84,7 @@ knew, munew, rebin_p3d, mu_bins = _
 
 # %%
 
-arinyo_params = test_sim_z['Arinyo_min'] # best-fitting Arinyo params
+arinyo_params = test_sim_z['arinyo_fixp3d'] # best-fitting Arinyo params
 
 kaiser_params = arinyo_params.copy()
 kaiser_params["q1"] = 0

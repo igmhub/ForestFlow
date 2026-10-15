@@ -32,14 +32,14 @@ CENTRAL_COSMOLOGY = {
     "w": -1.0,
 }
 EXPECTED_ARINYO = {
-    "bias": -0.23107877107989805,
-    "bias_eta": -0.28610976850151576,
-    "q1": 0.39531900175414714,
-    "kvav": 0.6524547332538043,
-    "av": 0.5174394062801557,
-    "bv": 1.7885556466461254,
-    "kp": 15.507150014342459,
-    "q2": 0.266083656536723,
+    "bias": -0.23029900999446293,
+    "bias_eta": -0.30162337512563625,
+    "q1": 0.288168813874347,
+    "kvav": 0.5620789672702263,
+    "av": 0.3800522914867752,
+    "bv": 1.7623025266196368,
+    "kp": 13.657457721339862,
+    "q2": 0.44125551327885426,
 }
 
 LEGACY_SAMPLING = {
@@ -49,10 +49,10 @@ LEGACY_SAMPLING = {
     "draw_policy": "legacy",
 }
 EXPECTED_P3D_MPC = np.array(
-    [16.32021349, 2.03299192, 0.26704328]
+    [16.04509947,  2.02380609,  0.26666011]
 )
 EXPECTED_P1D_MPC = np.array(
-    [0.49782804, 0.30740641, 0.12941677]
+    [0.50125503, 0.30899662, 0.13031574]
 )
 MODEL_DIRECTORY = (
     Path(forestflow.__file__).resolve().parent.parent
@@ -60,9 +60,9 @@ MODEL_DIRECTORY = (
     / "emulator_models"
 )
 REQUIRED_MODEL_FILES = (
-    "forest_mpg.pt",
-    "forest_mpg_metadata.npy",
-    "forest_mpg_transf.npy",
+    "forest_mpg_fix.pt",
+    "forest_mpg_fix_metadata.npy",
+    "forest_mpg_fix_transf.npy",
 )
 
 
@@ -86,7 +86,7 @@ def central_prediction():
             + ", ".join(missing)
         )
     torch.set_num_threads(1)
-    emulator = P3DEmulator(key="forest_mpg", Nrealizations=3000)
+    emulator = P3DEmulator(key="forest_mpg_fix", Nrealizations=3000)
     arinyo = _scalar_prediction(
         emulator.evaluate(CENTRAL_INPUT, seed=0, **LEGACY_SAMPLING)
     )
@@ -133,14 +133,14 @@ def test_saved_emulator_reload_preserves_prediction(central_prediction, tmp_path
     emulator, expected = central_prediction
     model_prefix = tmp_path / "central_emulator"
     metadata = np.load(
-        MODEL_DIRECTORY / "forest_mpg_metadata.npy", allow_pickle=True
+        MODEL_DIRECTORY / "forest_mpg_fix_metadata.npy", allow_pickle=True
     ).item()
     torch.save(emulator.emulator.state_dict(), str(model_prefix) + ".pt")
     np.save(str(model_prefix) + "_metadata.npy", metadata)
     reloaded = P3DEmulator(
         key=None,
         model_path=str(model_prefix),
-        transf_file=str(MODEL_DIRECTORY / "forest_mpg_transf.npy"),
+        transf_file=str(MODEL_DIRECTORY / "forest_mpg_fix_transf.npy"),
         Nrealizations=3000,
     )
 

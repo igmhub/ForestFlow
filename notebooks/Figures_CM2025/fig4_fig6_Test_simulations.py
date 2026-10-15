@@ -81,7 +81,7 @@ print(len(Archive3D.training_data))
 # if (training_type == "Arinyo_min_q1"):
 #     nparams = 7
 #     model_path = path_program+"/data/emulator_models/mpg_q1/mpg_hypercube.pt"
-# elif(training_type == "Arinyo_min"):
+# elif(training_type == "arinyo_fixp3d"):
 #     nparams = 8
 #     # model_path = path_program+"/data/emulator_models/mpg_q1_q2/mpg_hypercube.pt"
 #     model_path=path_program+"/data/emulator_models/mpg_joint.pt"
@@ -90,7 +90,7 @@ print(len(Archive3D.training_data))
 #     # model_path = path_program+"/data/emulator_models/mpg_q1_q2/mpg_hypercube.pt"
 #     model_path=path_program+"/data/emulator_models/mpg_jointz.pt"
 
-training_type = "Arinyo_min"
+training_type = "arinyo_fixp3d"
 model_path=path_program+"/data/emulator_models/mpg_hypercube.pt"
 
 
@@ -354,10 +354,10 @@ for isim, sim_label in enumerate(sim_labels):
         arr_p1d_emu[isim, iz] = out["p1d"]
         arr_p1d_sim[isim, iz] = test_sim_z[0]["p1d_Mpc"][mask_1d]
 
-        params_sim[isim, iz, 0] = test_sim_z[0]["Arinyo_min"]["bias"]
-        params_sim[isim, iz, 2] = test_sim_z[0]["Arinyo_min"]["beta"]
+        params_sim[isim, iz, 0] = test_sim_z[0]["arinyo_fixp3d"]["bias"]
+        params_sim[isim, iz, 2] = test_sim_z[0]["arinyo_fixp3d"]["beta"]
         _ = new_params = transform_arinyo_params(
-            test_sim_z[0]["Arinyo_min"],
+            test_sim_z[0]["arinyo_fixp3d"],
             test_sim_z[0]["f_p"]
         )
         params_sim[isim, iz, 1] = _["bias_eta"]

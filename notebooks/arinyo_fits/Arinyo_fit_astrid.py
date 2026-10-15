@@ -18,7 +18,7 @@
 #
 # This notebook fits the eight Arinyo parameters jointly to Astrid P3D and
 # P1D measurements. Astrid is an external HDF5 measurement rather than a
-# ForestFlow archive entry, so it uses `ArinyoFitter.prepare_measurements`.
+# ForestFlow archive entry, so it uses `ArinyoFitter.prepare_simulation_external`.
 # That public API evaluates P3D on the supplied `(k, mu)` grid directly; no
 # hidden rebinning or notebook-local likelihood is involved.
 #
@@ -170,7 +170,7 @@ p1d_Mpc = np.real(np.asarray(data["p1d_lya_Mpc"])[mask_1d])
 # %% [markdown]
 # ## Prepare and run the supported fit
 #
-# `prepare_measurements` stores the cosmology, linear-theory grid, selected
+# `prepare_simulation_external` stores the cosmology, linear-theory grid, selected
 # data, and relative errors. `fit` returns SciPy's `OptimizeResult`; the
 # package also retains `best_params` and `best_chi2` for plotting or saving.
 
@@ -191,7 +191,7 @@ bounds = [
 ]
 
 fitter = ArinyoFitter(bounds=bounds)
-fitter.prepare_measurements(
+fitter.prepare_simulation_external(
     z=data["z"],
     cosmo_params=data["cosmo_params"],
     k3d_Mpc=k3d_Mpc[mask_3d],

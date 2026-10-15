@@ -73,7 +73,7 @@ do_training = False
 
 if do_training:
     model_path = path_program+"/data/emulator_models/"
-    training_type = "Arinyo_min"
+    training_type = "arinyo_fixp3d"
     for s in range(1, 30):
         print(f"Starting simulation {s}")
         print()
@@ -103,7 +103,7 @@ if do_training:
 # ### Evaluate L1Os
 
 # %%
-training_type = "Arinyo_min"
+training_type = "arinyo_fixp3d"
 model_path = path_program + "/data/emulator_models/"
 
 Nsim = 30

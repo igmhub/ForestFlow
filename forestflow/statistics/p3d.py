@@ -12,11 +12,50 @@ from forestflow.statistics.binning import linear_bin_edges, logarithmic_bin_edge
 
 
 __all__ = [
+    "announce_binning",
     "P3D_Mpc_k_mu_bin_averaged",
     "P3D_Mpc_k_mu_mode_averaged",
     "P3D_Mpc_k_mu_hybrid_averaged",
     "P3D_Mpc_kpar_kperp_bin_averaged",
 ]
+
+
+_BINNING_DESCRIPTIONS = {
+    "centres": (
+        "P3D evaluated at bin centres: the model is computed at one "
+        "(k, mu) point per bin. Cheap, but biased on small scales and where "
+        "bins are wide; used only for non-MP-Gadget data."
+    ),
+    "bin_averaged": (
+        "P3D bin-averaged: the model is averaged over each (k, mu) bin with "
+        "the continuous phase-space weight k^3 dln(k) dmu, i.e. the "
+        "infinite-volume limit of mode averaging."
+    ),
+    "mode_averaged": (
+        "P3D mode-averaged: the model is averaged over the exact discrete "
+        "Fourier modes of the finite simulation box falling in each bin."
+    ),
+    "hybrid": (
+        "P3D hybrid-averaged (MP-Gadget default): bins with few Fourier "
+        "modes (large scales, <= max_discrete_modes) use the exact lattice "
+        "modes; denser bins (small scales) use the continuous bin average."
+    ),
+}
+_ANNOUNCED_BINNINGS = set()
+
+
+def announce_binning(kind):
+    """Print what a P3D binning scheme does, once per Python session.
+
+    Parameters
+    ----------
+    kind : {"centres", "bin_averaged", "mode_averaged", "hybrid"}
+        Binning scheme being used.
+    """
+    if kind in _ANNOUNCED_BINNINGS:
+        return
+    _ANNOUNCED_BINNINGS.add(kind)
+    print(f"[forestflow] {_BINNING_DESCRIPTIONS[kind]}")
 
 
 def _validate_fine_factor(fine_factor):
@@ -59,6 +98,7 @@ def P3D_Mpc_k_mu_bin_averaged(
     ``k**2 dk dmu`` expressed in ``dln(k) dmu`` coordinates.  Thus this
     function is the continuous, infinite-volume limit of mode averaging.
     """
+    announce_binning("bin_averaged")
     _validate_fine_factor(fine_factor)
     if P3D_model is None:
         raise ValueError("P3D_model is required")
@@ -138,6 +178,7 @@ def P3D_Mpc_k_mu_mode_averaged(
     evaluated only at coordinates stored in ``k_mu_modes``.  Edges are the
     preferred description because they are the simulation measurement bins.
     """
+    announce_binning("mode_averaged")
     if P3D_model is None:
         raise ValueError("P3D_model is required")
     has_centres = k_iMpc is not None or mu is not None
@@ -213,6 +254,7 @@ def P3D_Mpc_k_mu_hybrid_averaged(
     This captures the sparse large-scale lattice while retaining the speed of
     continuous averaging where the mode density is high.
     """
+    announce_binning("hybrid")
     if P3D_model is None:
         raise ValueError("P3D_model is required")
     if not isinstance(max_discrete_modes, (int, np.integer)) or max_discrete_modes < 0:

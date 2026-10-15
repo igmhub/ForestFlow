@@ -28,6 +28,10 @@ from forestflow.emulator.training import Transf_data
 
 from .network import _training_data_fingerprint, init_xavier
 
+# Bundle loaded when no key is given; clients should rely on this default
+# rather than naming the bundle themselves.
+DEFAULT_EMULATOR_KEY = "forest_mpg_fix"
+
 # Scientific domain metadata belongs to an emulator bundle, not to an inference
 # client. Bundled metadata predates this field, so these documented defaults
 # provide a migration path until the bundles are republished.
@@ -112,7 +116,7 @@ class P3DEmulator:
 
     def __init__(
         self,
-        key: str = "forest_mpg_fix",
+        key: str = DEFAULT_EMULATOR_KEY,
         training_data: Optional[Dict[str, Dict[str, np.ndarray]]] = None,
         train: bool = False,
         save_path: Optional[str] = None,
@@ -193,6 +197,14 @@ class P3DEmulator:
         if train:
             key = None
         self.model_key = key
+        if key == "forest_mpg":
+            warn(
+                "Emulator bundle 'forest_mpg' is deprecated: "
+                "the corrected 'forest_mpg_fix' bundle should be used "
+                "instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
         if model_domain is None and key in _LEGACY_MODEL_DOMAINS:
             warn(
                 f"Emulator bundle {key!r} has no model_domain metadata and "

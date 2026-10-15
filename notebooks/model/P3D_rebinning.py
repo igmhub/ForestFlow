@@ -83,7 +83,7 @@ k_mu_modes_native = get_P3D_k_mu_modes(k_max_iMpc)
 # %%
 # 1. Values at the measured mode-weighted bin centres.
 P3D_centre_native_Mpc = model.P3D_Mpc_k_mu(
-    linear, simulation["z"], k_iMpc_native, mu_native, simulation["Arinyo_min"]
+    linear, simulation["z"], k_iMpc_native, mu_native, simulation["arinyo_fixp3d"]
 )
 
 # 2. Continuous eightfold phase-space average over native post-processing edges.
@@ -93,7 +93,7 @@ P3D_continuous_native_Mpc = P3D_Mpc_k_mu_bin_averaged(
     linear,
     simulation["z"],
     P3D_model=model.P3D_Mpc_k_mu,
-    P3D_params=simulation["Arinyo_min"],
+    P3D_params=simulation["arinyo_fixp3d"],
     k_iMpc_edges=k_edges_iMpc,
     mu_edges=mu_edges_native,
     fine_factor=fine_factor,
@@ -105,7 +105,7 @@ P3D_modes_native_Mpc = P3D_Mpc_k_mu_mode_averaged(
     linear,
     simulation["z"],
     P3D_model=model.P3D_Mpc_k_mu,
-    P3D_params=simulation["Arinyo_min"],
+    P3D_params=simulation["arinyo_fixp3d"],
     k_mu_modes=k_mu_modes_native,
     k_iMpc_edges=k_edges_iMpc,
     mu_edges=mu_edges_native,
@@ -117,7 +117,7 @@ P3D_hybrid_native_Mpc = P3D_Mpc_k_mu_hybrid_averaged(
     linear,
     simulation["z"],
     P3D_model=model.P3D_Mpc_k_mu,
-    P3D_params=simulation["Arinyo_min"],
+    P3D_params=simulation["arinyo_fixp3d"],
     k_mu_modes=k_mu_modes_native,
     k_iMpc_edges=k_edges_iMpc,
     mu_edges=mu_edges_native,
@@ -157,7 +157,7 @@ for ii in range(10):
         linear,
         simulation["z"],
         P3D_model=model.P3D_Mpc_k_mu,
-        P3D_params=simulation["Arinyo_min"],
+        P3D_params=simulation["arinyo_fixp3d"],
         k_iMpc_edges=k_edges_iMpc,
         mu_edges=mu_edges_native,
         fine_factor=fine_factor,
@@ -170,7 +170,7 @@ for ii in range(10):
         linear,
         simulation["z"],
         P3D_model=model.P3D_Mpc_k_mu,
-        P3D_params=simulation["Arinyo_min"],
+        P3D_params=simulation["arinyo_fixp3d"],
         k_mu_modes=k_mu_modes_native,
         k_iMpc_edges=k_edges_iMpc,
         mu_edges=mu_edges_native,
@@ -183,7 +183,7 @@ for ii in range(10):
         linear,
         simulation["z"],
         P3D_model=model.P3D_Mpc_k_mu,
-        P3D_params=simulation["Arinyo_min"],
+        P3D_params=simulation["arinyo_fixp3d"],
         k_mu_modes=k_mu_modes_native,
         k_iMpc_edges=k_edges_iMpc,
         mu_edges=mu_edges_native,
@@ -222,7 +222,7 @@ P3D_hybrid_broad_Mpc = P3D_Mpc_k_mu_hybrid_averaged(
     linear,
     simulation["z"],
     P3D_model=model.P3D_Mpc_k_mu,
-    P3D_params=simulation["Arinyo_min"],
+    P3D_params=simulation["arinyo_fixp3d"],
     k_mu_modes=k_mu_modes_broad,
     k_iMpc_edges=k_edges_iMpc,
     mu_edges=mu_edges_broad,
@@ -232,7 +232,7 @@ P3D_hybrid_broad_Mpc = P3D_Mpc_k_mu_hybrid_averaged(
 
 # 1. Evaluate at the measured broad-bin centres; padded NaNs stay in place.
 P3D_centre_broad_Mpc = model.P3D_Mpc_k_mu(
-    linear, simulation["z"], k_iMpc_broad, mu_broad, simulation["Arinyo_min"]
+    linear, simulation["z"], k_iMpc_broad, mu_broad, simulation["arinyo_fixp3d"]
 )
 
 # 2. Continuous average over the known broad bin geometry.
@@ -243,7 +243,7 @@ P3D_continuous_broad_Mpc = P3D_Mpc_k_mu_bin_averaged(
     None,
     None,
     model.P3D_Mpc_k_mu,
-    simulation["Arinyo_min"],
+    simulation["arinyo_fixp3d"],
     k_iMpc_edges=k_edges_iMpc,
     mu_edges=mu_edges_broad,
     fine_factor=fine_factor,

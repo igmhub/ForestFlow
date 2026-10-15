@@ -81,7 +81,7 @@ do_training = True
 
 if do_training:
     model_path = path_program+"/data/emulator_models/"
-    training_type = "Arinyo_min"
+    training_type = "arinyo_fixp3d"
     for s in range(30):
         print(f"Starting simulation {s}")
         print()
@@ -110,7 +110,7 @@ if do_training:
         p3d_emu = P3DEmulator(
             training_data=training_data,
             emu_input_names=Archive3D.emu_params,
-            training_type='Arinyo_min',
+            training_type='arinyo_fixp3d',
             train=True,
             nepochs=1001,
             step_size=500,
@@ -127,7 +127,7 @@ if do_training:
 # ### Evaluate L1Os
 
 # %%
-training_type = "Arinyo_min"
+training_type = "arinyo_fixp3d"
 model_path = path_program+"/data/emulator_models/"
 
 Nsim = 30

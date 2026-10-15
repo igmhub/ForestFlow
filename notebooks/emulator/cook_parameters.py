@@ -24,7 +24,7 @@
 #
 # A local MP-Gadget archive is required. The Fisher section draws 10,000
 # Gaussian realizations and may be slow. This study uses the historical
-# `Arinyo_min` fits; the corrected training tutorial explicitly selects
+# `arinyo_fixp3d` fits; the corrected training tutorial explicitly selects
 # `Cabayol23_fixp3d` and `arinyo_fixp3d` instead.
 
 # %%
@@ -189,7 +189,7 @@ pars_model = {}
 pars_model["z"] = sim["z"]
 pars_model["Arinyo"] = {}
 for par in emu_data["output_par"]:
-    pars_model["Arinyo"][par] = sim["Arinyo_min"][par]
+    pars_model["Arinyo"][par] = sim["arinyo_fixp3d"][par]
 
 # set Arinyo model
 cosmo_params_dict = {}

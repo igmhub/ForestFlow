@@ -39,7 +39,7 @@ Archive3D = GadgetArchive3D(
 )
 
 # +
-training_type = "Arinyo_min"
+training_type = "arinyo_fixp3d"
 model_path=path_program+"/data/emulator_models/mpg_hypercube.pt"
 
 
@@ -151,7 +151,7 @@ k2d = np.sqrt(kperp2d**2 + kpar2d**2)
 mu2d = kpar2d / k2d
 
 # get the best-fit parameters
-arinyo_bestfit = test_sim_z[0]['Arinyo_min'] # best-fitting Arinyo params
+arinyo_bestfit = test_sim_z[0]['arinyo_fixp3d'] # best-fitting Arinyo params
 coeffs_arinyo_plus = out['coeffs_Arinyo'].copy()
 for key in coeffs_arinyo_plus.keys():
     coeffs_arinyo_plus[key] = coeffs_arinyo_plus[key] + out['coeffs_Arinyo_std'][key]

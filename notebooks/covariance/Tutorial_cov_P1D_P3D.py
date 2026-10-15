@@ -18,7 +18,7 @@
 #
 # This finite-volume Gaussian experiment projects each P3D realization into
 # P1D, then estimates their joint sample covariance. It uses the central
-# MP-Gadget snapshot at z=3 and its historical `Arinyo_min` coefficients.
+# MP-Gadget snapshot at z=3 and its historical `arinyo_fixp3d` coefficients.
 # It does not calibrate emulator errors or model an observational covariance.
 # Independent P3D cells neglect nonlinear mode coupling and survey windows.
 #
@@ -70,7 +70,7 @@ pars_model = {}
 pars_model["z"] = sim["z"]
 pars_model["Arinyo"] = {}
 for par in emu_data["output_par"]:
-    pars_model["Arinyo"][par] = sim["Arinyo_min"][par]
+    pars_model["Arinyo"][par] = sim["arinyo_fixp3d"][par]
 
 # set Arinyo model
 cosmo_params_dict = {}

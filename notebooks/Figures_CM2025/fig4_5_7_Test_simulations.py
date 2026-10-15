@@ -351,9 +351,9 @@ for isim, sim_label in enumerate(sim_labels):
         arr_p1d_emu[isim, iz] = p1d_emu
         arr_p1d_sim[isim, iz] = test_sim_z[0]["p1d_Mpc"][mask_1d]
 
-        params_sim[isim, iz, 0] = test_sim_z[0]["Arinyo_min"]["bias"]
-        params_sim[isim, iz, 1] = test_sim_z[0]["Arinyo_min"]["bias_eta"]
-        params_sim[isim, iz, 2] = test_sim_z[0]["Arinyo_min"]["beta"]
+        params_sim[isim, iz, 0] = test_sim_z[0]["arinyo_fixp3d"]["bias"]
+        params_sim[isim, iz, 1] = test_sim_z[0]["arinyo_fixp3d"]["bias_eta"]
+        params_sim[isim, iz, 2] = test_sim_z[0]["arinyo_fixp3d"]["beta"]
 
         params_emu[isim, iz, 0] = out["bias"]
         params_emu[isim, iz, 1] = out["bias_eta"]

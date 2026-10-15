@@ -13,7 +13,7 @@ def data_for_l10_forest(
     archive,
     emulator_label="forest_mpg",
     *,
-    fit_label="Arinyo_min",
+    fit_label="arinyo_fixp3d",
     kmax_Mpc=4.0,
 ):
     """
@@ -25,7 +25,7 @@ def data_for_l10_forest(
         Archive supplying training snapshots and hypercube simulation labels.
     emulator_label : str, default: "forest_mpg"
         L1O bundle-name prefix.
-    fit_label : str, default: "Arinyo_min"
+    fit_label : str, default: "arinyo_fixp3d"
         Snapshot key providing fitted Arinyo parameters for smooth P1D.
     kmax_Mpc : float, default: 4
         Strict upper P1D wavenumber cut in ``1 / Mpc``.

@@ -15,7 +15,7 @@ from lace.cosmo import cosmology
 from forestflow.statistics.fisher import get_fisher
 
 
-def get_training_data(list_sims: Any, zmin: int | None=0, zmax: int | None=10, drop_sim: Any | None=None, type_fit: str | None="Arinyo_min") -> Any:
+def get_training_data(list_sims: Any, zmin: int | None=0, zmax: int | None=10, drop_sim: Any | None=None, type_fit: str | None="arinyo_fixp3d") -> Any:
 
     """
     Collect emulator inputs and Arinyo targets from archive snapshots.
@@ -29,7 +29,7 @@ def get_training_data(list_sims: Any, zmin: int | None=0, zmax: int | None=10, d
         Inclusive redshift selection bounds.
     drop_sim : str, optional
         Simulation label excluded from the returned training rows.
-    type_fit : str, default: "Arinyo_min"
+    type_fit : str, default: "arinyo_fixp3d"
         Snapshot key holding target Arinyo parameter mappings.
 
     Returns
@@ -106,7 +106,7 @@ class Transf_data(object):
         preload_file: Any | None=None,
         save_file: Any | None=None,
         compute_fisher: bool | None=False,
-        type_fit: str | None="Arinyo_min",
+        type_fit: str | None="arinyo_fixp3d",
     ) -> None:
         """
         Construct transformations or restore them from a saved file.
@@ -124,7 +124,7 @@ class Transf_data(object):
             Destination for computed transformation metadata.
         compute_fisher : bool, default: False
             Calculate whitening and global scaling from an Arinyo Fisher matrix.
-        type_fit : str, default: "Arinyo_min"
+        type_fit : str, default: "arinyo_fixp3d"
             Simulation key providing Arinyo targets for Fisher construction.
 
         Raises

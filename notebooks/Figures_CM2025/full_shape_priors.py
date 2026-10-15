@@ -242,7 +242,7 @@ Archive3D = GadgetArchive3D(
 print(len(Archive3D.training_data))
 
 # %%
-training_type = "Arinyo_min"
+training_type = "arinyo_fixp3d"
 model_path=path_program+"/data/emulator_models/mpg_hypercube.pt"
 
 emulator = P3DEmulator(
@@ -346,13 +346,13 @@ print(len(Archive3D.training_data))
 Archive3D.training_data[0].keys()
 
 # %%
-dict_arinyo = Archive3D.training_data[0]["Arinyo_min"].copy()
+dict_arinyo = Archive3D.training_data[0]["arinyo_fixp3d"].copy()
 nsims = len(Archive3D.training_data)
 zz = np.zeros((nsims))
 for key in dict_arinyo:
     dict_arinyo[key] = np.zeros((nsims))
     for ii in range(nsims):
-        dict_arinyo[key][ii] = Archive3D.training_data[ii]["Arinyo_min"][key]
+        dict_arinyo[key][ii] = Archive3D.training_data[ii]["arinyo_fixp3d"][key]
 for ii in range(nsims):
     zz[ii] = Archive3D.training_data[ii]["z"]
 

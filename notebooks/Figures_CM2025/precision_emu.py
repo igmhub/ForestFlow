@@ -91,7 +91,7 @@ p3d_emu = P3DEmulator(
 # ### Evaluate across parameter space
 
 # %%
-training_type = "Arinyo_min"
+training_type = "arinyo_fixp3d"
 model_path = path_program+"/data/emulator_models/"
 
 Nsim = 30

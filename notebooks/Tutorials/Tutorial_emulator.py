@@ -31,7 +31,7 @@ from forestflow.emulator.p3d_cinn import P3DEmulator
 # Here to directly load the emulator
 
 # %%
-emulator = P3DEmulator(key="forest_mpg_fix")
+emulator = P3DEmulator()
 
 # %% [markdown]
 # ## Evaluate emulator to get Arinyo parameters
@@ -75,51 +75,36 @@ coeffs
 # Either compile an existing emulator:
 
 # %%
+# %%time
+for ii in range(500):
+    compiled_coeffs = emulator.evaluate(emu_params=list_input_params)
+
+# %%
 emulator.compile()
+coeffs = emulator.evaluate(emu_params=list_input_params)
+coeffs
 
 # %%
 # %%time
-compiled_coeffs = emulator.evaluate(emu_params=list_input_params)
-compiled_coeffs
-
-# %%
-# %%time
-for ii in range(100):
+for ii in range(500):
     compiled_coeffs = emulator.evaluate(emu_params=list_input_params)
 
 # %% [markdown]
 # Or request compilation while constructing it:
 
 # %%
-emulator_compiled = P3DEmulator(key="forest_mpg_fix", compile_model=True)
+emulator_compiled = P3DEmulator(compile_model=True)
 compiled_coeffs = emulator_compiled.evaluate(emu_params=list_input_params)
 
 # %%
 # %%time
-compiled_coeffs = emulator_compiled.evaluate(emu_params=list_input_params)
+for ii in range(500):
+    compiled_coeffs = emulator_compiled.evaluate(emu_params=list_input_params)
 
 # %% [markdown]
 # `compiled_coeffs` and `coeffs` should agree up to floating-point precision.
 # The compiled path is most useful for long runs with fixed batch sizes; on a
 # CPU, measure the full workflow before assuming that compilation is faster.
-
-# %% [markdown]
-# #### Or just one
-
-# %%
-input_params = {
-    'Delta2_p': 0.18489945277410613,
-    'n_p': -2.331713201486465,
-    'mF': 0.23475637218289533,
-    'sigT_Mpc': 0.10040737452608385,
-    'gamma': 1.2115605945334802,
-    'kF_Mpc': 14.191866950067904
-}
-
-# %%
-# %%time
-coeffs = emulator.evaluate(emu_params=input_params)
-coeffs
 
 # %% [markdown]
 # ## Get P3D and P1D

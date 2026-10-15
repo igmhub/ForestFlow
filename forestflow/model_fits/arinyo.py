@@ -15,7 +15,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 from forestflow.model.arinyo import ArinyoModel
-from forestflow.statistics.p3d import P3D_Mpc_k_mu_hybrid_averaged
+from forestflow.statistics.p3d import P3D_Mpc_k_mu_hybrid_averaged, announce_binning
 from forestflow.statistics.rebin_p3d import get_P3D_k_mu_modes
 from .data import FitData
 from .errors import _get_err_p1d, _get_err_p3d
@@ -29,7 +29,7 @@ class ArinyoFitter:
 
     MP-Gadget snapshots use finite-volume hybrid mode averages for P3D.
     Arbitrary measurements can instead be supplied at bin centres through
-    :meth:`prepare_measurements`. Preparing data stores :class:`FitData` on
+    :meth:`prepare_simulation_external`. Preparing data stores :class:`FitData` on
     :attr:`data`; :meth:`fit` then exposes :attr:`result` and :attr:`best_params`.
     """
 
@@ -177,133 +177,45 @@ class ArinyoFitter:
         )
 
     def _initial_parameters_from_simulation(
-        self,
-        sim: Mapping[str, Any],
-        standard_simulations: Sequence[Mapping[str, Any]] | None = None,
+        self, sim: Mapping[str, Any], power_model: Any
     ) -> dict[str, Any]:
         """
-        Return stored parameters or a matching standard-postprocessing fit.
+        Return the starting Arinyo parameters for a fit.
 
         Parameters
         ----------
         sim : mapping
-            Archive snapshot. A local ``Arinyo_min`` mapping takes priority.
-        standard_simulations : sequence of mapping, optional
-            Standard Cabayol23 snapshots used as fallback for corrected data.
-            If omitted, matching snapshots are loaded once when possible.
+            Archive snapshot. Its corrected ``arinyo_fixp3d`` fit, when
+            attached, is used; otherwise the model defaults are used.
+        power_model : ArinyoModel
+            Model supplying the default parameters.
 
         Returns
         -------
         dict
-            Independent copy of initialization parameters.
-
-        Raises
-        ------
-        ValueError
-            If fallback identity fields match multiple snapshots.
-        KeyError
-            If no local or unambiguous fallback fit exists.
+            Independent copy of the initialization parameters.
         """
-        if "Arinyo_min" in sim:
-            return dict(sim["Arinyo_min"])
-
-        # Corrected P3D post-processing may not yet have a fit stored for a
-        # snapshot. Its standard-postprocessing counterpart is then the only
-        # approved initialization source; do not substitute mpg_central.
-        if standard_simulations is None and "sim_label" in sim:
-            if not hasattr(self, "_standard_postproc_simulations"):
-                from forestflow.archive.gadget_archive import GadgetArchive3D
-
-                standard_archive = GadgetArchive3D(postproc="Cabayol23")
-                # ``get_training_data`` regenerates measurements without the
-                # cached Arinyo fits.  The constructor-attached
-                # ``training_data`` is the authoritative fitted collection.
-                self._standard_postproc_simulations = [
-                    snapshot
-                    for snapshot in standard_archive.training_data
-                    if snapshot["sim_label"] == sim["sim_label"]
-                ]
-            standard_simulations = self._standard_postproc_simulations
-        if standard_simulations is not None:
-            # These are the fields assigned by LaCE's GadgetArchive when it
-            # expands a post-processing file into individual measurements.
-            # ``ind_rescaling`` identifies the optical-depth rescaling.
-            identity_keys = (
-                "sim_label",
-                "ind_snap",
-                "ind_phase",
-                "ind_axis",
-                "ind_rescaling",
-                "z",
-            )
-
-            def same_identity_value(left, right):
-                """
-                Compare numeric identifiers tolerantly and strings exactly.
-
-                Parameters
-                ----------
-                left, right : object
-                    Archive identity values to compare.
-
-                Returns
-                -------
-                bool
-                    Whether the values denote the same archive identity.
-                """
-                try:
-                    return bool(np.isclose(float(left), float(right)))
-                except (TypeError, ValueError):
-                    return left == right
-
-            matches = list(standard_simulations)
-            for key in identity_keys:
-                if key not in sim:
-                    continue
-                matches = [
-                    candidate
-                    for candidate in matches
-                    if key in candidate
-                    and same_identity_value(candidate[key], sim[key])
-                ]
-            if len(matches) == 1 and "Arinyo_min" in matches[0]:
-                return dict(matches[0]["Arinyo_min"])
-            if len(matches) > 1:
-                raise ValueError(
-                    "Standard-postprocessing fallback is ambiguous for "
-                    f"simulation {sim.get('sim_label', '<unknown>')}"
-                )
-
-        raise KeyError(
-            "Simulation has no Arinyo_min and no matching standard "
-            "Cabayol23 post-processing fit"
-        )
+        if "arinyo_fixp3d" in sim:
+            return dict(sim["arinyo_fixp3d"])
+        return dict(power_model.default_params)
 
     def prepare_simulation(
         self,
         sim: Mapping[str, Any],
         *,
-        standard_simulations: Sequence[Mapping[str, Any]] | None = None,
         is_mpg: bool = True,
     ) -> None:
         """
-        Prepare one simulation for fitting.
+        Prepare one archive simulation snapshot for fitting.
 
-        The snapshot's ``Arinyo_min`` values initialize the fit when present.
-        For corrected measurements without a stored fit, the matching snapshot
-        from standard ``Cabayol23`` post-processing is used. Supply
-        ``standard_simulations`` to reuse snapshots already loaded from that
-        archive; otherwise they are loaded and cached on first use. A missing
-        match raises an error rather than using MPG-central parameters.
+        The snapshot's ``arinyo_fixp3d`` values initialize the fit when
+        present; otherwise the model's default parameters are used.
 
         Parameters
         ----------
         sim : mapping
             Archive snapshot containing cosmology, spectra, and identity
             metadata.
-        standard_simulations : sequence of mapping, optional
-            Standard Cabayol23 snapshots consulted only when corrected data
-            does not retain ``Arinyo_min``.
         is_mpg : bool, default=True
             Treat the input as an MP-Gadget measurement and evaluate P3D with
             finite-volume hybrid averaging. Set this explicitly to ``False``
@@ -316,10 +228,7 @@ class ArinyoFitter:
 
         k3d, mu3d, p3d, std_p3d = self._prepare_p3d(sim)
         k1d, p1d, std_p1d = self._prepare_p1d(sim)
-        ini_params = self._initial_parameters_from_simulation(
-            sim,
-            standard_simulations=standard_simulations,
-        )
+        ini_params = self._initial_parameters_from_simulation(sim, power_model)
 
         self._direct_p3d = not is_mpg
         self._p3d_averaging = "hybrid" if is_mpg else "centres"
@@ -343,7 +252,7 @@ class ArinyoFitter:
 
         return
 
-    def prepare_measurements(
+    def prepare_simulation_external(
         self,
         *,
         z: float,
@@ -687,6 +596,7 @@ class ArinyoFitter:
                     "only for a non-MP-Gadget dataset."
                 )
         else:
+            announce_binning("centres")
             p3d = self.data.power_model.P3D_Mpc_k_mu(
                 self.data.linear,
                 self.data.z,

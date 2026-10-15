@@ -41,7 +41,7 @@ from forestflow.model_fits import ArinyoFitter
 # ## Load an MPG snapshot
 #
 # `GadgetArchive3D` supplies simulation measurements and the existing Arinyo
-# initialization (`Arinyo_min`) used to start each fit. The fitter retains the
+# initialization (`arinyo_fixp3d`, when available) used to start each fit. The fitter retains the
 # input grids in Mpc units and applies its configured P3D/P1D scale cuts.
 #
 # Set `postproc="Cabayol23_fixp3d"` to use the corrected reshaped P3D files for
@@ -55,9 +55,6 @@ from forestflow.model_fits import ArinyoFitter
 postproc = "Cabayol23_fixp3d"
 archive = GadgetArchive3D(postproc=postproc, average="both")
 
-if postproc != "Cabayol23":
-    standard_archive = GadgetArchive3D(postproc="Cabayol23", average="both")
-
 # %%
 # `get_training_data` uses ForestFlow's standard emulator inputs by default.
 # Choose any MPG hypercube label to fit the corrected training measurement.
@@ -66,20 +63,6 @@ training_label = "mpg_5"
 # not reread the full suite. The returned snapshots retain attached fits when
 # they are available for the selected post-processing.
 snapshots = archive.get_training_data(training_label)
-
-# For corrected P3D measurements, reuse the matching standard-postprocessing
-# snapshot as the initial Arinyo fit when the corrected one has none yet.
-# This reads each archive once; ArinyoFitter receives the already loaded list.
-standard_snapshots = None
-if postproc != "Cabayol23":
-    # Fits are attached to ``training_data`` during archive construction.
-    # A fresh get_training_data call would return measurements without
-    # ``Arinyo_min``.
-    standard_snapshots = [
-        snapshot
-        for snapshot in standard_archive.training_data
-        if snapshot["sim_label"] == training_label
-    ]
 
 snapshot_index = 0
 # snapshot_index = 10
@@ -113,11 +96,7 @@ fitter = ArinyoFitter(
 )
 
 # %%
-fitter.prepare_simulation(
-    simulation,
-    standard_simulations=standard_snapshots,
-    is_mpg=True,
-)
+fitter.prepare_simulation(simulation, is_mpg=True)
 initial_parameters = fitter.params_from_dict(fitter.data.ini_params)
 initial_chi2 = fitter.chi2(initial_parameters)
 
@@ -139,7 +118,7 @@ residual_figures = fitter.plot_residuals()
 # snapshot, periodically saves progress, and writes parameter names, snapshot
 # metadata, initial/final chi2, convergence information, and best-fit Arinyo
 # parameters. It also saves the full archive identity fields needed to match
-# a corrected measurement to its standard-postprocessing initialization. The
+# a fit to its measurement. The
 # output uses ordinary parameter names, never plotting labels.
 
 # %%
@@ -169,11 +148,7 @@ if run_all_fits:
                 simulation_label=training_label,
                 postproc=postproc,
             )
-        fitter.prepare_simulation(
-            simulation,
-            standard_simulations=standard_snapshots,
-            is_mpg=True,
-        )
+        fitter.prepare_simulation(simulation, is_mpg=True)
         initial_chi2_all[index] = fitter.chi2(
             fitter.params_from_dict(fitter.data.ini_params)
         )
