@@ -10,7 +10,7 @@ import hashlib
 import numpy as np
 from threadpoolctl import threadpool_limits
 
-from .p3d_cinn import P3DEmulator
+from .p3d_cinn import DEFAULT_EMULATOR_KEY, P3DEmulator
 
 
 class P1DEmulator:
@@ -23,7 +23,7 @@ class P1DEmulator:
 
     def __init__(
         self,
-        name_emu="forest_mpg_fix",
+        name_emu=DEFAULT_EMULATOR_KEY,
         compile_model=True,
         *,
         sampler="sobol_antithetic",
@@ -37,7 +37,7 @@ class P1DEmulator:
 
         Parameters
         ----------
-        name_emu : str, default="forest_mpg_fix"
+        name_emu : str, default=DEFAULT_EMULATOR_KEY
             ForestFlow emulator bundle key.
         compile_model : bool, default=True
             Whether to compile the neural-network model when supported.

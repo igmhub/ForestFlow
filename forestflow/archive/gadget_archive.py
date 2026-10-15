@@ -14,6 +14,7 @@ from typing import Any
 
 import numpy as np
 import os
+import warnings
 from lace.archive.gadget_archive import GadgetArchive
 import forestflow
 from forestflow.utils import params_numpy2dict_minimizerz
@@ -399,6 +400,8 @@ class GadgetArchive3D(GadgetArchive):
         archive : list of dict
             Snapshots mutated in place with matching ``arinyo_fixp3d``
             parameter mappings when corrected fit files are available.
+            A ``UserWarning`` is issued for each simulation label without a
+            corrected fit file.
 
         Raises
         ------
@@ -450,6 +453,12 @@ class GadgetArchive3D(GadgetArchive):
         for sim_label in labels:
             fit_file = os.path.join(fit_folder, f"Arinyo_fit_{sim_label}.npy")
             if not os.path.isfile(fit_file):
+                warnings.warn(
+                    f"No corrected Arinyo fit found for '{sim_label}' ({fit_file}); "
+                    "its snapshots will have no 'arinyo_fixp3d' entry.",
+                    UserWarning,
+                    stacklevel=3,
+                )
                 continue
             fit = np.load(fit_file, allow_pickle=True).item()
             if fit.get("simulation_label") != sim_label:

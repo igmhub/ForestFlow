@@ -56,7 +56,7 @@ from forestflow.emulator.training import Transf_data
 # load training data
 from forestflow.archive.gadget_archive import GadgetArchive3D
 
-Archive3D = GadgetArchive3D(postproc="Cabayol23_fixp3d", addcentral=True)
+Archive3D = GadgetArchive3D(addcentral=True)
 
 # %% [markdown]
 # #### Get data for training the emulator
@@ -68,13 +68,6 @@ Archive3D = GadgetArchive3D(postproc="Cabayol23_fixp3d", addcentral=True)
 # %%
 from forestflow.emulator.training import get_training_data
 
-# type_fit = "Arinyo_min"
-# zmax = 4.1 # improves the performance, the results of the Arinyo fit are noisy at z>4 (?!)
-
-# type_fit = "Arinyo_lowk"
-# zmax = 4.1
-
-# latest!
 type_fit = "arinyo_fixp3d"
 zmax = 4.6
 
