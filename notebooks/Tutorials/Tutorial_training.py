@@ -215,7 +215,7 @@ plt.plot(-np.array(emulator.val_loss_arr)[n:])
 # kmax1D = 8
 
 # name_emu = "forest_mpg" # default
-# type_fit = "Arinyo_min"
+# type_fit = "arinyo_fixp3d"
 # kmax1D = 4
 
 

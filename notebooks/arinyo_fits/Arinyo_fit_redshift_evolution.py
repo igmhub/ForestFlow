@@ -41,7 +41,7 @@ from forestflow.model_fits import ArinyoFitter
 # %% [markdown]
 # ## Select one MPG simulation series
 #
-# Each archive entry is an averaged snapshot with the existing `Arinyo_min`
+# Each archive entry is an averaged snapshot with the existing `arinyo_fixp3d`
 # result available as a starting point. The supported fitter applies the same
 # P3D and P1D scale cuts to every redshift.
 
@@ -67,7 +67,7 @@ results_file = Path(f"Arinyo_fit_{simulation_label}_redshift_evolution.npy")
 def archive_parameters(entries, parameter_names):
     """Collect the archive-provided per-snapshot Arinyo starting parameters."""
     return {
-        name: np.asarray([entry["Arinyo_min"][name] for entry in entries])
+        name: np.asarray([entry["arinyo_fixp3d"][name] for entry in entries])
         for name in parameter_names
     }
 
@@ -128,7 +128,7 @@ else:
         "z": np.asarray([entry["z"] for entry in snapshots]),
         "Arinyo": archive_parameters(snapshots, ArinyoFitter.PARAM_NAMES),
     }
-    print("Using archive-provided Arinyo_min values; set run_fits=True to recompute them.")
+    print("Using archive-provided arinyo_fixp3d values; set run_fits=True to recompute them.")
 
 # %% [markdown]
 # ## Plot independent fits and descriptive redshift trends

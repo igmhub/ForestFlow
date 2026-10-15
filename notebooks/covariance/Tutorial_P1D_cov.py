@@ -18,7 +18,7 @@
 # # Compute P1D covariance
 #
 # Estimate finite-volume Gaussian sample variance for the central MP-Gadget
-# snapshot at z=3, using its historical `Arinyo_min` fit. Independent P3D
+# snapshot at z=3, using its historical `arinyo_fixp3d` fit. Independent P3D
 # fluctuations are integrated into P1D realizations on a common grid.
 # This is not observational noise, cINN latent scatter, or the l1O-calibrated
 # emulator-error covariance used by inference. No covariance file is saved.
@@ -68,7 +68,7 @@ for ii, sim in enumerate(sim_mpg_central):
 # %%
 sim = sim_mpg_central[ind_z3]
 
-pars_model = {"z": sim["z"], "Arinyo": sim["Arinyo_min"]}
+pars_model = {"z": sim["z"], "Arinyo": sim["arinyo_fixp3d"]}
 fid_cosmo = cosmology.Cosmology(cosmo_params_dict=sim["cosmo_params"])
 model_Arinyo = ArinyoModel(fid_cosmo)
 noise = {"n_realizations": 1000, "keep_realizations": True, "Lbox_Mpc": 100}

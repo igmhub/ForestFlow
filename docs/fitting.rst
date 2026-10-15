@@ -21,7 +21,7 @@ part of the public API.
 ``simulation`` is one mapping from ``GadgetArchive3D.training_data`` or
 ``GadgetArchive3D.get_testing_data``. It must include ``z``, ``cosmo_params``,
 ``k3d_Mpc``, ``mu3d``, ``p3d_Mpc``, ``k_Mpc``, ``p1d_Mpc``, and an initial
-``Arinyo_min`` mapping. Wavenumbers are in inverse Mpc, P3D is in Mpc cubed,
+``arinyo_fixp3d`` mapping (the model defaults are used if it is absent). Wavenumbers are in inverse Mpc, P3D is in Mpc cubed,
 and P1D is in Mpc. The fitter uses P3D in ``(k, mu)`` bins and performs the
 P1D projection with the current ``ArinyoModel``.
 

@@ -23,36 +23,23 @@ def test_parameter_dict_round_trip_uses_public_order():
     assert fitter.params_to_dict(fitter.params_from_dict(parameters)) == parameters
 
 
-def test_standard_postprocessing_initialization_is_used_for_missing_fit():
+def test_initialization_uses_corrected_fit_when_present():
     fitter = ArinyoFitter()
-    standard_params = {name: index + 10 for index, name in enumerate(fitter.PARAM_NAMES)}
-    simulation = {
-        "sim_label": "mpg_4", "ind_snap": 7, "ind_phase": "average",
-        "ind_axis": 2, "ind_rescaling": 3, "z": 3.0,
-    }
-    standard_simulations = [
-        {**simulation, "Arinyo_min": standard_params},
-        {**simulation, "ind_rescaling": 4,
-         "Arinyo_min": {name: -1 for name in fitter.PARAM_NAMES}},
-    ]
+    fit = {name: index + 10 for index, name in enumerate(fitter.PARAM_NAMES)}
+    # A different historical fit must be ignored in favour of the corrected one.
+    simulation = {"z": 3.0, "arinyo_fixp3d": fit, "Arinyo_min": {"bias": -1}}
 
-    assert fitter._initial_parameters_from_simulation(
-        simulation, standard_simulations=standard_simulations
-    ) == standard_params
+    assert fitter._initial_parameters_from_simulation(simulation, None) == fit
 
 
-def test_initialization_requires_local_or_standard_postprocessing_fit():
+def test_initialization_falls_back_to_model_defaults():
+    class Model:
+        default_params = {"bias": -0.18}
+
     fitter = ArinyoFitter()
-    local_params = {name: index for index, name in enumerate(fitter.PARAM_NAMES)}
-
     assert fitter._initial_parameters_from_simulation(
-        {"z": 3.0, "Arinyo_min": local_params}
-    ) == local_params
-
-    import pytest
-
-    with pytest.raises(KeyError, match="standard"):
-        fitter._initial_parameters_from_simulation({"z": 3.0})
+        {"z": 3.0}, Model()
+    ) == {"bias": -0.18}
 
 
 def test_p3d_model_bins_use_the_same_centre_cut_as_simulation_data():
@@ -69,13 +56,13 @@ def test_training_label_selection_reuses_loaded_archive_cache():
     archive.emu_params = ["mF"]
     archive.list_sim_cube = ["mpg_0", "mpg_1"]
     archive.training_data = [
-        {"sim_label": "mpg_0", "Arinyo_min": {"bias": -0.1}},
-        {"sim_label": "mpg_1", "Arinyo_min": {"bias": -0.2}},
+        {"sim_label": "mpg_0", "arinyo_fixp3d": {"bias": -0.1}},
+        {"sim_label": "mpg_1", "arinyo_fixp3d": {"bias": -0.2}},
     ]
 
     selected = archive.get_training_data("mpg_1")
     assert selected == [archive.training_data[1]]
-    assert "Arinyo_min" in selected[0]
+    assert "arinyo_fixp3d" in selected[0]
 
 
 def test_default_fitter_redshift_grid_matches_mpg_archive():

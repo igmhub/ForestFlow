@@ -54,7 +54,7 @@ Archive3D = GadgetArchive3D(postproc="Cabayol23_fixp3d", addcentral=True)
 # %%
 from forestflow.emulator.training import get_training_data
 
-# type_fit = "Arinyo_min"
+# type_fit = "arinyo_fixp3d"
 # zmax = 4.1 # improves the performance, the results of the Arinyo fit are noisy at z>4 (?!)
 
 # type_fit = "Arinyo_lowk"
@@ -202,7 +202,7 @@ plt.plot(-np.array(emulator.val_loss_arr)[n:])
 # kmax1D = 8
 
 # name_emu = "forest_mpg" # default
-# type_fit = "Arinyo_min"
+# type_fit = "arinyo_fixp3d"
 # kmax1D = 4
 
 

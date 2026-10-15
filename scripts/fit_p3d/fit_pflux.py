@@ -1,8 +1,8 @@
 """Fit Arinyo parameters to every snapshot of one Gadget simulation.
 
 This is the supported batch driver. It can fit either standard Cabayol23 or
-corrected Cabayol23_fixp3d measurements, using the matching standard snapshot
-as initialization when a corrected snapshot has no stored Arinyo fit. Results
+corrected Cabayol23_fixp3d measurements. Each fit starts from the snapshot's
+stored ``arinyo_fixp3d`` parameters when present, else from the model defaults. Results
 use ordinary (non-LaTex) parameter names.
 """
 
@@ -50,18 +50,6 @@ def main():
     if not snapshots:
         raise ValueError(f"No snapshots found for simulation {args.sim_label!r}")
 
-    standard_snapshots = None
-    if args.postproc == "Cabayol23_fixp3d" and args.sim_label in archive.list_sim_cube:
-        # The standard archive supplies the matching fitted Arinyo_min values.
-        # Use its constructor-populated cache, rather than a fresh
-        # get_training_data call that would omit those fits.
-        standard_archive = GadgetArchive3D(postproc="Cabayol23", average="both")
-        standard_snapshots = [
-            snapshot
-            for snapshot in standard_archive.training_data
-            if snapshot["sim_label"] == args.sim_label
-        ]
-
     fitter = ArinyoFitter(kmax_3d=args.kmax_3d, kmax_1d=args.kmax_1d)
     result_fits = {name: np.full(len(snapshots), np.nan) for name in fitter.PARAM_NAMES}
     initial_chi2_all = np.full(len(snapshots), np.nan)
@@ -71,11 +59,7 @@ def main():
 
     for index, snapshot in enumerate(snapshots):
         print(index, len(snapshots))
-        fitter.prepare_simulation(
-            snapshot,
-            standard_simulations=standard_snapshots,
-            is_mpg=True,
-        )
+        fitter.prepare_simulation(snapshot, is_mpg=True)
         initial_chi2_all[index] = fitter.chi2(
             fitter.params_from_dict(fitter.data.ini_params)
         )

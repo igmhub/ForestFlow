@@ -81,7 +81,7 @@ print(len(Archive3D.training_data))
 z_test = [3.5, 2.5]
 
 model_path = path_program+"/data/emulator_models/"
-training_type = "Arinyo_min"
+training_type = "arinyo_fixp3d"
 for iz, zdrop in enumerate(z_test):
     print(f"Dropping redshift {zdrop}")
 
@@ -108,7 +108,7 @@ for iz, zdrop in enumerate(z_test):
 # ### Evaluate L1Os
 
 # %%
-training_type = "Arinyo_min"
+training_type = "arinyo_fixp3d"
 model_path = path_program+"/data/emulator_models/"
 
 Nsim = 30

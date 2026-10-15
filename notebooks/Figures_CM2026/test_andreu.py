@@ -236,7 +236,7 @@ print(len(Archive3D.training_data))
 # ## Load ForestFlow
 
 # %%
-training_type = "Arinyo_min"
+training_type = "arinyo_fixp3d"
 model_path = path_program + "/data/emulator_models/mpg_hypercube.pt"
 
 emulator = P3DEmulator(

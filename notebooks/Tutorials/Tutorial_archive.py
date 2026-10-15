@@ -163,7 +163,7 @@ fid_cosmo = cosmology.Cosmology(sim["cosmo_params"])
 model_Arinyo = ArinyoModel(fid_cosmo)
 
 # %%
-# sim['Arinyo_min'] contains the best-fitting Arinyo parameters to this simulation
+# sim['arinyo_fixp3d'] contains the best-fitting Arinyo parameters to this simulation
 # arinyo_fixp3d new ones
 
 linear = model_Arinyo.linear.get_linear_theory(sim["z"])

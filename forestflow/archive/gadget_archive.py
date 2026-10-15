@@ -815,7 +815,7 @@ class GadgetArchive3D(GadgetArchive):
         self,
         zmin: float,
         zmax: float,
-        type_fit: str | None = "Arinyo_min",
+        type_fit: str | None = "arinyo_fixp3d",
         return_all: bool | None = False,
     ) -> dict[str, Any]:
         """
