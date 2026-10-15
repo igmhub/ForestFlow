@@ -55,7 +55,7 @@ from lace.cosmo.cosmology import Cosmology
 z = 3.0
 n_realizations = 1000
 archive = GadgetArchive3D(postproc="Cabayol23_fixp3d")
-emulator = P3DEmulator(key="forest_mpg_fix", Nrealizations=n_realizations)
+emulator = P3DEmulator(key="forest_mpg_cinn", Nrealizations=n_realizations)
 
 
 def get_snapshot(simulation_label, redshift):

@@ -70,7 +70,7 @@ plt.close(fig)
 
 # %%
 from forestflow.emulator.p3d_cinn import P3DEmulator
-flow = P3DEmulator(key="forest_mpg_fix")
+flow = P3DEmulator(key="forest_mpg_cinn")
 n = 128 if bundle.metadata["smoke"] else 4096
 flow_predictions = []
 for count, seed in [(n, 1701), (2*n, 2701)]:
@@ -90,7 +90,7 @@ print("Flow count/seed sensitivity (not a full convergence study):",
 #
 # - **fit**: the archive's `arinyo_fixp3d` coefficients (the reference),
 # - **GP**: this experiment's Gaussian-process emulator,
-# - **cINN**: ForestFlow's pretrained `forest_mpg_fix` flow.
+# - **cINN**: ForestFlow's pretrained `forest_mpg_cinn` flow.
 #
 # CAMB is run once per *simulation* (the cosmology is shared by all of its
 # snapshots), with the linear theory built on every redshift at once.
@@ -158,7 +158,7 @@ def plot_by_redshift(results, title):
     for result, colour in zip(sorted(results, key=lambda r: r["z"]), colours):
         axes[0].semilogx(k, 100*result["gp1"], color=colour, label=f'z={result["z"]:.2f}')
         axes[1].semilogx(k, 100*result["fl1"], color=colour)
-    for ax, name in zip(axes, ("GP", "cINN (forest_mpg_fix)")):
+    for ax, name in zip(axes, ("GP", "cINN (forest_mpg_cinn)")):
         ax.axhline(0, color="k", lw=.5)
         ax.set(xlabel="k [1/Mpc]", title=f"{title}: {name}")
     axes[0].set_ylabel("P1D / fitted-target P1D - 1 [%]")
@@ -217,7 +217,7 @@ for r in heldout_results:
     lab = str(r["record"]["sim_label"])
     for ax, key in zip(axes, ("gp1", "fl1")):
         ax.semilogx(k, 100*r[key], color=colour_of[lab], alpha=.35, lw=.8)
-for ax, name in zip(axes, ("GP", "cINN (forest_mpg_fix)")):
+for ax, name in zip(axes, ("GP", "cINN (forest_mpg_cinn)")):
     ax.axhline(0, color="k", lw=.5)
     ax.set(xlabel="k [1/Mpc]", title=name)
 for lab in labels:

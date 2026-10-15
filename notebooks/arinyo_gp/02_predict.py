@@ -72,7 +72,7 @@ print("Posterior mean/std shapes:", np.column_stack(list(mean.values())).shape, 
 
 # %%
 from forestflow.emulator.p3d_cinn import P3DEmulator
-flow = P3DEmulator(key="forest_mpg_fix")
+flow = P3DEmulator(key="forest_mpg_cinn")
 options = dict(Nrealizations=128 if bundle.metadata["smoke"] else 4096,
                seed=901, sampler="sobol_antithetic", statistic="mean",
                aggregation_space="transformed", draw_policy="nested")

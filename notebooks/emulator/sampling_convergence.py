@@ -16,7 +16,7 @@
 # %% [markdown]
 # # ForestFlow latent-sampling convergence
 #
-# Compare the Monte-Carlo average used by `forest_mpg_fix` across ordinary
+# Compare the Monte-Carlo average used by `forest_mpg_cinn` across ordinary
 # Gaussian, antithetic, and scrambled-Sobol latent draws.  The default
 # estimator remains the historical mean in transformed Arinyo space; the
 # optional physical-space and median estimators are shown separately because
@@ -71,7 +71,7 @@ INPUT = {
 # ## Load the bundle and define compact diagnostics
 
 # %%
-emulator = P3DEmulator(key="forest_mpg_fix", compile_model=True)
+emulator = P3DEmulator(key="forest_mpg_cinn", compile_model=True)
 labels = tuple(emulator.output_labels)
 print("Outputs:", labels)
 print("Device:", next(emulator.emulator.parameters()).device)

@@ -1,15 +1,15 @@
 {
   "artefacts": {
     "metadata": {
-      "filename": "forest_mpg_fix_metadata.npy",
+      "filename": "forest_mpg_cinn_metadata.npy",
       "sha256": "f1f6e53f7c5f6cba0957fab904d0d22af04aa69d620554b661dd12098a34c72c"
     },
     "transformations": {
-      "filename": "forest_mpg_fix_transf.npy",
+      "filename": "forest_mpg_cinn_transf.npy",
       "sha256": "249f274399d13b47607e9cc88bd69eaf474457707418ae7aa5e5dabb2e48a998"
     },
     "weights": {
-      "filename": "forest_mpg_fix.pt",
+      "filename": "forest_mpg_cinn.pt",
       "sha256": "2d4eaf73fc2b83966521f257e8c243ad927d968d7bd6ef68b18dc959d13da806"
     }
   },
@@ -31,7 +31,7 @@
     "postproc": "Cabayol23_fixp3d",
     "train_seed": 32,
     "training_data_fingerprint": "0c3e0d85741175ee488fc8645f1a67ad28887c02705dca773716b9ef82da80ef",
-    "transformation_file": "/home/jchaves/Proyectos/projects/lya/igmhub/ForestFlow/data/emulator_models/forest_mpg_fix_transf.npy",
+    "transformation_file": "/home/jchaves/Proyectos/projects/lya/igmhub/ForestFlow/data/emulator_models/forest_mpg_cinn_transf.npy",
     "type_fit": "arinyo_fixp3d",
     "use_validation_set": false,
     "zmax": 4.6

@@ -51,10 +51,10 @@ from forestflow.emulator.arinyo_gp import (
 from forestflow.emulator.training import Transf_data
 
 SMOKE = False
-TRANSFORM_MODE = "bundle"  # exact forest_mpg_fix scaling; alternative: "train_fold"
+TRANSFORM_MODE = "bundle"  # exact forest_mpg_cinn scaling; alternative: "train_fold"
 FIT_KEY = "arinyo_fixp3d"
 SEED = 57
-flow = P3DEmulator(key="forest_mpg_fix")
+flow = P3DEmulator(key="forest_mpg_cinn")
 archive = GadgetArchive3D(postproc="Cabayol23_fixp3d", addcentral=True)
 records = [r for r in archive.training_data if r["z"] <= 4.6]
 inputs, outputs = tuple(flow.input_labels), tuple(flow.output_labels)

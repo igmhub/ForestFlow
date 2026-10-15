@@ -19,14 +19,14 @@ def test_covariance_notebook_saves_native_npy_mapping(tmp_path):
     powers = np.arange(4 * 2 * 3).reshape(4, 2, 3)
     covariance = np.diag(np.arange(1., 7.))
     scope = dict(
-        np=np, Path=Path, save_data=True, emulator_label="forest_mpg_fix",
+        np=np, Path=Path, save_data=True, emulator_label="forest_mpg_cinn",
         forestflow=SimpleNamespace(__file__=str(tmp_path / "forestflow/__init__.py")),
         zz=zz, k_Mpc=k, cov_k=np.eye(3), cov_zk=covariance,
         p1d_Mpc_orig=powers, p1d_Mpc_sm=powers, p1d_Mpc_emu=powers,
         rel_diff=powers, mask=np.ones((4, 2), dtype=bool),
     )
     exec(compile(ast.Module(body=[save_cell], type_ignores=[]), str(path), "exec"), scope)
-    output = tmp_path / "data/covariance/l1O_cov_forest_mpg_fix.npy"
+    output = tmp_path / "data/covariance/l1O_cov_forest_mpg_cinn.npy"
     saved = np.load(output, allow_pickle=True).item()
     assert isinstance(saved, dict)
     np.testing.assert_array_equal(saved["zz_zk"], [2., 2., 2., 3., 3., 3.])

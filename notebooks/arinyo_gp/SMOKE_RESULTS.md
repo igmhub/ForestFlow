@@ -7,7 +7,7 @@ synced from these sources; notebook outputs are not pre-populated.
 
 - Selected archive: 1,661 rows, including central snapshots, z <= 4.6.
 - Smoke partitions: 96 training, 24 validation, 24 test rows; disjoint simulation
-  groups. Exact stored forest_mpg_fix transformation used.
+  groups. Exact stored forest_mpg_cinn transformation used.
 - No exact duplicate training input rows detected.
 - Validation transformed MSE: 0.04874 for Matérn nu=0.5, 0.02240 for nu=1.5,
   both with alpha=1e-4. Selected nu=1.5 using validation only.

@@ -5,13 +5,12 @@ Date: 2026-10-11.
 
 ## Recommendation and scientific target
 
-Test a GP before investing further in large-scale MLP distillation. Six inputs
+Test a GP as a fast alternative to the flow. Six inputs
 and eight fitted outputs are a plausible GP problem, but speed and accuracy must
-be measured. Unlike the MLP student, this is a new regression of the simulation
-fit targets. It may improve or degrade physical predictions relative to the flow.
+be measured. This is a regression of the simulation fit targets. It may improve or degrade physical predictions relative to the flow.
 The GP predicts Arinyo outputs, not the cosmology/IGM conditioning inputs.
 
-Use the six input labels and eight output labels from `forest_mpg_fix`, with
+Use the six input labels and eight output labels from `forest_mpg_cinn`, with
 `Transf_data.transf_stand(..., direct=True)` for inputs and outputs and the same
 inverse output transform for inference. The target recipe in the maintained
 ForestFlow training tutorial is `Cabayol23_fixp3d`, `arinyo_fixp3d`, z <= 4.6,

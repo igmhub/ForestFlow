@@ -1,7 +1,7 @@
 """Gaussian-process emulation of transformed ForestFlow Arinyo fit targets.
 
 This module is deliberately separate from :class:`P3DEmulator`: it learns the
-archive's fitted Arinyo parameters, rather than distilling cINN predictions.
+archive's fitted Arinyo parameters, rather than imitating cINN predictions.
 """
 
 from __future__ import annotations
@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from pathlib import Path
 import pickle
-from typing import Any, Mapping, Sequence
+from typing import Any, ClassVar, Mapping, Sequence
 from warnings import warn
 
 import numpy as np
@@ -97,7 +97,7 @@ def prepare_arinyo_gp_training_data(
     Transform archive inputs and fitted Arinyo targets in ForestFlow space.
 
     ``transform`` must be a :class:`Transf_data` compatible object. Passing the
-    frozen ``forest_mpg_fix`` transform gives compatibility with that model;
+    frozen ``forest_mpg_cinn`` transform gives compatibility with that model;
     constructing it from a training fold avoids held-out scaling leakage.
     """
     input_labels, output_labels = tuple(input_labels), tuple(output_labels)
@@ -147,6 +147,45 @@ class ArinyoGPEmulator:
     output_labels: tuple[str, ...]
     metadata: dict[str, Any]
 
+    # The GP is deterministic: there are no latent draws to configure, which
+    # lets clients such as ``P1DEmulator`` skip the cINN sampling options.
+    uses_sampling: ClassVar[bool] = False
+
+    def _domain_value(self, name: str) -> Any:
+        try:
+            return self.metadata["model_domain"][name]
+        except KeyError as error:
+            raise AttributeError(
+                f"This GP bundle does not define {name!r} domain metadata; "
+                "train it with metadata={'model_domain': ...} (see "
+                "P3DEmulator.model_domain)"
+            ) from error
+
+    @property
+    def kp_iMpc(self) -> float:
+        """Pivot wavenumber in inverse Mpc."""
+        return self._domain_value("kp_iMpc")
+
+    @property
+    def kmax_3d_iMpc(self) -> float:
+        """Maximum P3D wavenumber used in the fits, in inverse Mpc."""
+        return self._domain_value("kmax_3d_iMpc")
+
+    @property
+    def kmax_1d_iMpc(self) -> float:
+        """Maximum P1D wavenumber used in the fits, in inverse Mpc."""
+        return self._domain_value("kmax_1d_iMpc")
+
+    @property
+    def zmax(self) -> float:
+        """Maximum redshift covered by the training data."""
+        return self._domain_value("zmax")
+
+    @property
+    def list_sim_cube(self) -> list[str]:
+        """Training simulations."""
+        return self._domain_value("list_sim_cube")
+
     def _input_matrix(self, emu_params: Mapping[str, float] | Sequence[Mapping[str, float]]):
         single = isinstance(emu_params, Mapping)
         rows = [emu_params] if single else list(emu_params)
@@ -171,7 +210,19 @@ class ArinyoGPEmulator:
         if return_std:
             mean, std = self.gp.predict(matrix, return_std=True)
             return self._mapping(mean, self.output_labels, single), self._mapping(std, self.output_labels, single)
-        return self._mapping(self.gp.predict(matrix), self.output_labels, single)
+        return self._mapping(self._posterior_mean(matrix), self.output_labels, single)
+
+    def _posterior_mean(self, matrix: np.ndarray) -> np.ndarray:
+        """Posterior mean K(x, X_train) @ alpha, identical to ``gp.predict``.
+
+        scikit-learn's ``predict`` also solves the n_train x n_train triangular
+        system needed only for variances, even when they are not requested;
+        that solve dominates the cost of mean-only predictions.
+        """
+        gp = self.gp
+        mean = gp.kernel_(matrix, gp.X_train_) @ gp.alpha_
+        mean = gp._y_train_std * mean + gp._y_train_mean
+        return mean[:, None] if mean.ndim == 1 else mean
 
     def evaluate(self, emu_params):
         """Return physical Arinyo coefficients using the stored ForestFlow inverse transform."""

@@ -25,8 +25,8 @@ from pathlib import Path
 import numpy as np
 
 import forestflow
-from forestflow.emulator.p3d_cinn import P3DEmulator
 from forestflow.archive.gadget_archive import GadgetArchive3D
+from forestflow.emulator import load_emulator
 from forestflow.emulator.covariance import data_for_l10_forest
 from forestflow.plots import plot_l1o_correlation, plot_l1o_errors
 
@@ -34,10 +34,10 @@ from forestflow.plots import plot_l1o_correlation, plot_l1o_errors
 # ## Load the emulator and corresponding archive
 
 # %%
-emulator_label = "forest_mpg_fix"
+emulator_label = "forest_mpg_cinn"  # or "forest_mpg_gp"
 
 archive = GadgetArchive3D(postproc="Cabayol23_fixp3d", addcentral=True)
-emulator = P3DEmulator(key=emulator_label)
+emulator = load_emulator(emulator_label)
 
 # %% [markdown]
 # ## Run the leave-one-out calculation
@@ -46,6 +46,7 @@ emulator = P3DEmulator(key=emulator_label)
 zz, k_Mpc, p1d_Mpc_orig, p1d_Mpc_sm, p1d_Mpc_emu, mask = data_for_l10_forest(
     archive,
     emulator_label,
+    kmax_Mpc=6.0,  # the P1D fitting range, as for the stored forest_mpg_cinn file
 )
 
 rel_diff = p1d_Mpc_emu / p1d_Mpc_sm - 1

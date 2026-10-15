@@ -10,7 +10,8 @@ import hashlib
 import numpy as np
 from threadpoolctl import threadpool_limits
 
-from .p3d_cinn import DEFAULT_EMULATOR_KEY, P3DEmulator
+from .loading import load_emulator
+from .p3d_cinn import DEFAULT_EMULATOR_KEY
 
 
 class P1DEmulator:
@@ -38,12 +39,15 @@ class P1DEmulator:
         Parameters
         ----------
         name_emu : str, default=DEFAULT_EMULATOR_KEY
-            ForestFlow emulator bundle key.
+            Emulator label, e.g. ``"forest_mpg_cinn"`` (cINN) or
+            ``"forest_mpg_gp"`` (Gaussian process); see
+            :func:`forestflow.emulator.load_emulator`.
         compile_model : bool, default=True
-            Whether to compile the neural-network model when supported.
+            Whether to compile the neural-network model when supported;
+            ignored by emulators that are not neural networks.
         """
 
-        self.emulator = P3DEmulator(key=name_emu, compile_model=compile_model)
+        self.emulator = load_emulator(name_emu, compile_model=compile_model)
 
         self.emu_params = self.emulator.input_labels
         self.emulator_label = name_emu
@@ -192,6 +196,9 @@ class P1DEmulator:
         # A likelihood point is independent work. For the small network
         # batches used here, thread start-up costs more than it saves; sampler
         # or MPI parallelism remains available across likelihood points.
+        if not getattr(self.emulator, "uses_sampling", True):
+            # Deterministic emulators have no latent draws to configure.
+            return self.emulator.evaluate(emulator_calls)
         with threadpool_limits(limits=1):
             return self.emulator.evaluate(
                 emulator_calls, **self.sampling_options, **kwargs

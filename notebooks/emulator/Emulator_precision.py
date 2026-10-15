@@ -16,7 +16,7 @@
 # %% [markdown]
 # # Precision of the corrected ForestFlow emulator
 #
-# This notebook compares the ``forest_mpg_fix`` emulator to the independently
+# This notebook compares the ``forest_mpg_cinn`` emulator to the independently
 # fitted corrected-postprocessing Arinyo parameters, ``arinyo_fixp3d``. The
 # reference is therefore the best analytic Arinyo description of each
 # measurement, rather than the measurement itself. No fitting is performed.
@@ -40,13 +40,13 @@ from forestflow.statistics.rebin_p3d import rebin_P3D_Mpc_mode_weighted
 # %% [markdown]
 # ## Archive, reference fits, and corrected emulator
 #
-# ``forest_mpg_fix`` must be regenerated from the corrected fits. The archive
+# ``forest_mpg_cinn`` must be regenerated from the corrected fits. The archive
 # attaches those same fits under ``arinyo_fixp3d`` when their files are present
 # in ``data/best_arinyo/cabayol23_fixp3d``.
 
 # %%
 n_realizations = 1000
-emulator = P3DEmulator(key="forest_mpg_fix", Nrealizations=n_realizations)
+emulator = P3DEmulator(key="forest_mpg_cinn", Nrealizations=n_realizations)
 archive = GadgetArchive3D(postproc="Cabayol23_fixp3d")
 comparison = {
     "central": archive.get_testing_data("mpg_central"),

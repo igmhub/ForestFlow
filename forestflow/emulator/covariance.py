@@ -4,14 +4,14 @@ Leave-one-out covariance calculations for ForestFlow emulators.
 
 import numpy as np
 
-from forestflow.emulator.p3d_cinn import P3DEmulator
+from forestflow.emulator.loading import load_l1o_emulator
 from forestflow.model.arinyo import ArinyoModel
 from lace.cosmo import cosmology
 
 
 def data_for_l10_forest(
     archive,
-    emulator_label="forest_mpg",
+    emulator_label="forest_mpg_cinn",
     *,
     fit_label="arinyo_fixp3d",
     kmax_Mpc=4.0,
@@ -23,8 +23,9 @@ def data_for_l10_forest(
     ----------
     archive : GadgetArchive3D
         Archive supplying training snapshots and hypercube simulation labels.
-    emulator_label : str, default: "forest_mpg"
-        L1O bundle-name prefix.
+    emulator_label : str, default: "forest_mpg_cinn"
+        Emulator label, e.g. ``"forest_mpg_cinn"`` (cINN L1O bundles) or
+        ``"forest_mpg_gp"`` (GP L1O bundles).
     fit_label : str, default: "arinyo_fixp3d"
         Snapshot key providing fitted Arinyo parameters for smooth P1D.
     kmax_Mpc : float, default: 4
@@ -75,7 +76,7 @@ def data_for_l10_forest(
             mask[isim] = False
             continue
 
-        emulator = P3DEmulator(key=f"l1O/{emulator_label}_l1O_{isim}")
+        emulator = load_l1o_emulator(emulator_label, isim, sim_label)
         fiducial_cosmology = cosmology.Cosmology(
             cosmo_params_dict=testing_data[0]["cosmo_params"]
         )

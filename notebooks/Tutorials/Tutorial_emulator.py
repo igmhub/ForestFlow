@@ -23,15 +23,27 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from forestflow.emulator.p3d_cinn import P3DEmulator
+from forestflow.emulator import EMULATOR_LABELS, load_emulator
 
 # %% [markdown]
 # ## Load emulator
 #
-# Here to directly load the emulator
+# One function loads either emulator; only the label changes:
+#
+# - `"forest_mpg_cinn"`: the conditional invertible neural network (cINN), the
+#   default. It averages stochastic latent draws, so its cost grows with the
+#   number of realizations.
+# - `"forest_mpg_gp"`: a Gaussian process trained on the same fitted Arinyo
+#   parameters. It is deterministic and much faster.
+#
+# Both are evaluated in the same way below. Options specific to one emulator
+# can be passed as keyword arguments to `load_emulator` when needed (for example
+# `Nrealizations` for the cINN).
 
 # %%
-emulator = P3DEmulator()
+print(EMULATOR_LABELS)
+emulator_label = "forest_mpg_cinn"  # or "forest_mpg_gp"
+emulator = load_emulator(emulator_label)
 
 # %% [markdown]
 # ## Evaluate emulator to get Arinyo parameters
@@ -64,7 +76,9 @@ coeffs = emulator.evaluate(emu_params=list_input_params)
 coeffs
 
 # %% [markdown]
-# #### Compiled evaluation for repeated calls
+# #### Compiled evaluation for repeated calls (cINN only)
+#
+# This section applies to `forest_mpg_cinn`; the GP needs no compilation.
 #
 # For repeated evaluations with the same input shape (for example, in an
 # inference loop), compile the PyTorch network once. Compilation is optional
@@ -80,7 +94,8 @@ for ii in range(500):
     compiled_coeffs = emulator.evaluate(emu_params=list_input_params)
 
 # %%
-emulator.compile()
+if emulator.uses_sampling:  # the cINN
+    emulator.compile()
 coeffs = emulator.evaluate(emu_params=list_input_params)
 coeffs
 
@@ -93,7 +108,7 @@ for ii in range(500):
 # Or request compilation while constructing it:
 
 # %%
-emulator_compiled = P3DEmulator(compile_model=True)
+emulator_compiled = load_emulator("forest_mpg_cinn", compile_model=True)
 compiled_coeffs = emulator_compiled.evaluate(emu_params=list_input_params)
 
 # %%

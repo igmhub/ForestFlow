@@ -17,6 +17,5 @@ and timing demonstrate execution, not scientific acceptance. Set `SMOKE=False`
 for the full grouped experiment after checking available memory.
 
 See [PLAN.md](PLAN.md) for the proposed production implementation and decision
-criteria. The crucial distinction from deterministic distillation is the target:
-here it is the archive's **fitted Arinyo coefficients**, not predictions of the
-flow. ForestFlow comparison therefore measures model disagreement.
+criteria. The target is the archive's **fitted Arinyo coefficients**, not
+predictions of the flow. ForestFlow comparison therefore measures model disagreement.

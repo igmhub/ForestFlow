@@ -60,9 +60,9 @@ MODEL_DIRECTORY = (
     / "emulator_models"
 )
 REQUIRED_MODEL_FILES = (
-    "forest_mpg_fix.pt",
-    "forest_mpg_fix_metadata.npy",
-    "forest_mpg_fix_transf.npy",
+    "forest_mpg_cinn.pt",
+    "forest_mpg_cinn_metadata.npy",
+    "forest_mpg_cinn_transf.npy",
 )
 
 
@@ -86,7 +86,7 @@ def central_prediction():
             + ", ".join(missing)
         )
     torch.set_num_threads(1)
-    emulator = P3DEmulator(key="forest_mpg_fix", Nrealizations=3000)
+    emulator = P3DEmulator(key="forest_mpg_cinn", Nrealizations=3000)
     arinyo = _scalar_prediction(
         emulator.evaluate(CENTRAL_INPUT, seed=0, **LEGACY_SAMPLING)
     )
@@ -133,14 +133,14 @@ def test_saved_emulator_reload_preserves_prediction(central_prediction, tmp_path
     emulator, expected = central_prediction
     model_prefix = tmp_path / "central_emulator"
     metadata = np.load(
-        MODEL_DIRECTORY / "forest_mpg_fix_metadata.npy", allow_pickle=True
+        MODEL_DIRECTORY / "forest_mpg_cinn_metadata.npy", allow_pickle=True
     ).item()
     torch.save(emulator.emulator.state_dict(), str(model_prefix) + ".pt")
     np.save(str(model_prefix) + "_metadata.npy", metadata)
     reloaded = P3DEmulator(
         key=None,
         model_path=str(model_prefix),
-        transf_file=str(MODEL_DIRECTORY / "forest_mpg_fix_transf.npy"),
+        transf_file=str(MODEL_DIRECTORY / "forest_mpg_cinn_transf.npy"),
         Nrealizations=3000,
     )
 

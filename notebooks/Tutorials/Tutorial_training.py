@@ -89,7 +89,7 @@ mpg_central_z3 = mpg_central[ind_z3]
 # %%
 # name_emu = "test"
 # name_emu = "forest_mpg_lowk"
-name_emu = "forest_mpg_fix"
+name_emu = "forest_mpg_cinn"
 
 # %%
 save_file = os.path.join(
@@ -219,7 +219,7 @@ plt.plot(-np.array(emulator.val_loss_arr)[n:])
 # kmax1D = 4
 
 
-name_emu = "forest_mpg_fix"
+name_emu = "forest_mpg_cinn"
 # type_fit = "Arinyo_lowk"
 # kmax1D = 8
 
@@ -399,7 +399,7 @@ for isim, sim in enumerate(Archive3D.list_sim_cube):
     print(sim)
     print()
 
-    name_emu = "forest_mpg_fix_l1O_" + str(isim)
+    name_emu = "forest_mpg_cinn_l1O_" + str(isim)
 
     save_file_transf = os.path.join(
         os.path.dirname(forestflow.__path__[0]),

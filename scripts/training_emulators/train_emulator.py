@@ -5,7 +5,7 @@ Each bundle is trained on the corrected MP-Gadget training archive with one
 hypercube simulation excluded.  The output names follow the convention used by
 ``forestflow.emulator.covariance``::
 
-    data/emulator_models/l1O/forest_mpg_fix_l1O_<index>.pt
+    data/emulator_models/l1O/forest_mpg_cinn_l1O_<index>.pt
 
 For example, to train every l1O emulator with the documented production
 settings, run from the ForestFlow repository root::
@@ -47,8 +47,8 @@ def _parse_arguments() -> argparse.Namespace:
     )
     parser.add_argument(
         "--full-name",
-        default="forest_mpg_fix",
-        help="bundle name for --full (default: forest_mpg_fix)",
+        default="forest_mpg_cinn",
+        help="bundle name for --full (default: forest_mpg_cinn)",
     )
     parser.add_argument("--epochs", type=int, default=400)
     parser.add_argument("--zmax", type=float, default=4.6)
@@ -206,9 +206,9 @@ def main() -> None:
                 f"{sorted(training_labels)}"
             )
         if label == "mpg_central":
-            name = "forest_mpg_fix_l1O_mpg_central"
+            name = "forest_mpg_cinn_l1O_mpg_central"
         else:
-            name = f"forest_mpg_fix_l1O_{archive.list_sim_cube.index(label)}"
+            name = f"forest_mpg_cinn_l1O_{archive.list_sim_cube.index(label)}"
         result = train_emulator(
             archive,
             args,

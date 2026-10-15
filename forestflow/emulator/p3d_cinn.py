@@ -30,7 +30,7 @@ from .network import _training_data_fingerprint, init_xavier
 
 # Bundle loaded when no key is given; clients should rely on this default
 # rather than naming the bundle themselves.
-DEFAULT_EMULATOR_KEY = "forest_mpg_fix"
+DEFAULT_EMULATOR_KEY = "forest_mpg_cinn"
 
 # Scientific domain metadata belongs to an emulator bundle, not to an inference
 # client. Bundled metadata predates this field, so these documented defaults
@@ -114,6 +114,9 @@ class P3DEmulator:
         Scientific domain metadata stored with the emulator bundle.
     """
 
+    # Predictions average stochastic latent draws, configured through evaluate().
+    uses_sampling = True
+
     def __init__(
         self,
         key: str = DEFAULT_EMULATOR_KEY,
@@ -140,7 +143,7 @@ class P3DEmulator:
 
         Parameters
         ----------
-        key : str, default="forest_mpg_fix"
+        key : str, default="forest_mpg_cinn"
             Name identifier for pre-trained emulator models.
         training_data : dict, optional
             Dictionary containing training data with 'input_par' and 'output_par' keys.
@@ -200,7 +203,7 @@ class P3DEmulator:
         if key == "forest_mpg":
             warn(
                 "Emulator bundle 'forest_mpg' is deprecated: "
-                "the corrected 'forest_mpg_fix' bundle should be used "
+                "the corrected 'forest_mpg_cinn' bundle should be used "
                 "instead.",
                 FutureWarning,
                 stacklevel=2,

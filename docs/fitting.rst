@@ -136,7 +136,7 @@ Train the full emulator on the 30 hypercube simulations plus ``mpg_central``::
 
    python scripts/training_emulators/train_emulator.py --full
 
-This saves ``data/emulator_models/forest_mpg_fix``.  The default invocation
+This saves ``data/emulator_models/forest_mpg_cinn``.  The default invocation
 trains one leave-one-out bundle for every hypercube simulation::
 
    python scripts/training_emulators/train_emulator.py
@@ -166,5 +166,5 @@ exclude the central simulation instead, run::
 
    python scripts/training_emulators/train_emulator.py --simulations mpg_central
 
-which writes ``forest_mpg_fix_l1O_mpg_central``.  Existing complete bundles
+which writes ``forest_mpg_cinn_l1O_mpg_central``.  Existing complete bundles
 are skipped; pass ``--overwrite`` only when deliberately retraining one.
