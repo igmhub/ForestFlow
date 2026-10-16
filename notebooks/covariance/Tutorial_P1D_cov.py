@@ -33,7 +33,7 @@ import numpy as np
 
 from forestflow.archive.gadget_archive import GadgetArchive3D
 from forestflow.model.arinyo import ArinyoModel
-from forestflow.statistics.mock_power import make_arinyo_mock_power
+from forestflow.statistics.p1d import p1d_from_p3d
 from lace.cosmo import cosmology
 
 # %% [markdown]
@@ -59,11 +59,12 @@ for ii, sim in enumerate(sim_mpg_central):
 #
 # To do so, we add uncorrelated noise at the level of P3D.
 #
-# The current helper calls `ArinyoModel.P1D_Mpc_Gaussian_noise`. Wavenumbers
-# are in inverse Mpc and P1D in Mpc. Retain the 1,000 smaller-box realizations
+# `p1d_from_p3d` projects the Arinyo P3D into P1D and, given a box volume,
+# draws Gaussian P3D realizations and projects each of them. Wavenumbers are
+# in inverse Mpc and P1D in Mpc. Retain the 1,000 smaller-box realizations
 # for the sample covariance; the larger-box run only needs their scatter.
-# The helper's default grids span 0.1–5 inverse Mpc. Both runs use the same
-# realization seeds, making their volume-scaling comparison reproducible.
+# Both runs use the same seed, making their volume-scaling comparison
+# reproducible.
 
 # %%
 sim = sim_mpg_central[ind_z3]
@@ -71,15 +72,34 @@ sim = sim_mpg_central[ind_z3]
 pars_model = {"z": sim["z"], "Arinyo": sim["arinyo_fixp3d"]}
 fid_cosmo = cosmology.Cosmology(cosmo_params_dict=sim["cosmo_params"])
 model_Arinyo = ArinyoModel(fid_cosmo)
-noise = {"n_realizations": 1000, "keep_realizations": True, "Lbox_Mpc": 100}
-power = make_arinyo_mock_power(pars_model, model_Arinyo, noise=noise)
+linear = model_Arinyo.linear.get_linear_theory(pars_model["z"])
+k1d = np.linspace(0.1, 5.0, 100)
 
-noise = {"n_realizations": 1000, "keep_realizations": False, "Lbox_Mpc": 1000}
-power2 = make_arinyo_mock_power(pars_model, model_Arinyo, noise=noise)
+
+def mock_power(Lbox_Mpc):
+    return p1d_from_p3d(
+        linear,
+        k1d,
+        model_Arinyo.P3D_Mpc_kpar_kperp,
+        pars_model["z"],
+        pars_model["Arinyo"],
+        volume_Mpc3=Lbox_Mpc**3,
+        n_realizations=1000,
+        seed=0,
+    )
+
+
+power = mock_power(100.0)
+power["ari_P1D_Mpc_realizations"] = power["P1D_Mpc_realizations"]
+power["ari_P1D_Mpc"] = power["P1D_Mpc"]
+power["ari_std_P1D_Mpc"] = power["P1D_Mpc_realizations"].std(axis=0)
+
+power2 = mock_power(1000.0)
+power2["ari_P1D_Mpc"] = power2["P1D_Mpc"]
+power2["ari_std_P1D_Mpc"] = power2["P1D_Mpc_realizations"].std(axis=0)
 power2.keys()
 
 # %%
-k1d = power["model_k_1d_iMpc"]
 plt.errorbar(
     k1d,
     k1d * power["ari_P1D_Mpc"],

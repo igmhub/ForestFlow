@@ -60,7 +60,7 @@ P3D and P1D predictions and explains the available uncertainty products.
 - [Emulator tutorial](notebooks/Tutorials/Tutorial_emulator.ipynb)
 - [Arinyo-model tutorial](notebooks/Tutorials/Tutorial_Arinyo.ipynb)
 - [Cross-power tutorial](notebooks/Tutorials/Tutorial_Pcross.ipynb)
-- [P1D covariance tutorial](notebooks/Tutorials/covariance/Tutorial_P1D_cov.ipynb)
+- [P1D covariance tutorial](notebooks/covariance/Tutorial_P1D_cov.ipynb)
 - [Training-input tutorial](notebooks/Tutorials/training/Tutorial_cook_input.ipynb)
 
 `notebooks/Tutorials` contains supported user examples;

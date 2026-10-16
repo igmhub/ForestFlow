@@ -253,7 +253,13 @@ fig.tight_layout()
 # ## 2. P1D and 3. P3D precision for `mpg_central`, one panel per redshift
 #
 # Ratios of each emulator's projection to the projection of the saved
-# `arinyo_fixp3d` fit, minus one. Colour = emulator; for P3D, line style = mu bin.
+# `arinyo_fixp3d` fit, minus one. Colour = emulator. Grey lines are the actual
+# simulation measurements divided by the same fit projection (so they show how
+# well the Arinyo model describes the simulation), and, for P1D only, the red
+# dashed line is LaCE's default smoothed fit (used to reprocess the training data
+# before optimising the LaCE emulator). P3D is averaged in the four mu bins
+# 0-0.25, 0.25-0.5, 0.5-0.75 and 0.75-1 (line style = mu bin) with the
+# mode-weighted rebinning of the fit geometry, as in `Emulator_precision`.
 
 # %%
 fit_settings = dict(kmin_3d=0.01, kmax_3d=4.5, kmin_1d=0.01, kmax_1d=6.0)
@@ -282,6 +288,35 @@ central_ratios = {
 z_central = np.asarray([s["z"] for s in central_snapshots])
 central_order = np.argsort(z_central)
 
+# Simulation measurements and LaCE's default P1D smoothing, relative to the same
+# Arinyo-fit projection as the emulators. The smoothing is the one LaCE applies
+# to reprocess the training data before optimising its MPG emulator
+# (CH24_mpgcen_gpr, the `lace_mpg` default); only P1D is smoothed.
+from lace.emulator import emulator_manager
+from lace.utils.smoothing_manager import apply_smoothing
+
+lace_emulator = emulator_manager.set_emulator(emulator_label="CH24_mpgcen_gpr")
+smoothed_snapshots = [dict(s) for s in central_snapshots]
+apply_smoothing(lace_emulator, smoothed_snapshots, fprint=lambda *a, **k: None)
+
+
+def measurement_ratios(snapshot, smoothed, fitter):
+    """Measured P1D/P3D and LaCE-smoothed P1D, divided by the fit projection, minus one."""
+    fitter.prepare_simulation(snapshot, is_mpg=True)
+    fit_p3d, fit_p1d = fitter.predict(fitter.params_from_dict(snapshot[FIT_KEY]))
+    k3d, _, fit_p3d, _ = rebin_P3D_Mpc_mode_weighted(
+        fitter.data.k3d, fitter.data.mu3d, fit_p3d, fitter._mpg_k_mu_modes, n_mu_bins=n_mu_bins)
+    _, _, meas_p3d, _ = rebin_P3D_Mpc_mode_weighted(
+        fitter.data.k3d, fitter.data.mu3d, fitter.data.p3d, fitter._mpg_k_mu_modes, n_mu_bins=n_mu_bins)
+    k1d = fitter.data.k1d
+    smooth_p1d = np.interp(k1d, smoothed["k_Mpc"], smoothed["p1d_Mpc_smooth"])
+    return {"k3d": k3d, "k1d": k1d, "P3D": meas_p3d / fit_p3d - 1,
+            "P1D": fitter.data.p1d / fit_p1d - 1, "P1D_smooth": smooth_p1d / fit_p1d - 1}
+
+
+central_reference = [measurement_ratios(snap, sm, fitter)
+                     for snap, sm in zip(central_snapshots, smoothed_snapshots)]
+
 
 def plot_by_redshift(kind):
     n_cols = 4
@@ -291,6 +326,17 @@ def plot_by_redshift(kind):
     for position, index in enumerate(central_order):
         axis = axes[divmod(position, n_cols)]
         axis.axhspan(-tolerance, tolerance, color="0.8", alpha=0.35, zorder=0)
+        # simulation measurement (and, for P1D, LaCE's smoothed fit) vs the Arinyo fit
+        reference = central_reference[index]
+        if kind == "P1D":
+            axis.plot(reference["k1d"], reference["P1D"], color="0.6", lw=1.2, label="measurement")
+            axis.plot(reference["k1d"], reference["P1D_smooth"], color="C3", lw=1.2, ls="--",
+                      label="LaCE smoothed")
+        else:
+            for mu in range(n_mu_bins):
+                valid = np.isfinite(reference["k3d"][:, mu])
+                axis.plot(reference["k3d"][valid, mu], reference["P3D"][valid, mu], color="0.6",
+                          ls=MU_STYLES[mu], lw=1.0, label="measurement" if mu == 0 else None)
         for label, ratios in central_ratios.items():
             ratio = ratios[index]
             if kind == "P1D":
@@ -313,8 +359,14 @@ def plot_by_redshift(kind):
         axis.set_xlabel(r"$k_\parallel\,[\mathrm{Mpc}^{-1}]$" if kind == "P1D" else r"$k\,[\mathrm{Mpc}^{-1}]$")
     for axis in axes[:, 0]:
         axis.set_ylabel(rf"$P_\mathrm{{{kind[1:]}}}^\mathrm{{emu}}/P_\mathrm{{{kind[1:]}}}^\mathrm{{fit}}-1$")
-    suffix = "; line style = mu bin" if kind == "P3D" else ""
-    fig.suptitle(f"mpg_central {kind} precision{suffix}", y=1.0)
+    if kind == "P3D":
+        from matplotlib.lines import Line2D
+        edges = central_ratios[next(iter(central_ratios))][0]["mu_edges"]
+        handles = [Line2D([], [], color="k", ls=MU_STYLES[mu], lw=1.0,
+                          label=rf"${edges[mu]:.2f} \leq \mu \leq {edges[mu + 1]:.2f}$") for mu in range(n_mu_bins)]
+        axes[0, 1].legend(handles=handles, fontsize=7, title="mu bin (line style)", title_fontsize=7)
+    suffix = ": average over four mu bins" if kind == "P3D" else ""
+    fig.suptitle(f"mpg_central {kind} relative to the Arinyo fit{suffix}", y=1.0)
     fig.tight_layout()
 
 

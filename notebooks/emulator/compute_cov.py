@@ -34,9 +34,10 @@ from forestflow.plots import plot_l1o_correlation, plot_l1o_errors
 # ## Load the emulator and corresponding archive
 
 # %%
-emulator_label = "forest_mpg_cinn"  # or "forest_mpg_gp"
+# emulator_label = "forest_mpg_cinn"  # or "forest_mpg_gp"
+emulator_label = "forest_mpg_gp"
 
-archive = GadgetArchive3D(postproc="Cabayol23_fixp3d", addcentral=True)
+archive = GadgetArchive3D(addcentral=True)
 emulator = load_emulator(emulator_label)
 
 # %% [markdown]
@@ -65,13 +66,19 @@ cov_k = np.cov(rel_diff_k.T)
 plot_l1o_correlation(cov_zk)
 
 # %%
+plot_l1o_correlation(cov_zk)
+
+# %%
+plot_l1o_errors(zz, k_Mpc, rel_diff, cov_zk)
+
+# %%
 plot_l1o_errors(zz, k_Mpc, rel_diff, cov_zk)
 
 # %% [markdown]
 # ## Optionally store the covariance data
 
 # %%
-save_data = False
+save_data = True
 
 if save_data:
     output_path = (
@@ -98,3 +105,5 @@ if save_data:
     }
     np.save(output_path, covariance_data)
     print(f"Saved {output_path}")
+
+# %%

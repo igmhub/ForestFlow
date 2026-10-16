@@ -10,6 +10,8 @@ from forestflow.statistics import px as pcross
 from forestflow.conventions import validate_finite_array, validate_mu
 
 from forestflow.statistics.p1d import P1D_Mpc as compute_P1D
+from forestflow.statistics import p1d as p1d_module
+from forestflow.statistics.p1d import P1DIntegratorKMu
 from forestflow.utils import broadcast_leading_dimensions
 
 
@@ -254,21 +256,43 @@ class ArinyoModel:
         ).reshape(np.shape(p3d_Mpc))
 
     def P1D_Mpc(
-        self, linear: Any, z: int | float, k_par_iMpc: Any, ari_pp: Any
+        self,
+        linear: Any,
+        z: int | float,
+        k_par_iMpc: Any,
+        ari_pp: Any,
+        integrator: Any = None,
     ) -> NDArray[Any]:
         """
-        Project this model's Cartesian P3D directly into P1D.
+        Project this model's P3D into P1D.
 
         Scalar, redshift-vector, and leading-batch inputs are dispatched by
         :func:`forestflow.statistics.p1d.P1D_Mpc`; Arinyo has no separate
         scalar or batch P1D implementation.
+
+        Parameters
+        ----------
+        integrator : P1DIntegratorKMu or P1DIntegrator, optional
+            Projection quadrature. The default,
+            ``forestflow.statistics.p1d._DEFAULT_P1D_K_MU_INTEGRATOR`` (looked
+            up at call time), is the split Gauss--Legendre ``ln k`` rule,
+            which evaluates :meth:`P3D_Mpc_k_mu` directly. A
+            :class:`~forestflow.statistics.p1d.P1DIntegrator` integrates
+            :meth:`P3D_Mpc_kpar_kperp` over ``ln(k_perp)`` instead.
         """
+        if integrator is None:
+            integrator = p1d_module._DEFAULT_P1D_K_MU_INTEGRATOR
+        if isinstance(integrator, P1DIntegratorKMu):
+            p3d = self.P3D_Mpc_k_mu
+        else:
+            p3d = self.P3D_Mpc_kpar_kperp
         return compute_P1D(
             linear,
             z,
             k_par_iMpc,
-            self.P3D_Mpc_kpar_kperp,
+            p3d,
             ari_pp,
+            integrator=integrator,
         )
 
     def P1D_Mpc_Gaussian_noise(

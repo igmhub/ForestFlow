@@ -1,9 +1,14 @@
 """
 P1D projections and bin averaging.
 
-A P1D projection always integrates a P3D callable over transverse wavenumber.
-Consequently, the sole P3D callable contract in this module is
-``p3d_kpar_kperp(linear, z, k_par_iMpc, k_perp_iMpc, parameters)``.
+A P1D projection integrates P3D over transverse wavenumber. Two equivalent
+quadratures are provided, each with its own P3D callable contract:
+
+* :class:`P1DIntegrator` integrates over ``ln(k_perp)`` and calls
+  ``p3d_kpar_kperp(linear, z, k_par_iMpc, k_perp_iMpc, parameters)``.
+* :class:`P1DIntegratorKMu` uses ``k_perp dk_perp = k dk`` to integrate over
+  ``ln(k)`` at fixed ``k_par`` and calls
+  ``p3d_k_mu(linear, z, k_iMpc, mu, parameters)``.
 """
 
 import hashlib
@@ -21,7 +26,7 @@ class P1DIntegrator:
 
     The P3D callable must have the signature
     ``p3d_kpar_kperp(linear, z, k_par_iMpc, k_perp_iMpc, parameters)``.
-    The default is Simpson integration with 48 log-spaced transverse nodes.
+    The default is Simpson integration with 99 log-spaced transverse nodes.
     Use a separately constructed instance to choose a different quadrature
     geometry, for example for a convergence study.
     """
@@ -30,7 +35,7 @@ class P1DIntegrator:
         self,
         k_perp_min_iMpc=1e-3,
         k_perp_max_iMpc=100.0,
-        n_k_perp=48,
+        n_k_perp=99,
         method="simpson",
         max_cached_geometries=8,
     ):
@@ -41,7 +46,7 @@ class P1DIntegrator:
         ----------
         k_perp_min_iMpc, k_perp_max_iMpc : float, default=1e-3, 100.0
             Inclusive transverse comoving-wavenumber range in 1/Mpc.
-        n_k_perp : int, default=48
+        n_k_perp : int, default=99
             Number of log-spaced quadrature nodes. Simpson integration needs
             at least three nodes; Gauss--Legendre needs at least one.
         method : {"simpson", "gauss_legendre"}, default="simpson"
@@ -160,6 +165,194 @@ class P1DIntegrator:
 _DEFAULT_P1D_INTEGRATOR = P1DIntegrator()
 
 
+def _unit_gauss_legendre(n_nodes):
+    nodes, weights = np.polynomial.legendre.leggauss(n_nodes)
+    return 0.5 * (nodes + 1.0), 0.5 * weights
+
+
+class P1DIntegratorKMu:
+    """
+    Project P3D(k, mu) to P1D with split Gauss--Legendre quadrature in ln k.
+
+    Changing variables with ``k_perp dk_perp = k dk`` gives
+
+    ``P1D(k_par) = 1/(2 pi) int_{k_lo}^{k_hi} k**2 P3D(k, mu=k_par/k) dln k``,
+
+    with ``k_lo, k_hi = sqrt(k_par**2 + k_perp_{min,max}**2)``, so the domain
+    is identical to that of :class:`P1DIntegrator`. Unlike the ``ln(k_perp)``
+    grid, no nodes are spent at ``k_perp << k_par``, where the integrand is
+    negligible.
+
+    For small ``k_par`` the integrand peaks at ``k ~ k_par`` and crosses the
+    BAO features of the linear power, which limit the accuracy of any single
+    smooth rule over the whole interval. Rows with ``k_lo < k_split_iMpc``
+    therefore use ``n_low`` nodes on ``[k_lo, k_split]`` and ``n_high`` nodes
+    on ``[k_split, k_hi]``; the smooth high-k tail then converges quickly.
+    Rows with ``k_lo >= k_split_iMpc`` use all ``n_low + n_high`` nodes on a
+    single interval. See ``notebooks/emulator/convergence_p1d_quadrature``.
+    """
+
+    def __init__(
+        self,
+        k_perp_min_iMpc=1e-3,
+        k_perp_max_iMpc=100.0,
+        k_split_iMpc=0.4,
+        n_low=20,
+        n_high=20,
+        max_cached_geometries=8,
+    ):
+        """
+        Configure the split Gauss--Legendre ``ln k`` quadrature.
+
+        Parameters
+        ----------
+        k_perp_min_iMpc, k_perp_max_iMpc : float, default=1e-3, 100.0
+            Transverse comoving-wavenumber range in 1/Mpc defining the domain.
+        k_split_iMpc : float or None, default=0.4
+            Break between the low-k (BAO) and high-k segments in 1/Mpc.
+            ``None`` uses a single Gauss--Legendre rule with
+            ``n_low + n_high`` nodes for every row (no split).
+        n_low, n_high : int, default=20
+            Gauss--Legendre nodes below and above ``k_split_iMpc``. With
+            these defaults the maximum relative P1D error is ~5e-6 for the
+            MP-Gadget Arinyo fits, and stays below 1e-5 for splits in
+            [0.35, 0.5]/Mpc. Fewer than ~16 high-k nodes, or a split below
+            ~0.3/Mpc (inside the BAO range), degrades it to ~1e-4.
+        max_cached_geometries : int, default=8
+            Number of recently used parallel-wavenumber grids retained in the
+            in-memory geometry cache. Zero disables caching.
+        """
+        for name, value in {"n_low": n_low, "n_high": n_high}.items():
+            if not isinstance(value, (int, np.integer)) or value < 1:
+                raise ValueError(f"{name} must be a positive integer")
+        if k_split_iMpc is None:
+            if not 0 < k_perp_min_iMpc < k_perp_max_iMpc:
+                raise ValueError("require 0 < k_perp_min_iMpc < k_perp_max_iMpc")
+        elif not 0 < k_perp_min_iMpc < k_split_iMpc < k_perp_max_iMpc:
+            raise ValueError(
+                "require 0 < k_perp_min_iMpc < k_split_iMpc < k_perp_max_iMpc"
+            )
+        if max_cached_geometries < 0:
+            raise ValueError("max_cached_geometries must be non-negative")
+        self.k_perp_min_iMpc = float(k_perp_min_iMpc)
+        self.k_perp_max_iMpc = float(k_perp_max_iMpc)
+        self.k_split_iMpc = None if k_split_iMpc is None else float(k_split_iMpc)
+        self.n_low = int(n_low)
+        self.n_high = int(n_high)
+        self.n_nodes = self.n_low + self.n_high
+        self.max_cached_geometries = max_cached_geometries
+        self._rule_low = _unit_gauss_legendre(self.n_low)
+        self._rule_high = _unit_gauss_legendre(self.n_high)
+        self._rule_all = _unit_gauss_legendre(self.n_nodes)
+        self._geometry_cache = {}
+
+    _geometry_key = P1DIntegrator._geometry_key
+
+    def geometry(self, k_par_iMpc):
+        """
+        Return cached ``k`` (1/Mpc), ``mu`` and ``ln k`` weights.
+
+        All arrays have shape ``k_par_iMpc.shape + (n_low + n_high,)``.
+        """
+        key = self._geometry_key(k_par_iMpc)
+        cached = self._geometry_cache.get(key)
+        if cached is not None:
+            self._geometry_cache.pop(key)
+            self._geometry_cache[key] = cached
+            return cached
+        k_par = np.asarray(k_par_iMpc, dtype=float)[..., None]
+        ln_lo = 0.5 * np.log(k_par**2 + self.k_perp_min_iMpc**2)
+        ln_hi = 0.5 * np.log(k_par**2 + self.k_perp_max_iMpc**2)
+        # Without a split every row uses the single-interval rule.
+        ln_split = -np.inf if self.k_split_iMpc is None else np.log(self.k_split_iMpc)
+        (x_low, w_low), (x_high, w_high) = self._rule_low, self._rule_high
+        x_all, w_all = self._rule_all
+        ln_k = np.where(
+            ln_lo < ln_split,
+            np.concatenate(
+                [
+                    np.broadcast_to(
+                        ln_lo + (ln_split - ln_lo) * x_low,
+                        ln_lo.shape[:-1] + (self.n_low,),
+                    ),
+                    np.broadcast_to(
+                        ln_split + (ln_hi - ln_split) * x_high,
+                        ln_hi.shape[:-1] + (self.n_high,),
+                    ),
+                ],
+                axis=-1,
+            ),
+            ln_lo + (ln_hi - ln_lo) * x_all,
+        )
+        weights = np.where(
+            ln_lo < ln_split,
+            np.concatenate(
+                [
+                    np.broadcast_to(
+                        (ln_split - ln_lo) * w_low,
+                        ln_lo.shape[:-1] + (self.n_low,),
+                    ),
+                    np.broadcast_to(
+                        (ln_hi - ln_split) * w_high,
+                        ln_hi.shape[:-1] + (self.n_high,),
+                    ),
+                ],
+                axis=-1,
+            ),
+            (ln_hi - ln_lo) * w_all,
+        )
+        k = np.exp(ln_k)
+        # k >= k_par analytically; clip round-off so that mu stays in [0, 1].
+        mu = np.minimum(k_par / k, 1.0)
+        geometry = k, mu, weights
+        if self.max_cached_geometries:
+            if len(self._geometry_cache) >= self.max_cached_geometries:
+                self._geometry_cache.pop(next(iter(self._geometry_cache)))
+            self._geometry_cache[key] = geometry
+        return geometry
+
+    def clear_geometry_cache(self):
+        """
+        Discard cached ``k``/``mu`` grids.
+        """
+        self._geometry_cache.clear()
+
+    @staticmethod
+    def integrate(p3d_Mpc, k_iMpc, weights):
+        """
+        Integrate P3D values sampled on a :meth:`geometry` grid.
+        """
+        integrand = np.asarray(p3d_Mpc) * k_iMpc**2 / (2 * np.pi)
+        return np.sum(integrand * weights, axis=-1)
+
+    def __call__(self, linear, z, k_par_iMpc, p3d_k_mu, p3d_params=None, **kwargs):
+        """
+        Evaluate a ``P3D(k, mu)`` callable and project it into P1D in Mpc.
+        """
+        z = np.asarray(z)
+        k_par_iMpc = np.asarray(k_par_iMpc, dtype=float)
+        if (
+            k_par_iMpc.ndim == 0
+            or not np.all(np.isfinite(k_par_iMpc))
+            or np.any(k_par_iMpc < 0)
+        ):
+            raise ValueError("k_par_iMpc must be a finite, non-negative array")
+        if z.ndim == 0 and k_par_iMpc.ndim == 1:
+            k_par_iMpc = k_par_iMpc[None, :]
+        elif z.ndim > 0 and k_par_iMpc.ndim == 1:
+            k_par_iMpc = np.broadcast_to(k_par_iMpc, (len(z), len(k_par_iMpc)))
+        elif z.ndim > 0 and k_par_iMpc.ndim >= 2 and k_par_iMpc.shape[-2] != len(z):
+            raise ValueError("redshift axis of k_par_iMpc must match len(z)")
+        k, mu, weights = self.geometry(k_par_iMpc)
+        p3d = p3d_k_mu(
+            linear, z, k, mu, {} if p3d_params is None else p3d_params, **kwargs
+        )
+        return self.integrate(p3d, k, weights)
+
+
+_DEFAULT_P1D_K_MU_INTEGRATOR = P1DIntegratorKMu()
+
+
 def P1D_Mpc(
     linear, z, k_par_iMpc, p3d_kpar_kperp, p3d_params=None, integrator=None, **kwargs
 ):
@@ -167,7 +360,9 @@ def P1D_Mpc(
     Project Cartesian P3D into P1D in Mpc units.
 
     ``p3d_kpar_kperp`` must accept ``(linear, z, k_par_iMpc, k_perp_iMpc,
-    parameters)``. Pass a :class:`P1DIntegrator` for a non-default quadrature.
+    parameters)``. Pass a :class:`P1DIntegrator` for a non-default quadrature,
+    or a :class:`P1DIntegratorKMu` together with a ``p3d_k_mu(linear, z,
+    k_iMpc, mu, parameters)`` callable in place of ``p3d_kpar_kperp``.
     """
     if integrator is None:
         integrator = _DEFAULT_P1D_INTEGRATOR

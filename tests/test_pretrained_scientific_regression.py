@@ -52,7 +52,7 @@ EXPECTED_P3D_MPC = np.array(
     [16.04509947,  2.02380609,  0.26666011]
 )
 EXPECTED_P1D_MPC = np.array(
-    [0.50125503, 0.30899662, 0.13031574]
+    [0.50113115, 0.30899673, 0.13031579]
 )
 MODEL_DIRECTORY = (
     Path(forestflow.__file__).resolve().parent.parent

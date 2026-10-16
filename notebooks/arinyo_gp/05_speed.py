@@ -14,7 +14,7 @@
 # ---
 
 # %% [markdown]
-# # 5. Speed: cINN `forest_mpg_cinn` versus GP `forest_mpg_gp`
+# # 5. Speed: cINN `forest_mpg_fix` versus GP `forest_mpg_gp`
 #
 # This notebook only measures how long it takes to turn emulator inputs
 # (`Delta2_p, n_p, mF, sigT_Mpc, gamma, kF_Mpc`) into the eight Arinyo
@@ -73,8 +73,8 @@ gp = ArinyoGPEmulator.load(ROOT / "data" / "gp_emulators" / "forest_mpg_gp.pkl")
 print(f"forest_mpg_gp load: {time.perf_counter() - t:.2f} s; "
       f"{gp.gp.X_train_.shape[0]} training rows")
 t = time.perf_counter()
-cinn = P3DEmulator(key="forest_mpg_cinn", Nrealizations=max(N_REALIZATIONS))
-print(f"forest_mpg_cinn load: {time.perf_counter() - t:.2f} s")
+cinn = P3DEmulator(key="forest_mpg_fix", Nrealizations=max(N_REALIZATIONS))
+print(f"forest_mpg_fix load: {time.perf_counter() - t:.2f} s")
 assert tuple(cinn.input_labels) == INPUT_LABELS == tuple(gp.input_labels)
 
 # %% [markdown]
@@ -108,12 +108,12 @@ def cinn_call(rows, n):
 
 
 results = {"GP forest_mpg_gp": {}}
-results.update({f"cINN forest_mpg_cinn (N={n})": {} for n in N_REALIZATIONS})
+results.update({f"cINN forest_mpg_fix (N={n})": {} for n in N_REALIZATIONS})
 for batch in BATCH_SIZES:
     rows = make_inputs(batch)
     results["GP forest_mpg_gp"][batch] = timeit(lambda: gp.evaluate(rows))
     for n in N_REALIZATIONS:
-        results[f"cINN forest_mpg_cinn (N={n})"][batch] = timeit(cinn_call(rows, n))
+        results[f"cINN forest_mpg_fix (N={n})"][batch] = timeit(cinn_call(rows, n))
     print(batch, {k: f"{v[batch][0] * 1e3:.2f} ms" for k, v in results.items()})
 
 # %% [markdown]
@@ -166,7 +166,7 @@ fig.tight_layout()
 # %%
 LIKELIHOOD_BATCH = 12
 rows = make_inputs(LIKELIHOOD_BATCH)
-compiled = P3DEmulator(key="forest_mpg_cinn", compile_model=True)
+compiled = P3DEmulator(key="forest_mpg_fix", compile_model=True)
 call = lambda emulator: emulator.evaluate(
     rows,
     Nrealizations=N_REALIZATIONS[0],

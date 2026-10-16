@@ -24,8 +24,8 @@ Start here
 Focused tutorials
 -----------------
 
-``notebooks/Tutorials/covariance``
-   Finite-volume and leave-one-out covariance exercises.
+``notebooks/covariance``
+   Finite-volume P1D and joint P3D-P1D Gaussian covariance exercises.
 
 ``notebooks/Tutorials/training``
    Emulator input preparation and leave-one-out validation. These workflows

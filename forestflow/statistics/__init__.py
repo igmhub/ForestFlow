@@ -1,7 +1,7 @@
 from .mock_power import make_arinyo_mock_power
 """Power-spectrum statistics, projections, binning, and covariance."""
 
-from .p1d import P1DIntegrator, P1D_Mpc, P1D_Mpc_bin_averaged, P1D_kms, p1d_from_p3d
+from .p1d import P1DIntegrator, P1DIntegratorKMu, P1D_Mpc, P1D_Mpc_bin_averaged, P1D_kms, p1d_from_p3d
 from .px import Px_Mpc, Px_Mpc_detailed, compute_px_from_p3d_kmu_Mpc
 from .p3d import (
     P3D_Mpc_k_mu_bin_averaged,
@@ -17,7 +17,7 @@ from .rebin_p3d import (
 )
 
 __all__ = ["make_arinyo_mock_power", 
-    "P1DIntegrator", "P1D_Mpc", "P1D_Mpc_bin_averaged", "P1D_kms",
+    "P1DIntegrator", "P1DIntegratorKMu", "P1D_Mpc", "P1D_Mpc_bin_averaged", "P1D_kms",
     "p1d_from_p3d", "Px_Mpc", "Px_Mpc_detailed",
     "compute_px_from_p3d_kmu_Mpc", "P3D_Mpc_k_mu_bin_averaged",
     "P3D_Mpc_k_mu_mode_averaged", "P3D_Mpc_k_mu_hybrid_averaged",
