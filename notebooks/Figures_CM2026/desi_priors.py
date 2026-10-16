@@ -51,19 +51,17 @@ bao_data = load.load_BAO_data()
 # %%
 plots.plot_bias_beta_zev(bao_data, dict_mapping, plot_bias_eta=False)
 
-# %%
-DESI DR1 BAO & bias_delta & -0.1317 & 0.0059 \\
-DESI DR1 BAO & beta & 1.5442 & 0.0942 \\
-DESI DR2 BAO & bias_delta & -0.1302 & 0.0048 \\
-DESI DR2 BAO & beta & 1.5019 & 0.0652 \\
-bias_delta 2.33: -0.1228 & 0.0061
-beta 2.33: 1.4337 & 0.0498
-
-# %%
-61/48
-
-# %%
-65/50
+# %% [markdown]
+# Values printed above with the legacy emulator (mpg_hypercube.pt cINN), for comparison:
+#
+# ```
+# DESI DR1 BAO & bias_delta & -0.1317 & 0.0059 \\
+# DESI DR1 BAO & beta & 1.5442 & 0.0942 \\
+# DESI DR2 BAO & bias_delta & -0.1302 & 0.0048 \\
+# DESI DR2 BAO & beta & 1.5019 & 0.0652 \\
+# bias_delta 2.33: -0.1228 & 0.0061
+# beta 2.33: 1.4337 & 0.0498
+# ```
 
 # %%
 plots.plot_p3d_small_z(dict_mapping)

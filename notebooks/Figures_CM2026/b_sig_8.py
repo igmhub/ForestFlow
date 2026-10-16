@@ -48,7 +48,7 @@ rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
 
-from forestflow.priors.paper import load, set_samples, all_plots, importance
+from forestflow.priors.paper import load, set_samples, plots, importance
 
 np.__version__
 
@@ -132,7 +132,7 @@ for label in fits.keys():
 # Data to combine
 
 # %%
-all_plots.plot_bsig8_betafsigma8(samples)
+plots.plot_bsig8_betafsigma8(samples)
 
 # %% [markdown]
 # BAO biases
@@ -140,7 +140,7 @@ all_plots.plot_bsig8_betafsigma8(samples)
 # %%
 
 # %%
-all_plots.plot_bao_biases(samples)
+plots.plot_bao_biases(samples)
 
 # %% [markdown]
 # Fit to P1D data using Gaussian approximation to the likelihood. We can compute the mean and covariance from the samples, then plot the corresponding Gaussian contours on top of the GetDist plot.
@@ -153,37 +153,37 @@ for p in samples["p1d_dr2"].getParamNames().names:
     print(p.name, " -> ", p.label)
 
 # %%
-# all_plots.plot_comb_bd_be_beta(samples)
+# plots.plot_comb_bd_be_beta(samples)
 
 # %%
 
 # %%
-all_plots.plot_comb_bdsig8_befsig8(samples)
+plots.plot_comb_bdsig8_befsig8(samples)
 
 # %%
 
 # %%
 
 # %%
-all_plots.plot_sig8(samples)
+plots.plot_sig8(samples)
 
 # %%
-all_plots.plot_sig8z(samples)
+plots.plot_sig8z(samples)
 
 # %%
-all_plots.plot_fsig8z(samples)
+plots.plot_fsig8z(samples)
 
 # %%
-all_plots.plot_sig8z233(samples)
+plots.plot_sig8z233(samples)
 
 # %%
-all_plots.plot_compressed(samples)
+plots.plot_compressed(samples)
 
 # %%
-all_plots.plot_bdelta_beta_beta(samples)
+plots.plot_bdelta_beta_beta(samples)
 
 # %%
-all_plots.plot_P3D_small_params(samples)
+plots.plot_P3D_small_params(samples)
 
 # %%
 

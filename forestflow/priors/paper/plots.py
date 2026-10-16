@@ -388,8 +388,8 @@ def plot_sig8z(samples: ArrayLike, ftsize: int | None=20) -> None:
 
     zplot = data["z"]
     sig8 = data["sig8"]
-    # it is f, not fsig8
-    f = data["fsig8"]
+    # growth rate f; older products stored it under the misleading key "fsig8"
+    f = data["f"] if "f" in data else data["fsig8"]
     fsig8 = f * sig8
 
     # load DESI FS
@@ -510,16 +510,16 @@ def plot_fsig8z(samples: ArrayLike, ftsize: int | None=20) -> None:
         Base font size in points.
     """
     try:
-        data = np.load("sig8_cmb_spa.npy", allow_pickle=True).item()
+        data = np.load("int_data_figs/sig8_cmb_spa.npy", allow_pickle=True).item()
     except:
         print("setting CMB-SPA")
         set_samples.set_cmbspa_sig8z()
-        data = np.load("sig8_cmb_spa.npy", allow_pickle=True).item()
+        data = np.load("int_data_figs/sig8_cmb_spa.npy", allow_pickle=True).item()
 
     zplot = data["z"]
     sig8 = data["sig8"]
-    # it is f, not fsig8
-    f = data["fsig8"]
+    # growth rate f; older products stored it under the misleading key "fsig8"
+    f = data["f"] if "f" in data else data["fsig8"]
     fsig8 = f * sig8
 
     # Cuceu+2026 Eq. 23 Lya full shape https://arxiv.org/abs/2509.15308

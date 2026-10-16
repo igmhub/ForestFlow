@@ -16,13 +16,22 @@ import numpy as np
 
 @dataclass(frozen=True)
 class ArinyoGPConfig:
-    """Kernel and numerical settings for an Arinyo target GP."""
+    """Kernel and numerical settings for an Arinyo target GP.
+
+    The kernel is ``Matern(nu)`` with one length scale per input, optionally
+    multiplied by a fitted amplitude (``fit_amplitude``). ``alpha`` is a fixed
+    nugget variance in standardized target units; with a fitted amplitude, the
+    effective noise-to-signal ratio is ``alpha / amplitude**2``.
+    """
 
     nu: float = 0.5
     alpha: float = 1e-4
     n_restarts_optimizer: int = 0
     optimize_kernel: bool = True
     random_state: int = 0
+    fit_amplitude: bool = False
+    amplitude_bounds: tuple[float, float] = (1e-2, 1e3)
+    length_scale_bounds: tuple[float, float] = (1e-5, 1e5)
 
     def __post_init__(self):
         if self.nu not in {0.5, 1.5, 2.5}:
@@ -273,10 +282,16 @@ def train_arinyo_gp(
     # Keep these imports local: ordinary ForestFlow users and documentation
     # builds do not need to import the optional GP numerical stack.
     from sklearn.gaussian_process import GaussianProcessRegressor
-    from sklearn.gaussian_process.kernels import Matern
+    from sklearn.gaussian_process.kernels import ConstantKernel, Matern
     from lace.emulator.gp_emulator_multi import optimizer as lace_gp_optimizer
 
-    kernel = Matern(length_scale=np.ones(data.inputs.shape[1]), nu=config.nu)
+    kernel = Matern(
+        length_scale=np.ones(data.inputs.shape[1]),
+        nu=config.nu,
+        length_scale_bounds=tuple(config.length_scale_bounds),
+    )
+    if config.fit_amplitude:
+        kernel = ConstantKernel(1.0, tuple(config.amplitude_bounds)) * kernel
     gp = GaussianProcessRegressor(
         kernel=kernel,
         alpha=config.alpha,

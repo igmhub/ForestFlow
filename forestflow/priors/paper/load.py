@@ -216,7 +216,8 @@ def load_map_igm_p3d(lab_sample: str | None="desi", zeff: float | None=2.33) -> 
     lab_sample : str, default="desi"
         Sample label incorporated into the intermediate filename.
     zeff : float, default=2.33
-        Effective redshift used to convert beta to velocity-gradient bias.
+        Effective redshift used to convert beta to velocity-gradient bias
+        for legacy products that do not store ``bias_eta``.
 
     Returns
     -------
@@ -246,13 +247,17 @@ def load_map_igm_p3d(lab_sample: str | None="desi", zeff: float | None=2.33) -> 
             "int_data_figs/arinyo_from_" + lab_sample + "_p1d.npy", allow_pickle=True
         ).item()
 
-    class_planck = cosmology.Cosmology(cosmo_label="Planck18")
-    planck_f = class_planck.get_growth_rate(zeff)
+    # products without a label were made with the legacy paper cINN
+    print("Arinyo mapping from emulator:", data.get("emulator_label", "legacy"))
 
     data["forest_out"]["bias_delta"] = -np.abs(data["forest_out"]["bias"])
-    data["forest_out"]["bias_eta"] = (
-        data["forest_out"]["beta"] * data["forest_out"]["bias_delta"] / planck_f
-    )
+    if "bias_eta" not in data["forest_out"]:
+        # legacy emulator only predicts beta
+        class_planck = cosmology.Cosmology(cosmo_label="Planck18")
+        planck_f = class_planck.get_growth_rate(zeff)
+        data["forest_out"]["bias_eta"] = (
+            data["forest_out"]["beta"] * data["forest_out"]["bias_delta"] / planck_f
+        )
 
     return data
 

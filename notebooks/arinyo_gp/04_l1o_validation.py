@@ -257,7 +257,9 @@ fig.tight_layout()
 # simulation measurements divided by the same fit projection (so they show how
 # well the Arinyo model describes the simulation), and, for P1D only, the red
 # dashed line is LaCE's default smoothed fit (used to reprocess the training data
-# before optimising the LaCE emulator). P3D is averaged in the four mu bins
+# before optimising the LaCE emulator) and the purple line the `lace_mpg` emulator
+# (CH24_mpgcen_gpr) evaluated at the simulation's inputs, up to its kmax = 4.25 /Mpc.
+# The difference between the two is the LaCE emulator error. P3D is averaged in the four mu bins
 # 0-0.25, 0.25-0.5, 0.5-0.75 and 0.75-1 (line style = mu bin) with the
 # mode-weighted rebinning of the fit geometry, as in `Emulator_precision`.
 
@@ -301,7 +303,7 @@ apply_smoothing(lace_emulator, smoothed_snapshots, fprint=lambda *a, **k: None)
 
 
 def measurement_ratios(snapshot, smoothed, fitter):
-    """Measured P1D/P3D and LaCE-smoothed P1D, divided by the fit projection, minus one."""
+    """Measured P1D/P3D, LaCE-smoothed P1D and lace_mpg P1D, divided by the fit projection, minus one."""
     fitter.prepare_simulation(snapshot, is_mpg=True)
     fit_p3d, fit_p1d = fitter.predict(fitter.params_from_dict(snapshot[FIT_KEY]))
     k3d, _, fit_p3d, _ = rebin_P3D_Mpc_mode_weighted(
@@ -310,8 +312,13 @@ def measurement_ratios(snapshot, smoothed, fitter):
         fitter.data.k3d, fitter.data.mu3d, fitter.data.p3d, fitter._mpg_k_mu_modes, n_mu_bins=n_mu_bins)
     k1d = fitter.data.k1d
     smooth_p1d = np.interp(k1d, smoothed["k_Mpc"], smoothed["p1d_Mpc_smooth"])
+    # lace_mpg emulator at the snapshot's own inputs, within its k range
+    in_lace = k1d <= lace_emulator.kmax_Mpc
+    lace_p1d = np.squeeze(lace_emulator.emulate_p1d_Mpc(
+        {name: snapshot[name] for name in lace_emulator.emu_params}, k1d[in_lace]))
     return {"k3d": k3d, "k1d": k1d, "P3D": meas_p3d / fit_p3d - 1,
-            "P1D": fitter.data.p1d / fit_p1d - 1, "P1D_smooth": smooth_p1d / fit_p1d - 1}
+            "P1D": fitter.data.p1d / fit_p1d - 1, "P1D_smooth": smooth_p1d / fit_p1d - 1,
+            "k1d_lace": k1d[in_lace], "P1D_lace": lace_p1d / fit_p1d[in_lace] - 1}
 
 
 central_reference = [measurement_ratios(snap, sm, fitter)
@@ -332,6 +339,8 @@ def plot_by_redshift(kind):
             axis.plot(reference["k1d"], reference["P1D"], color="0.6", lw=1.2, label="measurement")
             axis.plot(reference["k1d"], reference["P1D_smooth"], color="C3", lw=1.2, ls="--",
                       label="LaCE smoothed")
+            axis.plot(reference["k1d_lace"], reference["P1D_lace"], color="C4", lw=1.4,
+                      label="lace_mpg emulator")
         else:
             for mu in range(n_mu_bins):
                 valid = np.isfinite(reference["k3d"][:, mu])
