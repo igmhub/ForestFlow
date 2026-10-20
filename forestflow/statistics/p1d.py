@@ -194,11 +194,11 @@ class P1DIntegratorKMu:
 
     def __init__(
         self,
-        k_perp_min_iMpc=1e-3,
+        k_perp_min_iMpc=1e-4,
         k_perp_max_iMpc=100.0,
         k_split_iMpc=0.4,
-        n_low=20,
-        n_high=20,
+        n_low=32,
+        n_high=32,
         max_cached_geometries=8,
     ):
         """
@@ -206,18 +206,24 @@ class P1DIntegratorKMu:
 
         Parameters
         ----------
-        k_perp_min_iMpc, k_perp_max_iMpc : float, default=1e-3, 100.0
+        k_perp_min_iMpc, k_perp_max_iMpc : float, default=1e-4, 100.0
             Transverse comoving-wavenumber range in 1/Mpc defining the domain.
+            A lower limit of 1e-3/Mpc omits ~1e-4 of P1D at the lowest DESI
+            k (0.001 s/km), coherently across redshifts: Delta chi2 ~ 0.25 on
+            DESI DR1. 1e-4 and 1e-5 agree to 1e-6 relative.
         k_split_iMpc : float or None, default=0.4
             Break between the low-k (BAO) and high-k segments in 1/Mpc.
             ``None`` uses a single Gauss--Legendre rule with
             ``n_low + n_high`` nodes for every row (no split).
-        n_low, n_high : int, default=20
-            Gauss--Legendre nodes below and above ``k_split_iMpc``. With
-            these defaults the maximum relative P1D error is ~5e-6 for the
-            MP-Gadget Arinyo fits, and stays below 1e-5 for splits in
-            [0.35, 0.5]/Mpc. Fewer than ~16 high-k nodes, or a split below
-            ~0.3/Mpc (inside the BAO range), degrades it to ~1e-4.
+        n_low, n_high : int, default=32
+            Gauss--Legendre nodes below and above ``k_split_iMpc``. The
+            high-k segment spans ln(k_perp_max / k_split) ~ 5.5 and sets the
+            accuracy: on DESI DR1 with forest_mpg_gp, at the initial point
+            and at points displaced by 0.1 of the prior range, 32 + 32 nodes
+            give |Delta chi2| <= 0.025 against a converged reference
+            (150 + 150 nodes, k_perp in [1e-5, 190]/Mpc), while 20 + 20 give
+            up to 0.14 and 16 high-k nodes up to ~1.5. A split below
+            ~0.3/Mpc (inside the BAO range) also degrades the accuracy.
         max_cached_geometries : int, default=8
             Number of recently used parallel-wavenumber grids retained in the
             in-memory geometry cache. Zero disables caching.

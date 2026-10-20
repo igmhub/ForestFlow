@@ -19,13 +19,14 @@ def _p3d_kpar_kperp(linear, z, k_par_iMpc, k_perp_iMpc, parameters):
 
 def test_k_mu_projection_matches_k_perp_projection():
     k_par = np.geomspace(0.05, 6.0, 25)
+    # Same transverse domain for both rules (the defaults differ).
     reference = P1D_Mpc(
         None, 3.0, k_par, _p3d_kpar_kperp,
-        integrator=P1DIntegrator(n_k_perp=4001),
+        integrator=P1DIntegrator(k_perp_min_iMpc=1e-3, n_k_perp=4001),
     )
     result = P1D_Mpc(
         None, 3.0, k_par, _p3d_k_mu,
-        integrator=P1DIntegratorKMu(n_low=48, n_high=48),
+        integrator=P1DIntegratorKMu(k_perp_min_iMpc=1e-3, n_low=48, n_high=48),
     )
     np.testing.assert_allclose(result, reference, rtol=1e-6)
 
@@ -37,7 +38,7 @@ def test_geometry_splits_only_below_k_split_and_keeps_mu_in_range():
     assert k.shape == mu.shape == weights.shape == (5, 12)
     assert np.all((mu >= 0) & (mu <= 1))
     # Weights integrate d ln k over each row's full domain.
-    lo = 0.5 * np.log(k_par**2 + 1e-3**2)
+    lo = 0.5 * np.log(k_par**2 + integrator.k_perp_min_iMpc**2)
     hi = 0.5 * np.log(k_par**2 + 100.0**2)
     np.testing.assert_allclose(weights.sum(axis=-1), hi - lo, rtol=1e-12)
     # Split rows place exactly n_low nodes below the split.
@@ -57,7 +58,7 @@ def test_no_split_uses_one_rule_on_every_row():
     integrator = P1DIntegratorKMu(n_low=4, n_high=4, k_split_iMpc=None)
     k_par = np.array([0.01, 0.1, 2.0])
     k, _, weights = integrator.geometry(k_par)
-    lo = 0.5 * np.log(k_par**2 + 1e-3**2)
+    lo = 0.5 * np.log(k_par**2 + integrator.k_perp_min_iMpc**2)
     hi = 0.5 * np.log(k_par**2 + 100.0**2)
     nodes, _ = np.polynomial.legendre.leggauss(8)
     np.testing.assert_allclose(
