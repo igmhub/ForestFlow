@@ -143,7 +143,7 @@ fig, ax = plt.subplots(figsize=(7, 4))
 for index in range(data["p3d_lya_Mpc"].shape[1]):
     k_Mpc = data["k_Mpc"][:, index]
     mask = k_Mpc > 0.01
-    label = f"$\mu$={np.nanmean(data['mu'][:, index]):.2f}"
+    label = rf"$\mu$={np.nanmean(data['mu'][:, index]):.2f}"
     ax.errorbar(
         k_Mpc[mask],
         k_Mpc[mask] ** 2 * data["p3d_lya_Mpc"][mask, index],
@@ -278,7 +278,7 @@ for index in range(0, p3d_data.shape[1],2):
     ax.plot(
         k_Mpc[valid],
         p3d_fit[valid, index] / plin_Mpc,
-        "-",
+        "--",
         color=colors[index],
     )
 ax.set(

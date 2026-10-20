@@ -278,14 +278,23 @@ class P1DEmulator:
             )
         return self._emulate_p1d_Mpc_scalar(zs, k_iMpc, emulator_parameters)
 
-    def _emulate_p1d_Mpc_scalar(self, zs, k_iMpc, emulator_parameters):
+    def evaluate_arinyo(self, emulator_parameters):
         """
-        Evaluate the scalar/redshift-vector P1D implementation.
+        Return the Arinyo coefficients for scalar/redshift-vector inputs.
+
+        Parameters
+        ----------
+        emulator_parameters : mapping
+            Emulator inputs (``self.emu_params``), each a scalar or one value
+            per redshift.
+
+        Returns
+        -------
+        dict
+            Arinyo coefficient arrays keyed by output label, one entry per input
+            row, exactly those used by :meth:`emulate_p1d_Mpc` (including the
+            prediction cache, if primed).
         """
-        if self.linear is None:
-            raise RuntimeError(
-                "Call set_linear_theory before evaluating ForestFlow P1D"
-            )
         in_params = {
             name: np.asarray(emulator_parameters[name]) for name in self.emu_params
         }
@@ -297,16 +306,25 @@ class P1DEmulator:
                 in_par_only[par] = in_params[par].reshape(-1)[ii]
             list_dicts.append(in_par_only)
         if self._prediction_cache is None:
-            out_emu = self._evaluate_emulator(list_dicts)
-        else:
-            cached = [
-                self._prediction_cache[self._prediction_key(parameters)]
-                for parameters in list_dicts
-            ]
-            out_emu = {
-                name: np.asarray([prediction[name] for prediction in cached])
-                for name in self.emulator.output_labels
-            }
+            return self._evaluate_emulator(list_dicts)
+        cached = [
+            self._prediction_cache[self._prediction_key(parameters)]
+            for parameters in list_dicts
+        ]
+        return {
+            name: np.asarray([prediction[name] for prediction in cached])
+            for name in self.emulator.output_labels
+        }
+
+    def _emulate_p1d_Mpc_scalar(self, zs, k_iMpc, emulator_parameters):
+        """
+        Evaluate the scalar/redshift-vector P1D implementation.
+        """
+        if self.linear is None:
+            raise RuntimeError(
+                "Call set_linear_theory before evaluating ForestFlow P1D"
+            )
+        out_emu = self.evaluate_arinyo(emulator_parameters)
 
         list_P1D_Mpc = self.model_Arinyo.P1D_Mpc(
             self.linear,
