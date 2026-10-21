@@ -53,7 +53,7 @@ from forestflow.model_fits import ArinyoFitter, gaussian_p3d_relative_error
 # with ForestFlow because it is external simulation data.
 
 # %%
-astrid_file = Path("/home/jchaves/Proyectos/projects/lya/P3d+P1d_lya_ASTRID_new.hdf5")
+astrid_file = Path("/home/jchaves/Proyectos/projects/lya/P3d+P1d_lya_ASTRID_nomask.hdf5")
 if not astrid_file.is_file():
     raise FileNotFoundError(f"Set `astrid_file` to the Astrid HDF5 file; not found: {astrid_file}")
 
