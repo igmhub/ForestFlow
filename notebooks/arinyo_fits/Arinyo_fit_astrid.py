@@ -53,7 +53,8 @@ from forestflow.model_fits import ArinyoFitter, gaussian_p3d_relative_error
 # with ForestFlow because it is external simulation data.
 
 # %%
-astrid_file = Path("/home/jchaves/Proyectos/projects/lya/P3d+P1d_lya_ASTRID_nomask.hdf5")
+# astrid_file = Path("/home/jchaves/Proyectos/projects/lya/data/astrid/P3d+P1d_lya_ASTRID_last.hdf5")
+astrid_file = Path("/home/jchaves/Proyectos/projects/lya/data/astrid/P3d+P1d_lya_ASTRID_nomask.hdf5")
 if not astrid_file.is_file():
     raise FileNotFoundError(f"Set `astrid_file` to the Astrid HDF5 file; not found: {astrid_file}")
 
@@ -155,6 +156,7 @@ ax.legend(ncol=2, fontsize=8)
 
 # %%
 kmin_3d_Mpc, kmax_3d_Mpc = 0.01, 5.0
+# kmin_3d_Mpc, kmax_3d_Mpc = 0.01, 3.0
 kmin_1d_Mpc, kmax_1d_Mpc = 0.1, 3.0
 
 k3d_Mpc = np.asarray(data["k_Mpc"])
