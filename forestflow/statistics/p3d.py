@@ -243,6 +243,7 @@ def P3D_Mpc_k_mu_hybrid_averaged(
     mu_edges,
     max_discrete_modes=256,
     fine_factor=4,
+    mode_counts=None,
     **kwargs,
 ):
     """
@@ -253,6 +254,14 @@ def P3D_Mpc_k_mu_hybrid_averaged(
     use :func:`P3D_Mpc_k_mu_bin_averaged`, the phase-space continuous limit.
     This captures the sparse large-scale lattice while retaining the speed of
     continuous averaging where the mode density is high.
+
+    Without ``mode_counts``, ``k_mu_modes`` must hold the coordinates of every
+    populated cell, as returned by
+    :func:`forestflow.statistics.rebin_p3d.get_P3D_k_mu_modes`. With
+    ``mode_counts`` of shape ``(n_k, n_mu)``, as returned by
+    :func:`forestflow.statistics.rebin_p3d.get_P3D_k_mu_modes_from_edges`,
+    the counts decide which cells are empty or dense, and ``k_mu_modes`` only
+    needs the coordinates of the sparse cells.
     """
     announce_binning("hybrid")
     if P3D_model is None:
@@ -277,14 +286,29 @@ def P3D_Mpc_k_mu_hybrid_averaged(
     selected_bins = []
     selected_k = []
     selected_mu = []
+    if mode_counts is not None:
+        mode_counts = np.asarray(mode_counts)
+        if mode_counts.shape != (n_k_bins, n_mu_bins):
+            raise ValueError("mode_counts must have shape (n_k_bins, n_mu_bins)")
     for k_index in range(n_k_bins):
         for mu_index in range(n_mu_bins):
             key = f"{k_index}_{mu_index}"
             modes_k = k_mu_modes.get(key + "_k")
-            if modes_k is None or len(modes_k) == 0:
+            if mode_counts is not None:
+                count = int(mode_counts[k_index, mu_index])
+                if count == 0:
+                    output[(..., k_index, mu_index)] = np.nan
+                    continue
+                if count > max_discrete_modes:
+                    continue
+                if modes_k is None or len(modes_k) != count:
+                    raise ValueError(
+                        f"k_mu_modes lacks the {count} modes of sparse cell {key}"
+                    )
+            elif modes_k is None or len(modes_k) == 0:
                 output[(..., k_index, mu_index)] = np.nan
                 continue
-            if len(modes_k) > max_discrete_modes:
+            elif len(modes_k) > max_discrete_modes:
                 continue
             selected_bins.append((k_index, mu_index, len(modes_k)))
             selected_k.append(modes_k)

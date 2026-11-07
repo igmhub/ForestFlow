@@ -12,7 +12,68 @@ from getdist import MCSamples
 from lace.cosmo import cosmology, rescale_cosmology
 
 
-def set_getdist_samples(BAO: Any, P1D: ArrayLike) -> NDArray[Any]:
+def add_p1d_sys(
+    P1D: ArrayLike,
+    sys_shift: Any,
+    zeff: float | None = 2.33,
+    seed: int | None = 12345,
+) -> tuple[dict, dict]:
+    """
+    Add the model systematic error of ``bias_delta`` and ``beta`` to P1D samples.
+
+    Parameters
+    ----------
+    P1D : mapping
+        P1D-derived arrays as returned by
+        :func:`forestflow.priors.paper.load.load_p1d_data`.
+    sys_shift : mapping
+        Relative systematic error, ``|model/sim - 1|`` as a fraction, with
+        redshifts ``z`` and arrays ``bias_delta`` and ``beta``.
+    zeff : float, default=2.33
+        Redshift of the P1D samples.
+    seed : int, default=12345
+        Random-number generator seed.
+
+    Returns
+    -------
+    P1D_sys : dict
+        Copy of ``P1D`` with ``bias_delta``, ``beta``, ``bias_eta`` and the
+        sigma8 combinations perturbed.
+    rel_sys : dict
+        Relative systematic error of ``bias_delta`` and ``beta`` at ``zeff``.
+
+    Notes
+    -----
+    The systematic is a linear fit to ``sys_shift`` against redshift, evaluated
+    at ``zeff`` and clipped at zero. Each sample is multiplied by
+    ``1 + eps_b`` (``bias_delta``) and ``1 + eps_beta`` (``beta``), with
+    independent zero-mean Gaussian ``eps`` of that width. The derived
+    ``b_delta sigma8`` and ``b_eta f sigma8`` thus share the ``bias_delta``
+    error and stay correlated.
+    """
+    rel_sys = {}
+    for par in ["bias_delta", "beta"]:
+        fit_sys = np.polyfit(sys_shift["z"], sys_shift[par], 1)
+        rel_sys[par] = float(np.clip(np.polyval(fit_sys, zeff), 0, None))
+
+    rng = np.random.default_rng(seed=seed)
+    nn = P1D["bias_delta"].shape[0]
+    fac_b = 1 + rel_sys["bias_delta"] * rng.standard_normal(nn)
+    fac_beta = 1 + rel_sys["beta"] * rng.standard_normal(nn)
+
+    P1D_sys = {key: np.copy(val) for key, val in P1D.items()}
+    P1D_sys["bias_delta"] = P1D["bias_delta"] * fac_b
+    P1D_sys["beta"] = P1D["beta"] * fac_beta
+    P1D_sys["bias_eta"] = P1D["bias_eta"] * fac_b * fac_beta
+    P1D_sys["bias_delta_sig_8_z"] = P1D["bias_delta_sig_8_z"] * fac_b
+    P1D_sys["bias_eta_f_sig_8_z"] = P1D["bias_eta_f_sig_8_z"] * fac_b * fac_beta
+
+    return P1D_sys, rel_sys
+
+
+def set_getdist_samples(
+    BAO: Any, P1D: ArrayLike, P1D_sys: ArrayLike | None = None
+) -> NDArray[Any]:
 
     """
     Construct named GetDist containers for BAO and P1D prior samples.
@@ -25,11 +86,15 @@ def set_getdist_samples(BAO: Any, P1D: ArrayLike) -> NDArray[Any]:
     P1D : mapping
         P1D-derived arrays as returned by
         :func:`forestflow.priors.paper.load.load_p1d_data`.
+    P1D_sys : mapping, optional
+        P1D arrays including the model systematic, as returned by
+        :func:`add_p1d_sys`; stored as ``p1d_sys``.
 
     Returns
     -------
     dict of getdist.MCSamples
-        Named BAO configurations plus the ``p1d`` sample collection.
+        Named BAO configurations plus the ``p1d`` (and ``p1d_sys``) sample
+        collections.
     """
     names = [
         "b_delta_sigma8",
@@ -82,26 +147,28 @@ def set_getdist_samples(BAO: Any, P1D: ArrayLike) -> NDArray[Any]:
                 label=label_sample[key],
             )
 
-    p1d = np.vstack(
-        [
-            P1D["bias_delta_sig_8_z"],
-            P1D["bias_eta_f_sig_8_z"],
-            P1D["sig_8"],
-            P1D["sig_8_z0"],
-            P1D["fsig_8"],
-            P1D["bias_delta"],
-            P1D["beta"],
-            P1D["q1"],
-            P1D["kvav"],
-            P1D["av"],
-            P1D["bv"],
-            P1D["kp"],
-            P1D["q2"],
-            P1D["bias_eta"],
-            P1D["Delta2star"],
-            P1D["nstar"],
-        ]
-    ).T
+    def p1d_vstack(P1D: Any) -> NDArray[Any]:
+        return np.vstack(
+            [
+                P1D["bias_delta_sig_8_z"],
+                P1D["bias_eta_f_sig_8_z"],
+                P1D["sig_8"],
+                P1D["sig_8_z0"],
+                P1D["fsig_8"],
+                P1D["bias_delta"],
+                P1D["beta"],
+                P1D["q1"],
+                P1D["kvav"],
+                P1D["av"],
+                P1D["bv"],
+                P1D["kp"],
+                P1D["q2"],
+                P1D["bias_eta"],
+                P1D["Delta2star"],
+                P1D["nstar"],
+            ]
+        ).T
+
     names = [
         "b_delta_sigma8",
         "b_eta_f_sigma8",
@@ -139,11 +206,17 @@ def set_getdist_samples(BAO: Any, P1D: ArrayLike) -> NDArray[Any]:
         r"n_\star",
     ]
 
-    label_sample = {"p1d": r"DESI $P_\mathrm{1D}$"}
+    label_sample = {
+        "p1d": r"DESI $P_\mathrm{1D}$ w/o syst.",
+        "p1d_sys": r"DESI $P_\mathrm{1D}$",
+    }
+    p1d_data = {"p1d": P1D}
+    if P1D_sys is not None:
+        p1d_data["p1d_sys"] = P1D_sys
 
-    for key in ["p1d"]:
+    for key, P1D_key in p1d_data.items():
         all_samples[key] = MCSamples(
-            samples=p1d.copy(),
+            samples=p1d_vstack(P1D_key),
             names=names,
             labels=labels,
             label=label_sample[key],

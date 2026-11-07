@@ -182,10 +182,11 @@ for ii in range(10):
 # We need the value of Delta2p and np to be consistent with the cosmology provided to the Arinyo model
 
 # %%
-from forestflow.emulator.p3d_cinn import P3DEmulator
+from forestflow.emulator import load_emulator
 
 # %%
-emulator = P3DEmulator(key="forest_mpg_cinn")
+emulator = load_emulator("forest_mpg_gp")
+# emulator = load_emulator("forest_mpg_cinn")
 
 # %%
 # get Delta2_p and n_p from fiducial cosmology
@@ -197,7 +198,8 @@ print(linP_zs)
 input_emu = {
     "Delta2_p": linP_zs["Delta2_p"],
     "n_p": linP_zs["n_p"],
-    'mF': 0.23,
+    # 'mF': 0.23,
+    'mF': 0.20,
     'sigT_Mpc': 0.10,
     'gamma': 1.21,
     'kF_Mpc': 14.20
@@ -206,7 +208,35 @@ input_emu = {
 # %%
 # evaluate emulator to get the Arinyo parameters
 par_ari = emulator.evaluate(input_emu)
-par_ari
+for key in par_ari.keys():
+    print(key, np.round(par_ari[key], 2))
+
+# %%
+0.23
+
+bias -0.44
+bias_eta -0.35
+q1 0.0
+q2 0.97
+kvav 0.37
+av -0.07
+bv 1.64
+kp 14.68
+
+# %%
+0.20
+
+bias -0.45
+bias_eta -0.33
+q1 0.17
+q2 1.4
+kvav 0.45
+av -0.04
+bv 1.66
+kp 15.23
+
+# %%
+-0.44 * np.log(0.20) / np.log(0.23)
 
 # %%
 # get statistics from arinyo model using the parameters from the emulator

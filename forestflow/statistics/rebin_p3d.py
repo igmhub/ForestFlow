@@ -195,6 +195,134 @@ def get_P3D_k_mu_modes(
     return dict_out
 
 
+def _bin_lattice_plane(
+    kperp2: NDArray[Any],
+    kz: float,
+    k_iMpc_edges: NDArray[Any],
+    mu_edges: NDArray[Any],
+) -> tuple[NDArray[Any], ...]:
+    """
+    Assign the lattice modes of one ``k_z`` plane to ``(k, mu)`` cells.
+
+    The conventions follow :func:`get_P3D_k_mu_modes`: radial bins are
+    ``(lower, upper]`` except the first, which includes its lower edge, and
+    mu bins are ``[lower, upper)`` except the last, which includes ``mu=1``.
+    """
+    kk = np.sqrt(kperp2 + kz**2)
+    mu = np.divide(np.abs(kz), kk, out=np.zeros_like(kk), where=kk > 0)
+    ik = np.searchsorted(k_iMpc_edges, kk, side="left") - 1
+    ik[kk == k_iMpc_edges[0]] = 0
+    imu = np.searchsorted(mu_edges, mu, side="right") - 1
+    imu[mu == mu_edges[-1]] = len(mu_edges) - 2
+    valid = (
+        (kk > 0)
+        & (ik >= 0)
+        & (ik < len(k_iMpc_edges) - 1)
+        & (imu >= 0)
+        & (imu < len(mu_edges) - 1)
+    )
+    return kk[valid], mu[valid], ik[valid], imu[valid]
+
+
+def get_P3D_k_mu_modes_from_edges(
+    k_iMpc_edges: ArrayLike,
+    mu_edges: ArrayLike,
+    Lbox_Mpc: float,
+    max_discrete_modes: int = 256,
+) -> tuple[dict, NDArray[Any]]:
+    """
+    Count the discrete Fourier modes in arbitrary ``(k, mu)`` cells of a box.
+
+    Parameters
+    ----------
+    k_iMpc_edges : array_like
+        Increasing radial bin edges in inverse Mpc, e.g. the linear edges of
+        an external simulation measurement.
+    mu_edges : array_like
+        Increasing absolute direction-cosine edges in ``[0, 1]``.
+    Lbox_Mpc : float
+        Simulation-box side length in Mpc.
+    max_discrete_modes : int, default=256
+        Cells with at most this many modes also return their mode
+        coordinates, as needed by
+        :func:`forestflow.statistics.p3d.P3D_Mpc_k_mu_hybrid_averaged`.
+
+    Returns
+    -------
+    k_mu_modes : dict of str to ndarray
+        Mode wavenumbers and direction cosines of the populated cells with at
+        most ``max_discrete_modes`` modes, named ``"i_j_k"`` and ``"i_j_mu"``.
+    mode_counts : ndarray of shape (n_k, n_mu)
+        Number of lattice modes in every cell, counting both members of
+        conjugate pairs (the ``"full"`` convention of
+        :func:`forestflow.model_fits.gaussian_p3d_relative_error`).
+
+    Notes
+    -----
+    The lattice is ``2 pi / Lbox_Mpc`` times integer vectors and mu is
+    measured with respect to the third axis. Modes are binned one ``k_z``
+    plane at a time, so memory scales with the square of the number of modes
+    per side rather than its cube; coordinates are kept only for the sparse
+    cells.
+    """
+    k_iMpc_edges = np.asarray(k_iMpc_edges, dtype=float)
+    mu_edges = np.asarray(mu_edges, dtype=float)
+    if k_iMpc_edges.ndim != 1 or np.any(np.diff(k_iMpc_edges) <= 0):
+        raise ValueError("k_iMpc_edges must be one-dimensional and increasing")
+    if (mu_edges.ndim != 1 or np.any(np.diff(mu_edges) <= 0)
+            or mu_edges[0] < 0 or mu_edges[-1] > 1):
+        raise ValueError("mu_edges must be increasing and within [0, 1]")
+
+    k_fun = 2 * np.pi / Lbox_Mpc
+    n_k = len(k_iMpc_edges) - 1
+    n_mu = len(mu_edges) - 1
+
+    def plane_grid(nn: int) -> NDArray[Any]:
+        n1d = np.arange(-nn, nn + 1) * k_fun
+        kx, ky = np.meshgrid(n1d, n1d, indexing="ij")
+        return kx**2 + ky**2
+
+    # first pass: mode counts of every cell
+    nn = int(k_iMpc_edges[-1] // k_fun) + 1
+    kperp2 = plane_grid(nn)
+    mode_counts = np.zeros((n_k, n_mu), dtype=int)
+    for nz in range(-nn, nn + 1):
+        _, _, ik, imu = _bin_lattice_plane(kperp2, nz * k_fun, k_iMpc_edges, mu_edges)
+        np.add.at(mode_counts, (ik, imu), 1)
+
+    # second pass: coordinates of the sparse cells only
+    sparse = (mode_counts > 0) & (mode_counts <= max_discrete_modes)
+    k_mu_modes = {}
+    if not np.any(sparse):
+        return k_mu_modes, mode_counts
+
+    nn = int(k_iMpc_edges[np.nonzero(sparse)[0].max() + 1] // k_fun) + 1
+    kperp2 = plane_grid(nn)
+    cell_ids, k_list, mu_list = [], [], []
+    for nz in range(-nn, nn + 1):
+        kk, mu, ik, imu = _bin_lattice_plane(kperp2, nz * k_fun, k_iMpc_edges, mu_edges)
+        keep = sparse[ik, imu]
+        cell_ids.append(ik[keep] * n_mu + imu[keep])
+        k_list.append(kk[keep])
+        mu_list.append(mu[keep])
+    cell_ids = np.concatenate(cell_ids)
+    k_all = np.concatenate(k_list)
+    mu_all = np.concatenate(mu_list)
+
+    order = np.argsort(cell_ids, kind="stable")
+    cell_ids, k_all, mu_all = cell_ids[order], k_all[order], mu_all[order]
+    unique_ids, starts = np.unique(cell_ids, return_index=True)
+    stops = np.append(starts[1:], len(cell_ids))
+    for cell, start, stop in zip(unique_ids, starts, stops):
+        flag = f"{cell // n_mu}_{cell % n_mu}"
+        k_mu_modes[flag + "_k"] = k_all[start:stop]
+        k_mu_modes[flag + "_mu"] = mu_all[start:stop]
+        if stop - start != mode_counts[cell // n_mu, cell % n_mu]:
+            raise RuntimeError("inconsistent lattice mode counts")
+
+    return k_mu_modes, mode_counts
+
+
 def p3d_allkmu(
     model: Callable[..., Any],
     zs: Any,

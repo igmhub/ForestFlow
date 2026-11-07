@@ -16,7 +16,10 @@ import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 from forestflow.model.arinyo import ArinyoModel
 from forestflow.statistics.p3d import P3D_Mpc_k_mu_hybrid_averaged, announce_binning
-from forestflow.statistics.rebin_p3d import get_P3D_k_mu_modes
+from forestflow.statistics.rebin_p3d import (
+    get_P3D_k_mu_modes,
+    get_P3D_k_mu_modes_from_edges,
+)
 from .data import FitData
 from .errors import _get_err_p1d, _get_err_p3d
 from lace.cosmo import cosmology
@@ -232,6 +235,8 @@ class ArinyoFitter:
 
         self._direct_p3d = not is_mpg
         self._p3d_averaging = "hybrid" if is_mpg else "centres"
+        self._k_mu_mode_counts = None
+        self._max_discrete_modes = 256
         if is_mpg:
             self._prepare_mpg_hybrid_geometry()
         else:
@@ -265,6 +270,11 @@ class ArinyoFitter:
         p1d_Mpc: ArrayLike,
         std_p1d: ArrayLike,
         ini_params: Mapping[str, Any] | None = None,
+        k3d_edges: ArrayLike | None = None,
+        mu_edges: ArrayLike | None = None,
+        boxsize_Mpc: float | None = None,
+        k_mu_geometry: tuple[dict, ArrayLike] | None = None,
+        max_discrete_modes: int = 256,
     ) -> None:
         """
         Prepare arbitrary P3D and P1D measurements for a direct Arinyo fit.
@@ -275,6 +285,13 @@ class ArinyoFitter:
         simulation or measurement such as Astrid. Wavenumbers are in Mpc^-1;
         P3D and P1D are in Mpc^3 and Mpc, respectively.
 
+        By default the model P3D is evaluated at the supplied bin centres.
+        When the bin edges and the box geometry of the measurement are known,
+        pass ``k3d_edges``, ``mu_edges`` and either ``boxsize_Mpc`` or a
+        precomputed ``k_mu_geometry``: P3D is then hybrid mode-averaged as for
+        MP-Gadget, with exact lattice modes in cells with at most
+        ``max_discrete_modes`` modes and continuous bin averages above.
+
         Parameters
         ----------
         z : float
@@ -283,15 +300,30 @@ class ArinyoFitter:
             Parameters accepted by :class:`lace.cosmo.cosmology.Cosmology`.
         k3d_Mpc, mu3d, p3d_Mpc, std_p3d : array_like
             Matching P3D coordinates, values, and positive fractional errors.
+            Empty cells may be NaN in ``p3d_Mpc`` and ``std_p3d``; the
+            objective skips them, as for MP-Gadget.
         k1d_Mpc, p1d_Mpc, std_p1d : array_like
             Matching P1D coordinates, values, and positive fractional errors.
         ini_params : mapping, optional
             Initial Arinyo parameters; model defaults are used if omitted.
+        k3d_edges : array_like, optional
+            Radial bin edges of the supplied P3D rows, length ``n_k + 1``.
+        mu_edges : array_like, optional
+            Direction-cosine bin edges of the P3D columns, length ``n_mu + 1``.
+        boxsize_Mpc : float, optional
+            Box side length in Mpc, used to build the lattice modes.
+        k_mu_geometry : tuple, optional
+            Output of
+            :func:`forestflow.statistics.rebin_p3d.get_P3D_k_mu_modes_from_edges`
+            for ``k3d_edges`` and ``mu_edges``, to avoid recomputing it.
+        max_discrete_modes : int, default=256
+            Largest cell mode count evaluated on exact lattice modes.
 
         Raises
         ------
         ValueError
-            If corresponding arrays differ in shape or an error is non-positive.
+            If corresponding arrays differ in shape, an error is non-positive,
+            or the hybrid geometry is incomplete or inconsistent.
         """
         k3d_Mpc = np.asarray(k3d_Mpc, dtype=float)
         mu3d = np.asarray(mu3d, dtype=float)
@@ -311,12 +343,53 @@ class ArinyoFitter:
         if np.any(std_p3d <= 0) or np.any(std_p1d <= 0):
             raise ValueError("relative uncertainties must be positive")
 
+        hybrid_args = (k3d_edges, mu_edges)
+        use_hybrid = any(arg is not None for arg in hybrid_args) or (
+            boxsize_Mpc is not None or k_mu_geometry is not None
+        )
+        if use_hybrid:
+            if k3d_edges is None or mu_edges is None or (
+                boxsize_Mpc is None and k_mu_geometry is None
+            ):
+                raise ValueError(
+                    "hybrid averaging needs k3d_edges, mu_edges, and "
+                    "boxsize_Mpc or k_mu_geometry"
+                )
+            k3d_edges = np.asarray(k3d_edges, dtype=float)
+            mu_edges = np.asarray(mu_edges, dtype=float)
+            if p3d_Mpc.shape != (len(k3d_edges) - 1, len(mu_edges) - 1):
+                raise ValueError("P3D shape must be (len(k3d_edges)-1, len(mu_edges)-1)")
+            if k_mu_geometry is None:
+                k_mu_geometry = get_P3D_k_mu_modes_from_edges(
+                    k3d_edges,
+                    mu_edges,
+                    Lbox_Mpc=boxsize_Mpc,
+                    max_discrete_modes=max_discrete_modes,
+                )
+            k_mu_modes, mode_counts = k_mu_geometry
+            mode_counts = np.asarray(mode_counts)
+            if mode_counts.shape != p3d_Mpc.shape:
+                raise ValueError("k_mu_geometry does not match the P3D shape")
+            # empty cells are NaN in the model and skipped by the objective,
+            # as for MP-Gadget; a measured cell must contain lattice modes
+            if np.any((mode_counts == 0) & np.isfinite(p3d_Mpc)):
+                raise ValueError("measured P3D cells without lattice modes")
+
         power_model = ArinyoModel(cosmology.Cosmology(cosmo_params))
         linear = power_model.linear.get_linear_theory(z)
         defaults = power_model.default_params if ini_params is None else ini_params
         self._direct_p3d = True
-        self._p3d_averaging = "centres"
-        self._warn_non_mpg_centre_evaluation()
+        if use_hybrid:
+            self._p3d_averaging = "hybrid"
+            self._mpg_k_mu_modes = k_mu_modes
+            self._k_mu_mode_counts = mode_counts
+            self._max_discrete_modes = max_discrete_modes
+            self.k_bin_edges_fit = k3d_edges
+            self.mu_bin_edges = mu_edges
+        else:
+            self._p3d_averaging = "centres"
+            self._k_mu_mode_counts = None
+            self._warn_non_mpg_centre_evaluation()
         self.data = FitData(
             z=float(z),
             linear=linear,
@@ -567,7 +640,8 @@ class ArinyoFitter:
         -------
         p3d : ndarray
             Model P3D. This is hybrid mode-averaged for MP-Gadget data and
-            point-evaluated for direct measurements.
+            for direct measurements prepared with their bin geometry, and
+            point-evaluated otherwise.
         p1d : ndarray
             Point-evaluated model P1D.
 
@@ -588,12 +662,15 @@ class ArinyoFitter:
                 k_mu_modes=self._mpg_k_mu_modes,
                 k_iMpc_edges=self.k_bin_edges_fit,
                 mu_edges=self.mu_bin_edges,
+                max_discrete_modes=getattr(self, "_max_discrete_modes", 256),
+                mode_counts=getattr(self, "_k_mu_mode_counts", None),
             )
             if p3d.shape != self.data.p3d.shape:
                 raise ValueError(
-                    "MP-Gadget hybrid P3D geometry does not match the selected "
-                    "measurement grid; call prepare_simulation(..., is_mpg=False) "
-                    "only for a non-MP-Gadget dataset."
+                    "Hybrid P3D geometry does not match the selected "
+                    "measurement grid; for an MP-Gadget archive call "
+                    "prepare_simulation(..., is_mpg=False) only for a "
+                    "non-MP-Gadget dataset."
                 )
         else:
             announce_binning("centres")
@@ -906,6 +983,105 @@ class ArinyoFitter:
 
         self._warn_if_final_parameters_near_bounds()
         return self.result
+
+    def fit_nelder_mead(
+        self,
+        x0: ArrayLike | None = None,
+        chi2_tol: float = 0.1,
+        neval: int = 1000,
+        max_restarts: int = 50,
+        verbose: bool = True,
+    ) -> Any:
+        """
+        Fit with repeated bounded Nelder-Mead searches in unit-cube coordinates.
+
+        Follows the cup1d minimizer: parameters are mapped to ``[0, 1]`` with
+        :attr:`bounds`, so the default initial simplex (a 5% step in each
+        coordinate) has the same relative size for every parameter. Each search
+        stops when the objective changes by less than ``chi2_tol`` across the
+        simplex (and the simplex is smaller than ``1e-6``). Searches restart
+        from the best point until one converges, or until two consecutive
+        restarts each improve the objective by at most ``chi2_tol``.
+
+        Parameters
+        ----------
+        x0 : array-like, optional
+            Initial vector. If omitted, uses prepared initialization parameters.
+        chi2_tol : float, default=0.1
+            Absolute objective tolerance, for :meth:`chi2`.
+        neval : int, default=1000
+            Maximum function evaluations and iterations per search.
+        max_restarts : int, default=50
+            Maximum number of searches.
+        verbose : bool, default=True
+            Print the objective after each search.
+
+        Returns
+        -------
+        scipy.optimize.OptimizeResult
+            Result of the last search, with ``x`` and ``fun`` replaced by the
+            best point and objective; also stored on :attr:`result`.
+
+        Raises
+        ------
+        ValueError
+            If the fitter has no finite bounds.
+        """
+        if self.bounds is None:
+            raise ValueError("fit_nelder_mead requires finite bounds")
+        bounds = np.asarray(self.bounds, dtype=float)
+        if not np.all(np.isfinite(bounds)) or np.any(bounds[:, 1] <= bounds[:, 0]):
+            raise ValueError("fit_nelder_mead requires finite, increasing bounds")
+        low, width = bounds[:, 0], bounds[:, 1] - bounds[:, 0]
+
+        def to_cube(x: ArrayLike) -> NDArray[Any]:
+            return (np.asarray(x, dtype=float) - low) / width
+
+        def from_cube(u: ArrayLike) -> NDArray[Any]:
+            return low + np.asarray(u, dtype=float) * width
+
+        if x0 is None:
+            x0 = self.params_from_dict(self.data.ini_params.copy())
+        best_cube = np.clip(to_cube(x0), 0.0, 1.0)
+        best_chi2 = self.chi2(from_cube(best_cube))
+        if verbose:
+            print(f"Start   chi2={best_chi2:.4f}")
+
+        rep = 0
+        for ii in range(max_restarts):
+            result = minimize(
+                lambda u: self.chi2(from_cube(u)),
+                best_cube,
+                method="Nelder-Mead",
+                bounds=((0.0, 1.0),) * len(best_cube),
+                options={
+                    "fatol": chi2_tol,
+                    "xatol": 1e-6,
+                    "maxiter": neval,
+                    "maxfev": neval,
+                },
+            )
+            improvement = best_chi2 - result.fun
+            if improvement > 0:
+                best_chi2 = result.fun
+                best_cube = result.x.copy()
+            if verbose:
+                print(f"Search {ii:2d}   chi2={best_chi2:.4f}   Δ={improvement:.4f}")
+
+            if result.success:
+                break
+            rep = 0 if improvement > chi2_tol else rep + 1
+            if rep >= 2:
+                break
+
+        result.x = from_cube(best_cube)
+        result.fun = best_chi2
+        self.result = result
+        self.best_params = result.x.copy()
+        self.best_chi2 = best_chi2
+
+        self._warn_if_final_parameters_near_bounds()
+        return result
 
     def plot_fit(
         self,

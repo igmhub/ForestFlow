@@ -10,15 +10,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
 import matplotlib.ticker as mticker
+import matplotlib.colors as mcolors
 
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
 from getdist import plots
-from forestflow.priors.paper import set_samples
+from forestflow.priors.paper import importance, set_samples
 
 
-def plot_bsig8_betafsigma8(samples: ArrayLike, ftsize: int | None=18) -> None:
+def plot_bsig8_betafsigma8(samples: ArrayLike, ftsize: int | None = 18) -> None:
 
     # --- plotting ---
     """
@@ -83,8 +84,7 @@ def plot_bsig8_betafsigma8(samples: ArrayLike, ftsize: int | None=18) -> None:
     plt.savefig("figs/nocomb_bdsig8_befsig8.png")
 
 
-def plot_bao_biases(samples: ArrayLike, ftsize: int | None=22) -> None:
-
+def plot_bao_biases(samples: ArrayLike, ftsize: int | None = 22) -> None:
     """
     Plot BAO-only constraints on legacy bias and beta parameters.
 
@@ -153,60 +153,237 @@ def plot_bao_biases(samples: ArrayLike, ftsize: int | None=22) -> None:
     plt.savefig("figs/bao_biases.png")
 
 
-def plot_comb_bdsig8_befsig8(samples: ArrayLike, ftsize: int | None=24) -> None:
-
-    # --- plotting ---
+def plot_comb_bdsig8_befsig8(
+    samples: ArrayLike,
+    ftsize: int | None = 24,
+    p1d_key: str | None = "p1d",
+    comb_key: str | list[str] | None = "p1d_dr2",
+    p1d_ref_key: str | None = None,
+    fname: str | None = "comb_bdsig8_befsig8",
+    params: list[str] | None = ("b_delta_sigma8", "b_eta_f_sigma8"),
+    param_limits: Mapping[str, tuple[float, float]] | None = None,
+    lim_frac: float | None = 0.01,
+    lim_pad: float | None = 0.1,
+) -> None:
     """
     Plot P1D, DR2 BAO, and combined bias-amplitude constraints.
 
     Parameters
     ----------
     samples : mapping of getdist.MCSamples
-        Containers keyed by ``p1d``, ``dr2_hsnr``, and ``p1d_dr2``. The P1D
-        smoothing settings are updated in place.
+        Containers keyed by ``p1d_key``, ``dr2_hsnr``, and ``comb_key``. The
+        P1D smoothing settings are updated in place.
     ftsize : int, default=24
         Base font size in points.
+    p1d_key : str, default="p1d"
+        P1D samples, e.g. ``"p1d_sys"`` to include the model systematic.
+    comb_key : str or list of str, default="p1d_dr2"
+        P1D + BAO samples, e.g. ``"p1d_sys_dr2"``. With a list, the first is
+        filled and the others, e.g. combinations with a P1D-BAO correlation,
+        are drawn as lines.
+    p1d_ref_key : str, optional
+        Extra P1D samples drawn for reference with a long-dashed line, e.g.
+        ``"p1d"`` when ``p1d_key="p1d_sys"``.
+    fname : str, default="comb_bdsig8_befsig8"
+        Output file name, without folder and extension.
+    params : sequence of str, default=("b_delta_sigma8", "b_eta_f_sigma8")
+        Parameters to plot, e.g. ``("b_delta_sigma8", "beta")``.
+    param_limits : mapping, optional
+        Axis limits per parameter, ``{name: (min, max)}``. By default they
+        span the P1D and combined samples (not BAO), from the ``lim_frac``
+        to the ``1 - lim_frac`` quantile, widened by ``lim_pad`` times the
+        range on each side.
+    lim_frac : float, default=0.01
+        Tail fraction for the default limits.
+    lim_pad : float, default=0.1
+        Fractional padding for the default limits.
 
     Notes
     -----
-    Writes ``figs/comb_bdsig8_befsig8.{pdf,png}``.
+    Writes ``figs/<fname>.{pdf,png}``.
     """
     g = plots.get_subplot_plotter(width_inch=8)
     g.settings.lab_fontsize = ftsize + 2
     g.settings.axes_fontsize = ftsize
-    g.settings.legend_fontsize = ftsize
+    g.settings.legend_fontsize = ftsize - 4
     g.settings.num_plot_contours = 2  # 68%, 95%
 
-    samples["p1d"].updateSettings(
-        {
-            "smooth_scale_2D": 0.5,
-            "smooth_scale_1D": 0.5,
-        }
-    )
+    keys_p1d = [p1d_key] if p1d_ref_key is None else [p1d_ref_key, p1d_key]
+    for key in keys_p1d:
+        samples[key].updateSettings(
+            {
+                "smooth_scale_2D": 0.5,
+                "smooth_scale_1D": 0.5,
+            }
+        )
+
+    # filled P1D and BAO: light blue and long dashed (P1D w/o syst.), dark blue
+    # and dashed (P1D with syst.), light orange and dot-dashed (BAO);
+    # combinations as green lines with alpha=0.8
+    light_blue, dark_blue, light_orange = "#9ecae1", "#2166ac", "#fdae6b"
+    long_dash = (0, (10, 4))
+    comb_keys = [comb_key] if isinstance(comb_key, str) else list(comb_key)
+
+    if p1d_ref_key is None:
+        chains = [samples[p1d_key]]
+        colors = [light_blue]
+        ls = ["--"]
+    else:
+        # larger P1D + syst. contour first, so the reference stays visible
+        chains = [samples[p1d_key], samples[p1d_ref_key]]
+        colors = [dark_blue, light_blue]
+        # getdist passes the style of filled contours to matplotlib as is, which
+        # does not take dash tuples: dashed here, long dashed after plotting
+        ls = ["--", "--"]
+    chains += [samples["dr2_hsnr"]]
+    colors += [light_orange]
+    ls += ["-."]
+    filled = [True] * len(chains)
+    contour_args = [{}] * len(chains)
+
+    # solid, dotted, dash-dot-dot; distinct from the P1D and BAO styles
+    comb_ls = ["-", ":", (0, (6, 2, 1, 2, 1, 2))]
+    chains += [samples[key] for key in comb_keys]
+    colors += ["C2"] * len(comb_keys)
+    filled += [False] * len(comb_keys)
+    ls += [comb_ls[jj % len(comb_ls)] for jj in range(len(comb_keys))]
+    contour_args += [{"alpha": 0.8}] * len(comb_keys)
+
+    if param_limits is None:
+        # narrow limits from P1D and combinations; BAO is much wider
+        chains_lim = [ch for ch in chains if ch is not samples["dr2_hsnr"]]
+        param_limits = {}
+        for par in params:
+            low = min(ch.confidence(par, lim_frac, upper=False) for ch in chains_lim)
+            high = max(ch.confidence(par, lim_frac, upper=True) for ch in chains_lim)
+            pad = lim_pad * (high - low)
+            param_limits[par] = (low - pad, high + pad)
 
     g.triangle_plot(
-        [
-            samples["p1d"],
-            samples["dr2_hsnr"],
-            samples["p1d_dr2"],
-        ],
-        filled=[False, False, True],
-        params=["b_delta_sigma8", "b_eta_f_sigma8"],
-        contour_colors=["C0", "C1", "C2"],
-        contour_ls=[
-            "-.",
-            "--",
-            "-",
-        ],
-        contour_lws=[3.0, 3.0, 3.0],
+        chains,
+        filled=filled,
+        params=list(params),
+        param_limits=param_limits,
+        contour_colors=colors,
+        contour_ls=ls,
+        contour_lws=[3.0] * len(chains),
+        contour_args=contour_args,
     )
 
+    # long dashes for the P1D w/o syst. lines, identified by their colour
+    def is_light_blue(color: Any) -> bool:
+        rgba = np.atleast_2d(mcolors.to_rgba_array(color))
+        return rgba.size > 0 and np.allclose(
+            rgba[:, :3], mcolors.to_rgb(light_blue), atol=1e-3
+        )
+
+    for ax in g.fig.axes:
+        for line in ax.lines:
+            if is_light_blue(line.get_color()):
+                line.set_linestyle(long_dash)
+        for coll in ax.collections:
+            if len(coll.get_edgecolor()) and is_light_blue(coll.get_edgecolor()):
+                coll.set_linestyle(long_dash)
+    legend = getattr(g, "legend", None)
+    if legend is not None:
+        for handle in legend.legend_handles:
+            if hasattr(handle, "get_color") and is_light_blue(handle.get_color()):
+                handle.set_linestyle(long_dash)
+
     plt.tight_layout()
-    plt.savefig("figs/comb_bdsig8_befsig8.pdf")
-    plt.savefig("figs/comb_bdsig8_befsig8.png")
+    plt.savefig("figs/" + fname + ".pdf")
+    plt.savefig("figs/" + fname + ".png")
 
 
-def plot_comb_bd_be_beta(samples: ArrayLike, ftsize: int | None=20) -> None:
+def plot_comb_bdsig8_befsig8_corr(
+    samples: ArrayLike,
+    p1d_key: str | None = "p1d",
+    bao_key: str | None = "dr2_hsnr",
+    rhos: ArrayLike | None = (0.0, 0.1, 0.3),
+    ftsize: int | None = 24,
+    fname: str | None = "comb_bdsig8_befsig8_corr",
+) -> dict:
+    """
+    Plot the P1D + BAO combination for several P1D-BAO correlations.
+
+    Parameters
+    ----------
+    samples : mapping of getdist.MCSamples
+        Containers keyed by ``p1d_key`` and ``bao_key``.
+    p1d_key : str, default="p1d"
+        P1D samples, e.g. ``"p1d_sys"`` to include the model systematic.
+    bao_key : str, default="dr2_hsnr"
+        BAO samples.
+    rhos : sequence of float, default=(0, 0.1, 0.3)
+        Correlations between the P1D and BAO measurements.
+    ftsize : int, default=24
+        Base font size in points.
+    fname : str, default="comb_bdsig8_befsig8_corr"
+        Output file name, without folder and extension.
+
+    Returns
+    -------
+    dict
+        Combined mean and covariance of ``b_delta_sigma8`` and
+        ``b_eta_f_sigma8`` for each correlation.
+
+    Notes
+    -----
+    Both measurements are approximated as 2D Gaussians and combined with
+    :func:`forestflow.priors.paper.importance.combine_gaussian_corr`; at
+    ``rho=0`` this should match the importance-sampled combination. Draws 68%
+    contours and writes ``figs/<fname>.{pdf,png}``.
+    """
+    from matplotlib.lines import Line2D
+
+    fit_p1d = importance.fit_gaussian(samples[p1d_key], make_plot=False)
+    fit_bao = importance.fit_gaussian(samples[bao_key], make_plot=False)
+
+    g = plots.get_single_plotter(width_inch=8)
+    g.settings.lab_fontsize = ftsize + 2
+    g.settings.axes_fontsize = ftsize
+    g.settings.num_plot_contours = 1  # 68%
+    g.plot_2d(
+        [samples[p1d_key], samples[bao_key]],
+        "b_delta_sigma8",
+        "b_eta_f_sigma8",
+        filled=[False, False],
+        colors=["C0", "C1"],
+        ls=["-.", "--"],
+        lws=[3.0, 3.0],
+    )
+    ax = g.get_axes()
+
+    handles = [
+        Line2D([], [], color="C0", ls="-.", lw=3, label=samples[p1d_key].label),
+        Line2D([], [], color="C1", ls="--", lw=3, label=samples[bao_key].label),
+    ]
+
+    out = {}
+    for jj, rho in enumerate(rhos):
+        mean, cov = importance.combine_gaussian_corr(fit_p1d, fit_bao, rho)
+        out[rho] = {"mean": mean, "cov": cov}
+        err = np.sqrt(np.diag(cov))
+        print(
+            f"rho={rho:.2f}: b_delta_sigma8 = {mean[0]:.4f} +- {err[0]:.4f}, "
+            f"b_eta_f_sigma8 = {mean[1]:.4f} +- {err[1]:.4f}, "
+            f"r = {cov[0, 1] / err[0] / err[1]:.3f}"
+        )
+        ell = importance.gaussian_ellipse(mean, cov)
+        ax.plot(ell[0], ell[1], color="C" + str(jj + 2), lw=2.5)
+        handles.append(
+            Line2D([], [], color="C" + str(jj + 2), lw=2.5, label=rf"$\rho={rho}$")
+        )
+
+    ax.legend(handles=handles, fontsize=ftsize - 6)
+    plt.tight_layout()
+    plt.savefig("figs/" + fname + ".pdf")
+    plt.savefig("figs/" + fname + ".png")
+
+    return out
+
+
+def plot_comb_bd_be_beta(samples: ArrayLike, ftsize: int | None = 20) -> None:
 
     # --- plotting ---
     """
@@ -251,7 +428,7 @@ def plot_comb_bd_be_beta(samples: ArrayLike, ftsize: int | None=20) -> None:
     plt.savefig("figs/comb_bd_be_beta.png")
 
 
-def plot_sig8(samples: ArrayLike, ftsize: int | None=20) -> None:
+def plot_sig8(samples: ArrayLike, ftsize: int | None = 20) -> None:
 
     # DESY6 Table IV https://arxiv.org/pdf/2601.14559
     # DES 3x2pt LCDM
@@ -360,7 +537,7 @@ def plot_sig8(samples: ArrayLike, ftsize: int | None=20) -> None:
     plt.savefig("figs/sig8.png")
 
 
-def plot_sig8z(samples: ArrayLike, ftsize: int | None=20) -> None:
+def plot_sig8z(samples: ArrayLike, ftsize: int | None = 20) -> None:
 
     # load CMB-SPA
     """
@@ -490,7 +667,7 @@ def plot_sig8z(samples: ArrayLike, ftsize: int | None=20) -> None:
     return
 
 
-def plot_fsig8z(samples: ArrayLike, ftsize: int | None=20) -> None:
+def plot_fsig8z(samples: ArrayLike, ftsize: int | None = 20) -> None:
 
     # load CMB-SPA
     """
@@ -609,7 +786,7 @@ def plot_fsig8z(samples: ArrayLike, ftsize: int | None=20) -> None:
     plt.savefig("figs/fsig8z.png")
 
 
-def plot_sig8z233(samples: ArrayLike, ftsize: int | None=20) -> None:
+def plot_sig8z233(samples: ArrayLike, ftsize: int | None = 20) -> None:
     # --- plotting ---
     """
     Plot one-dimensional sigma8(z=2.33) posterior comparisons.
@@ -650,7 +827,7 @@ def plot_sig8z233(samples: ArrayLike, ftsize: int | None=20) -> None:
     plt.savefig("figs/sig8z233.png")
 
 
-def plot_compressed(samples: ArrayLike, ftsize: int | None=20) -> None:
+def plot_compressed(samples: ArrayLike, ftsize: int | None = 20) -> None:
     # --- plotting ---
     """
     Plot compressed linear-power posterior constraints.
@@ -693,7 +870,7 @@ def plot_compressed(samples: ArrayLike, ftsize: int | None=20) -> None:
     plt.savefig("figs/delta2star_nstar.png")
 
 
-def plot_bdelta_beta_beta(samples: ArrayLike, ftsize: int | None=20) -> None:
+def plot_bdelta_beta_beta(samples: ArrayLike, ftsize: int | None = 20) -> None:
 
     # --- plotting ---
     """
@@ -735,8 +912,7 @@ def plot_bdelta_beta_beta(samples: ArrayLike, ftsize: int | None=20) -> None:
     plt.savefig("figs/bdelta_beta_beta.png")
 
 
-def plot_P3D_small_params(samples: ArrayLike, ftsize: int | None=20) -> None:
-
+def plot_P3D_small_params(samples: ArrayLike, ftsize: int | None = 20) -> None:
     """
     Plot P1D and combined nonlinear Arinyo-parameter constraints.
 
@@ -778,7 +954,6 @@ def plot_P3D_small_params(samples: ArrayLike, ftsize: int | None=20) -> None:
 
 
 def table_cosmo_igm(dict_out_all: Mapping[str, Any]) -> Any:
-
     """
     Print a LaTeX-style table of IGM summary statistics by redshift.
 
@@ -788,7 +963,8 @@ def table_cosmo_igm(dict_out_all: Mapping[str, Any]) -> Any:
         Mapping with ``zs`` and ``emu_params`` sample arrays for ``Delta2_p``,
         ``mF``, ``sigT_Mpc``, ``gamma``, and ``kF_Mpc``.
     """
-    def format_pm(val: Any, err: ArrayLike, sig: int | None=2) -> Any:
+
+    def format_pm(val: Any, err: ArrayLike, sig: int | None = 2) -> Any:
         """
         Format a value and uncertainty using significant uncertainty digits.
 
@@ -832,7 +1008,63 @@ def table_cosmo_igm(dict_out_all: Mapping[str, Any]) -> Any:
     return
 
 
-def plot_bias_beta_zev(bao_data: ArrayLike, dict_mapping: Mapping[str, Any], plot_bias_eta: bool | None=False, z0: float | None=3.0, ftsize: int | None=24) -> Any:
+def _plot_sys_band(
+    ax: Any,
+    zs: ArrayLike,
+    percen: ArrayLike,
+    sys_shift: Mapping[str, Any],
+    sys_label: str,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Plot a 16-84 per cent band widened by a relative systematic error.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        Axes to draw on.
+    zs : array_like
+        Redshifts of the band.
+    percen : array_like of shape (2, n_z)
+        16th and 84th percentiles of the parameter.
+    sys_shift : mapping
+        Relative systematic error with redshifts ``z`` and one array per label.
+    sys_label : str
+        Key of the parameter in ``sys_shift``.
+
+    Returns
+    -------
+    ylow, yhigh : ndarray
+        Lower and upper edges of the widened band.
+
+    Notes
+    -----
+    A linear fit to the systematic, evaluated at ``zs`` and clipped at zero,
+    multiplies the band centre and is added in quadrature to its half-width.
+    """
+    fit_sys = np.polyfit(sys_shift["z"], sys_shift[sys_label], 1)
+    rel_sys = np.clip(np.polyval(fit_sys, zs), 0, None)
+    center = 0.5 * (percen[0] + percen[1])
+    half = 0.5 * (percen[1] - percen[0])
+    half_tot = np.sqrt(half**2 + (rel_sys * np.abs(center)) ** 2)
+    ax.fill_between(
+        zs,
+        center - half_tot,
+        center + half_tot,
+        alpha=0.12,
+        color="C0",
+        # label=r"+ model syst.",
+    )
+    return center - half_tot, center + half_tot
+
+
+def plot_bias_beta_zev(
+    bao_data: ArrayLike,
+    dict_mapping: Mapping[str, Any],
+    plot_bias_eta: bool | None = False,
+    z0: float | None = 3.0,
+    ftsize: int | None = 24,
+    sys_shift: Mapping[str, Any] | None = None,
+) -> Any:
 
     # from mpl_toolkits.axes_grid1.inset_locator import inset_axes
     """
@@ -850,6 +1082,12 @@ def plot_bias_beta_zev(bao_data: ArrayLike, dict_mapping: Mapping[str, Any], plo
         Pivot redshift for local fitting functions.
     ftsize : int, default=24
         Base font size in points.
+    sys_shift : mapping, optional
+        Relative systematic error of the model, ``|model/sim - 1|``, with
+        redshifts ``z`` and one array per parameter label. A linear fit to it,
+        evaluated at ``dict_mapping["zs"]``, is added in quadrature to the
+        half-width of the 16-84 per cent band and shown as a lighter band.
+        Parameters missing from ``sys_shift`` get no systematic band.
 
     Notes
     -----
@@ -954,6 +1192,16 @@ def plot_bias_beta_zev(bao_data: ArrayLike, dict_mapping: Mapping[str, Any], plo
         data_fig["P1D " + lab + " ylow"] = percen[0]
         data_fig["P1D " + lab + " yhigh"] = percen[1]
 
+        # statistical band plus relative systematic in quadrature
+        if (sys_shift is not None) and (lab in sys_shift):
+            ylow, yhigh = _plot_sys_band(
+                ax[ii], dict_mapping["zs"], percen, sys_shift, lab
+            )
+
+            # zenodo
+            data_fig["P1D+sys " + lab + " ylow"] = ylow
+            data_fig["P1D+sys " + lab + " yhigh"] = yhigh
+
         mean = np.mean(param, axis=0)
 
         if ii == 0:
@@ -1006,7 +1254,7 @@ def plot_bias_beta_zev(bao_data: ArrayLike, dict_mapping: Mapping[str, Any], plo
                 else:
                     expo = 0
                 bz = ((1 + zbao) / (1 + bao_plot[key]["zeff"])) ** expo
-                ax[ii].fill_between(zbao, b1 * bz, b2 * bz, color="C2", alpha=0.2)
+                ax[ii].fill_between(zbao, b1 * bz, b2 * bz, color="C2", alpha=0.12)
 
                 # zenodo
 
@@ -1055,8 +1303,49 @@ def plot_bias_beta_zev(bao_data: ArrayLike, dict_mapping: Mapping[str, Any], plo
     np.save("figs/bias_beta_BAOvsP1D.npy", data_fig)
 
 
-def plot_bias_beta_zev_val(dict_mapping: Mapping[str, Any], plot_bias_eta: bool | None=False, ftsize: int | None=24) -> None:
+#: Arinyo parameters fitted directly to the Accel2 P3D, value and error per z
+ACCEL2_ARINYO_FITS = {
+    "z": np.array([4.0, 3.6, 3.0, 2.6, 2.0]),
+    "bias_delta": {
+        "value": np.array([-0.404, -0.315, -0.209, -0.15, -0.0805]),
+        "error": np.array([0.00676, 0.00701, 0.00453, 0.00334, 0.002]),
+    },
+    "beta": {
+        "value": np.array([0.874, 1.07, 1.42, 1.61, 1.75]),
+        "error": np.array([0.0717, 0.0752, 0.0774, 0.0819, 0.0918]),
+    },
+    "q1": {
+        "value": np.array([2.55, 1.92, 1.08, 0.779, 0.562]),
+        "error": np.array([0.121, 0.239, 0.171, 0.147, 0.125]),
+    },
+    "q2": {
+        "value": np.array([-1.0, -0.684, -0.156, 0.0235, 0.16]),
+        "error": np.array([0.349, 0.33, 0.192, 0.137, 0.0835]),
+    },
+    "k_v": {
+        "value": np.array([2.67, 1.78, 1.01, 0.61, 0.152]),
+        "error": np.array([0.856, 0.516, 0.324, 0.266, 0.15]),
+    },
+    "a_v": {
+        "value": np.array([0.25, 0.353, 0.445, 0.394, 0.225]),
+        "error": np.array([0.0781, 0.093, 0.1, 0.0916, 0.068]),
+    },
+    "b_v": {
+        "value": np.array([1.65, 1.69, 1.74, 1.7, 1.54]),
+        "error": np.array([0.131, 0.126, 0.109, 0.0907, 0.0613]),
+    },
+    "k_p": {
+        "value": np.array([16.0, 18.4, 21.0, 21.3, 15.8]),
+        "error": np.array([1.9, 4.38, 6.89, 7.61, 3.63]),
+    },
+}
 
+
+def plot_bias_beta_zev_val(
+    dict_mapping: Mapping[str, Any],
+    plot_bias_eta: bool | None = False,
+    ftsize: int | None = 24,
+) -> None:
     """
     Compare inferred bias evolution with fixed validation-simulation fits.
 
@@ -1075,41 +1364,7 @@ def plot_bias_beta_zev_val(dict_mapping: Mapping[str, Any], plot_bias_eta: bool 
     """
     fig_data = {}
 
-    params_sim = {
-        "z": np.array([4.0, 3.6, 3.0, 2.6, 2.0]),
-        "bias_delta": {
-            "value": np.array([-0.404, -0.315, -0.209, -0.15, -0.0805]),
-            "error": np.array([0.00676, 0.00701, 0.00453, 0.00334, 0.002]),
-        },
-        "beta": {
-            "value": np.array([0.874, 1.07, 1.42, 1.61, 1.75]),
-            "error": np.array([0.0717, 0.0752, 0.0774, 0.0819, 0.0918]),
-        },
-        "q1": {
-            "value": np.array([2.55, 1.92, 1.08, 0.779, 0.562]),
-            "error": np.array([0.121, 0.239, 0.171, 0.147, 0.125]),
-        },
-        "q2": {
-            "value": np.array([-1.0, -0.684, -0.156, 0.0235, 0.16]),
-            "error": np.array([0.349, 0.33, 0.192, 0.137, 0.0835]),
-        },
-        "k_v": {
-            "value": np.array([2.67, 1.78, 1.01, 0.61, 0.152]),
-            "error": np.array([0.856, 0.516, 0.324, 0.266, 0.15]),
-        },
-        "a_v": {
-            "value": np.array([0.25, 0.353, 0.445, 0.394, 0.225]),
-            "error": np.array([0.0781, 0.093, 0.1, 0.0916, 0.068]),
-        },
-        "b_v": {
-            "value": np.array([1.65, 1.69, 1.74, 1.7, 1.54]),
-            "error": np.array([0.131, 0.126, 0.109, 0.0907, 0.0613]),
-        },
-        "k_p": {
-            "value": np.array([16.0, 18.4, 21.0, 21.3, 15.8]),
-            "error": np.array([1.9, 4.38, 6.89, 7.61, 3.63]),
-        },
-    }
+    params_sim = ACCEL2_ARINYO_FITS
 
     if plot_bias_eta:
         params_labels = ["bias_delta", "beta", "bias_eta"]
@@ -1180,8 +1435,12 @@ def plot_bias_beta_zev_val(dict_mapping: Mapping[str, Any], plot_bias_eta: bool 
     np.save("figs/bias_beta_accel2.npy", fig_data)
 
 
-def plot_p3d_small_z(dict_mapping: Mapping[str, Any], z0: int | None=3, ftsize: int | None=24) -> Any:
-
+def plot_p3d_small_z(
+    dict_mapping: Mapping[str, Any],
+    z0: int | None = 3,
+    ftsize: int | None = 24,
+    sys_shift: Mapping[str, Any] | None = None,
+) -> Any:
     """
     Plot fitted nonlinear Arinyo parameters as functions of redshift.
 
@@ -1193,6 +1452,12 @@ def plot_p3d_small_z(dict_mapping: Mapping[str, Any], z0: int | None=3, ftsize: 
         Pivot redshift for cubic fits.
     ftsize : int, default=24
         Base font size in points.
+    sys_shift : mapping, optional
+        Relative systematic error of the model, ``|model/sim - 1|``, with
+        redshifts ``z`` and one array per simulation label (``q1``, ``q2``,
+        ``a_v``, ``b_v``, ``k_v``, ``k_p``). A linear fit to it is added in
+        quadrature to the half-width of the 16-84 per cent band and shown as a
+        lighter band; see ``plot_bias_beta_zev``.
 
     Notes
     -----
@@ -1234,6 +1499,16 @@ def plot_p3d_small_z(dict_mapping: Mapping[str, Any], z0: int | None=3, ftsize: 
     fig, ax = plt.subplots(len(params) // 2, 2, sharex=True, figsize=(10, 10))
     ax = ax.flatten()
 
+    # labels of the parameters in sys_shift
+    sys_labels = {
+        "q1": "q1",
+        "q2": "q2",
+        "av": "a_v",
+        "bv": "b_v",
+        "kvav": "k_v",
+        "kp": "k_p",
+    }
+
     data = {}
 
     for ii, par in enumerate(params):
@@ -1250,6 +1525,16 @@ def plot_p3d_small_z(dict_mapping: Mapping[str, Any], z0: int | None=3, ftsize: 
         data_fig[params_latex[ii] + " x"] = dict_mapping["zs"]
         data_fig[params_latex[ii] + " y low"] = percen[0]
         data_fig[params_latex[ii] + " y high"] = percen[1]
+
+        # statistical band plus relative systematic in quadrature
+        if (sys_shift is not None) and (sys_labels[par] in sys_shift):
+            ylow, yhigh = _plot_sys_band(
+                ax[ii], dict_mapping["zs"], percen, sys_shift, sys_labels[par]
+            )
+
+            # zenodo
+            data_fig[params_latex[ii] + " sys y low"] = ylow
+            data_fig[params_latex[ii] + " sys y high"] = yhigh
 
         mean = np.nanmean(val_par, axis=0)
         fit_val = curve_fit(fit_func, dict_mapping["zs"], mean)[0]
@@ -1286,8 +1571,13 @@ def plot_p3d_small_z(dict_mapping: Mapping[str, Any], z0: int | None=3, ftsize: 
     np.save("figs/Arinyo_with_z.npy", data_fig)
 
 
-def plot_p3d_validation(knew3d: ArrayLike, munew3d: ArrayLike, data_pip: ArrayLike, data_sim: ArrayLike, ftsize: int | None=24) -> None:
-
+def plot_p3d_validation(
+    knew3d: ArrayLike,
+    munew3d: ArrayLike,
+    data_pip: ArrayLike,
+    data_sim: ArrayLike,
+    ftsize: int | None = 24,
+) -> None:
     """
     Compare mapped P3D predictions with Accel2 validation measurements.
 
@@ -1318,8 +1608,17 @@ def plot_p3d_validation(knew3d: ArrayLike, munew3d: ArrayLike, data_pip: ArrayLi
     p3d_accel2 = data_sim["p3d_Mpc"]
     diff_mu = data_sim["mu3d"][0, 1] - data_sim["mu3d"][0, 0]
 
-    fig, ax = plt.subplots(3, 1, figsize=(8, 10), sharex=True)
-    ax = ax.reshape(-1)
+    # each redshift: big panel with its residual panel attached below
+    fig = plt.figure(figsize=(8, 13))
+    outer = fig.add_gridspec(3, 1, hspace=0.12)
+    ax, ax_res = [], []
+    for ii in range(3):
+        inner = outer[ii].subgridspec(2, 1, height_ratios=[3, 1.2], hspace=0)
+        ax.append(fig.add_subplot(inner[0], sharex=ax[0] if ii else None))
+        ax_res.append(fig.add_subplot(inner[1], sharex=ax[0]))
+        ax[ii].tick_params(labelbottom=False)
+        if ii < 2:
+            ax_res[ii].tick_params(labelbottom=False)
 
     _ = np.argwhere(knew3d[:, 0] < 4)[:, 0]
 
@@ -1364,6 +1663,7 @@ def plot_p3d_validation(knew3d: ArrayLike, munew3d: ArrayLike, data_pip: ArrayLi
                 label = None
 
             ind2 = np.argmin(np.abs(zz[ii] - data_sim["z"]))
+            # print("z sim", data_sim["z"][ind2], "z model", zz[ii])
             yy = (p3d_accel2[ind2, :, jj] / np.median(plin[:, ii, :], axis=0))[_]
             ax[ii - 2].plot(knew3d[_, 0], yy, "C" + str(jj) + "-", label=label)
 
@@ -1371,6 +1671,39 @@ def plot_p3d_validation(knew3d: ArrayLike, munew3d: ArrayLike, data_pip: ArrayLi
                 _, 0
             ]
             data_fig["Simulation z=" + str(zz[ii]) + " mu" + str(jj) + " y"] = yy
+
+            # residuals, Pmodel/Psim - 1
+            res = p3d[:, ii, :, ind] / p3d_accel2[ind2, :, jj] - 1
+            restop = np.percentile(res[:, no_nan, :], [84], axis=(0, 1))[0]
+            resbot = np.percentile(res[:, no_nan, :], [16], axis=(0, 1))[0]
+            # ratio of medians for all wedges, bands only for the outer ones
+            resmed = (
+                np.median(p3d[:, ii, :, ind][:, no_nan, :], axis=(0, 1))
+                / p3d_accel2[ind2, :, jj]
+                - 1
+            )
+            ax_res[ii - 2].plot(knew3d[_, 0], resmed[_], "C" + str(jj) + "-")
+            if jj in (0, 3):
+                ax_res[ii - 2].fill_between(
+                    knew3d[_, 0],
+                    restop[_],
+                    resbot[_],
+                    alpha=0.3,
+                    color="C" + str(jj),
+                )
+
+            data_fig["Residual z=" + str(zz[ii]) + " mu" + str(jj) + " x"] = knew3d[
+                _, 0
+            ]
+            data_fig["Residual z=" + str(zz[ii]) + " mu" + str(jj) + " y median"] = (
+                resmed[_]
+            )
+            data_fig["Residual z=" + str(zz[ii]) + " mu" + str(jj) + " y low"] = resbot[
+                _
+            ]
+            data_fig["Residual z=" + str(zz[ii]) + " mu" + str(jj) + " y high"] = (
+                restop[_]
+            )
 
     ax[0].legend(fontsize=ftsize)
 
@@ -1391,7 +1724,17 @@ def plot_p3d_validation(knew3d: ArrayLike, munew3d: ArrayLike, data_pip: ArrayLi
             ncol=1,
         )
 
-    fig.supylabel(r"$P(k)/P_\mathrm{lin}(k)$", fontsize=ftsize + 2)
+    for ii in range(3):
+        ax[ii].set_ylabel(r"$P/P_\mathrm{lin}$", fontsize=ftsize - 6)
+        ax_res[ii].axhline(0, color="k", ls=":", lw=1)
+        for yy10 in (-0.1, 0.1):
+            ax_res[ii].axhline(yy10, color="k", ls="--", lw=1)
+        ax_res[ii].set_ylabel(
+            r"$P_\mathrm{model}/P_\mathrm{sim}-1$", fontsize=ftsize - 6
+        )
+        ax_res[ii].tick_params(axis="both", which="major", labelsize=ftsize - 6)
+        ax_res[ii].set_ylim(-0.25, 0.25)
+        ax_res[ii].set_yticks([-0.2, 0, 0.2])
 
     labs = [r"$z=2.6$", r"$z=3.0$", r"$z=3.6$"]
     ylabpos = [0.2, 0.35, 0.6]
@@ -1399,12 +1742,13 @@ def plot_p3d_validation(knew3d: ArrayLike, munew3d: ArrayLike, data_pip: ArrayLi
         ax[ii].text(0.04, ylabpos[ii], labs[ii], fontsize=ftsize)
 
     for ii in range(3):
-        ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
+        ax[ii].tick_params(axis="both", which="major", labelsize=ftsize - 6)
 
-    ax[-1].set_xlabel(r"$k\, [1/\mathrm{Mpc}]$", fontsize=ftsize)
+    ax_res[-1].set_xlabel(r"$k\, [1/\mathrm{Mpc}]$", fontsize=ftsize - 6)
 
-    plt.xscale("log")
-    plt.tight_layout()
+    ax[0].set_xscale("log")
+    fig.subplots_adjust(left=0.16, right=0.97, top=0.99, bottom=0.06)
+    fig.align_ylabels()
     plt.savefig("figs/forestflow_p3d_accel2.png")
     plt.savefig("figs/forestflow_p3d_accel2.pdf")
     np.save("figs/forestflow_p3d_accel2.npy", data_fig)

@@ -13,8 +13,7 @@ from astropy.io import fits
 from lace.cosmo import cosmology
 
 
-def load_BAO_data(nn: int | None=10000) -> NDArray[Any]:
-
+def load_BAO_data(nn: int | None = 10000) -> NDArray[Any]:
     """
     Load hard-coded DR1/DR2 BAO chains and derived bias combinations.
 
@@ -120,8 +119,11 @@ def load_BAO_data(nn: int | None=10000) -> NDArray[Any]:
     return BAO
 
 
-def load_p1d_data(lab_sample: str | None="desi", zeff: float | None=2.33) -> NDArray[Any]:
-
+def load_p1d_data(
+    lab_sample: str | None = "desi",
+    zeff: float | None = 2.33,
+    emu_type: str | None = "legacy",
+) -> NDArray[Any]:
     """
     Load P1D-chain-derived cosmology and forest quantities at one redshift.
 
@@ -141,7 +143,7 @@ def load_p1d_data(lab_sample: str | None="desi", zeff: float | None=2.33) -> NDA
     class_planck = cosmology.Cosmology(cosmo_label="Planck18")
     planck_f = class_planck.get_growth_rate(zeff)
 
-    dict_out_all = load_map_igm_p3d(lab_sample=lab_sample, zeff=zeff)
+    dict_out_all = load_map_igm_p3d(lab_sample=lab_sample, zeff=zeff, emu_type="legacy")
     dict_out_all["forest_out"]["bias"] = -np.abs(dict_out_all["forest_out"]["bias"])
 
     P1D = {}
@@ -174,7 +176,7 @@ def load_p1d_data(lab_sample: str | None="desi", zeff: float | None=2.33) -> NDA
     return P1D
 
 
-def load_p1d_chain_for_forestflow(lab_sample: str | None="desi") -> NDArray[Any]:
+def load_p1d_chain_for_forestflow(lab_sample: str | None = "desi") -> NDArray[Any]:
     """
     Load a cached P1D prior chain, generating it on cache miss.
 
@@ -207,7 +209,11 @@ def load_p1d_chain_for_forestflow(lab_sample: str | None="desi") -> NDArray[Any]
     return data
 
 
-def load_map_igm_p3d(lab_sample: str | None="desi", zeff: float | None=2.33) -> NDArray[Any]:
+def load_map_igm_p3d(
+    lab_sample: str | None = "desi",
+    zeff: float | None = 2.33,
+    emu_type: str | None = "legacy",
+) -> NDArray[Any]:
     """
     Load mapped P1D-to-P3D IGM samples, generating them on cache miss.
 
@@ -225,11 +231,17 @@ def load_map_igm_p3d(lab_sample: str | None="desi", zeff: float | None=2.33) -> 
         Mapped emulator and forest parameter samples, augmented with signed
         ``bias_delta`` and ``bias_eta`` arrays.
     """
+
+    if emu_type == "legacy":
+        fname = "int_data_figs/legacy_emu/arinyo_from_" + lab_sample + "_p1d.npy"
+    else:
+        fname = "int_data_figs/arinyo_from_" + lab_sample + "_p1d.npy"
+
     try:
-        data = np.load(
-            "int_data_figs/arinyo_from_" + lab_sample + "_p1d.npy", allow_pickle=True
-        ).item()
+        data = np.load(fname, allow_pickle=True).item()
     except:
+        print("Missing file:", fname)
+        print("Generating it from the P1D chain...")
         pars_chain = load_p1d_chain_for_forestflow(lab_sample=lab_sample)
         if lab_sample == "desi":
             store_p3d = False
@@ -243,9 +255,7 @@ def load_map_igm_p3d(lab_sample: str | None="desi", zeff: float | None=2.33) -> 
             store_p3d=store_p3d,
             store_p1d=store_p1d,
         )
-        data = np.load(
-            "int_data_figs/arinyo_from_" + lab_sample + "_p1d.npy", allow_pickle=True
-        ).item()
+        data = np.load(fname, allow_pickle=True).item()
 
     # products without a label were made with the legacy paper cINN
     print("Arinyo mapping from emulator:", data.get("emulator_label", "legacy"))
@@ -263,7 +273,6 @@ def load_map_igm_p3d(lab_sample: str | None="desi", zeff: float | None=2.33) -> 
 
 
 def load_bao_weights() -> tuple[Any, ...]:
-
     """
     Load and smooth the hard-coded DR2 BAO redshift-weight curve.
 

@@ -213,3 +213,156 @@ def combine(samples: ArrayLike, fit: Any, label: Any) -> Any:
     new_samples.label = label
 
     return new_samples
+
+
+def fit_to_mean_cov(fit: Any) -> tuple[Any, Any]:
+    """
+    Convert a :func:`fit_gaussian` output to a mean vector and covariance.
+
+    Parameters
+    ----------
+    fit : mapping
+        Output of :func:`fit_gaussian`.
+
+    Returns
+    -------
+    mean : ndarray of shape (2,)
+        Means of ``b_delta_sigma8`` and ``b_eta_f_sigma8``.
+    cov : ndarray of shape (2, 2)
+        Their covariance.
+    """
+    mean = np.array([fit["x_val"], fit["y_val"]])
+    cxy = fit["r"] * fit["x_err"] * fit["y_err"]
+    cov = np.array([[fit["x_err"] ** 2, cxy], [cxy, fit["y_err"] ** 2]])
+    return mean, cov
+
+
+def _sqrtm_sym(cov: Any) -> Any:
+    """Symmetric square root of a positive-definite matrix."""
+    eigvals, eigvecs = np.linalg.eigh(cov)
+    return eigvecs @ np.diag(np.sqrt(eigvals)) @ eigvecs.T
+
+
+def combine_gaussian_corr(fit1: Any, fit2: Any, rho: float) -> tuple[Any, Any]:
+    """
+    Combine two correlated Gaussian measurements of the same two parameters.
+
+    Parameters
+    ----------
+    fit1, fit2 : mapping
+        Outputs of :func:`fit_gaussian`, e.g. for P1D and BAO.
+    rho : float
+        Correlation between the two measurements, ``|rho| < 1``. The
+        cross-covariance is ``rho * C1^(1/2) C2^(1/2)``, with symmetric matrix
+        square roots; ``rho=0`` is the independent combination.
+
+    Returns
+    -------
+    mean : ndarray of shape (2,)
+        Combined means of ``b_delta_sigma8`` and ``b_eta_f_sigma8``.
+    cov : ndarray of shape (2, 2)
+        Combined covariance.
+
+    Notes
+    -----
+    Minimum-variance combination ``cov = (A^T S^-1 A)^-1`` and
+    ``mean = cov A^T S^-1 d``, with ``d = (mean1, mean2)``, ``A = (I, I)^T``
+    and ``S`` the joint covariance of the two measurements.
+    """
+    mean1, cov1 = fit_to_mean_cov(fit1)
+    mean2, cov2 = fit_to_mean_cov(fit2)
+    cov12 = rho * _sqrtm_sym(cov1) @ _sqrtm_sym(cov2)
+
+    joint_cov = np.block([[cov1, cov12], [cov12.T, cov2]])
+    icov = np.linalg.inv(joint_cov)
+    amat = np.vstack([np.eye(2), np.eye(2)])
+    cov = np.linalg.inv(amat.T @ icov @ amat)
+    mean = cov @ amat.T @ icov @ np.concatenate([mean1, mean2])
+    return mean, cov
+
+
+def gaussian_ellipse(mean: Any, cov: Any, chi2: float | None = 2.30) -> Any:
+    """
+    Points on the ``chi2`` contour of a 2D Gaussian.
+
+    Parameters
+    ----------
+    mean : array_like of shape (2,)
+        Gaussian mean.
+    cov : array_like of shape (2, 2)
+        Gaussian covariance.
+    chi2 : float, default=2.30
+        Contour level, 2.30 for 68% and 5.99 for 95%.
+
+    Returns
+    -------
+    ndarray of shape (2, 400)
+        Contour coordinates.
+    """
+    theta = np.linspace(0, 2 * np.pi, 400)
+    circle = np.vstack([np.cos(theta), np.sin(theta)])
+    ellipse = _sqrtm_sym(cov) @ circle * np.sqrt(chi2)
+    return ellipse + np.asarray(mean)[:, None]
+
+
+def combine_corr(
+    samples: Any, fit_p1d: Any, fit_bao: Any, rho: float, label: Any
+) -> Any:
+    """
+    Return P1D samples reweighted to a P1D + BAO combination with correlation.
+
+    Parameters
+    ----------
+    samples : getdist.MCSamples
+        P1D samples, left unmodified.
+    fit_p1d, fit_bao : mapping
+        Outputs of :func:`fit_gaussian` for the P1D and BAO samples.
+    rho : float
+        Correlation between the P1D and BAO measurements, see
+        :func:`combine_gaussian_corr`.
+    label : str
+        Label assigned to the copied samples.
+
+    Returns
+    -------
+    getdist.MCSamples
+        Copied samples with importance weights applied.
+
+    Notes
+    -----
+    The weights are the ratio of the combined Gaussian to the Gaussian fit to
+    the P1D samples. For ``rho=0`` this ratio is the BAO Gaussian, so the
+    result matches :func:`combine`.
+    """
+    p1, p2 = "b_delta_sigma8", "b_eta_f_sigma8"
+
+    params = samples.getParams()
+    x = getattr(params, p1)
+    y = getattr(params, p2)
+
+    mean, cov = combine_gaussian_corr(fit_p1d, fit_bao, rho)
+    err = np.sqrt(np.diag(cov))
+    chi2_comb = gaussian_chi2(
+        x, y, mean[0], mean[1], err[0], err[1], cov[0, 1] / err[0] / err[1]
+    )
+    chi2_p1d = gaussian_chi2(
+        x,
+        y,
+        fit_p1d["x_val"],
+        fit_p1d["y_val"],
+        fit_p1d["x_err"],
+        fit_p1d["y_err"],
+        fit_p1d["r"],
+    )
+    logw = 0.5 * (chi2_comb - chi2_p1d)
+
+    new_samples = deepcopy(samples)
+    new_weights = samples.weights * np.exp(-(logw - np.min(logw)))
+    new_samples.setSamples(
+        samples.samples,
+        weights=new_weights,
+        loglikes=samples.loglikes,
+    )
+    new_samples.label = label
+
+    return new_samples

@@ -50,8 +50,6 @@ rcParams["font.family"] = "STIXGeneral"
 
 from forestflow.priors.paper import load, set_samples, plots, importance
 
-np.__version__
-
 # %% [markdown]
 # beta = biaseta * f(z) / biasdelta
 #
@@ -73,7 +71,9 @@ np.__version__
 
 # %%
 BAO = load.load_BAO_data()
-P1D = load.load_p1d_data()
+P1D = load.load_p1d_data(emu_type="legacy")
+
+sys_shift = np.load("int_data_figs/legacy_emu/accel2_priors_sys_shift.npy", allow_pickle=True).item()
 
 # %%
 print("P1D", "dr1_hsnr", "dr2_hsnr")
@@ -93,7 +93,12 @@ for key in ["bias_delta_sig_8_z", "bias_eta_f_sig_8_z"]:
     )
 
 # %%
-samples = set_samples.set_getdist_samples(BAO, P1D)
+# P1D samples including the model systematic of bias_delta and beta, from the
+# comparison with Accel2 (relative error, linear fit evaluated at z=2.33)
+P1D_sys, rel_sys = set_samples.add_p1d_sys(P1D, sys_shift)
+print(rel_sys)
+
+samples = set_samples.set_getdist_samples(BAO, P1D, P1D_sys=P1D_sys)
 samples.keys()
 
 # %% [markdown]
@@ -124,6 +129,22 @@ for label in fits.keys():
     samples[labs_comb[label]] = importance.combine(
         samples["p1d"], fits[label], label_sample[label]
     )
+
+# same for P1D including the model systematic
+samples["p1d_sys_dr2"] = importance.combine(
+    samples["p1d_sys"], fits["dr2_hsnr"], r"$P_\mathrm{1D}$ + BAO, $\rho=0$"
+)
+
+# P1D + syst. + BAO assuming a correlation rho=0.2 between P1D and BAO (rho=0 is
+# p1d_sys_dr2 above)
+fit_p1d_sys = importance.fit_gaussian(samples["p1d_sys"], make_plot=False)
+samples["p1d_sys_dr2_rho02"] = importance.combine_corr(
+    samples["p1d_sys"],
+    fit_p1d_sys,
+    fits["dr2_hsnr"],
+    0.2,
+    r"$P_\mathrm{1D}$ + BAO, $\rho=0.2$",
+)
 
 # %% [markdown]
 # ### Plots
@@ -158,7 +179,57 @@ for p in samples["p1d_dr2"].getParamNames().names:
 # %%
 
 # %%
+# P1D (dotted), P1D + syst., BAO, and P1D + syst. + BAO for rho=0 (filled) and
+# rho=0.2
+plots.plot_comb_bdsig8_befsig8(
+    samples,
+    p1d_key="p1d_sys",
+    comb_key=["p1d_sys_dr2", "p1d_sys_dr2_rho02"],
+    p1d_ref_key="p1d",
+    fname="comb_bdsig8_befsig8_sys_rho",
+)
+
+# %%
+# same samples, b_delta sigma8 vs beta
+plots.plot_comb_bdsig8_befsig8(
+    samples,
+    p1d_key="p1d_sys",
+    comb_key=["p1d_sys_dr2", "p1d_sys_dr2_rho02"],
+    p1d_ref_key="p1d",
+    fname="comb_bdsig8_beta_sys_rho",
+    params=["b_delta_sigma8", "beta"],
+)
+
+# %%
+# original figure, without systematic
 plots.plot_comb_bdsig8_befsig8(samples)
+
+# %%
+# including the model systematic in P1D, original P1D contour dotted
+plots.plot_comb_bdsig8_befsig8(
+    samples,
+    p1d_key="p1d_sys",
+    comb_key="p1d_sys_dr2",
+    p1d_ref_key="p1d",
+    fname="comb_bdsig8_befsig8_sys",
+)
+
+# %% [markdown]
+# Combination assuming a correlation rho between P1D and BAO (Gaussian
+# approximation; rho=0 should match the importance-sampled combination)
+
+# %%
+comb_corr = plots.plot_comb_bdsig8_befsig8_corr(samples, p1d_key="p1d")
+
+# %%
+comb_corr_sys = plots.plot_comb_bdsig8_befsig8_corr(
+    samples, p1d_key="p1d_sys", fname="comb_bdsig8_befsig8_corr_sys"
+)
+
+# %%
+# check: importance-sampled combinations, to compare with rho=0 above
+for key in ["p1d_dr2", "p1d_sys_dr2"]:
+    print(key, samples[key].getMeans()[:2], np.sqrt(np.diag(samples[key].cov()[:2, :2])))
 
 # %%
 

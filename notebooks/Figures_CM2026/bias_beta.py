@@ -35,7 +35,8 @@ np.__version__
 # #### Load data
 
 # %%
-dict_mapping = load.load_map_igm_p3d()
+dict_mapping = load.load_map_igm_p3d(emu_type="legacy")
+sys_shift = np.load("int_data_figs/legacy_emu/accel2_priors_sys_shift.npy", allow_pickle=True).item()
 
 # %% [markdown]
 # Table with output of P1D chain
@@ -47,12 +48,12 @@ plots.table_cosmo_igm(dict_mapping)
 bao_data = load.load_BAO_data()
 
 # %%
-plots.plot_bias_beta_zev(bao_data, dict_mapping)
-# plt.gcf().savefig("bias_beta_BAOvsP1D.png")
-# plt.gcf().savefig("bias_beta_BAOvsP1D.pdf")
+plots.plot_bias_beta_zev(bao_data, dict_mapping, sys_shift=sys_shift)
+plt.gcf().savefig("bias_beta_BAOvsP1D.png")
+plt.gcf().savefig("bias_beta_BAOvsP1D.pdf")
 
 # %%
-plots.plot_p3d_small_z(dict_mapping)
+plots.plot_p3d_small_z(dict_mapping, sys_shift=None)
 
 # %% [markdown]
 # The comparison between the P1D from `lace_mpg` and from ForestFlow for points of the
