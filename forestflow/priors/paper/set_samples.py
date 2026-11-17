@@ -28,7 +28,9 @@ def add_p1d_sys(
         :func:`forestflow.priors.paper.load.load_p1d_data`.
     sys_shift : mapping
         Relative systematic error, ``|model/sim - 1|`` as a fraction, with
-        redshifts ``z`` and arrays ``bias_delta`` and ``beta``.
+        redshifts ``z`` and arrays ``bias_delta`` and ``beta``. If it also has
+        ``bias_eta``, the independent errors are those of ``bias_delta`` and
+        ``bias_eta``, and ``beta`` follows from them (see Notes).
     zeff : float, default=2.33
         Redshift of the P1D samples.
     seed : int, default=12345
@@ -40,26 +42,36 @@ def add_p1d_sys(
         Copy of ``P1D`` with ``bias_delta``, ``beta``, ``bias_eta`` and the
         sigma8 combinations perturbed.
     rel_sys : dict
-        Relative systematic error of ``bias_delta`` and ``beta`` at ``zeff``.
+        Relative systematic error at ``zeff`` of the parameters with an
+        independent error (``bias_delta`` and ``beta``, or ``bias_delta`` and
+        ``bias_eta``).
 
     Notes
     -----
     The systematic is a linear fit to ``sys_shift`` against redshift, evaluated
-    at ``zeff`` and clipped at zero. Each sample is multiplied by
+    at ``zeff`` and clipped at zero. By default, each sample is multiplied by
     ``1 + eps_b`` (``bias_delta``) and ``1 + eps_beta`` (``beta``), with
-    independent zero-mean Gaussian ``eps`` of that width. The derived
-    ``b_delta sigma8`` and ``b_eta f sigma8`` thus share the ``bias_delta``
-    error and stay correlated.
+    independent zero-mean Gaussian ``eps`` of that width, and ``bias_eta`` by
+    their product. If ``sys_shift`` has ``bias_eta``, ``bias_delta`` and
+    ``bias_eta`` get independent factors ``1 + eps_b`` and ``1 + eps_eta``,
+    and ``beta = bias_eta f / bias_delta`` is multiplied by their ratio. The
+    derived ``b_delta sigma8`` and ``b_eta f sigma8`` thus share the
+    ``bias_delta`` error and stay correlated.
     """
+    eta_independent = "bias_eta" in sys_shift
+    pars = ["bias_delta", "bias_eta"] if eta_independent else ["bias_delta", "beta"]
     rel_sys = {}
-    for par in ["bias_delta", "beta"]:
+    for par in pars:
         fit_sys = np.polyfit(sys_shift["z"], sys_shift[par], 1)
         rel_sys[par] = float(np.clip(np.polyval(fit_sys, zeff), 0, None))
 
     rng = np.random.default_rng(seed=seed)
     nn = P1D["bias_delta"].shape[0]
     fac_b = 1 + rel_sys["bias_delta"] * rng.standard_normal(nn)
-    fac_beta = 1 + rel_sys["beta"] * rng.standard_normal(nn)
+    if eta_independent:
+        fac_beta = (1 + rel_sys["bias_eta"] * rng.standard_normal(nn)) / fac_b
+    else:
+        fac_beta = 1 + rel_sys["beta"] * rng.standard_normal(nn)
 
     P1D_sys = {key: np.copy(val) for key, val in P1D.items()}
     P1D_sys["bias_delta"] = P1D["bias_delta"] * fac_b

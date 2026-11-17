@@ -302,3 +302,63 @@ def load_bao_weights() -> tuple[Any, ...]:
     hist_smooth = savgol_filter(hist, window_length=101, polyorder=3)
 
     return zhist, hist_smooth
+
+
+# fixed relative systematic errors of the "fixed" option of load_sys_shift,
+# independent errors on bias_delta and bias_eta; the error of beta is propagated
+SYS_FIXED = {"bias_delta": 0.010, "bias_eta": 0.031}
+
+
+def load_sys_shift(
+    option: str = "accel2_offset",
+    fname: str = "int_data_figs/legacy_emu/accel2_priors_sys_offset.npy",
+    fixed: dict[str, float] | None = None,
+) -> dict[str, Any]:
+    """
+    Load the relative model systematic of ``bias_delta`` and ``beta``.
+
+    Parameters
+    ----------
+    option : {"accel2_offset", "fixed"}, default="accel2_offset"
+        ``"accel2_offset"`` reads the common-offset estimate saved by the
+        ``accel2_priors`` notebook, independent errors on ``bias_delta`` and
+        ``beta``. ``"fixed"`` uses constant relative errors, ``SYS_FIXED``
+        unless ``fixed`` is given, on the redshifts of that file.
+    fname : str
+        File written by ``accel2_priors``, relative to the working directory.
+    fixed : dict, optional
+        Independent relative errors, as fractions, of ``bias_delta`` and
+        ``bias_eta``.
+
+    Returns
+    -------
+    dict
+        Same layout as ``sys_shift``: redshifts ``z`` and one array of
+        relative errors per parameter, as read by ``plots._plot_sys_band`` and
+        ``set_samples.add_p1d_sys``. For ``"fixed"``, it also contains
+        ``bias_eta``, which tells ``add_p1d_sys`` that the independent errors
+        are those of ``bias_delta`` and ``bias_eta``, and ``beta`` holds the
+        propagated error of ``beta = bias_eta f / bias_delta``,
+        ``sqrt(s_bdelta^2 + s_beta^2)`` to first order, used for the plotted
+        band.
+    """
+    sys_offset = np.load(fname, allow_pickle=True).item()
+    if option == "accel2_offset":
+        return sys_offset
+    if option == "fixed":
+        values = SYS_FIXED if fixed is None else fixed
+        zz = np.asarray(sys_offset["z"], dtype=float)
+        s_b, s_eta = float(values["bias_delta"]), float(values["bias_eta"])
+        s_beta = np.hypot(s_b, s_eta)
+        return {
+            "z": zz,
+            "bias_delta": np.full(len(zz), s_b),
+            "bias_eta": np.full(len(zz), s_eta),
+            "beta": np.full(len(zz), s_beta),
+            "meta": {
+                "method": "fixed relative errors on bias_delta and bias_eta, "
+                          "beta propagated to first order",
+                "values": {"bias_delta": s_b, "bias_eta": s_eta, "beta": s_beta},
+            },
+        }
+    raise ValueError(f"Unknown option {option!r}; use 'accel2_offset' or 'fixed'")

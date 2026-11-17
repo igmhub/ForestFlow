@@ -261,7 +261,7 @@ class ArinyoFitter:
         self,
         *,
         z: float,
-        cosmo_params: Mapping[str, Any],
+        cosmo_params: Mapping[str, Any] | cosmology.Cosmology,
         k3d_Mpc: ArrayLike,
         mu3d: ArrayLike,
         p3d_Mpc: ArrayLike,
@@ -296,8 +296,10 @@ class ArinyoFitter:
         ----------
         z : float
             Measurement redshift.
-        cosmo_params : mapping
-            Parameters accepted by :class:`lace.cosmo.cosmology.Cosmology`.
+        cosmo_params : mapping or lace.cosmo.cosmology.Cosmology
+            Parameters accepted by :class:`lace.cosmo.cosmology.Cosmology`,
+            or an existing instance. Passing an instance reuses its CAMB
+            results, e.g. when fitting several redshifts of one simulation.
         k3d_Mpc, mu3d, p3d_Mpc, std_p3d : array_like
             Matching P3D coordinates, values, and positive fractional errors.
             Empty cells may be NaN in ``p3d_Mpc`` and ``std_p3d``; the
@@ -375,7 +377,11 @@ class ArinyoFitter:
             if np.any((mode_counts == 0) & np.isfinite(p3d_Mpc)):
                 raise ValueError("measured P3D cells without lattice modes")
 
-        power_model = ArinyoModel(cosmology.Cosmology(cosmo_params))
+        if isinstance(cosmo_params, cosmology.Cosmology):
+            cosmo = cosmo_params
+        else:
+            cosmo = cosmology.Cosmology(cosmo_params)
+        power_model = ArinyoModel(cosmo)
         linear = power_model.linear.get_linear_theory(z)
         defaults = power_model.default_params if ini_params is None else ini_params
         self._direct_p3d = True

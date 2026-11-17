@@ -73,7 +73,13 @@ from forestflow.priors.paper import load, set_samples, plots, importance
 BAO = load.load_BAO_data()
 P1D = load.load_p1d_data(emu_type="legacy")
 
-sys_shift = np.load("int_data_figs/legacy_emu/accel2_priors_sys_shift.npy", allow_pickle=True).item()
+# model systematic of bias_delta and beta, relative errors:
+#   "accel2_offset": common offset from the accel2_priors notebook (floor sigma_mu/3)
+#   "fixed": constant 1.0% for bias_delta and 3.1% for bias_eta, independent;
+#            beta = bias_eta f / bias_delta gets the propagated 3.26% (load.SYS_FIXED)
+# SYS_OPTION = "accel2_offset"
+SYS_OPTION = "fixed"
+sys_shift = load.load_sys_shift(SYS_OPTION)
 
 # %%
 print("P1D", "dr1_hsnr", "dr2_hsnr")
@@ -94,7 +100,9 @@ for key in ["bias_delta_sig_8_z", "bias_eta_f_sig_8_z"]:
 
 # %%
 # P1D samples including the model systematic of bias_delta and beta, from the
-# comparison with Accel2 (relative error, linear fit evaluated at z=2.33)
+# comparison of holography with our MCMC fits of Accel2 (accel2_priors notebook):
+# common fractional offset with a floor of sigma_mu/3, constant in z, or the
+# fixed values, depending on SYS_OPTION above
 P1D_sys, rel_sys = set_samples.add_p1d_sys(P1D, sys_shift)
 print(rel_sys)
 
@@ -135,16 +143,17 @@ samples["p1d_sys_dr2"] = importance.combine(
     samples["p1d_sys"], fits["dr2_hsnr"], r"$P_\mathrm{1D}$ + BAO, $\rho=0$"
 )
 
-# P1D + syst. + BAO assuming a correlation rho=0.2 between P1D and BAO (rho=0 is
-# p1d_sys_dr2 above)
+# P1D + syst. + BAO assuming a correlation rho=0.1 and 0.2 between P1D and BAO
+# (rho=0 is p1d_sys_dr2 above)
 fit_p1d_sys = importance.fit_gaussian(samples["p1d_sys"], make_plot=False)
-samples["p1d_sys_dr2_rho02"] = importance.combine_corr(
-    samples["p1d_sys"],
-    fit_p1d_sys,
-    fits["dr2_hsnr"],
-    0.2,
-    r"$P_\mathrm{1D}$ + BAO, $\rho=0.2$",
-)
+for rho, key in [(0.1, "p1d_sys_dr2_rho01"), (0.2, "p1d_sys_dr2_rho02")]:
+    samples[key] = importance.combine_corr(
+        samples["p1d_sys"],
+        fit_p1d_sys,
+        fits["dr2_hsnr"],
+        rho,
+        rf"$P_\mathrm{{1D}}$ + BAO, $\rho={rho}$",
+    )
 
 # %% [markdown]
 # ### Plots
@@ -179,14 +188,34 @@ for p in samples["p1d_dr2"].getParamNames().names:
 # %%
 
 # %%
-# P1D (dotted), P1D + syst., BAO, and P1D + syst. + BAO for rho=0 (filled) and
-# rho=0.2
+# P1D (with syst., filled), P1D w/o syst. (dotted), BAO, and P1D + BAO (rho=0, solid)
+legend_comb = {
+    "p1d_sys": r"$P_\mathrm{1D}$",
+    "p1d": r"$P_\mathrm{1D}$ w/o syst.",
+    "dr2_hsnr": "BAO",
+    "p1d_sys_dr2": r"$P_\mathrm{1D}$ + BAO",
+}
 plots.plot_comb_bdsig8_befsig8(
     samples,
     p1d_key="p1d_sys",
-    comb_key=["p1d_sys_dr2", "p1d_sys_dr2_rho02"],
+    comb_key="p1d_sys_dr2",
     p1d_ref_key="p1d",
-    fname="comb_bdsig8_befsig8_sys_rho",
+    fname="comb_bdsig8_befsig8_sys",
+    legend_labels=legend_comb,
+)
+
+# %%
+# P1D (with syst.) + BAO for several correlations rho between P1D and BAO
+legend_rho = {
+    "p1d_sys_dr2": r"$P_\mathrm{1D}$ + BAO, $\rho=0$",
+    "p1d_sys_dr2_rho01": r"$P_\mathrm{1D}$ + BAO, $\rho=0.1$",
+    "p1d_sys_dr2_rho02": r"$P_\mathrm{1D}$ + BAO, $\rho=0.2$",
+}
+plots.plot_comb_rho(
+    samples,
+    comb_keys=list(legend_rho),
+    legend_labels=legend_rho,
+    fname="comb_bdsig8_befsig8_sys_rhos",
 )
 
 # %%
@@ -194,10 +223,11 @@ plots.plot_comb_bdsig8_befsig8(
 plots.plot_comb_bdsig8_befsig8(
     samples,
     p1d_key="p1d_sys",
-    comb_key=["p1d_sys_dr2", "p1d_sys_dr2_rho02"],
+    comb_key="p1d_sys_dr2",
     p1d_ref_key="p1d",
     fname="comb_bdsig8_beta_sys_rho",
     params=["b_delta_sigma8", "beta"],
+    legend_labels=legend_comb,
 )
 
 # %%

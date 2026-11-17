@@ -3,6 +3,7 @@ Create figures and tables for the priors analysis.
 """
 
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
 from numpy.typing import ArrayLike
 
@@ -164,6 +165,7 @@ def plot_comb_bdsig8_befsig8(
     param_limits: Mapping[str, tuple[float, float]] | None = None,
     lim_frac: float | None = 0.01,
     lim_pad: float | None = 0.1,
+    legend_labels: Mapping[str, str] | None = None,
 ) -> None:
     """
     Plot P1D, DR2 BAO, and combined bias-amplitude constraints.
@@ -182,8 +184,8 @@ def plot_comb_bdsig8_befsig8(
         filled and the others, e.g. combinations with a P1D-BAO correlation,
         are drawn as lines.
     p1d_ref_key : str, optional
-        Extra P1D samples drawn for reference with a long-dashed line, e.g.
-        ``"p1d"`` when ``p1d_key="p1d_sys"``.
+        Extra P1D samples drawn for reference as dotted, unfilled contours,
+        e.g. ``"p1d"`` when ``p1d_key="p1d_sys"``.
     fname : str, default="comb_bdsig8_befsig8"
         Output file name, without folder and extension.
     params : sequence of str, default=("b_delta_sigma8", "b_eta_f_sigma8")
@@ -197,6 +199,9 @@ def plot_comb_bdsig8_befsig8(
         Tail fraction for the default limits.
     lim_pad : float, default=0.1
         Fractional padding for the default limits.
+    legend_labels : mapping, optional
+        Legend label per sample key, overriding the sample labels; keys not
+        given keep their sample label.
 
     Notes
     -----
@@ -217,32 +222,38 @@ def plot_comb_bdsig8_befsig8(
             }
         )
 
-    # filled P1D and BAO: light blue and long dashed (P1D w/o syst.), dark blue
-    # and dashed (P1D with syst.), light orange and dot-dashed (BAO);
-    # combinations as green lines with alpha=0.8
+    # P1D filled light blue and dashed; P1D w/o syst. (reference) dark blue
+    # dotted lines with alpha=0.7; BAO filled light orange and dot-dashed; combinations as
+    # green lines with alpha=0.8
     light_blue, dark_blue, light_orange = "#9ecae1", "#2166ac", "#fdae6b"
-    long_dash = (0, (10, 4))
     comb_keys = [comb_key] if isinstance(comb_key, str) else list(comb_key)
 
-    if p1d_ref_key is None:
-        chains = [samples[p1d_key]]
-        colors = [light_blue]
-        ls = ["--"]
+    keys = [p1d_key]
+    chains = [samples[p1d_key]]
+    colors = [light_blue]
+    ls = ["--"]
+    filled = [True]
+    if p1d_ref_key is not None:
+        keys.append(p1d_ref_key)
+        chains.append(samples[p1d_ref_key])
+        colors.append(dark_blue)
+        ls.append(":")
+        filled.append(False)
+        ref_index = len(chains) - 1
     else:
-        # larger P1D + syst. contour first, so the reference stays visible
-        chains = [samples[p1d_key], samples[p1d_ref_key]]
-        colors = [dark_blue, light_blue]
-        # getdist passes the style of filled contours to matplotlib as is, which
-        # does not take dash tuples: dashed here, long dashed after plotting
-        ls = ["--", "--"]
-    chains += [samples["dr2_hsnr"]]
-    colors += [light_orange]
-    ls += ["-."]
-    filled = [True] * len(chains)
+        ref_index = None
+    keys.append("dr2_hsnr")
+    chains.append(samples["dr2_hsnr"])
+    colors.append(light_orange)
+    ls.append("-.")
+    filled.append(True)
     contour_args = [{}] * len(chains)
+    if ref_index is not None:
+        contour_args[ref_index] = {"alpha": 0.7}
 
     # solid, dotted, dash-dot-dot; distinct from the P1D and BAO styles
     comb_ls = ["-", ":", (0, (6, 2, 1, 2, 1, 2))]
+    keys += comb_keys
     chains += [samples[key] for key in comb_keys]
     colors += ["C2"] * len(comb_keys)
     filled += [False] * len(comb_keys)
@@ -268,27 +279,107 @@ def plot_comb_bdsig8_befsig8(
         contour_ls=ls,
         contour_lws=[3.0] * len(chains),
         contour_args=contour_args,
+        legend_labels=(
+            None
+            if legend_labels is None
+            else [legend_labels.get(key, samples[key].label) for key in keys]
+        ),
     )
 
-    # long dashes for the P1D w/o syst. lines, identified by their colour
-    def is_light_blue(color: Any) -> bool:
-        rgba = np.atleast_2d(mcolors.to_rgba_array(color))
-        return rgba.size > 0 and np.allclose(
-            rgba[:, :3], mcolors.to_rgb(light_blue), atol=1e-3
-        )
+    # getdist applies contour_args only to the 2D contours: give the 1D curves
+    # and the legend entry of the reference the same alpha
+    if ref_index is not None:
+        ref_rgb = mcolors.to_rgb(dark_blue)
+        legend = getattr(g, "legend", None)
+        handles = [] if legend is None else list(legend.legend_handles)
+        for ax in g.fig.axes:
+            for line in list(ax.lines) + handles:
+                if hasattr(line, "get_color") and np.allclose(
+                    mcolors.to_rgb(line.get_color()), ref_rgb, atol=1e-3
+                ):
+                    line.set_alpha(0.7)
 
-    for ax in g.fig.axes:
-        for line in ax.lines:
-            if is_light_blue(line.get_color()):
-                line.set_linestyle(long_dash)
-        for coll in ax.collections:
-            if len(coll.get_edgecolor()) and is_light_blue(coll.get_edgecolor()):
-                coll.set_linestyle(long_dash)
-    legend = getattr(g, "legend", None)
-    if legend is not None:
-        for handle in legend.legend_handles:
-            if hasattr(handle, "get_color") and is_light_blue(handle.get_color()):
-                handle.set_linestyle(long_dash)
+    plt.tight_layout()
+    plt.savefig("figs/" + fname + ".pdf")
+    plt.savefig("figs/" + fname + ".png")
+
+
+def plot_comb_rho(
+    samples: ArrayLike,
+    comb_keys: list[str],
+    legend_labels: Mapping[str, str] | None = None,
+    ftsize: int | None = 24,
+    fname: str | None = "comb_bdsig8_befsig8_rho",
+    params: list[str] | None = ("b_delta_sigma8", "b_eta_f_sigma8"),
+    param_limits: Mapping[str, tuple[float, float]] | None = None,
+    lim_frac: float | None = 0.01,
+    lim_pad: float | None = 0.3,
+) -> None:
+    """
+    Compare P1D + BAO combinations, e.g. for several P1D-BAO correlations.
+
+    Parameters
+    ----------
+    samples : mapping of getdist.MCSamples
+        Containers keyed by ``comb_keys``.
+    comb_keys : list of str
+        Combinations to plot. The first is filled (C0, solid); the others
+        are lines (C1 dashed, C2 dotted, C3 dash-dot).
+    legend_labels : mapping, optional
+        Legend label per sample key, overriding the sample labels.
+    ftsize : int, default=24
+        Base font size in points.
+    fname : str, default="comb_bdsig8_befsig8_rho"
+        Output file name, without folder and extension.
+    params : sequence of str, default=("b_delta_sigma8", "b_eta_f_sigma8")
+        Parameters to plot.
+    param_limits : mapping, optional
+        Axis limits per parameter, ``{name: (min, max)}``. By default they span
+        the ``lim_frac`` to ``1 - lim_frac`` quantiles of all combinations,
+        widened by ``lim_pad`` times the range on each side.
+    lim_frac : float, default=0.01
+        Tail fraction for the default limits.
+    lim_pad : float, default=0.3
+        Fractional padding for the default limits.
+
+    Notes
+    -----
+    Writes ``figs/<fname>.{pdf,png}``.
+    """
+    g = plots.get_subplot_plotter(width_inch=8)
+    g.settings.lab_fontsize = ftsize + 2
+    g.settings.axes_fontsize = ftsize
+    g.settings.legend_fontsize = ftsize - 4
+    g.settings.num_plot_contours = 2  # 68%, 95%
+
+    chains = [samples[key] for key in comb_keys]
+    styles = [("C0", "-"), ("C1", "--"), ("C2", ":"), ("C3", "-.")]
+    colors = [styles[jj % len(styles)][0] for jj in range(len(chains))]
+    ls = [styles[jj % len(styles)][1] for jj in range(len(chains))]
+    filled = [True] + [False] * (len(chains) - 1)
+
+    if param_limits is None:
+        param_limits = {}
+        for par in params:
+            low = min(ch.confidence(par, lim_frac, upper=False) for ch in chains)
+            high = max(ch.confidence(par, lim_frac, upper=True) for ch in chains)
+            pad = lim_pad * (high - low)
+            param_limits[par] = (low - pad, high + pad)
+
+    g.triangle_plot(
+        chains,
+        filled=filled,
+        params=list(params),
+        param_limits=param_limits,
+        contour_colors=colors,
+        contour_ls=ls,
+        contour_lws=[3.0] * len(chains),
+        legend_labels=(
+            None
+            if legend_labels is None
+            else [legend_labels.get(key, samples[key].label) for key in comb_keys]
+        ),
+    )
 
     plt.tight_layout()
     plt.savefig("figs/" + fname + ".pdf")
@@ -1064,6 +1155,9 @@ def plot_bias_beta_zev(
     z0: float | None = 3.0,
     ftsize: int | None = 24,
     sys_shift: Mapping[str, Any] | None = None,
+    rescale_bias: bool = False,
+    rescale_zref: float = 2.33,
+    z_table: float = 3.0,
 ) -> Any:
 
     # from mpl_toolkits.axes_grid1.inset_locator import inset_axes
@@ -1088,12 +1182,34 @@ def plot_bias_beta_zev(
         evaluated at ``dict_mapping["zs"]``, is added in quadrature to the
         half-width of the 16-84 per cent band and shown as a lighter band.
         Parameters missing from ``sys_shift`` get no systematic band.
+    rescale_bias : bool, default=False
+        Plot ``bias_delta`` times ``[(1 + rescale_zref)/(1 + z)]**2.9``, the
+        evolution assumed to extrapolate the DR2 BAO band. Every element of
+        that panel is rescaled, so the BAO band becomes horizontal and the
+        values at ``rescale_zref`` are unchanged. The printed fits are those
+        of the unscaled values; the figure-data file stores the plotted ones.
+    rescale_zref : float, default=2.33
+        Reference redshift of the rescaling, the BAO effective redshift
+        (``z_eff`` in the axis label).
+    z_table : float, default=2.33
+        Redshift at which the cubic fit is evaluated; the value is printed as
+        the last column of the table of fit coefficients.
 
     Notes
     -----
     Writes PNG, PDF, and NumPy figure-data products under ``figs``.
     """
     from scipy.optimize import curve_fit
+
+    # redshift evolution of bias_delta assumed for the BAO band
+    bias_expo = 2.9
+
+    def zev_factor(lab: str, z: Any) -> Any:
+        """Rescaling of the plotted values; one unless rescaling bias_delta."""
+        z = np.asarray(z, dtype=float)
+        if rescale_bias and lab == "bias_delta":
+            return ((1 + rescale_zref) / (1 + z)) ** bias_expo
+        return np.ones_like(z)
 
     def fit_pow(z: Any, a: Any, b: Any) -> Any:
         """
@@ -1142,8 +1258,18 @@ def plot_bias_beta_zev(
         r"$\beta$",
         r"$b_\eta$",
     ]
+    # the printed table of fit coefficients refers to the unscaled values
+    table_labels = list(params_labels_latex)
+    if rescale_bias:
+        params_labels_latex[0] = (
+            r"$b_\delta\,/[(1+z)/(1+z_\mathrm{eff})]^{%g}$" % bias_expo
+        )
 
     data_fig = {}
+    if rescale_bias:
+        data_fig["rescale bias_delta"] = (
+            f"bias_delta values multiplied by [(1+{rescale_zref})/(1+z)]^{bias_expo}"
+        )
 
     fig, ax = plt.subplots(len(params_labels), 1, sharex=True, figsize=(8, 8))
 
@@ -1173,7 +1299,8 @@ def plot_bias_beta_zev(
     for ii, lab in enumerate(params_labels):
 
         param = dict_mapping["forest_out"][lab]
-        percen = np.percentile(param, [16, 84], axis=0)
+        fac_zs = zev_factor(lab, dict_mapping["zs"])
+        percen = np.percentile(param, [16, 84], axis=0) * fac_zs
 
         print(
             f"{lab} {dict_mapping['zs'][1]:.2f}: {param[:,1].mean():.4f} & {param[:,1].std():.4f}"
@@ -1184,7 +1311,7 @@ def plot_bias_beta_zev(
             percen[0],
             percen[1],
             alpha=0.3,
-            label=r"DESI $P_\mathrm{1D}$",
+            label=r"$P_\mathrm{1D}$",
         )
 
         # zenodo
@@ -1211,10 +1338,11 @@ def plot_bias_beta_zev(
             print("fit b:", popt[1], pcov[1, 1])
 
         fit_val = curve_fit(fit_pol, dict_mapping["zs"], mean)[0]
-        data[params_labels_latex[ii]] = fit_val
+        # cubic coefficients, then the fitted (unscaled) value at z_table
+        data[table_labels[ii]] = np.append(fit_val, fit_pol(z_table, *fit_val))
 
         # data[params_latex[ii]] = fit_val
-        yfit = fit_pol(zfit, *fit_val)
+        yfit = fit_pol(zfit, *fit_val) * zev_factor(lab, zfit)
         ax[ii].plot(zfit, yfit, color="C0", ls="--")
 
         # zenodo
@@ -1223,12 +1351,13 @@ def plot_bias_beta_zev(
 
         for jj, key in enumerate(bao_plot):
             dumm = np.zeros(2)
+            fac_bao = zev_factor(lab, bao_plot[key]["zeff"])
             ax[ii].errorbar(
                 dumm + bao_plot[key]["zeff"] + xdisp[jj],
-                dumm + bao_plot[key][lab]["mean"],
-                dumm + bao_plot[key][lab]["std"],
+                dumm + bao_plot[key][lab]["mean"] * fac_bao,
+                dumm + bao_plot[key][lab]["std"] * fac_bao,
                 fmt=".",
-                label=bao_plot[key]["label"],
+                label=bao_plot[key]["label"].replace("DESI ", ""),
                 color="C" + str(jj + 1),
             )
 
@@ -1242,18 +1371,21 @@ def plot_bias_beta_zev(
                 dumm + bao_plot[key]["zeff"] + xdisp[jj]
             )
             data_fig[key_lab + " " + lab + " y mean"] = (
-                dumm + bao_plot[key][lab]["mean"]
+                dumm + bao_plot[key][lab]["mean"] * fac_bao
             )
-            data_fig[key_lab + " " + lab + " y std"] = dumm + bao_plot[key][lab]["std"]
+            data_fig[key_lab + " " + lab + " y std"] = (
+                dumm + bao_plot[key][lab]["std"] * fac_bao
+            )
 
             if key == "dr2_hsnr":
                 b1 = bao_plot[key][lab]["mean"] - bao_plot[key][lab]["std"]
                 b2 = bao_plot[key][lab]["mean"] + bao_plot[key][lab]["std"]
                 if ii == 0:
-                    expo = 2.9
+                    expo = bias_expo
                 else:
                     expo = 0
                 bz = ((1 + zbao) / (1 + bao_plot[key]["zeff"])) ** expo
+                bz = bz * zev_factor(lab, zbao)
                 ax[ii].fill_between(zbao, b1 * bz, b2 * bz, color="C2", alpha=0.12)
 
                 # zenodo
@@ -1262,7 +1394,7 @@ def plot_bias_beta_zev(
                 data_fig["BAO DR2 zev " + lab + " y low"] = b1 * bz
                 data_fig["BAO DR2 zev " + lab + " y high"] = b2 * bz
 
-    ax[0].legend(fontsize=ftsize - 2)
+    ax[0].legend(fontsize=ftsize - 2, loc="upper right")
 
     for ii in range(len(params_labels)):
         ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
@@ -1341,10 +1473,104 @@ ACCEL2_ARINYO_FITS = {
 }
 
 
+def _accel2_fits_from_refit(sim_fits: Mapping[str, Any] | str | Path) -> dict:
+    """
+    Convert saved ACCEL2 Arinyo refits to the layout of ACCEL2_ARINYO_FITS.
+
+    Parameters
+    ----------
+    sim_fits : mapping or path
+        Dictionary returned by ``fit_accel2_redshifts`` in
+        ``notebooks/arinyo_fits/Arinyo_fit_accel2``, or the ``.npy`` file it
+        was saved to.
+
+    Returns
+    -------
+    dict
+        ``z`` and, per article parameter plus ``bias_eta``, a mapping with
+        ``value`` and ``error``. The refits are point estimates, so ``error``
+        is None.
+    """
+    if not isinstance(sim_fits, Mapping):
+        sim_fits = np.load(sim_fits, allow_pickle=True).item()
+    out = {"z": np.asarray(sim_fits["z"], dtype=float)}
+    for key, value in sim_fits["Arinyo_article"].items():
+        out[key] = {"value": np.asarray(value, dtype=float), "error": None}
+    out["bias_eta"] = {
+        "value": np.asarray(sim_fits["Arinyo"]["bias_eta"], dtype=float),
+        "error": None,
+    }
+    return out
+
+
+def load_accel2_mcmc_fits(
+    folder: str | Path,
+    tag: str = "k3d3.5_k1d1",
+    sim_label: str = "l160_r25",
+) -> dict:
+    """
+    Collect the per-redshift ACCEL2 MCMC errors in the ACCEL2_ARINYO_FITS layout.
+
+    Parameters
+    ----------
+    folder : str or path
+        Folder with the ``Arinyo_mcmc_accel2_<sim_label>_z<z>_<tag>_errors.npy``
+        files written by ``notebooks/arinyo_fits/Arinyo_fit_accel2``.
+    tag : str, default="k3d3.5_k1d1"
+        Scale-cut tag in the file names.
+    sim_label : str, default="l160_r25"
+        ACCEL2 simulation label.
+
+    Returns
+    -------
+    dict
+        ``z`` (increasing) and, per article parameter plus ``bias_eta``, a
+        mapping with the posterior median ``value``, ``error`` (half the 16-84
+        per cent range) and the asymmetric ``error_minus`` and ``error_plus``.
+        ``source`` is ``"mcmc"``.
+
+    Raises
+    ------
+    FileNotFoundError
+        If no file matches.
+    ValueError
+        If the files were produced with different fit settings.
+    """
+    files = sorted(
+        Path(folder).glob(f"Arinyo_mcmc_accel2_{sim_label}_z*_{tag}_errors.npy")
+    )
+    if not files:
+        raise FileNotFoundError(f"no ACCEL2 MCMC errors in {folder} for tag {tag}")
+    entries = [np.load(fname, allow_pickle=True).item() for fname in files]
+    entries.sort(key=lambda entry: entry["z"])
+    ref = {k: v for k, v in entries[0]["settings"].items() if k != "z"}
+    for entry in entries:
+        if {k: v for k, v in entry["settings"].items() if k != "z"} != ref:
+            raise ValueError(f"MCMC at z={entry['z']} has different settings")
+
+    fields = ["value", "error", "error_minus", "error_plus"]
+    out = {
+        "z": np.array([entry["z"] for entry in entries], dtype=float),
+        "source": "mcmc",
+    }
+    for key in entries[0]["Arinyo_article"]:
+        out[key] = {
+            field: np.array([entry["Arinyo_article"][key][field] for entry in entries])
+            for field in fields
+        }
+    out["bias_eta"] = {
+        field: np.array([entry["Arinyo"]["bias_eta"][field] for entry in entries])
+        for field in fields
+    }
+    return out
+
+
 def plot_bias_beta_zev_val(
     dict_mapping: Mapping[str, Any],
     plot_bias_eta: bool | None = False,
     ftsize: int | None = 24,
+    sim_fits: Mapping[str, Any] | str | Path | None = None,
+    sim_errorbars: bool = True,
 ) -> None:
     """
     Compare inferred bias evolution with fixed validation-simulation fits.
@@ -1357,14 +1583,38 @@ def plot_bias_beta_zev_val(
         Whether to plot the velocity-gradient bias.
     ftsize : int, default=24
         Base font size in points.
+    sim_fits : mapping or path, optional
+        Simulation values to compare with:
+
+        * None (default): the ACCEL2 article fits
+          (:data:`ACCEL2_ARINYO_FITS`, with errors);
+        * the output of :func:`load_accel2_mcmc_fits`: our MCMC fits, with
+          asymmetric 16-84 per cent errors; outputs get the suffix ``_mcmc``;
+        * the dictionary saved by ``fit_accel2_redshifts`` in
+          ``notebooks/arinyo_fits/Arinyo_fit_accel2``, or the path to its
+          ``.npy`` file: minimizer refits without errors; outputs get the
+          suffix ``_refit``.
+    sim_errorbars : bool, default=True
+        Draw the error bars of the simulation values, when available. The
+        simulation values are plotted as circles.
 
     Notes
     -----
     Writes PNG, PDF, and NumPy figure-data products under ``figs``.
+    The article fits have no ``bias_eta``; with ``plot_bias_eta`` the
+    simulation values are then omitted from that panel.
     """
     fig_data = {}
 
-    params_sim = ACCEL2_ARINYO_FITS
+    if sim_fits is None:
+        params_sim = ACCEL2_ARINYO_FITS
+        out_suffix = ""
+    elif isinstance(sim_fits, Mapping) and sim_fits.get("source") == "mcmc":
+        params_sim = sim_fits
+        out_suffix = "_mcmc"
+    else:
+        params_sim = _accel2_fits_from_refit(sim_fits)
+        out_suffix = "_refit"
 
     if plot_bias_eta:
         params_labels = ["bias_delta", "beta", "bias_eta"]
@@ -1398,22 +1648,40 @@ def plot_bias_beta_zev_val(
         fig_data["Model " + lab + " y low"] = percen[0][ind_data]
         fig_data["Model " + lab + " y high"] = percen[1][ind_data]
 
-        ind_sim = params_sim["z"] >= 2.6
+        if lab not in params_sim:
+            continue
+
+        # the plotted range is 2.45 < z < 4.05
+        ind_sim = (params_sim["z"] >= 2.6) & (params_sim["z"] <= 4.0)
+        if "error_minus" in params_sim[lab]:
+            err_sim = np.vstack(
+                [
+                    params_sim[lab]["error_minus"][ind_sim],
+                    params_sim[lab]["error_plus"][ind_sim],
+                ]
+            )
+        elif params_sim[lab]["error"] is not None:
+            err_sim = params_sim[lab]["error"][ind_sim]
+        else:
+            err_sim = None
+
+        if not sim_errorbars:
+            err_sim = None
 
         ax[ii].errorbar(
             params_sim["z"][ind_sim],
             params_sim[lab]["value"][ind_sim],
-            params_sim[lab]["error"][ind_sim],
+            err_sim,
+            fmt="o",
             alpha=0.95,
             label=r"Simulation",
             color="C1",
-            linestyle="-",
             lw=2,
         )
 
         fig_data["Sim " + lab + " x"] = params_sim["z"][ind_sim]
         fig_data["Sim " + lab + " y"] = params_sim[lab]["value"][ind_sim]
-        fig_data["Sim " + lab + " y error"] = params_sim[lab]["error"][ind_sim]
+        fig_data["Sim " + lab + " y error"] = err_sim
 
     ax[0].legend(fontsize=ftsize)
 
@@ -1430,9 +1698,9 @@ def plot_bias_beta_zev_val(
 
     plt.tight_layout()
 
-    plt.savefig("figs/bias_beta_accel2.png")
-    plt.savefig("figs/bias_beta_accel2.pdf")
-    np.save("figs/bias_beta_accel2.npy", fig_data)
+    plt.savefig(f"figs/bias_beta_accel2{out_suffix}.png")
+    plt.savefig(f"figs/bias_beta_accel2{out_suffix}.pdf")
+    np.save(f"figs/bias_beta_accel2{out_suffix}.npy", fig_data)
 
 
 def plot_p3d_small_z(
@@ -1440,6 +1708,7 @@ def plot_p3d_small_z(
     z0: int | None = 3,
     ftsize: int | None = 24,
     sys_shift: Mapping[str, Any] | None = None,
+    z_table: float = 3.0,
 ) -> Any:
     """
     Plot fitted nonlinear Arinyo parameters as functions of redshift.
@@ -1458,6 +1727,9 @@ def plot_p3d_small_z(
         ``a_v``, ``b_v``, ``k_v``, ``k_p``). A linear fit to it is added in
         quadrature to the half-width of the 16-84 per cent band and shown as a
         lighter band; see ``plot_bias_beta_zev``.
+    z_table : float, default=2.33
+        Redshift at which the cubic fit is evaluated; the value is printed as
+        the last column of the table of fit coefficients.
 
     Notes
     -----
@@ -1538,7 +1810,8 @@ def plot_p3d_small_z(
 
         mean = np.nanmean(val_par, axis=0)
         fit_val = curve_fit(fit_func, dict_mapping["zs"], mean)[0]
-        data[params_latex[ii]] = fit_val
+        # cubic coefficients, then the fitted value at z_table
+        data[params_latex[ii]] = np.append(fit_val, fit_func(z_table, *fit_val))
         zplot = np.linspace(np.min(dict_mapping["zs"]), np.max(dict_mapping["zs"]), 100)
         ax[ii].plot(
             zplot,
