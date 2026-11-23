@@ -28,9 +28,7 @@ from forestflow.emulator.training import Transf_data
 
 from .network import _training_data_fingerprint, init_xavier
 
-# Bundle loaded when no key is given; clients should rely on this default
-# rather than naming the bundle themselves.
-DEFAULT_EMULATOR_KEY = "forest_mpg_cinn"
+from .labels import DEFAULT_EMULATOR_KEY  # noqa: E402  (re-exported)
 
 # Scientific domain metadata belongs to an emulator bundle, not to an inference
 # client. Bundled metadata predates this field, so these documented defaults

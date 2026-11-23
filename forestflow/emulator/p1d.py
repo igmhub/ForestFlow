@@ -11,7 +11,7 @@ import numpy as np
 from threadpoolctl import threadpool_limits
 
 from .loading import load_emulator
-from .p3d_cinn import DEFAULT_EMULATOR_KEY
+from .labels import DEFAULT_EMULATOR_KEY
 
 
 class P1DEmulator:

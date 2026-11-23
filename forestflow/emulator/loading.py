@@ -21,7 +21,10 @@ from typing import Any
 
 import forestflow
 from forestflow.emulator.arinyo_gp import ArinyoGPEmulator
-from forestflow.emulator.p3d_cinn import DEFAULT_EMULATOR_KEY, P3DEmulator
+from forestflow.emulator.labels import DEFAULT_EMULATOR_KEY
+
+# The cINN (torch) is imported only when a cINN emulator is requested, so the
+# GP emulator loads without torch.
 
 __all__ = ["EMULATOR_LABELS", "GP_EMULATOR_LABELS", "load_emulator", "load_l1o_emulator"]
 
@@ -74,6 +77,8 @@ def load_emulator(emulator_label: str | None = DEFAULT_EMULATOR_KEY, **kwargs: A
     if emulator_label in GP_EMULATOR_LABELS:
         kwargs.pop("compile_model", None)
         return ArinyoGPEmulator.load(gp_emulator_path(emulator_label), **kwargs)
+    from forestflow.emulator.p3d_cinn import P3DEmulator
+
     return P3DEmulator(key=emulator_label, **kwargs)
 
 
@@ -91,4 +96,6 @@ def load_l1o_emulator(emulator_label: str, simulation_index: int, simulation_lab
     """
     if emulator_label in GP_EMULATOR_LABELS:
         return ArinyoGPEmulator.load(gp_emulator_path(f"l1O_{simulation_label}"))
+    from forestflow.emulator.p3d_cinn import P3DEmulator
+
     return P3DEmulator(key=f"l1O/{emulator_label}_l1O_{simulation_index}")

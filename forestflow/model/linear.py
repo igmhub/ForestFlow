@@ -2,7 +2,9 @@
 LaCE-backed linear-theory adapters used by ForestFlow models.
 """
 
+from collections import OrderedDict
 from dataclasses import dataclass
+import hashlib
 from typing import Any, Sequence
 
 import numpy as np
@@ -46,7 +48,10 @@ class LinearTheory:
     batched model APIs.
     """
 
-    def __init__(self, fiducial_cosmology=None, n_k_table=2000):
+    def __init__(
+        self, fiducial_cosmology=None, n_k_table=2000, cache_fiducial_linP=True,
+        cache_size=8,
+    ):
         """
         Initialize the adapter with a fiducial LaCE cosmology.
 
@@ -61,9 +66,91 @@ class LinearTheory:
             every cell of a P3D grid dominates the cost of P1D projections;
             the tabulation is ~10x faster with max relative error ~3e-7.
             ``None`` evaluates LaCE at every requested wavenumber.
+        cache_fiducial_linP : bool, default=True
+            For a :class:`~lace.cosmo.rescale_cosmology.RescaledCosmology`
+            of ``fiducial_cosmology`` (unchanged background; only As, ns,
+            nrun, nrunrun vary), cache the fiducial linear power on each
+            requested ``(z, k)`` grid and return it times LaCE's analytic
+            primordial scaling. Likelihood calls with a fixed background
+            reuse the same grid, so the per-call spline work disappears.
+            Any other cosmology is evaluated without the cache.
+        cache_size : int, default=8
+            Maximum number of ``(z, k)`` grids retained (least recently used
+            grids are dropped first).
         """
         self.fiducial_cosmology = fiducial_cosmology or cosmology.Cosmology()
         self.n_k_table = n_k_table
+        self.cache_fiducial_linP = cache_fiducial_linP
+        self.cache_size = cache_size
+        self._fiducial_linP_cache = OrderedDict()
+
+    def clear_fiducial_linP_cache(self):
+        """Drop every cached fiducial linear-power grid."""
+        self._fiducial_linP_cache.clear()
+
+    def _uses_fiducial_cache(self, cosmo):
+        """Return whether ``cosmo`` is a primordial rescaling of the fiducial."""
+        return (
+            self.cache_fiducial_linP
+            and isinstance(cosmo, rescale_cosmology.RescaledCosmology)
+            and cosmo.fid_cosmo is self.fiducial_cosmology
+        )
+
+    def _fiducial_linP_Mpc_cached(self, z, k_iMpc):
+        """
+        Return fiducial linear power on a ``(z, k)`` grid, cached by content.
+
+        Parameters
+        ----------
+        z : float or ndarray
+            Redshift scalar, or one redshift per leading row of ``k_iMpc``.
+        k_iMpc : ndarray
+            Wavenumbers in ``1 / Mpc``.
+
+        Returns
+        -------
+        ndarray
+            Fiducial linear power in ``Mpc**3`` (read-only view of the cache).
+        """
+        z = np.asarray(z, dtype=float)
+        k_iMpc = np.ascontiguousarray(k_iMpc, dtype=float)
+        digest = hashlib.blake2b(digest_size=16)
+        digest.update(z.tobytes())
+        digest.update(k_iMpc.tobytes())
+        key = (z.shape, k_iMpc.shape, digest.hexdigest())
+        cached = self._fiducial_linP_cache.get(key)
+        if cached is not None:
+            self._fiducial_linP_cache.move_to_end(key)
+            return cached
+        fiducial = self.fiducial_cosmology
+        if z.ndim == 0:
+            value = self._linP_Mpc_tabulated(fiducial, z, k_iMpc)
+        else:
+            value = np.asarray([
+                self._linP_Mpc_tabulated(fiducial, zi, k_iMpc[iz])
+                for iz, zi in enumerate(z)
+            ])
+        value.setflags(write=False)
+        self._fiducial_linP_cache[key] = value
+        if len(self._fiducial_linP_cache) > self.cache_size:
+            self._fiducial_linP_cache.popitem(last=False)
+        return value
+
+    def _linP_Mpc_grid(self, cosmo, z, k_iMpc):
+        """
+        Evaluate linear power for one cosmology on a multidimensional k grid.
+
+        Uses the fiducial cache times the analytic primordial scaling when
+        :meth:`_uses_fiducial_cache` allows it, otherwise LaCE directly.
+        """
+        if self._uses_fiducial_cache(cosmo):
+            return self._fiducial_linP_Mpc_cached(z, k_iMpc) * cosmo.get_linP_Mpc_scaling(k_iMpc)
+        if np.ndim(z) == 0:
+            return self._linP_Mpc_tabulated(cosmo, z, k_iMpc)
+        return np.asarray([
+            self._linP_Mpc_tabulated(cosmo, zi, k_iMpc[iz])
+            for iz, zi in enumerate(z)
+        ])
 
     def _cosmology_for_parameters(self, new_cosmo_params=None):
         """
@@ -204,14 +291,9 @@ class LinearTheory:
         if z.ndim == 1 and k_iMpc.ndim == 1:
             return linear.cosmology.get_linP_Mpc(z, k_iMpc)
         if z.ndim == 0:
-            return self._linP_Mpc_tabulated(linear.cosmology, z, k_iMpc)
+            return self._linP_Mpc_grid(linear.cosmology, z, k_iMpc)
         if z.ndim == 1 and k_iMpc.ndim >= 2 and k_iMpc.shape[0] == len(z):
-            return np.asarray(
-                [
-                    self._linP_Mpc_tabulated(linear.cosmology, zi, k_iMpc[iz])
-                    for iz, zi in enumerate(z)
-                ]
-            )
+            return self._linP_Mpc_grid(linear.cosmology, z, k_iMpc)
         raise NotImplementedError(
             f"Unsupported shapes: z={z.shape}, k_iMpc={k_iMpc.shape}"
         )
@@ -250,10 +332,7 @@ class LinearTheory:
             raise ValueError("redshift grid and k_iMpc redshift axis have different lengths")
         return np.asarray(
             [
-                [
-                    self._linP_Mpc_tabulated(cosmo, z, k_iMpc[ibatch, iz])
-                    for iz, z in enumerate(linear.z)
-                ]
+                self._linP_Mpc_grid(cosmo, linear.z, k_iMpc[ibatch])
                 for ibatch, cosmo in enumerate(linear.cosmologies)
             ]
         )
