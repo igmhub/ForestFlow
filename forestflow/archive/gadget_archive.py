@@ -6,8 +6,8 @@ Utilities to load and process Arinyo/Gadget archives for ForestFlow.
 This module provides `GadgetArchive3D`, which extends
 `lace.archive.gadget_archive.GadgetArchive` with helpers to load
 training/testing data and Arinyo minimizer fits (both individual
-and redshift-parameterized), and to compute simple priors for
-Arinyo / IGM parameters.
+and redshift-parameterized), and to summarize the Arinyo fits and emulator
+inputs of the training simulations.
 """
 
 from typing import Any
@@ -17,7 +17,6 @@ import os
 import warnings
 from lace.archive.gadget_archive import GadgetArchive
 import forestflow
-from forestflow.utils import params_numpy2dict_minimizerz
 from forestflow.statistics.rebin_p3d import MPG_P3D_BINNING, get_P3D_k_mu_bin_edges
 
 # MP-Gadget snapshot convention used by ForestFlow fitting and archive tools.
@@ -96,12 +95,6 @@ class GadgetArchive3D(GadgetArchive):
             self.add_Arinyo_minimizer_indiv(
                 self.training_data, sim_label="mpg_hypercube"
             )
-            # self.add_Arinyo_minimizer_joint(
-            #     self.training_data, sim_label="mpg_hypercube"
-            # )
-            # self.add_Arinyo_minimizer_indiv_lowk(
-            #     self.training_data, sim_label="mpg_hypercube"
-            # )
             self.add_arinyo_fixp3d(self.training_data)
 
         if addcentral:
@@ -249,12 +242,10 @@ class GadgetArchive3D(GadgetArchive):
         -------
         list of dict
             Testing snapshots augmented with ``Arinyo_min`` and
-            ``Arinyo_minz`` entries where available.
+            ``arinyo_fixp3d`` entries where available.
         """
         testing_data = super().get_testing_data(sim_label, ind_rescaling=ind_rescaling)
         self.add_Arinyo_minimizer_indiv(testing_data, sim_label, kmax_3d, kmax_1d)
-        # self.add_Arinyo_minimizer_joint(testing_data, sim_label)
-        # self.add_Arinyo_minimizer_indiv_lowk(testing_data, sim_label=sim_label)
         self.add_arinyo_fixp3d(testing_data)
 
         return testing_data
@@ -392,8 +383,7 @@ class GadgetArchive3D(GadgetArchive):
 
         Fits are matched to archive entries through their complete saved
         snapshot identity, rather than through list order.  This retains the
-        corrected-fit parameters alongside the legacy ``Arinyo_min`` and
-        ``Arinyo_lowk`` fields.
+        corrected-fit parameters alongside the legacy ``Arinyo_min`` field.
 
         Parameters
         ----------
@@ -635,183 +625,63 @@ class GadgetArchive3D(GadgetArchive):
                     archive[ii]["Arinyo_min"]["q2"]
                 )
 
-    def add_Arinyo_minimizer_indiv_lowk(
-        self, archive: Any, sim_label: str | None = "mpg_hypercube"
-    ) -> None:
+    def _summarize_training_values(
+        self, zmin: float, zmax: float, values: Any, names: Any
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
         """
-        Attach low-k independent Arinyo fits to archive snapshots.
+        Summarize per-snapshot training values over a redshift interval.
 
         Parameters
         ----------
-        archive : sequence of dict
-            Snapshots mutated in place with ``Arinyo_lowk`` mappings.
-        sim_label : str, default: "mpg_hypercube"
-            Fit label. ``"mpg_seed"`` uses the central low-k fit only as an
-            initial-condition substitute.
+        zmin, zmax : float
+            Inclusive redshift bounds.
+        values : callable
+            ``values(snapshot)`` returns the mapping holding the parameters.
+        names : iterable of str
+            Parameters to summarize.
 
-        Raises
-        ------
-        ValueError
-            If the archive contains more snapshots than the low-k fit product.
+        Returns
+        -------
+        summary, samples : dict
+            ``summary`` has ``mean``, ``std``, ``min`` and ``max`` mappings;
+            ``samples`` the flattened (simulation, rescaling, redshift) values.
+            ``bias`` is summarized with a negative sign.
         """
-        # The seed simulation has no standalone low-k Arinyo fit yet.  Its
-        # measurements remain untouched; only its initial conditions use the
-        # already available central-simulation low-k fit.
-        source_label = "mpg_central" if sim_label == "mpg_seed" else sim_label
-        name_out = "Arinyo_fit_" + source_label + "_lowk.npy"
-        file = os.path.join(
-            self.base_folder, "data", "best_arinyo", "minimizer_lowk", name_out
-        )
-        if sim_label == "mpg_seed":
-            print(
-                "Using mpg_central low-k Arinyo fit only as the initial "
-                "condition for mpg_seed."
+        ind_z = np.argwhere(
+            (self.list_sim_redshifts >= zmin - 1e-3)
+            & (self.list_sim_redshifts <= zmax + 1e-3)
+        )[:, 0]
+        print("Using data from redshifts:", self.list_sim_redshifts[ind_z])
+
+        conv_z_ind = {self.list_sim_redshifts[iz]: ii for ii, iz in enumerate(ind_z)}
+        conv_sim_ind = {label: ii for ii, label in enumerate(self.list_sim_cube)}
+        shape = (len(self.list_sim_cube), len(self.scalings_avail), len(ind_z))
+        samples = {par: np.zeros(shape) for par in names}
+
+        for snapshot in self.training_data:
+            if snapshot["z"] not in conv_z_ind:
+                continue
+            index = (
+                conv_sim_ind[snapshot["sim_label"]],
+                snapshot["ind_rescaling"],
+                conv_z_ind[snapshot["z"]],
             )
-        data = np.load(file, allow_pickle=True).item()
-        n_available = next(iter(data["Arinyo"].values())).shape[0]
-        if len(archive) > n_available:
-            raise ValueError(
-                f"Low-k Arinyo fit {file} has {n_available} snapshots, but "
-                f"{sim_label} requested {len(archive)}."
-            )
+            for par in names:
+                samples[par][index] = values(snapshot)[par]
 
-        for isim in range(len(archive)):
-            archive[isim]["Arinyo_lowk"] = {}
-            for par in data["Arinyo"]:
-                archive[isim]["Arinyo_lowk"][par] = data["Arinyo"][par][isim, 0]
-            archive[isim]["Arinyo_lowk"]["beta"] = (
-                archive[isim]["f_p"]
-                * archive[isim]["Arinyo_lowk"]["bias_eta"]
-                / archive[isim]["Arinyo_lowk"]["bias"]
-            )
+        summary = {"mean": {}, "std": {}, "min": {}, "max": {}}
+        for par in samples:
+            samples[par] = samples[par].reshape(-1)
+            if par == "zs":
+                continue
+            use = -np.abs(samples[par]) if par == "bias" else samples[par]
+            summary["mean"][par] = np.mean(use)
+            summary["std"][par] = np.std(use)
+            summary["min"][par] = np.min(use)
+            summary["max"][par] = np.max(use)
+        return summary, samples
 
-    def add_Arinyo_minimizer_joint(
-        self,
-        archive: Any,
-        sim_label: Any | None = None,
-        kmax_3d: int | None = 3,
-        kmax_1d: int | None = 3,
-    ) -> Any:
-        """
-        Attach redshift-parameterized Arinyo fits to archive snapshots.
-
-        Parameters
-        ----------
-        archive : sequence of dict
-            Snapshots mutated in place with ``Arinyo_minz`` mappings.
-        sim_label : str, optional
-            Simulation label; ``"mpg_hypercube"`` selects all hypercube fits.
-        kmax_3d, kmax_1d : float, default: 3, 3
-            P3D/P1D fitting cuts in ``1 / Mpc`` encoded in fit filenames.
-        """
-
-        def get_flag_out(
-            ind_sim: Any, val_scaling: Any, kmax_3d: int | float, kmax_1d: int | float
-        ) -> Any:
-            """
-            Build the stored filename stem for one joint redshift fit.
-
-            Parameters
-            ----------
-            ind_sim : str
-                Simulation label.
-            val_scaling : float
-                Optical-depth rescaling encoded to two decimal places.
-            kmax_3d : int or float
-                Maximum three-dimensional wavenumber included in the fit.
-            kmax_1d : int or float
-                Maximum one-dimensional wavenumber included in the fit.
-
-            Returns
-            -------
-            str
-                Joint-fit product filename stem.
-            """
-            flag = (
-                "fit_sim_label_"
-                + str(ind_sim)
-                + "_val_scaling_"
-                + str(np.round(val_scaling, 2))
-                + "_kmax3d_"
-                + str(kmax_3d)
-                + "_kmax1d_"
-                + str(kmax_1d)
-            )
-            return flag
-
-        def paramz_to_paramind(z: int | float, paramz: Any) -> Any:
-            """
-            Evaluate log10-polynomial Arinyo histories at redshifts.
-
-            Parameters
-            ----------
-            z : array_like
-                Redshifts at which to evaluate the fit.
-            paramz : mapping
-                Polynomial coefficient arrays keyed by Arinyo parameter.
-
-            Returns
-            -------
-            list of dict
-                One physical parameter mapping per redshift, after exponentiating
-                the fitted base-10 polynomials.
-            """
-            paramind = []
-            for ii in range(len(z)):
-                param = {}
-                for key in paramz:
-                    param[key] = 10 ** np.poly1d(paramz[key])(z[ii])
-                paramind.append(param)
-            return paramind
-
-        if sim_label == "mpg_hypercube":
-            nsim = 30
-            arr_val_scaling = [0.9, 0.95, 1.0, 1.05, 1.1]
-        else:
-            nsim = 1
-            arr_val_scaling = [1.0]
-        z = self.list_sim_redshifts.copy()
-
-        id_sim_label = []
-        id_val_scaling = []
-        id_z = []
-        arr_params = []
-
-        for isim in range(nsim):
-            if sim_label == "mpg_hypercube":
-                ind_sim = "mpg_" + str(isim)
-            else:
-                ind_sim = sim_label
-            for val_scaling in arr_val_scaling:
-                flag = get_flag_out(ind_sim, val_scaling, kmax_3d, kmax_1d)
-                file = os.path.join(
-                    self.base_folder,
-                    "data",
-                    "best_arinyo",
-                    "minimizer_z",
-                    flag + ".npz",
-                )
-                data = np.load(file, allow_pickle=True)
-                best_params = paramz_to_paramind(z, data["best_params"].item())
-                for iz in range(len(z)):
-                    id_sim_label.append(ind_sim)
-                    id_val_scaling.append(np.round(val_scaling, 2))
-                    id_z.append(np.round(z[iz], 2))
-                    arr_params.append(best_params[iz])
-
-        id_sim_label = np.array(id_sim_label)
-        id_val_scaling = np.array(id_val_scaling)
-        id_z = np.array(id_z)
-
-        for ii in range(len(archive)):
-            _ = np.argwhere(
-                (archive[ii]["sim_label"] == id_sim_label)
-                & (np.round(archive[ii]["z"], 2) == id_z)
-                & (np.round(archive[ii]["val_scaling"], 2) == id_val_scaling)
-            )[0, 0]
-            archive[ii]["Arinyo_minz"] = params_numpy2dict_minimizerz(arr_params[_])
-
-    def get_Arinyo_priors(
+    def get_arinyo_summary(
         self,
         zmin: float,
         zmax: float,
@@ -819,11 +689,10 @@ class GadgetArchive3D(GadgetArchive):
         return_all: bool | None = False,
     ) -> dict[str, Any]:
         """
-        Compute summary priors for Arinyo fit parameters.
+        Summarize the Arinyo fits of the training simulations.
 
-        Aggregates Arinyo fit parameter values from `self.training_data`
-        within the redshift interval [zmin, zmax] and returns simple
-        summary statistics (mean, std, min, max) for each parameter.
+        Not to be confused with :func:`forestflow.priors.get_arinyo_priors`,
+        which reads priors derived from the DESI P1D posterior.
 
         Parameters
         ----------
@@ -837,88 +706,29 @@ class GadgetArchive3D(GadgetArchive):
         Returns
         -------
         dict or tuple of dict
-            Summary statistics, optionally paired with the raw flattened
-            parameter samples.
+            Summary statistics (mean, std, min, max), optionally paired with
+            the raw flattened parameter samples.
         """
-        # redshifts to be used
-        ind_z = np.argwhere(
-            (self.list_sim_redshifts >= zmin - 1e-3)
-            & (self.list_sim_redshifts <= zmax + 1e-3)
-        )[:, 0]
-        print("Using data from redshifts:", self.list_sim_redshifts[ind_z])
+        summary, samples = self._summarize_training_values(
+            zmin,
+            zmax,
+            lambda snapshot: snapshot[type_fit],
+            list(self.training_data[0][type_fit]),
+        )
+        return (summary, samples) if return_all else summary
 
-        Nsim = len(self.list_sim_cube)
-        Nz = len(ind_z)
-        Nscalings = len(self.scalings_avail)
-
-        # mapping from redshift to index
-        conv_z_ind = {}
-        for ii in range(Nz):
-            conv_z_ind[self.list_sim_redshifts[ind_z[ii]]] = ii
-
-        # mapping sim_label to index
-        conv_sim_ind = {}
-        for ii in range(len(self.list_sim_cube)):
-            conv_sim_ind[self.list_sim_cube[ii]] = ii
-
-        # create dict to store params
-        data_priors = {}
-        for par in self.training_data[0][type_fit]:
-            data_priors[par] = np.zeros((Nsim, Nscalings, Nz))
-
-        # fill dict
-        for ii in range(len(self.training_data)):
-            if self.training_data[ii]["z"] not in conv_z_ind:
-                continue
-            else:
-                indz = conv_z_ind[self.training_data[ii]["z"]]
-                indsim = conv_sim_ind[self.training_data[ii]["sim_label"]]
-                indscal = self.training_data[ii]["ind_rescaling"]
-            for par in self.training_data[ii][type_fit]:
-                data_priors[par][indsim, indscal, indz] = self.training_data[ii][
-                    type_fit
-                ][par]
-
-        for par in self.training_data[0][type_fit]:
-            data_priors[par] = data_priors[par].reshape(-1)
-
-        out_priors = {}
-        out_priors["mean"] = {}
-        out_priors["std"] = {}
-        out_priors["min"] = {}
-        out_priors["max"] = {}
-        for par in data_priors:
-            if par == "zs":
-                continue
-
-            if par == "bias":
-                use_dat = -np.abs(data_priors[par])
-            else:
-                use_dat = data_priors[par]
-
-            out_priors["mean"][par] = np.mean(use_dat)
-            out_priors["std"][par] = np.std(use_dat)
-            out_priors["min"][par] = np.min(use_dat)
-            out_priors["max"][par] = np.max(use_dat)
-
-        if return_all:
-            return out_priors, data_priors
-        else:
-            return out_priors
-
-    def get_IGM_priors(
+    def get_input_summary(
         self,
         zmin: float,
         zmax: float,
         return_all: bool | None = False,
-        IGM_params: str | None = None,
+        IGM_params: Any | None = None,
     ) -> dict[str, Any]:
         """
-        Compute priors for a set of IGM parameters over redshift.
+        Summarize the emulator inputs of the training simulations.
 
-        Gathers the requested `IGM_params` from `self.training_data`
-        within the redshift interval [zmin, zmax] and returns simple
-        summary statistics (mean, std, min, max) for each parameter.
+        Not to be confused with :func:`forestflow.priors.get_IGM_priors`,
+        which reads priors derived from the DESI P1D posterior.
 
         Parameters
         ----------
@@ -927,86 +737,17 @@ class GadgetArchive3D(GadgetArchive):
         return_all : bool, optional
             Whether to also return the flattened parameter samples.
         IGM_params : iterable of str, optional
-            Parameters to include. By default, the standard cosmological and
-            intergalactic-medium emulator inputs are used.
+            Parameters to include; by default the six emulator inputs.
 
         Returns
         -------
         dict or tuple of dict
-            Summary statistics, optionally paired with the raw flattened
-            parameter samples.
+            Summary statistics (mean, std, min, max), optionally paired with
+            the raw flattened parameter samples.
         """
-
         if IGM_params is None:
-            IGM_params = {
-                "Delta2_p",
-                "n_p",
-                "mF",
-                "sigT_Mpc",
-                "gamma",
-                "kF_Mpc",
-            }
-
-        # redshifts to be used
-        ind_z = np.argwhere(
-            (self.list_sim_redshifts >= zmin - 1e-3)
-            & (self.list_sim_redshifts <= zmax + 1e-3)
-        )[:, 0]
-        print("Using data from redshifts:", self.list_sim_redshifts[ind_z])
-
-        Nsim = len(self.list_sim_cube)
-        Nz = len(ind_z)
-        Nscalings = len(self.scalings_avail)
-
-        # mapping from redshift to index
-        conv_z_ind = {}
-        for ii in range(Nz):
-            conv_z_ind[self.list_sim_redshifts[ind_z[ii]]] = ii
-
-        # mapping sim_label to index
-        conv_sim_ind = {}
-        for ii in range(len(self.list_sim_cube)):
-            conv_sim_ind[self.list_sim_cube[ii]] = ii
-
-        # create dict to store params
-        data_priors = {}
-        for par in IGM_params:
-            data_priors[par] = np.zeros((Nsim, Nscalings, Nz))
-
-        # fill dict
-        for ii in range(len(self.training_data)):
-            if self.training_data[ii]["z"] not in conv_z_ind:
-                continue
-            else:
-                indz = conv_z_ind[self.training_data[ii]["z"]]
-                indsim = conv_sim_ind[self.training_data[ii]["sim_label"]]
-                indscal = self.training_data[ii]["ind_rescaling"]
-            for par in IGM_params:
-                data_priors[par][indsim, indscal, indz] = self.training_data[ii][par]
-
-        for par in IGM_params:
-            data_priors[par] = data_priors[par].reshape(-1)
-
-        out_priors = {}
-        out_priors["mean"] = {}
-        out_priors["std"] = {}
-        out_priors["min"] = {}
-        out_priors["max"] = {}
-        for par in data_priors:
-            if par == "zs":
-                continue
-
-            if par == "bias":
-                use_dat = -np.abs(data_priors[par])
-            else:
-                use_dat = data_priors[par]
-
-            out_priors["mean"][par] = np.mean(use_dat)
-            out_priors["std"][par] = np.std(use_dat)
-            out_priors["min"][par] = np.min(use_dat)
-            out_priors["max"][par] = np.max(use_dat)
-
-        if return_all:
-            return out_priors, data_priors
-        else:
-            return out_priors
+            IGM_params = self.emu_params
+        summary, samples = self._summarize_training_values(
+            zmin, zmax, lambda snapshot: snapshot, list(IGM_params)
+        )
+        return (summary, samples) if return_all else summary

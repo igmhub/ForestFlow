@@ -91,9 +91,10 @@ cd ForestFlow
 make install
 ```
 
-The minimal installation contains the supported cINN emulator, including its
-required torch and FrEIA dependencies. Paper-analysis helpers, cross-power,
-and MPI scripts are opt-in:
+The minimal installation runs the Gaussian-process emulator (`forest_mpg_gp`).
+The cINN emulator (`forest_mpg_cinn`) needs torch and FrEIA
+(`python -m pip install -e ".[cinn]"`). The priors analysis, cross-power,
+and MPI scripts are opt-in too; install everything with:
 
 ```bash
 make install-extended

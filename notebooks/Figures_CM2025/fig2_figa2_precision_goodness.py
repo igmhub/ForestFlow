@@ -369,7 +369,7 @@ for iz in range(len(central)):
 # combine the native 16 mu cells into four broad bins with their mode counts.
 
 # %%
-from forestflow.model_fits import ArinyoFitter
+from forestflow.fitting import ArinyoFitter
 from forestflow.statistics.rebin_p3d import rebin_P3D_Mpc_mode_weighted
 
 list_sims = Archive3D.training_data

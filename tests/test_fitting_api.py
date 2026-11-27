@@ -1,6 +1,6 @@
 import numpy as np
 
-from forestflow.model_fits import ArinyoFitter, FitData
+from forestflow.fitting import ArinyoFitter, FitData
 
 
 def test_supported_fitting_import_and_parameter_contract():
@@ -14,7 +14,7 @@ def test_supported_fitting_import_and_parameter_contract():
         "bv",
         "kp",
     )
-    assert FitData.__module__ == "forestflow.model_fits.data"
+    assert FitData.__module__ == "forestflow.fitting.data"
 
 
 def test_parameter_dict_round_trip_uses_public_order():

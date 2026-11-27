@@ -5,11 +5,9 @@ Scientific names, parameter ordering, and array contracts for ForestFlow.
 from __future__ import annotations
 
 from typing import Any
-from warnings import warn
 
 import numpy as np
-from lace.conventions import LEGACY_UNIT_KEYS, validate_wavenumber
-from lace.conventions import canonicalize_unit_keys as _lace_canonicalize_unit_keys
+from lace.conventions import validate_wavenumber
 
 ARINYO_PARAMETER_NAMES = (
     "bias",
@@ -24,45 +22,10 @@ ARINYO_PARAMETER_NAMES = (
 
 __all__ = [
     "ARINYO_PARAMETER_NAMES",
-    "LEGACY_UNIT_KEYS",
-    "canonicalize_unit_keys",
     "validate_finite_array",
     "validate_mu",
     "validate_wavenumber",
 ]
-
-
-def canonicalize_unit_keys(values: dict[str, Any]) -> dict[str, Any]:
-    """
-    Temporarily add canonical names for legacy serialized mapping keys.
-
-    Deprecated wrapper around :func:`lace.conventions.canonicalize_unit_keys`
-    that additionally emits a ``FutureWarning``.
-
-    Parameters
-    ----------
-    values : mapping
-        Serialized or legacy mapping potentially using old field names.
-
-    Returns
-    -------
-    dict
-        Shallow copy containing canonical aliases for any recognized legacy
-        fields.
-
-    Warns
-    -----
-    FutureWarning
-        New public mappings must use canonical unit-qualified names directly.
-        This helper will be removed in the next major release.
-    """
-    warn(
-        "canonicalize_unit_keys is deprecated; provide canonical "
-        "unit-qualified keys directly.",
-        FutureWarning,
-        stacklevel=2,
-    )
-    return _lace_canonicalize_unit_keys(values)
 
 
 def validate_finite_array(

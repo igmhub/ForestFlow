@@ -1,3 +1,0 @@
-"""
-Legacy ForestFlow emulator implementations.
-"""

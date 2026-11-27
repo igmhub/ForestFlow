@@ -10,7 +10,10 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import matplotlib.patches as mpatches
 
+from forestflow.plots.style import house_style
 
+
+@house_style
 def plot_motivate_model(
     knew: ArrayLike,
     munew: ArrayLike,

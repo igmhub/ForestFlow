@@ -27,7 +27,7 @@ from matplotlib import rcParams
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
-from forestflow.priors.paper import plots, load
+from forestflow.priors import loaders, plots
 
 np.__version__
 
@@ -35,14 +35,14 @@ np.__version__
 # #### Load data
 
 # %%
-dict_mapping = load.load_map_igm_p3d(emu_type="legacy")
+dict_mapping = loaders.load_map_igm_p3d(emu_type="legacy")
 # model systematic of bias_delta and beta, relative errors:
 #   "accel2_offset": common offset from the accel2_priors notebook (floor sigma_mu/3)
 #   "fixed": constant 1.0% for bias_delta and 3.1% for bias_eta, independent;
-#            beta = bias_eta f / bias_delta gets the propagated 3.26% (load.SYS_FIXED)
+#            beta = bias_eta f / bias_delta gets the propagated 3.26% (loaders.SYS_FIXED)
 # SYS_OPTION = "accel2_offset"
 SYS_OPTION = "fixed"
-sys_shift = load.load_sys_shift(SYS_OPTION)
+sys_shift = loaders.load_sys_shift(SYS_OPTION)
 
 # %% [markdown]
 # Table with output of P1D chain
@@ -51,7 +51,7 @@ sys_shift = load.load_sys_shift(SYS_OPTION)
 plots.table_cosmo_igm(dict_mapping)
 
 # %%
-bao_data = load.load_BAO_data()
+bao_data = loaders.load_BAO_data()
 
 # %%
 # rescale_bias: plot b_delta [(1+2.33)/(1+z)]^2.9, the evolution assumed for the BAO band

@@ -255,7 +255,7 @@ def get_P3D_k_mu_modes_from_edges(
     mode_counts : ndarray of shape (n_k, n_mu)
         Number of lattice modes in every cell, counting both members of
         conjugate pairs (the ``"full"`` convention of
-        :func:`forestflow.model_fits.gaussian_p3d_relative_error`).
+        :func:`forestflow.fitting.gaussian_p3d_relative_error`).
 
     Notes
     -----

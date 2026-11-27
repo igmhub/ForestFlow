@@ -3,12 +3,14 @@ LaCE-backed linear-theory adapters used by ForestFlow models.
 """
 
 from collections import OrderedDict
+import warnings
 from dataclasses import dataclass
 import hashlib
 from typing import Any, Sequence
 
 import numpy as np
 from lace.cosmo import cosmology, rescale_cosmology
+from lace.cosmo.parameters import THETA_PARAMETERS
 from scipy.interpolate import CubicSpline
 
 
@@ -170,19 +172,26 @@ class LinearTheory:
         # ``nnu`` changes the radiation content and transfer functions.  Some
         # supported LaCE releases did not include it in ``same_background``,
         # so do not permit its primordial-only rescaling path here.
-        if new_cosmo_params is not None and "nnu" in new_cosmo_params:
-            print("WARNING: computing CAMB again")
-            return cosmology.Cosmology(cosmo_params_dict=new_cosmo_params)
-        if self.fiducial_cosmology.same_background(
-            cosmo_params=new_cosmo_params
+        if not new_cosmo_params or (
+            "nnu" not in new_cosmo_params
+            and self.fiducial_cosmology.same_background(cosmo_params=new_cosmo_params)
         ):
             return rescale_cosmology.RescaledCosmology(
-                self.fiducial_cosmology, new_cosmo_params
+                self.fiducial_cosmology, new_cosmo_params or {}
             )
-        print("WARNING: computing CAMB again")
-        return cosmology.Cosmology(cosmo_params_dict=new_cosmo_params)
+        warnings.warn(
+            "the background differs from the fiducial cosmology: computing CAMB again",
+            stacklevel=2,
+        )
+        # the changes on top of the complete fiducial (not LaCE's defaults)
+        parameters = dict(self.fiducial_cosmology.input_cosmo_params_dict)
+        if any(name in THETA_PARAMETERS for name in new_cosmo_params):
+            for name in ("H0",) + THETA_PARAMETERS:
+                parameters.pop(name, None)
+        parameters.update(new_cosmo_params)
+        return cosmology.Cosmology(cosmo_params_dict=parameters)
 
-    def get_linear_theory(self, zs, new_cosmo_params=None, **_ignored):
+    def get_linear_theory(self, zs, new_cosmo_params=None, cosmology=None, **_ignored):
         """
         Return a scalar ForestFlow adapter backed directly by LaCE.
 
@@ -192,6 +201,9 @@ class LinearTheory:
             Redshift grid.
         new_cosmo_params : mapping, optional
             Cosmology changes relative to the fiducial model.
+        cosmology : lace.cosmo.base_cosmology.BaseCosmology, optional
+            The cosmology itself (e.g. built by the caller from the same
+            parameters); takes precedence over ``new_cosmo_params``.
         **_ignored
             Compatibility keywords intentionally ignored.
 
@@ -207,11 +219,15 @@ class LinearTheory:
         """
         return LinearTheoryGrid(
             z=np.atleast_1d(np.asarray(zs, dtype=float)),
-            cosmology=self._cosmology_for_parameters(new_cosmo_params),
+            cosmology=(
+                cosmology if cosmology is not None
+                else self._cosmology_for_parameters(new_cosmo_params)
+            ),
         )
 
     def get_linear_theory_batch(
-        self, zs, cosmology_parameters: Sequence[dict[str, Any]]
+        self, zs, cosmology_parameters: Sequence[dict[str, Any]] | None = None,
+        cosmologies: Sequence[Any] | None = None,
     ):
         """
         Return a batched adapter containing one LaCE cosmology per row.
@@ -222,6 +238,8 @@ class LinearTheory:
             Shared redshift grid.
         cosmology_parameters : sequence of mapping
             One physical cosmology parameter mapping per batch row.
+        cosmologies : sequence of LaCE cosmologies, optional
+            One cosmology per batch row, instead of ``cosmology_parameters``.
 
         Returns
         -------
@@ -230,7 +248,7 @@ class LinearTheory:
         """
         return LinearTheoryGrid(
             z=np.atleast_1d(np.asarray(zs, dtype=float)),
-            cosmologies=tuple(
+            cosmologies=tuple(cosmologies) if cosmologies is not None else tuple(
                 self._cosmology_for_parameters(parameters)
                 for parameters in cosmology_parameters
             ),

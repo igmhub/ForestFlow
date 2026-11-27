@@ -9,7 +9,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from forestflow.utils import sigma68
 
+from forestflow.plots.style import house_style
 
+
+@house_style
 def plot_p1d_L1O(
     z_use: Any,
     k_p1d_Mpc: ArrayLike,

@@ -48,8 +48,10 @@ LEGACY_SAMPLING = {
     "aggregation_space": "transformed",
     "draw_policy": "legacy",
 }
+# Updated when LaCE's CAMB stopped computing the CMB (as Cobaya's CAMB): its
+# k sampling moves the linear power at k = 0.2/Mpc by 1.7e-4.
 EXPECTED_P3D_MPC = np.array(
-    [16.04509947,  2.02380609,  0.26666011]
+    [16.047758739257347, 2.02381300, 0.26666011]
 )
 EXPECTED_P1D_MPC = np.array(
     [0.50113115, 0.30899673, 0.13031579]

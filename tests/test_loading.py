@@ -56,5 +56,6 @@ def test_p1d_emulator_accepts_either_label():
     for label in ("forest_mpg_cinn", "forest_mpg_gp"):
         emulator = P1DEmulator(name_emu=label)
         assert emulator.emulator_label == label
-        out = emulator._evaluate_emulator([INPUT, dict(INPUT, mF=0.5)])
+        rows = [INPUT, dict(INPUT, mF=0.5)]
+        out = emulator.evaluate_arinyo({name: np.array([row[name] for row in rows]) for name in INPUT})
         assert np.asarray(out["bias"]).shape == (2,)

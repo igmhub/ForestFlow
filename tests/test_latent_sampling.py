@@ -1,3 +1,4 @@
+import numpy as np
 """Fast invariants for ForestFlow latent sampling methods."""
 
 import torch
@@ -64,40 +65,31 @@ def test_stable_group_ids_do_not_depend_on_chunk_membership():
     torch.testing.assert_close(combined[1], alone[0])
 
 
-def test_p1d_adapter_forwards_sampling_options_and_invalidates_cache():
+def test_p1d_adapter_forwards_sampling_options_and_latent_block_zero():
     class FakeP3D:
+        output_labels = ("bias",)
+
         def __init__(self):
             self.calls = []
 
         def evaluate(self, calls, **options):
             self.calls.append((calls, options))
-            return {"bias": 1.0}
+            return {"bias": np.ones(len(calls))}
 
     adapter = object.__new__(P1DEmulator)
     adapter.emulator = FakeP3D()
+    adapter.emu_params = ("x",)
     adapter.sampling_options = {
         "sampler": "sobol",
         "statistic": "median",
         "aggregation_space": "physical",
         "draw_policy": "nested",
     }
-    adapter._prediction_cache = {"old": "prediction"}
     adapter.set_sampling_options(statistic="mean")
-    assert adapter._prediction_cache is None
-    adapter._evaluate_emulator([{"input": 1.0}])
-    assert adapter.emulator.calls[0][1] == adapter.sampling_options
-
-
-def test_p1d_prediction_key_includes_sampling_options():
-    adapter = object.__new__(P1DEmulator)
-    adapter.emu_params = ("x",)
-    adapter.sampling_options = {
-        "sampler": "gaussian",
-        "statistic": "mean",
-        "aggregation_space": "transformed",
-        "draw_policy": "nested",
-    }
-    first = adapter._prediction_key({"x": 1.0})
-    adapter.sampling_options["sampler"] = "sobol"
-    second = adapter._prediction_key({"x": 1.0})
-    assert first != second
+    out = adapter.evaluate_arinyo({"x": np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])})
+    assert out["bias"].shape == (2, 3)
+    calls, options = adapter.emulator.calls[0]
+    assert len(calls) == 6
+    # every row draws latent block 0: independent of batch and redshift order
+    np.testing.assert_array_equal(options.pop("latent_indices"), np.zeros(6))
+    assert options == adapter.sampling_options

@@ -11,6 +11,8 @@ Core models
    forestflow.archive
    forestflow.model
    forestflow.statistics
+   forestflow.emulator.loading
+   forestflow.emulator.arinyo_gp
    forestflow.emulator.p3d_cinn
    forestflow.emulator.p1d
    forestflow.emulator.training
@@ -25,8 +27,9 @@ Training and inference
    :toctree: generated
    :recursive:
 
-   forestflow.model_fits
+   forestflow.fitting
    forestflow.priors
+   forestflow.paths
    forestflow.utils
 
 Plotting
@@ -36,6 +39,6 @@ Plotting
    :toctree: generated
    :recursive:
 
-   forestflow.plots.plot_routines
+   forestflow.plots.style
    forestflow.plots.params_z
    forestflow.plots.test_sims

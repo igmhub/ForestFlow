@@ -51,7 +51,7 @@ import forestflow
 from forestflow.archive.gadget_archive import GadgetArchive3D
 from forestflow.emulator import load_emulator
 from forestflow.emulator.arinyo_gp import ArinyoGPEmulator, prepare_arinyo_gp_training_data, select_groups
-from forestflow.model_fits import ArinyoFitter
+from forestflow.fitting import ArinyoFitter
 from forestflow.statistics.rebin_p3d import rebin_P3D_Mpc_mode_weighted
 from lace.emulator.gp_emulator_multi import optimizer as lace_gp_optimizer
 from sklearn.gaussian_process import GaussianProcessRegressor

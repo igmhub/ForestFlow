@@ -77,7 +77,7 @@ Archive3D = GadgetArchive3D()
 # redshift range
 zmin = 3.
 zmax = 3.
-arinyo_priors_mpg = Archive3D.get_Arinyo_priors(zmin, zmax)
+arinyo_priors_mpg = Archive3D.get_arinyo_summary(zmin, zmax)
 arinyo_priors_mpg.keys()
 
 print(f"{'parameter':<15} {'mean':>10} {'std':>10}")
@@ -92,7 +92,7 @@ for par in arinyo_priors_mpg["mean"].keys():
 # redshift range
 zmin = 3.
 zmax = 3.
-arinyo_priors_mpg = Archive3D.get_Arinyo_priors(zmin, zmax)
+arinyo_priors_mpg = Archive3D.get_arinyo_summary(zmin, zmax)
 arinyo_priors_mpg.keys()
 
 print(f"{'parameter':<15} {'mean':>10} {'std':>10}")
@@ -107,7 +107,7 @@ for par in arinyo_priors_mpg["mean"].keys():
 # redshift range
 zmin = 3.
 zmax = 3.
-igm_priors_mpg = Archive3D.get_IGM_priors(zmin, zmax)
+igm_priors_mpg = Archive3D.get_input_summary(zmin, zmax)
 
 
 print(f"{'parameter':<15} {'mean':>10} {'std':>10}")

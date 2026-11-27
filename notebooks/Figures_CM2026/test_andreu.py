@@ -22,7 +22,7 @@
 #
 # The chain-derived quantities (inputs to ForestFlow, sigma_8(z=2.33), f sigma_8(z=2.33))
 # are read from `int_data_figs/desi_priors_cosmo_IGM_from_p1d.npy`, produced by
-# `forestflow.priors.paper.set_samples.set_process_p1d_chain` from the cup1d chain
+# `cup1d.postprocessing.forestflow_priors.set_process_p1d_chain` from the cup1d chain
 # (`out_DESI_DR1/DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7`).
 
 # %%

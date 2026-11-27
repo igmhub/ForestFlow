@@ -29,7 +29,7 @@ from matplotlib import rcParams
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
-from forestflow.priors.paper import plots, load
+from forestflow.priors import loaders, plots
 
 np.__version__
 
@@ -37,7 +37,7 @@ np.__version__
 # #### Load data
 
 # %%
-dict_mapping = load.load_map_igm_p3d(lab_sample="desi")
+dict_mapping = loaders.load_map_igm_p3d(lab_sample="desi")
 
 # %% [markdown]
 # Table with output of P1D chain
@@ -46,7 +46,7 @@ dict_mapping = load.load_map_igm_p3d(lab_sample="desi")
 plots.table_cosmo_igm(dict_mapping)
 
 # %%
-bao_data = load.load_BAO_data()
+bao_data = loaders.load_BAO_data()
 
 # %%
 plots.plot_bias_beta_zev(bao_data, dict_mapping, plot_bias_eta=False)

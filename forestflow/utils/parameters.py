@@ -28,33 +28,6 @@ def params_numpy2dict(params: ArrayLike) -> dict[str, Any]:
         dict_param[param_names[ii]] = params[ii]
     return dict_param
 
-def params_numpy2dict_minimizer(params: ArrayLike) -> dict[str, Any]:
-    """
-    Map minimizer coordinates to physical Arinyo parameters.
-
-    Parameters
-    ----------
-    params : array_like
-        Values in canonical order; ``q1`` and ``q2`` are interpreted as their
-        stored sum/difference coordinates when both are present.
-
-    Returns
-    -------
-    dict
-        Physical Arinyo parameter mapping.
-    """
-    param_names = ARINYO_PARAMETER_NAMES
-    dict_param = {}
-    for ii in range(params.shape[0]):
-        dict_param[param_names[ii]] = params[ii]
-
-    if "q2" in dict_param.keys():
-        q1 = 0.5 * (dict_param["q1"] + dict_param["q2"])
-        q2 = 0.5 * (dict_param["q1"] - dict_param["q2"])
-        dict_param["q1"] = q1
-        dict_param["q2"] = q2
-    return dict_param
-
 def params_numpy2dict_minimizerz(params: ArrayLike) -> dict[str, Any]:
     """
     Map redshift-fit Arinyo output to its symmetric q1/q2 representation.

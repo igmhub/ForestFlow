@@ -34,3 +34,7 @@ docs/generated/
 .idea/
 .DS_Store
 *~
+
+# Large derived data kept on disk but not tracked (49 MB; read only by the
+# removed scripts/fit_p3d/old/fit_pflux_old.py)
+data/p3d_4_fit.npz

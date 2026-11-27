@@ -55,7 +55,7 @@ from forestflow.emulator.arinyo_gp import (
     ArinyoGPConfig, ArinyoGPEmulator, prepare_arinyo_gp_training_data,
     select_groups, train_arinyo_gp,
 )
-from forestflow.model_fits import ArinyoFitter
+from forestflow.fitting import ArinyoFitter
 from forestflow.statistics.rebin_p3d import rebin_P3D_Mpc_mode_weighted
 
 # %% [markdown]
@@ -295,7 +295,7 @@ central_order = np.argsort(z_central)
 # to reprocess the training data before optimising its MPG emulator
 # (CH24_mpgcen_gpr, the `lace_mpg` default); only P1D is smoothed.
 from lace.emulator import emulator_manager
-from lace.utils.smoothing_manager import apply_smoothing
+from lace.emulator.smoothing_manager import apply_smoothing
 
 lace_emulator = emulator_manager.set_emulator(emulator_label="CH24_mpgcen_gpr")
 smoothed_snapshots = [dict(s) for s in central_snapshots]

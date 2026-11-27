@@ -1,24 +1,31 @@
 """
-Self-describing, checksum-validated ForestFlow emulator bundles.
+Self-describing, checksum-validated ForestFlow cINN emulator bundles.
+
+The checksum, version and error helpers are LaCE's
+(:mod:`lace.emulator.model_manifest`); this module only defines the cINN
+bundle layout (``<prefix>.pt``, ``<prefix>_metadata.npy`` and an optional
+transformation file, inventoried in ``<prefix>_manifest.json``).
 """
 
 from __future__ import annotations
 
-import hashlib
 import json
-import sys
-from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any, Mapping
 
+from lace.emulator.model_manifest import ModelBundleError, runtime_versions, sha256
+
+__all__ = [
+    "MODEL_BUNDLE_SCHEMA_VERSION",
+    "ModelBundleError",
+    "load_manifest",
+    "manifest_path",
+    "write_manifest",
+]
 
 MODEL_BUNDLE_SCHEMA_VERSION = 1
-
-
-class ModelBundleError(RuntimeError):
-    """
-    Raised when a model bundle is missing, corrupted, or incompatible.
-    """
+#: Packages whose versions are recorded with a trained cINN bundle.
+RUNTIME_PACKAGES = ("numpy", "scipy", "torch", "freia", "lace")
 
 
 def manifest_path(model_path: str | Path) -> Path:
@@ -36,46 +43,6 @@ def manifest_path(model_path: str | Path) -> Path:
         ``<model_path>_manifest.json``.
     """
     return Path(str(model_path) + "_manifest.json")
-
-
-def sha256(path: str | Path) -> str:
-    """
-    Compute the SHA-256 digest of an emulator bundle artefact.
-
-    Parameters
-    ----------
-    path : str or path-like
-        Binary file to hash.
-
-    Returns
-    -------
-    str
-        Lowercase hexadecimal digest.
-    """
-    digest = hashlib.sha256()
-    with Path(path).open("rb") as stream:
-        for block in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(block)
-    return digest.hexdigest()
-
-
-def runtime_versions() -> dict[str, str]:
-    """
-    Report versions of numerical dependencies used to train a model.
-
-    Returns
-    -------
-    dict of str to str
-        Python and relevant package versions; absent optional packages are
-        recorded as ``"unavailable"``.
-    """
-    result = {"python": ".".join(map(str, sys.version_info[:3]))}
-    for package in ("numpy", "scipy", "torch", "freia", "lace"):
-        try:
-            result[package] = version(package)
-        except PackageNotFoundError:
-            result[package] = "unavailable"
-    return result
 
 
 def write_manifest(
@@ -124,7 +91,7 @@ def write_manifest(
     manifest = {
         "schema_version": MODEL_BUNDLE_SCHEMA_VERSION,
         "forestflow_version": getattr(forestflow, "__version__", "unknown"),
-        "dependencies": runtime_versions(),
+        "dependencies": runtime_versions(RUNTIME_PACKAGES),
         "training_provenance": dict(training_provenance or {}),
         "artefacts": {
             name: {"filename": path.name, "sha256": sha256(path)}

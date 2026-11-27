@@ -8,7 +8,10 @@ from numpy.typing import ArrayLike
 import numpy as np
 import matplotlib.pyplot as plt
 
+from forestflow.plots.style import house_style
 
+
+@house_style
 def plot_p3d_L1O(
     z_use: Any,
     k_Mpc: ArrayLike,

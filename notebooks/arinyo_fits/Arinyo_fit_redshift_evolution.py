@@ -36,7 +36,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from forestflow.archive.gadget_archive import GadgetArchive3D
-from forestflow.model_fits import ArinyoFitter
+from forestflow.fitting import ArinyoFitter
 
 # %% [markdown]
 # ## Select one MPG simulation series

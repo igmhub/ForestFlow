@@ -25,7 +25,8 @@
 # We compare, at z = 2.6, 3.0 and 3.6:
 # * the raw ACCEL2 P1D, averaged over the three axes (Nyx file, `ACCEL2_6144_160`);
 # * the LaCE smoothing used to build the mock, with the same routine and
-#   emulator as the cup1d validation (`cup1d/scripts/validation/val_sampler.py`:
+#   emulator as the cup1d validation (`scripts/validation/val_sampler.py`, now only in
+#   the cup1d git history:
 #   `CH24_mpgcen_gpr`, `apply_smoothing=True`);
 # * a template-free cubic spline with a few knots, fitted directly to ln P1D(ln k).
 #
@@ -48,9 +49,8 @@ rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
 from lace.emulator.emulator_manager import set_emulator
-from lace.utils.smoothing_manager import apply_smoothing
+from lace.emulator.smoothing_manager import apply_smoothing
 from cup1d.theory import cosmology as cosmologies
-from cup1d.theory import camb as CAMB_model
 from cup1d.p1ds.observations import data_DESIY1
 
 # %%
@@ -60,7 +60,7 @@ NYX_FILE = os.path.join(
     "models_Nyx_Sept2025_include_Nyx_fid_rseed.hdf5",
 )
 SIM_NYX = "ACCEL2_6144_160"
-EMULATOR_LABEL = "CH24_mpgcen_gpr"  # as in cup1d/scripts/validation/val_sampler.py
+EMULATOR_LABEL = "CH24_mpgcen_gpr"  # as in cup1d's former scripts/validation/val_sampler.py
 COV_LABEL = "DESIY1_QMLE3"
 # optional cross-check with the text files read by cup1d's Accel2_P1D (skipped if missing)
 PATH_ACCEL2_TXT = "/home/jchaves/Proyectos/projects/lya/data/accel2/frontier_grid"
@@ -96,7 +96,7 @@ for zz in Z_PLOT:
 # %%
 # cross-check: Nyx file vs the text files used by cup1d (axis average, k < 10/Mpc)
 if os.path.isdir(PATH_ACCEL2_TXT):
-    from cup1d.p1ds.simulations.data_accel2 import load_data
+    from cup1d.p1ds.synthetic.data_accel2 import load_data
 
     txt = load_data(PATH_ACCEL2_TXT)
     for zz in Z_PLOT:
@@ -112,7 +112,7 @@ else:
 # #### LaCE smoothing (the one used for the mock)
 #
 # Same call chain as cup1d: `BaseMockP1D.set_smoothing_Mpc` ->
-# `lace.utils.smoothing_manager.apply_smoothing`. For `gpolyfit` emulators it
+# `lace.emulator.smoothing_manager.apply_smoothing`. For `gpolyfit` emulators it
 # fits the five-parameter function over 0 < k < `emulator.kmax_Mpc`.
 
 # %%
@@ -142,12 +142,11 @@ for ii, zz in enumerate(Z_PLOT):
 # %%
 desi = data_DESIY1.P1D_DESIY1(data_label=COV_LABEL)
 sim_cosmo = cosmologies.set_cosmo(cosmo_label="accel2")
-camb_cosmo = CAMB_model.CAMBModel(zs=np.array(Z_PLOT), cosmo=sim_cosmo)
 
 for zz in Z_PLOT:
     iz = int(np.argmin(np.abs(np.asarray(desi.z) - zz)))
     assert abs(desi.z[iz] - zz) < 1e-3, f"no DESI bin at z={zz}"
-    dkms_dMpc = camb_cosmo.dkms_dMpc(zz)
+    dkms_dMpc = sim_cosmo.get_dkms_diMpc(zz)
     k_kms = np.asarray(desi.k_kms[iz])
     keep = k_kms * dkms_dMpc >= raw[zz]["k_Mpc"][raw[zz]["k_Mpc"] > 0].min()
     raw[zz]["dkms_dMpc"] = dkms_dMpc

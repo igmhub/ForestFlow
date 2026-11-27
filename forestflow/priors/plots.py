@@ -1,0 +1,2054 @@
+"""
+Create figures and tables for the priors analysis.
+
+Figures are written to ``figs/`` relative to the working directory, as in the
+``notebooks/Figures_CM2026`` notebooks. Every plotting function applies the
+house style first. ``getdist`` is optional and imported on first use.
+"""
+
+from collections.abc import Mapping
+from pathlib import Path
+from typing import Any
+from numpy.typing import ArrayLike
+
+import os
+
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
+import matplotlib.colors as mcolors
+
+from forestflow.plots.style import house_style
+from forestflow.priors import importance, processing
+from forestflow.priors.processing import INT_DATA_FOLDER
+
+
+def _getdist_plots():
+    """Import ``getdist.plots`` (an optional dependency) on first use."""
+    from getdist import plots
+
+    return plots
+
+
+@house_style
+def plot_bsig8_betafsigma8(samples: ArrayLike, ftsize: int | None = 18) -> None:
+
+    # --- plotting ---
+    """
+    Plot P1D and BAO constraints on two bias-amplitude combinations.
+
+    Parameters
+    ----------
+    samples : mapping of getdist.MCSamples
+        Containers keyed by ``p1d``, ``dr1``, ``dr2``, ``dr1_hsnr``, and
+        ``dr2_hsnr``.
+    ftsize : int, default=18
+        Base font size in points.
+
+    Notes
+    -----
+    Writes ``figs/nocomb_bdsig8_befsig8.{pdf,png}``.
+    """
+    g = _getdist_plots().get_subplot_plotter(width_inch=8)
+    g.settings.lab_fontsize = ftsize
+    g.settings.axes_fontsize = ftsize
+    g.settings.legend_fontsize = ftsize
+    g.settings.num_plot_contours = 2  # 68%, 95%
+
+    colors = ["C0", "C1", "C2", "C3", "C4"]
+
+    g.triangle_plot(
+        [
+            samples["p1d"],
+            samples["dr1"],
+            samples["dr2"],
+            samples["dr1_hsnr"],
+            samples["dr2_hsnr"],
+        ],
+        params=["b_delta_sigma8", "b_eta_f_sigma8"],
+        filled=[
+            True,
+            False,
+            False,
+            True,
+            True,
+        ],
+        contour_colors=colors,
+        contour_ls=[
+            "-.",
+            "--",
+            "--",
+            "-",
+            "-",
+        ],
+        # contour_args=[
+        #     {"hatches": ["", ""]},
+        #     {"hatches": ["", ""]},
+        #     {"hatches": ["", ""]},
+        #     {"hatches": ["/", "/"]},
+        #     {"hatches": ["\\", "\\"]},
+        # ],
+        contour_lws=[3, 3, 3, 3, 3],
+    )
+
+    plt.tight_layout()
+    plt.savefig("figs/nocomb_bdsig8_befsig8.pdf")
+    plt.savefig("figs/nocomb_bdsig8_befsig8.png")
+
+
+@house_style
+def plot_bao_biases(samples: ArrayLike, ftsize: int | None = 22) -> None:
+    """
+    Plot BAO-only constraints on legacy bias and beta parameters.
+
+    Parameters
+    ----------
+    samples : mapping of getdist.MCSamples
+        Containers keyed by ``dr1``, ``dr2``, ``dr1_hsnr``, and ``dr2_hsnr``;
+        labels on these objects are updated in place.
+    ftsize : int, default=22
+        Base font size in points.
+
+    Notes
+    -----
+    Writes ``figs/bao_biases.{pdf,png}``.
+    """
+    g = _getdist_plots().get_subplot_plotter(width_inch=8)
+    g.settings.lab_fontsize = ftsize + 2
+    g.settings.axes_fontsize = ftsize
+    g.settings.legend_fontsize = ftsize
+    g.settings.num_plot_contours = 2  # 68%, 95%
+
+    samples["dr1"].label = "DR1 BAO, baseline"
+    samples["dr2"].label = "DR2 BAO, baseline"
+    samples["dr1_hsnr"].label = "DR1 BAO, reanalysis"
+    samples["dr2_hsnr"].label = "DR2 BAO, reanalysis"
+
+    for lab in ["dr1", "dr2", "dr1_hsnr", "dr2_hsnr"]:
+        samples[lab].paramNames.parWithName(
+            "bias_delta"
+        ).label = r"b_\delta \sigma_8/ \sigma^\mathrm{fid}_8"
+
+        samples[lab].paramNames.parWithName("beta").label = "\\beta"
+
+        samples[lab].paramNames.parWithName(
+            "bias_hcd"
+        ).label = r"b_\mathrm{HCD}\, \sigma_8/ \sigma^\mathrm{fid}_8"
+
+    g.triangle_plot(
+        [
+            samples["dr1"],
+            samples["dr2"],
+            samples["dr1_hsnr"],
+            samples["dr2_hsnr"],
+        ],
+        # params=["bias_delta", "bias_eta", "beta", "bias_hcd"],
+        params=["bias_delta", "beta", "bias_hcd"],
+        filled=[
+            False,
+            False,
+            True,
+            True,
+        ],
+        contour_colors=["C0", "C1", "C2", "C3"],
+        contour_ls=[
+            "-",
+            "-",
+            "--",
+            "--",
+        ],
+        contour_lws=[2, 2, 2, 2],
+        alpha=0.5,
+    )
+
+    plt.tight_layout()
+    plt.savefig("figs/bao_biases.pdf")
+    plt.savefig("figs/bao_biases.png")
+
+
+@house_style
+def plot_comb_bdsig8_befsig8(
+    samples: ArrayLike,
+    ftsize: int | None = 24,
+    p1d_key: str | None = "p1d",
+    comb_key: str | list[str] | None = "p1d_dr2",
+    p1d_ref_key: str | None = None,
+    fname: str | None = "comb_bdsig8_befsig8",
+    params: list[str] | None = ("b_delta_sigma8", "b_eta_f_sigma8"),
+    param_limits: Mapping[str, tuple[float, float]] | None = None,
+    lim_frac: float | None = 0.01,
+    lim_pad: float | None = 0.1,
+    legend_labels: Mapping[str, str] | None = None,
+) -> None:
+    """
+    Plot P1D, DR2 BAO, and combined bias-amplitude constraints.
+
+    Parameters
+    ----------
+    samples : mapping of getdist.MCSamples
+        Containers keyed by ``p1d_key``, ``dr2_hsnr``, and ``comb_key``. The
+        P1D smoothing settings are updated in place.
+    ftsize : int, default=24
+        Base font size in points.
+    p1d_key : str, default="p1d"
+        P1D samples, e.g. ``"p1d_sys"`` to include the model systematic.
+    comb_key : str or list of str, default="p1d_dr2"
+        P1D + BAO samples, e.g. ``"p1d_sys_dr2"``. With a list, the first is
+        filled and the others, e.g. combinations with a P1D-BAO correlation,
+        are drawn as lines.
+    p1d_ref_key : str, optional
+        Extra P1D samples drawn for reference as dotted, unfilled contours,
+        e.g. ``"p1d"`` when ``p1d_key="p1d_sys"``.
+    fname : str, default="comb_bdsig8_befsig8"
+        Output file name, without folder and extension.
+    params : sequence of str, default=("b_delta_sigma8", "b_eta_f_sigma8")
+        Parameters to plot, e.g. ``("b_delta_sigma8", "beta")``.
+    param_limits : mapping, optional
+        Axis limits per parameter, ``{name: (min, max)}``. By default they
+        span the P1D and combined samples (not BAO), from the ``lim_frac``
+        to the ``1 - lim_frac`` quantile, widened by ``lim_pad`` times the
+        range on each side.
+    lim_frac : float, default=0.01
+        Tail fraction for the default limits.
+    lim_pad : float, default=0.1
+        Fractional padding for the default limits.
+    legend_labels : mapping, optional
+        Legend label per sample key, overriding the sample labels; keys not
+        given keep their sample label.
+
+    Notes
+    -----
+    Writes ``figs/<fname>.{pdf,png}``.
+    """
+    g = _getdist_plots().get_subplot_plotter(width_inch=8)
+    g.settings.lab_fontsize = ftsize + 2
+    g.settings.axes_fontsize = ftsize
+    g.settings.legend_fontsize = ftsize - 4
+    g.settings.num_plot_contours = 2  # 68%, 95%
+
+    keys_p1d = [p1d_key] if p1d_ref_key is None else [p1d_ref_key, p1d_key]
+    for key in keys_p1d:
+        samples[key].updateSettings(
+            {
+                "smooth_scale_2D": 0.5,
+                "smooth_scale_1D": 0.5,
+            }
+        )
+
+    # P1D filled light blue and dashed; P1D w/o syst. (reference) dark blue
+    # dotted lines with alpha=0.7; BAO filled light orange and dot-dashed; combinations as
+    # green lines with alpha=0.8
+    light_blue, dark_blue, light_orange = "#9ecae1", "#2166ac", "#fdae6b"
+    comb_keys = [comb_key] if isinstance(comb_key, str) else list(comb_key)
+
+    keys = [p1d_key]
+    chains = [samples[p1d_key]]
+    colors = [light_blue]
+    ls = ["--"]
+    filled = [True]
+    if p1d_ref_key is not None:
+        keys.append(p1d_ref_key)
+        chains.append(samples[p1d_ref_key])
+        colors.append(dark_blue)
+        ls.append(":")
+        filled.append(False)
+        ref_index = len(chains) - 1
+    else:
+        ref_index = None
+    keys.append("dr2_hsnr")
+    chains.append(samples["dr2_hsnr"])
+    colors.append(light_orange)
+    ls.append("-.")
+    filled.append(True)
+    contour_args = [{}] * len(chains)
+    if ref_index is not None:
+        contour_args[ref_index] = {"alpha": 0.7}
+
+    # solid, dotted, dash-dot-dot; distinct from the P1D and BAO styles
+    comb_ls = ["-", ":", (0, (6, 2, 1, 2, 1, 2))]
+    keys += comb_keys
+    chains += [samples[key] for key in comb_keys]
+    colors += ["C2"] * len(comb_keys)
+    filled += [False] * len(comb_keys)
+    ls += [comb_ls[jj % len(comb_ls)] for jj in range(len(comb_keys))]
+    contour_args += [{"alpha": 0.8}] * len(comb_keys)
+
+    if param_limits is None:
+        # narrow limits from P1D and combinations; BAO is much wider
+        chains_lim = [ch for ch in chains if ch is not samples["dr2_hsnr"]]
+        param_limits = {}
+        for par in params:
+            low = min(ch.confidence(par, lim_frac, upper=False) for ch in chains_lim)
+            high = max(ch.confidence(par, lim_frac, upper=True) for ch in chains_lim)
+            pad = lim_pad * (high - low)
+            param_limits[par] = (low - pad, high + pad)
+
+    g.triangle_plot(
+        chains,
+        filled=filled,
+        params=list(params),
+        param_limits=param_limits,
+        contour_colors=colors,
+        contour_ls=ls,
+        contour_lws=[3.0] * len(chains),
+        contour_args=contour_args,
+        legend_labels=(
+            None
+            if legend_labels is None
+            else [legend_labels.get(key, samples[key].label) for key in keys]
+        ),
+    )
+
+    # getdist applies contour_args only to the 2D contours: give the 1D curves
+    # and the legend entry of the reference the same alpha
+    if ref_index is not None:
+        ref_rgb = mcolors.to_rgb(dark_blue)
+        legend = getattr(g, "legend", None)
+        handles = [] if legend is None else list(legend.legend_handles)
+        for ax in g.fig.axes:
+            for line in list(ax.lines) + handles:
+                if hasattr(line, "get_color") and np.allclose(
+                    mcolors.to_rgb(line.get_color()), ref_rgb, atol=1e-3
+                ):
+                    line.set_alpha(0.7)
+
+    plt.tight_layout()
+    plt.savefig("figs/" + fname + ".pdf")
+    plt.savefig("figs/" + fname + ".png")
+
+
+@house_style
+def plot_comb_rho(
+    samples: ArrayLike,
+    comb_keys: list[str],
+    legend_labels: Mapping[str, str] | None = None,
+    ftsize: int | None = 24,
+    fname: str | None = "comb_bdsig8_befsig8_rho",
+    params: list[str] | None = ("b_delta_sigma8", "b_eta_f_sigma8"),
+    param_limits: Mapping[str, tuple[float, float]] | None = None,
+    lim_frac: float | None = 0.01,
+    lim_pad: float | None = 0.3,
+) -> None:
+    """
+    Compare P1D + BAO combinations, e.g. for several P1D-BAO correlations.
+
+    Parameters
+    ----------
+    samples : mapping of getdist.MCSamples
+        Containers keyed by ``comb_keys``.
+    comb_keys : list of str
+        Combinations to plot. The first is filled (C0, solid); the others
+        are lines (C1 dashed, C2 dotted, C3 dash-dot).
+    legend_labels : mapping, optional
+        Legend label per sample key, overriding the sample labels.
+    ftsize : int, default=24
+        Base font size in points.
+    fname : str, default="comb_bdsig8_befsig8_rho"
+        Output file name, without folder and extension.
+    params : sequence of str, default=("b_delta_sigma8", "b_eta_f_sigma8")
+        Parameters to plot.
+    param_limits : mapping, optional
+        Axis limits per parameter, ``{name: (min, max)}``. By default they span
+        the ``lim_frac`` to ``1 - lim_frac`` quantiles of all combinations,
+        widened by ``lim_pad`` times the range on each side.
+    lim_frac : float, default=0.01
+        Tail fraction for the default limits.
+    lim_pad : float, default=0.3
+        Fractional padding for the default limits.
+
+    Notes
+    -----
+    Writes ``figs/<fname>.{pdf,png}``.
+    """
+    g = _getdist_plots().get_subplot_plotter(width_inch=8)
+    g.settings.lab_fontsize = ftsize + 2
+    g.settings.axes_fontsize = ftsize
+    g.settings.legend_fontsize = ftsize - 4
+    g.settings.num_plot_contours = 2  # 68%, 95%
+
+    chains = [samples[key] for key in comb_keys]
+    styles = [("C0", "-"), ("C1", "--"), ("C2", ":"), ("C3", "-.")]
+    colors = [styles[jj % len(styles)][0] for jj in range(len(chains))]
+    ls = [styles[jj % len(styles)][1] for jj in range(len(chains))]
+    filled = [True] + [False] * (len(chains) - 1)
+
+    if param_limits is None:
+        param_limits = {}
+        for par in params:
+            low = min(ch.confidence(par, lim_frac, upper=False) for ch in chains)
+            high = max(ch.confidence(par, lim_frac, upper=True) for ch in chains)
+            pad = lim_pad * (high - low)
+            param_limits[par] = (low - pad, high + pad)
+
+    g.triangle_plot(
+        chains,
+        filled=filled,
+        params=list(params),
+        param_limits=param_limits,
+        contour_colors=colors,
+        contour_ls=ls,
+        contour_lws=[3.0] * len(chains),
+        legend_labels=(
+            None
+            if legend_labels is None
+            else [legend_labels.get(key, samples[key].label) for key in comb_keys]
+        ),
+    )
+
+    plt.tight_layout()
+    plt.savefig("figs/" + fname + ".pdf")
+    plt.savefig("figs/" + fname + ".png")
+
+
+@house_style
+def plot_comb_bdsig8_befsig8_corr(
+    samples: ArrayLike,
+    p1d_key: str | None = "p1d",
+    bao_key: str | None = "dr2_hsnr",
+    rhos: ArrayLike | None = (0.0, 0.1, 0.3),
+    ftsize: int | None = 24,
+    fname: str | None = "comb_bdsig8_befsig8_corr",
+) -> dict:
+    """
+    Plot the P1D + BAO combination for several P1D-BAO correlations.
+
+    Parameters
+    ----------
+    samples : mapping of getdist.MCSamples
+        Containers keyed by ``p1d_key`` and ``bao_key``.
+    p1d_key : str, default="p1d"
+        P1D samples, e.g. ``"p1d_sys"`` to include the model systematic.
+    bao_key : str, default="dr2_hsnr"
+        BAO samples.
+    rhos : sequence of float, default=(0, 0.1, 0.3)
+        Correlations between the P1D and BAO measurements.
+    ftsize : int, default=24
+        Base font size in points.
+    fname : str, default="comb_bdsig8_befsig8_corr"
+        Output file name, without folder and extension.
+
+    Returns
+    -------
+    dict
+        Combined mean and covariance of ``b_delta_sigma8`` and
+        ``b_eta_f_sigma8`` for each correlation.
+
+    Notes
+    -----
+    Both measurements are approximated as 2D Gaussians and combined with
+    :func:`forestflow.priors.importance.combine_gaussian_corr`; at
+    ``rho=0`` this should match the importance-sampled combination. Draws 68%
+    contours and writes ``figs/<fname>.{pdf,png}``.
+    """
+    from matplotlib.lines import Line2D
+
+    fit_p1d = importance.fit_gaussian(samples[p1d_key], make_plot=False)
+    fit_bao = importance.fit_gaussian(samples[bao_key], make_plot=False)
+
+    g = _getdist_plots().get_single_plotter(width_inch=8)
+    g.settings.lab_fontsize = ftsize + 2
+    g.settings.axes_fontsize = ftsize
+    g.settings.num_plot_contours = 1  # 68%
+    g.plot_2d(
+        [samples[p1d_key], samples[bao_key]],
+        "b_delta_sigma8",
+        "b_eta_f_sigma8",
+        filled=[False, False],
+        colors=["C0", "C1"],
+        ls=["-.", "--"],
+        lws=[3.0, 3.0],
+    )
+    ax = g.get_axes()
+
+    handles = [
+        Line2D([], [], color="C0", ls="-.", lw=3, label=samples[p1d_key].label),
+        Line2D([], [], color="C1", ls="--", lw=3, label=samples[bao_key].label),
+    ]
+
+    out = {}
+    for jj, rho in enumerate(rhos):
+        mean, cov = importance.combine_gaussian_corr(fit_p1d, fit_bao, rho)
+        out[rho] = {"mean": mean, "cov": cov}
+        err = np.sqrt(np.diag(cov))
+        print(
+            f"rho={rho:.2f}: b_delta_sigma8 = {mean[0]:.4f} +- {err[0]:.4f}, "
+            f"b_eta_f_sigma8 = {mean[1]:.4f} +- {err[1]:.4f}, "
+            f"r = {cov[0, 1] / err[0] / err[1]:.3f}"
+        )
+        ell = importance.gaussian_ellipse(mean, cov)
+        ax.plot(ell[0], ell[1], color="C" + str(jj + 2), lw=2.5)
+        handles.append(
+            Line2D([], [], color="C" + str(jj + 2), lw=2.5, label=rf"$\rho={rho}$")
+        )
+
+    ax.legend(handles=handles, fontsize=ftsize - 6)
+    plt.tight_layout()
+    plt.savefig("figs/" + fname + ".pdf")
+    plt.savefig("figs/" + fname + ".png")
+
+    return out
+
+
+@house_style
+def plot_comb_bd_be_beta(samples: ArrayLike, ftsize: int | None = 20) -> None:
+
+    # --- plotting ---
+    """
+    Plot P1D, DR2 BAO, and combined bias--beta constraints.
+
+    Parameters
+    ----------
+    samples : mapping of getdist.MCSamples
+        Containers keyed by ``p1d``, ``dr2_hsnr``, and ``p1d_dr2``.
+    ftsize : int, default=20
+        Base font size in points.
+
+    Notes
+    -----
+    Writes the corresponding combination figure in ``figs``.
+    """
+    g = _getdist_plots().get_subplot_plotter(width_inch=8)
+    g.settings.lab_fontsize = ftsize
+    g.settings.axes_fontsize = ftsize
+    g.settings.legend_fontsize = ftsize
+    g.settings.num_plot_contours = 2  # 68%, 95%
+
+    g.triangle_plot(
+        [
+            samples["p1d"],
+            samples["dr2_hsnr"],
+            samples["p1d_dr2"],
+        ],
+        filled=[False, False, True],
+        params=["bias_delta", "beta"],
+        contour_colors=["C0", "C1", "C2"],
+        contour_ls=[
+            "-",
+            ":",
+            "--",
+        ],
+        contour_lws=[3.0, 3.0, 3.0, 3.0, 3.0, 2],
+    )
+
+    plt.tight_layout()
+    plt.savefig("figs/comb_bd_be_beta.pdf")
+    plt.savefig("figs/comb_bd_be_beta.png")
+
+
+@house_style
+def plot_sig8(samples: ArrayLike, ftsize: int | None = 20) -> None:
+
+    # DESY6 Table IV https://arxiv.org/pdf/2601.14559
+    # DES 3x2pt LCDM
+    """
+    Compare inferred present-day sigma8 with fixed external constraints.
+
+    Parameters
+    ----------
+    samples : mapping of getdist.MCSamples
+        Containers keyed by ``p1d``, ``p1d_dr1``, and ``p1d_dr2`` with a
+        ``sigma8_z0`` parameter.
+    ftsize : int, default=20
+        Base font size in points.
+
+    Notes
+    -----
+    Writes ``figs/sig8.{pdf,png}``; the external reference values are encoded
+    in this paper-specific helper.
+    """
+    mu_des = 0.751
+    sigma_des = 0.035
+    # DES all LCDM
+    mu_des_all = 0.771
+    sigma_des_all = 0.020
+
+    # CMB-SPA https://arxiv.org/abs/2506.20707v1 LCDM
+    mu_cmb = 0.8137
+    sigma_cmb = 0.0038
+
+    # DESI BAO + full shape LCDM https://arxiv.org/abs/2602.18761
+    mu_desi = 0.822
+    sigma_desi = 0.034
+
+    # --- GetDist chains ---
+    chains = [samples["p1d"], samples["p1d_dr1"], samples["p1d_dr2"]]
+    chain_labels = [
+        r"DESI $P_\mathrm{1D}$",
+        r"DESI $P_\mathrm{1D}$ & Ly$\alpha$ BAO DR1",
+        r"DESI $P_\mathrm{1D}$ & Ly$\alpha$ BAO DR2",
+    ]
+
+    # chains = [
+    #     samples["p1d"],
+    #     samples["p1d_dr1"],
+    #     samples["p1d_dr2"],
+    #     samples["p1d_dr1_low"],
+    #     samples["p1d_dr2_low"],
+    # ]
+    # chain_labels = [
+    #     r"DESI $P_\mathrm{1D}$",
+    #     r"DESI $P_\mathrm{1D}$ & Ly$\alpha$ BAO DR1",
+    #     r"DESI $P_\mathrm{1D}$ & Ly$\alpha$ BAO DR2",
+    #     r"DESI $P_\mathrm{1D}$ & Ly$\alpha$ BAO DR1 low SNR",
+    #     r"DESI $P_\mathrm{1D}$ & Ly$\alpha$ BAO DR2 low SNR",
+    # ]
+
+    mus = []
+    sigmas = []
+
+    for s in chains:
+        m = s.getMeans()[s.index["sigma8_z0"]]
+        cov = s.getCov()
+        i = s.index["sigma8_z0"]
+        sig = np.sqrt(cov[i, i])
+        mus.append(m)
+        sigmas.append(sig)
+
+    # --- external constraints ---
+    labels = chain_labels + [r"DESI DR2 BAO & DR1 FS", "DESY6 all probes", "CMB-SPA"]
+    mu = np.array(mus + [mu_desi, mu_des_all, mu_cmb])
+    sigma = np.array(sigmas + [sigma_desi, sigma_des_all, sigma_cmb])
+
+    # reverse order
+    labels = labels[::-1]
+    mu = mu[::-1]
+    sigma = sigma[::-1]
+
+    colors = [f"C{i}" for i in range(len(mu))]
+    colors = colors[::-1]
+    y = np.arange(len(labels))
+
+    ftsize = 18
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    for i in range(len(mu)):
+        ax.errorbar(
+            mu[i],
+            y[i],
+            xerr=sigma[i],
+            fmt="o",
+            lw=2,
+            capsize=4,
+            color=colors[i],
+        )
+
+    ax.axhline(2.5, linestyle=":", color="k", lw=2)
+
+    ax.set_yticks(y)
+    ax.set_yticklabels(labels, fontsize=ftsize)
+    ax.set_xlabel(r"$\sigma_8$", fontsize=ftsize + 2)
+    ax.tick_params(labelsize=ftsize)
+    # ax.grid(axis="x", alpha=0.3)
+
+    plt.tight_layout()
+    plt.savefig("figs/sig8.pdf")
+    plt.savefig("figs/sig8.png")
+
+
+@house_style
+def plot_sig8z(samples: ArrayLike, ftsize: int | None = 20) -> None:
+
+    # load CMB-SPA
+    """
+    Plot inferred sigma8 at z=2.33 alongside external redshift constraints.
+
+    Parameters
+    ----------
+    samples : mapping of getdist.MCSamples
+        Containers keyed by ``p1d``, ``p1d_dr1``, and ``p1d_dr2`` with a
+        ``sigma8`` parameter.
+    ftsize : int, default=20
+        Base font size in points.
+
+    Notes
+    -----
+    Missing CMB-SPA or DESI intermediate files trigger their corresponding
+    sample-generation helpers. Writes ``figs/sig8z.{pdf,png}``.
+    """
+    try:
+        data = np.load(os.path.join(INT_DATA_FOLDER, "sig8_cmb_spa.npy"), allow_pickle=True).item()
+    except FileNotFoundError:
+        print("setting CMB-SPA")
+        processing.set_cmbspa_sig8z()
+        data = np.load(os.path.join(INT_DATA_FOLDER, "sig8_cmb_spa.npy"), allow_pickle=True).item()
+
+    zplot = data["z"]
+    sig8 = data["sig8"]
+    # growth rate f; older products stored it under the misleading key "fsig8"
+    f = data["f"] if "f" in data else data["fsig8"]
+    fsig8 = f * sig8
+
+    # load DESI FS
+    try:
+        data = np.load(os.path.join(INT_DATA_FOLDER, "sig8_desi.npy"), allow_pickle=True).item()
+    except FileNotFoundError:
+        print("setting DESI FS")
+        processing.set_desifs_sig8z()
+        data = np.load(os.path.join(INT_DATA_FOLDER, "sig8_desi.npy"), allow_pickle=True).item()
+
+    desi_zplot = data["zeff"]
+    desi_sig8 = data["sig8"]
+    f = data["f"]
+    desi_fsig8 = f * desi_sig8
+
+    # DES 3x2pt LCDM, Fig 12 https://arxiv.org/abs/2207.05766
+    bins_zs_DES = np.array([0, 0.4, 0.55, 0.7, 1.5])
+    plot_zs_DES = np.array([0.30, 0.48, 0.63, 0.80])
+    sig8_DES = np.array([0.64, 0.585, 0.505, 0.46])
+    errsig8_DES = np.array([0.045, 0.055, 0.055, 0.065])
+
+    # --- GetDist chains ---
+    chains = [samples["p1d"], samples["p1d_dr1"], samples["p1d_dr2"]]
+    chain_labels = [
+        r"DESI $P_\mathrm{1D}$",
+        r"DESI $P_\mathrm{1D}$ & Ly$\alpha$ BAO DR1",
+        r"DESI $P_\mathrm{1D}$ & Ly$\alpha$ BAO DR2",
+    ]
+
+    mus = []
+    sigmas = []
+    zeff = 2.33
+
+    for s in chains:
+        m = s.getMeans()[s.index["sigma8"]]
+        cov = s.getCov()
+        i = s.index["sigma8"]
+        sig = np.sqrt(cov[i, i])
+        mus.append(m)
+        sigmas.append(sig)
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    # vertical dotted lines for bin edges
+    # for z in bins_zs_DES:
+    #     ax.axvline(z, linestyle=':')
+
+    # CMB-SPA
+    mean = np.mean(sig8, axis=0)
+    std = np.std(sig8, axis=0)
+    _ = (zplot > -1) & (zplot < 2.7)
+    ax.fill_between(
+        zplot[_],
+        (mean - std)[_],
+        (mean + std)[_],
+        alpha=0.3,
+        label="CMB-SPA",
+        color="C1",
+    )
+
+    # DES
+    # cmb_at_des = np.interp(plot_zs_DES, zplot, mean)
+    ax.errorbar(plot_zs_DES, sig8_DES, yerr=errsig8_DES, fmt="o", label="DESY6 3x2pt")
+
+    # DESI FS
+    ax.errorbar(
+        desi_zplot,
+        np.mean(desi_sig8, axis=0),
+        yerr=np.std(desi_sig8, axis=0),
+        fmt="o",
+        label="DESI DR1 FS",
+        color="C2",
+    )
+
+    # Ours
+    # cmb_at_ours = np.interp(zeff, zplot, mean)
+    colors = ["C0", "C3", "C4"]
+    shift = [-0.05, 0, 0.05]
+    for i in range(len(mus)):
+        ax.errorbar(
+            zeff + shift[i],
+            mus[i],
+            yerr=sigmas[i],
+            fmt="o",
+            color=colors[i],
+            label=chain_labels[i],
+        )
+
+    ax.set_xlabel(r"$z$", fontsize=ftsize)
+    ax.set_ylabel(r"$\sigma_8(z)$", fontsize=ftsize)
+    ax.tick_params(labelsize=ftsize)
+    ax.legend(fontsize=ftsize - 2)
+
+    plt.tight_layout()
+    plt.savefig("figs/sig8z.pdf")
+    plt.savefig("figs/sig8z.png")
+
+    return
+
+
+@house_style
+def plot_fsig8z(samples: ArrayLike, ftsize: int | None = 20) -> None:
+
+    # load CMB-SPA
+    """
+    Plot growth-amplitude reference measurements and P1D constraints.
+
+    Parameters
+    ----------
+    samples : mapping of getdist.MCSamples
+        Containers keyed by ``p1d``, ``p1d_dr1``, and ``p1d_dr2``.
+    ftsize : int, default=20
+        Base font size in points.
+
+    Notes
+    -----
+    Reads or regenerates the CMB-SPA intermediate product and writes
+    ``figs/fsig8z.{pdf,png}``.
+        Base font size in points.
+    """
+    try:
+        data = np.load(os.path.join(INT_DATA_FOLDER, "sig8_cmb_spa.npy"), allow_pickle=True).item()
+    except FileNotFoundError:
+        print("setting CMB-SPA")
+        processing.set_cmbspa_sig8z()
+        data = np.load(os.path.join(INT_DATA_FOLDER, "sig8_cmb_spa.npy"), allow_pickle=True).item()
+
+    zplot = data["z"]
+    sig8 = data["sig8"]
+    # growth rate f; older products stored it under the misleading key "fsig8"
+    f = data["f"] if "f" in data else data["fsig8"]
+    fsig8 = f * sig8
+
+    # Cuceu+2026 Eq. 23 Lya full shape https://arxiv.org/abs/2509.15308
+    lya_z_fsig8 = 2.33
+    lya_fsig8 = 0.37
+    lya_fsig8_err = np.sqrt(0.060**2 + 0.033**2)
+
+    # DESI+2025 full shape all Fig. 14 (extract from figure) https://arxiv.org/abs/2411.12021
+    z = np.array([0.30, 0.52, 0.72, 0.95, 1.35, 1.50])
+    fs8 = np.array([0.378, 0.515, 0.485, 0.422, 0.375, 0.435])
+    err_fs8 = np.array([0.095, 0.060, 0.055, 0.045, 0.035, 0.045])
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    ax.errorbar(
+        z,
+        fs8,
+        yerr=err_fs8,
+        fmt="o",
+        color="C0",
+        label="DESI DR1 FS GAL+QSO",
+        alpha=0.5,
+    )
+    ax.errorbar(
+        lya_z_fsig8,
+        lya_fsig8,
+        yerr=lya_fsig8_err,
+        fmt="o",
+        color="C2",
+        label="DESI DR1 FS Lya",
+        alpha=0.5,
+    )
+
+    # CMB-SPA
+    mean = np.mean(fsig8, axis=0)
+    std = np.std(fsig8, axis=0)
+    _ = (zplot > -1) & (zplot < 2.7)
+    ax.fill_between(
+        zplot[_],
+        (mean - std)[_],
+        (mean + std)[_],
+        alpha=0.3,
+        label="CMB-SPA",
+        color="C1",
+    )
+
+    # --- GetDist chains ---
+    chains = [samples["p1d"], samples["p1d_dr1"], samples["p1d_dr2"]]
+    chain_labels = [
+        r"DESI $P_\mathrm{1D}$",
+        r"DESI $P_\mathrm{1D}$ & Ly$\alpha$ BAO DR1",
+        r"DESI $P_\mathrm{1D}$ & Ly$\alpha$ BAO DR2",
+    ]
+
+    # ours
+    colors = ["C0", "C3", "C4"]
+    mus = []
+    sigmas = []
+    zeff = 2.33
+
+    for s in chains:
+        m = s.getMeans()[s.index["sigma8"]]
+        cov = s.getCov()
+        i = s.index["sigma8"]
+        sig = np.sqrt(cov[i, i])
+        mus.append(m)
+        sigmas.append(sig)
+
+    shift = [-0.05, 0, 0.05]
+    for i in range(len(mus)):
+        ax.errorbar(
+            zeff + shift[i],
+            mus[i],
+            yerr=sigmas[i],
+            fmt="o",
+            color=colors[i],
+            label=chain_labels[i],
+        )
+
+    ax.set_xlabel(r"$z$", fontsize=ftsize)
+    ax.set_ylabel(r"$f\sigma_8(z)$", fontsize=ftsize)
+    ax.tick_params(labelsize=ftsize)
+    ax.legend(fontsize=ftsize - 4)
+
+    plt.tight_layout()
+    plt.savefig("figs/fsig8z.pdf")
+    plt.savefig("figs/fsig8z.png")
+
+
+@house_style
+def plot_sig8z233(samples: ArrayLike, ftsize: int | None = 20) -> None:
+    # --- plotting ---
+    """
+    Plot one-dimensional sigma8(z=2.33) posterior comparisons.
+
+    Parameters
+    ----------
+    samples : mapping of getdist.MCSamples
+        Containers keyed by ``p1d``, ``p1d_dr1``, and ``p1d_dr2``.
+    ftsize : int, default=20
+        Base font size in points.
+
+    Notes
+    -----
+    Writes ``figs/sig8z233.{pdf,png}``.
+    """
+    g = _getdist_plots().get_subplot_plotter(width_inch=8)
+    g.settings.lab_fontsize = ftsize
+    g.settings.axes_fontsize = ftsize
+    g.settings.legend_fontsize = ftsize
+    g.settings.num_plot_contours = 2  # 68%, 95%
+
+    g.triangle_plot(
+        [samples["p1d"], samples["p1d_dr1"], samples["p1d_dr2"]],
+        filled=[False, True, True, True],
+        params=["sigma8"],
+        contour_colors=["C0", "C1", "C2", "C3"],
+        contour_ls=[
+            "-",
+            "--",
+            "-.",
+            ":",
+        ],
+        contour_lws=[3.0, 3.0, 3.0, 2.0],
+    )
+
+    plt.tight_layout()
+    plt.savefig("figs/sig8z233.pdf")
+    plt.savefig("figs/sig8z233.png")
+
+
+@house_style
+def plot_compressed(samples: ArrayLike, ftsize: int | None = 20) -> None:
+    # --- plotting ---
+    """
+    Plot compressed linear-power posterior constraints.
+
+    Parameters
+    ----------
+    samples : mapping of getdist.MCSamples
+        Containers keyed by ``p1d``, ``p1d_dr1``, and ``p1d_dr2`` with
+        ``Delta2star`` and ``nstar`` parameters.
+    ftsize : int, default=20
+        Base font size in points.
+
+    Notes
+    -----
+    Writes ``figs/delta2star_nstar.{pdf,png}``.
+    """
+    g = _getdist_plots().get_subplot_plotter(width_inch=8)
+    g.settings.lab_fontsize = ftsize
+    g.settings.axes_fontsize = ftsize
+    g.settings.legend_fontsize = ftsize
+    g.settings.num_plot_contours = 2  # 68%, 95%
+
+    g.triangle_plot(
+        [samples["p1d"], samples["p1d_dr1"], samples["p1d_dr2"]],
+        filled=[False, True, True, True],
+        # params=["Delta2star", "nstar", "sigma8"],
+        params=["Delta2star", "nstar"],
+        contour_colors=["C0", "C1", "C2", "C3"],
+        contour_ls=[
+            "-",
+            "--",
+            "-.",
+            ":",
+        ],
+        contour_lws=[3.0, 3.0, 3.0, 2.0],
+    )
+
+    plt.tight_layout()
+    plt.savefig("figs/delta2star_nstar.pdf")
+    plt.savefig("figs/delta2star_nstar.png")
+
+
+@house_style
+def plot_bdelta_beta_beta(samples: ArrayLike, ftsize: int | None = 20) -> None:
+
+    # --- plotting ---
+    """
+    Plot P1D and combined bias-delta, bias-eta, and beta constraints.
+
+    Parameters
+    ----------
+    samples : mapping of getdist.MCSamples
+        Containers keyed by ``p1d``, ``p1d_dr1``, and ``p1d_dr2``.
+    ftsize : int, default=20
+        Base font size in points.
+
+    Notes
+    -----
+    Writes ``figs/bdelta_beta_beta.{pdf,png}``.
+    """
+    g = _getdist_plots().get_subplot_plotter(width_inch=8)
+    g.settings.lab_fontsize = ftsize
+    g.settings.axes_fontsize = ftsize
+    g.settings.legend_fontsize = ftsize
+    g.settings.num_plot_contours = 2  # 68%, 95%
+
+    g.triangle_plot(
+        [samples["p1d"], samples["p1d_dr1"], samples["p1d_dr2"]],
+        filled=[False, True, True, True],
+        params=["bias_delta", "bias_eta", "beta"],
+        contour_colors=["C0", "C1", "C2", "C3"],
+        contour_ls=[
+            "-",
+            "--",
+            "-.",
+            ":",
+        ],
+        contour_lws=[3.0, 3.0, 3.0, 2.0],
+    )
+
+    plt.tight_layout()
+    plt.savefig("figs/bdelta_beta_beta.pdf")
+    plt.savefig("figs/bdelta_beta_beta.png")
+
+
+@house_style
+def plot_P3D_small_params(samples: ArrayLike, ftsize: int | None = 20) -> None:
+    """
+    Plot P1D and combined nonlinear Arinyo-parameter constraints.
+
+    Parameters
+    ----------
+    samples : mapping of getdist.MCSamples
+        Containers keyed by ``p1d``, ``p1d_dr1``, and ``p1d_dr2`` with the
+        six displayed nonlinear parameters.
+    ftsize : int, default=20
+        Base font size in points.
+
+    Notes
+    -----
+    Writes the nonlinear-parameter triangle plot in ``figs``.
+    """
+    g = _getdist_plots().get_subplot_plotter(width_inch=10)
+    g.settings.lab_fontsize = ftsize
+    g.settings.axes_fontsize = ftsize
+    g.settings.legend_fontsize = ftsize
+    g.settings.num_plot_contours = 2  # 68%, 95%
+
+    g.triangle_plot(
+        [samples["p1d"], samples["p1d_dr1"], samples["p1d_dr2"]],
+        filled=[False, True, True, True],
+        params=["q1", "q2", "kvav", "av", "bv", "kp"],
+        contour_colors=["C0", "C1", "C2", "C3"],
+        contour_ls=[
+            "-",
+            "--",
+            "-.",
+            ":",
+        ],
+        contour_lws=[3.0, 3.0, 3.0, 2.0],
+    )
+
+    plt.tight_layout()
+    plt.savefig("figs/corner_arinyo.pdf")
+    plt.savefig("figs/corner_arinyo.png")
+
+
+def table_cosmo_igm(dict_out_all: Mapping[str, Any]) -> Any:
+    """
+    Print a LaTeX-style table of IGM summary statistics by redshift.
+
+    Parameters
+    ----------
+    dict_out_all : mapping
+        Mapping with ``zs`` and ``emu_params`` sample arrays for ``Delta2_p``,
+        ``mF``, ``sigT_Mpc``, ``gamma``, and ``kF_Mpc``.
+    """
+
+    def format_pm(val: Any, err: ArrayLike, sig: int | None = 2) -> Any:
+        """
+        Format a value and uncertainty using significant uncertainty digits.
+
+        Parameters
+        ----------
+        val, err : float
+            Central value and one-sigma uncertainty.
+        sig : int, default=2
+            Number of significant digits retained for the uncertainty.
+
+        Returns
+        -------
+        str
+            Math-mode ``value \\pm uncertainty`` string.
+        """
+        import math
+
+        if err == 0:
+            return f"${val} \\pm 0$"
+        exp = math.floor(math.log10(abs(err)))
+        decimals = -(exp - (sig - 1))
+        err_r = round(err, decimals)
+        val_r = round(val, decimals)
+        fmt = f"{{:.{max(decimals,0)}f}}"
+        return f"${fmt.format(val_r)} \\pm {fmt.format(err_r)}$"
+
+    params = ["Delta2_p", "mF", "sigT_Mpc", "gamma", "kF_Mpc"]
+
+    p = dict_out_all["emu_params"]
+    means = {k: np.mean(p[k], axis=0) for k in params}
+    stds = {k: np.std(p[k], axis=0) for k in params}
+
+    print("z", params[0], params[1], params[2], params[3], params[4], sep=" & ")
+
+    for i, z in enumerate(dict_out_all["zs"]):
+        row = [f"{z:.2f}"]
+        for k in params:
+            row.append(format_pm(means[k][i], stds[k][i]))
+        print(" & ".join(row) + r" \\")
+
+    return
+
+
+def _plot_sys_band(
+    ax: Any,
+    zs: ArrayLike,
+    percen: ArrayLike,
+    sys_shift: Mapping[str, Any],
+    sys_label: str,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Plot a 16-84 per cent band widened by a relative systematic error.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        Axes to draw on.
+    zs : array_like
+        Redshifts of the band.
+    percen : array_like of shape (2, n_z)
+        16th and 84th percentiles of the parameter.
+    sys_shift : mapping
+        Relative systematic error with redshifts ``z`` and one array per label.
+    sys_label : str
+        Key of the parameter in ``sys_shift``.
+
+    Returns
+    -------
+    ylow, yhigh : ndarray
+        Lower and upper edges of the widened band.
+
+    Notes
+    -----
+    A linear fit to the systematic, evaluated at ``zs`` and clipped at zero,
+    multiplies the band centre and is added in quadrature to its half-width.
+    """
+    fit_sys = np.polyfit(sys_shift["z"], sys_shift[sys_label], 1)
+    rel_sys = np.clip(np.polyval(fit_sys, zs), 0, None)
+    center = 0.5 * (percen[0] + percen[1])
+    half = 0.5 * (percen[1] - percen[0])
+    half_tot = np.sqrt(half**2 + (rel_sys * np.abs(center)) ** 2)
+    ax.fill_between(
+        zs,
+        center - half_tot,
+        center + half_tot,
+        alpha=0.12,
+        color="C0",
+        # label=r"+ model syst.",
+    )
+    return center - half_tot, center + half_tot
+
+
+@house_style
+def plot_bias_beta_zev(
+    bao_data: ArrayLike,
+    dict_mapping: Mapping[str, Any],
+    plot_bias_eta: bool | None = False,
+    z0: float | None = 3.0,
+    ftsize: int | None = 24,
+    sys_shift: Mapping[str, Any] | None = None,
+    rescale_bias: bool = False,
+    rescale_zref: float = 2.33,
+    z_table: float = 3.0,
+) -> Any:
+
+    # from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+    """
+    Compare P1D redshift evolution of biases with BAO constraints.
+
+    Parameters
+    ----------
+    bao_data : mapping
+        BAO summary samples and DR2 redshift-weight curve.
+    dict_mapping : mapping
+        P1D-to-P3D mapping containing ``zs`` and ``forest_out`` samples.
+    plot_bias_eta : bool, default=False
+        Whether to plot the velocity-gradient bias.
+    z0 : float, default=3.0
+        Pivot redshift for local fitting functions.
+    ftsize : int, default=24
+        Base font size in points.
+    sys_shift : mapping, optional
+        Relative systematic error of the model, ``|model/sim - 1|``, with
+        redshifts ``z`` and one array per parameter label. A linear fit to it,
+        evaluated at ``dict_mapping["zs"]``, is added in quadrature to the
+        half-width of the 16-84 per cent band and shown as a lighter band.
+        Parameters missing from ``sys_shift`` get no systematic band.
+    rescale_bias : bool, default=False
+        Plot ``bias_delta`` times ``[(1 + rescale_zref)/(1 + z)]**2.9``, the
+        evolution assumed to extrapolate the DR2 BAO band. Every element of
+        that panel is rescaled, so the BAO band becomes horizontal and the
+        values at ``rescale_zref`` are unchanged. The printed fits are those
+        of the unscaled values; the figure-data file stores the plotted ones.
+    rescale_zref : float, default=2.33
+        Reference redshift of the rescaling, the BAO effective redshift
+        (``z_eff`` in the axis label).
+    z_table : float, default=2.33
+        Redshift at which the cubic fit is evaluated; the value is printed as
+        the last column of the table of fit coefficients.
+
+    Notes
+    -----
+    Writes PNG, PDF, and NumPy figure-data products under ``figs``.
+    """
+    from scipy.optimize import curve_fit
+
+    # redshift evolution of bias_delta assumed for the BAO band
+    bias_expo = 2.9
+
+    def zev_factor(lab: str, z: Any) -> Any:
+        """Rescaling of the plotted values; one unless rescaling bias_delta."""
+        z = np.asarray(z, dtype=float)
+        if rescale_bias and lab == "bias_delta":
+            return ((1 + rescale_zref) / (1 + z)) ** bias_expo
+        return np.ones_like(z)
+
+    def fit_pow(z: Any, a: Any, b: Any) -> Any:
+        """
+        Evaluate a pivoted power law.
+
+        Parameters
+        ----------
+        z : array_like
+            Redshifts.
+        a, b : float
+            Amplitude and exponent at the enclosing function's pivot.
+
+        Returns
+        -------
+        ndarray
+            Model values at ``z``.
+        """
+        x = (1 + z) / (1 + z0)
+        return a * x**b
+
+    def fit_pol(z: Any, a: Any, b: Any, c: Any, d: Any) -> Any:
+        """
+        Evaluate a cubic polynomial in pivoted redshift.
+
+        Parameters
+        ----------
+        z : array_like
+            Redshifts.
+        a, b, c, d : float
+            Constant through cubic coefficients.
+
+        Returns
+        -------
+        ndarray
+            Model values at ``z``.
+        """
+        x = (1 + z) / (1 + z0)
+        return a + b * x + c * x**2 + d * x**3
+
+    if plot_bias_eta:
+        params_labels = ["bias_delta", "beta", "bias_eta"]
+    else:
+        params_labels = ["bias_delta", "beta"]
+    params_labels_latex = [
+        r"$b_\delta$, $b_\delta \sigma_8/\sigma_8^\mathrm{fid}$",
+        r"$\beta$",
+        r"$b_\eta$",
+    ]
+    # the printed table of fit coefficients refers to the unscaled values
+    table_labels = list(params_labels_latex)
+    if rescale_bias:
+        params_labels_latex[0] = (
+            r"$b_\delta\,/[(1+z)/(1+z_\mathrm{eff})]^{%g}$" % bias_expo
+        )
+
+    data_fig = {}
+    if rescale_bias:
+        data_fig["rescale bias_delta"] = (
+            f"bias_delta values multiplied by [(1+{rescale_zref})/(1+z)]^{bias_expo}"
+        )
+
+    fig, ax = plt.subplots(len(params_labels), 1, sharex=True, figsize=(8, 8))
+
+    bao_plot = {}
+    for ii, key in enumerate(["dr1_hsnr", "dr2_hsnr"]):
+        bao_plot[key] = {}
+        bao_plot[key]["zeff"] = 2.33
+        bao_plot[key]["label"] = "DESI DR" + str(ii + 1) + " BAO"
+        for lab in params_labels:
+            bao_plot[key][lab] = {}
+            bao_plot[key][lab]["mean"] = bao_data[key][lab].mean()
+            bao_plot[key][lab]["std"] = bao_data[key][lab].std()
+
+            print(
+                f"{bao_plot[key]['label']} & {lab} & {bao_plot[key][lab]['mean']:.4f} & {bao_plot[key][lab]['std']:.4f} \\\\"
+            )
+
+    xdisp = [-0.01, 0.01]
+    zmin_bao = np.min(bao_data["dr2"]["zhist"])
+    zmax_bao = np.max(bao_data["dr2"]["zhist"])
+    zmin_fit = np.min(dict_mapping["zs"])
+    zmax_fit = np.max(dict_mapping["zs"])
+    zbao = np.linspace(zmin_bao, zmax_bao, 100)
+    zfit = np.linspace(zmin_fit, zmax_fit, 100)
+
+    data = {}
+    for ii, lab in enumerate(params_labels):
+
+        param = dict_mapping["forest_out"][lab]
+        fac_zs = zev_factor(lab, dict_mapping["zs"])
+        percen = np.percentile(param, [16, 84], axis=0) * fac_zs
+
+        print(
+            f"{lab} {dict_mapping['zs'][1]:.2f}: {param[:,1].mean():.4f} & {param[:,1].std():.4f}"
+        )
+
+        ax[ii].fill_between(
+            dict_mapping["zs"],
+            percen[0],
+            percen[1],
+            alpha=0.3,
+            label=r"$P_\mathrm{1D}$",
+        )
+
+        # zenodo
+        data_fig["P1D " + lab + " x"] = dict_mapping["zs"]
+        data_fig["P1D " + lab + " ylow"] = percen[0]
+        data_fig["P1D " + lab + " yhigh"] = percen[1]
+
+        # statistical band plus relative systematic in quadrature
+        if (sys_shift is not None) and (lab in sys_shift):
+            ylow, yhigh = _plot_sys_band(
+                ax[ii], dict_mapping["zs"], percen, sys_shift, lab
+            )
+
+            # zenodo
+            data_fig["P1D+sys " + lab + " ylow"] = ylow
+            data_fig["P1D+sys " + lab + " yhigh"] = yhigh
+
+        mean = np.mean(param, axis=0)
+
+        if ii == 0:
+            std = np.std(param, axis=0)
+            popt, pcov = curve_fit(fit_pow, dict_mapping["zs"], mean, sigma=std)
+            print("fit a:", popt[0], pcov[0, 0])
+            print("fit b:", popt[1], pcov[1, 1])
+
+        fit_val = curve_fit(fit_pol, dict_mapping["zs"], mean)[0]
+        # cubic coefficients, then the fitted (unscaled) value at z_table
+        data[table_labels[ii]] = np.append(fit_val, fit_pol(z_table, *fit_val))
+
+        # data[params_latex[ii]] = fit_val
+        yfit = fit_pol(zfit, *fit_val) * zev_factor(lab, zfit)
+        ax[ii].plot(zfit, yfit, color="C0", ls="--")
+
+        # zenodo
+        data_fig["P1D fit " + lab + " x"] = zfit
+        data_fig["P1D fit " + lab + " y"] = yfit
+
+        for jj, key in enumerate(bao_plot):
+            dumm = np.zeros(2)
+            fac_bao = zev_factor(lab, bao_plot[key]["zeff"])
+            ax[ii].errorbar(
+                dumm + bao_plot[key]["zeff"] + xdisp[jj],
+                dumm + bao_plot[key][lab]["mean"] * fac_bao,
+                dumm + bao_plot[key][lab]["std"] * fac_bao,
+                fmt=".",
+                label=bao_plot[key]["label"].replace("DESI ", ""),
+                color="C" + str(jj + 1),
+            )
+
+            # zenodo
+            if key == "dr2_hsnr":
+                key_lab = "BAO DR2"
+            else:
+                key_lab = "BAO DR1"
+
+            data_fig[key_lab + " " + lab + " x"] = (
+                dumm + bao_plot[key]["zeff"] + xdisp[jj]
+            )
+            data_fig[key_lab + " " + lab + " y mean"] = (
+                dumm + bao_plot[key][lab]["mean"] * fac_bao
+            )
+            data_fig[key_lab + " " + lab + " y std"] = (
+                dumm + bao_plot[key][lab]["std"] * fac_bao
+            )
+
+            if key == "dr2_hsnr":
+                b1 = bao_plot[key][lab]["mean"] - bao_plot[key][lab]["std"]
+                b2 = bao_plot[key][lab]["mean"] + bao_plot[key][lab]["std"]
+                if ii == 0:
+                    expo = bias_expo
+                else:
+                    expo = 0
+                bz = ((1 + zbao) / (1 + bao_plot[key]["zeff"])) ** expo
+                bz = bz * zev_factor(lab, zbao)
+                ax[ii].fill_between(zbao, b1 * bz, b2 * bz, color="C2", alpha=0.12)
+
+                # zenodo
+
+                data_fig["BAO DR2 zev " + lab + " x"] = zbao
+                data_fig["BAO DR2 zev " + lab + " y low"] = b1 * bz
+                data_fig["BAO DR2 zev " + lab + " y high"] = b2 * bz
+
+    ax[0].legend(fontsize=ftsize - 2, loc="upper right")
+
+    for ii in range(len(params_labels)):
+        ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
+        ax[ii].set_ylabel(params_labels_latex[ii], fontsize=ftsize)
+
+    ii = -1
+    ypos = 0.6
+    ax[ii].fill_between(
+        bao_data["dr2"]["zhist"],
+        ypos,
+        ypos + bao_data["dr2"]["smooth_weights"] * 0.3,
+        alpha=0.5,
+        color="grey",
+    )
+    # zenodo
+    data_fig["BAO weights x"] = bao_data["dr2"]["zhist"]
+    data_fig["BAO weights y"] = bao_data["dr2"]["smooth_weights"]
+
+    ax[ii].text(
+        bao_data["dr2"]["zhist"].min() + 0.05,
+        ypos + 0.05,
+        "BAO weights",
+        fontsize=ftsize,
+    )
+    ax[ii].set_xlabel(r"$z$", fontsize=ftsize)
+
+    # ax[0].set_ylim(ymax=0.02)
+    # ax[1].set_ylim(ymin=0.0)
+
+    for key, vals in data.items():
+        vals = np.round(vals, 2)
+        row = " & ".join(f"{v:.2f}" for v in vals)
+        print(f"{key} & {row} \\\\")
+
+    plt.tight_layout()
+    plt.savefig("figs/bias_beta_BAOvsP1D.png")
+    plt.savefig("figs/bias_beta_BAOvsP1D.pdf")
+    np.save("figs/bias_beta_BAOvsP1D.npy", data_fig)
+
+
+#: Arinyo parameters fitted directly to the Accel2 P3D, value and error per z
+ACCEL2_ARINYO_FITS = {
+    "z": np.array([4.0, 3.6, 3.0, 2.6, 2.0]),
+    "bias_delta": {
+        "value": np.array([-0.404, -0.315, -0.209, -0.15, -0.0805]),
+        "error": np.array([0.00676, 0.00701, 0.00453, 0.00334, 0.002]),
+    },
+    "beta": {
+        "value": np.array([0.874, 1.07, 1.42, 1.61, 1.75]),
+        "error": np.array([0.0717, 0.0752, 0.0774, 0.0819, 0.0918]),
+    },
+    "q1": {
+        "value": np.array([2.55, 1.92, 1.08, 0.779, 0.562]),
+        "error": np.array([0.121, 0.239, 0.171, 0.147, 0.125]),
+    },
+    "q2": {
+        "value": np.array([-1.0, -0.684, -0.156, 0.0235, 0.16]),
+        "error": np.array([0.349, 0.33, 0.192, 0.137, 0.0835]),
+    },
+    "k_v": {
+        "value": np.array([2.67, 1.78, 1.01, 0.61, 0.152]),
+        "error": np.array([0.856, 0.516, 0.324, 0.266, 0.15]),
+    },
+    "a_v": {
+        "value": np.array([0.25, 0.353, 0.445, 0.394, 0.225]),
+        "error": np.array([0.0781, 0.093, 0.1, 0.0916, 0.068]),
+    },
+    "b_v": {
+        "value": np.array([1.65, 1.69, 1.74, 1.7, 1.54]),
+        "error": np.array([0.131, 0.126, 0.109, 0.0907, 0.0613]),
+    },
+    "k_p": {
+        "value": np.array([16.0, 18.4, 21.0, 21.3, 15.8]),
+        "error": np.array([1.9, 4.38, 6.89, 7.61, 3.63]),
+    },
+}
+
+
+def _accel2_fits_from_refit(sim_fits: Mapping[str, Any] | str | Path) -> dict:
+    """
+    Convert saved ACCEL2 Arinyo refits to the layout of ACCEL2_ARINYO_FITS.
+
+    Parameters
+    ----------
+    sim_fits : mapping or path
+        Dictionary returned by ``fit_accel2_redshifts`` in
+        ``notebooks/arinyo_fits/Arinyo_fit_accel2``, or the ``.npy`` file it
+        was saved to.
+
+    Returns
+    -------
+    dict
+        ``z`` and, per article parameter plus ``bias_eta``, a mapping with
+        ``value`` and ``error``. The refits are point estimates, so ``error``
+        is None.
+    """
+    if not isinstance(sim_fits, Mapping):
+        sim_fits = np.load(sim_fits, allow_pickle=True).item()
+    out = {"z": np.asarray(sim_fits["z"], dtype=float)}
+    for key, value in sim_fits["Arinyo_article"].items():
+        out[key] = {"value": np.asarray(value, dtype=float), "error": None}
+    out["bias_eta"] = {
+        "value": np.asarray(sim_fits["Arinyo"]["bias_eta"], dtype=float),
+        "error": None,
+    }
+    return out
+
+
+def load_accel2_mcmc_fits(
+    folder: str | Path,
+    tag: str = "k3d3.5_k1d1",
+    sim_label: str = "l160_r25",
+) -> dict:
+    """
+    Collect the per-redshift ACCEL2 MCMC errors in the ACCEL2_ARINYO_FITS layout.
+
+    Parameters
+    ----------
+    folder : str or path
+        Folder with the ``Arinyo_mcmc_accel2_<sim_label>_z<z>_<tag>_errors.npy``
+        files written by ``notebooks/arinyo_fits/Arinyo_fit_accel2``.
+    tag : str, default="k3d3.5_k1d1"
+        Scale-cut tag in the file names.
+    sim_label : str, default="l160_r25"
+        ACCEL2 simulation label.
+
+    Returns
+    -------
+    dict
+        ``z`` (increasing) and, per article parameter plus ``bias_eta``, a
+        mapping with the posterior median ``value``, ``error`` (half the 16-84
+        per cent range) and the asymmetric ``error_minus`` and ``error_plus``.
+        ``source`` is ``"mcmc"``.
+
+    Raises
+    ------
+    FileNotFoundError
+        If no file matches.
+    ValueError
+        If the files were produced with different fit settings.
+    """
+    files = sorted(
+        Path(folder).glob(f"Arinyo_mcmc_accel2_{sim_label}_z*_{tag}_errors.npy")
+    )
+    if not files:
+        raise FileNotFoundError(f"no ACCEL2 MCMC errors in {folder} for tag {tag}")
+    entries = [np.load(fname, allow_pickle=True).item() for fname in files]
+    entries.sort(key=lambda entry: entry["z"])
+    ref = {k: v for k, v in entries[0]["settings"].items() if k != "z"}
+    for entry in entries:
+        if {k: v for k, v in entry["settings"].items() if k != "z"} != ref:
+            raise ValueError(f"MCMC at z={entry['z']} has different settings")
+
+    fields = ["value", "error", "error_minus", "error_plus"]
+    out = {
+        "z": np.array([entry["z"] for entry in entries], dtype=float),
+        "source": "mcmc",
+    }
+    for key in entries[0]["Arinyo_article"]:
+        out[key] = {
+            field: np.array([entry["Arinyo_article"][key][field] for entry in entries])
+            for field in fields
+        }
+    out["bias_eta"] = {
+        field: np.array([entry["Arinyo"]["bias_eta"][field] for entry in entries])
+        for field in fields
+    }
+    return out
+
+
+@house_style
+def plot_bias_beta_zev_val(
+    dict_mapping: Mapping[str, Any],
+    plot_bias_eta: bool | None = False,
+    ftsize: int | None = 24,
+    sim_fits: Mapping[str, Any] | str | Path | None = None,
+    sim_errorbars: bool = True,
+) -> None:
+    """
+    Compare inferred bias evolution with fixed validation-simulation fits.
+
+    Parameters
+    ----------
+    dict_mapping : mapping
+        P1D-to-P3D mapping containing ``zs`` and ``forest_out`` samples.
+    plot_bias_eta : bool, default=False
+        Whether to plot the velocity-gradient bias.
+    ftsize : int, default=24
+        Base font size in points.
+    sim_fits : mapping or path, optional
+        Simulation values to compare with:
+
+        * None (default): the ACCEL2 article fits
+          (:data:`ACCEL2_ARINYO_FITS`, with errors);
+        * the output of :func:`load_accel2_mcmc_fits`: our MCMC fits, with
+          asymmetric 16-84 per cent errors; outputs get the suffix ``_mcmc``;
+        * the dictionary saved by ``fit_accel2_redshifts`` in
+          ``notebooks/arinyo_fits/Arinyo_fit_accel2``, or the path to its
+          ``.npy`` file: minimizer refits without errors; outputs get the
+          suffix ``_refit``.
+    sim_errorbars : bool, default=True
+        Draw the error bars of the simulation values, when available. The
+        simulation values are plotted as circles.
+
+    Notes
+    -----
+    Writes PNG, PDF, and NumPy figure-data products under ``figs``.
+    The article fits have no ``bias_eta``; with ``plot_bias_eta`` the
+    simulation values are then omitted from that panel.
+    """
+    fig_data = {}
+
+    if sim_fits is None:
+        params_sim = ACCEL2_ARINYO_FITS
+        out_suffix = ""
+    elif isinstance(sim_fits, Mapping) and sim_fits.get("source") == "mcmc":
+        params_sim = sim_fits
+        out_suffix = "_mcmc"
+    else:
+        params_sim = _accel2_fits_from_refit(sim_fits)
+        out_suffix = "_refit"
+
+    if plot_bias_eta:
+        params_labels = ["bias_delta", "beta", "bias_eta"]
+    else:
+        params_labels = ["bias_delta", "beta"]
+    params_labels_latex = [
+        r"$b_\delta$",
+        r"$\beta$",
+        r"$b_\eta$",
+    ]
+
+    fig, ax = plt.subplots(len(params_labels), 1, sharex=True, figsize=(8, 8))
+
+    data = {}
+    for ii, lab in enumerate(params_labels):
+
+        param = dict_mapping["forest_out"][lab]
+        percen = np.percentile(param, [16, 84], axis=0)
+
+        ind_data = dict_mapping["zs"] >= 2.6
+
+        ax[ii].fill_between(
+            dict_mapping["zs"][ind_data],
+            percen[0][ind_data],
+            percen[1][ind_data],
+            alpha=0.3,
+            label=r"Model",
+        )
+
+        fig_data["Model " + lab + " x"] = dict_mapping["zs"][ind_data]
+        fig_data["Model " + lab + " y low"] = percen[0][ind_data]
+        fig_data["Model " + lab + " y high"] = percen[1][ind_data]
+
+        if lab not in params_sim:
+            continue
+
+        # the plotted range is 2.45 < z < 4.05
+        ind_sim = (params_sim["z"] >= 2.6) & (params_sim["z"] <= 4.0)
+        if "error_minus" in params_sim[lab]:
+            err_sim = np.vstack(
+                [
+                    params_sim[lab]["error_minus"][ind_sim],
+                    params_sim[lab]["error_plus"][ind_sim],
+                ]
+            )
+        elif params_sim[lab]["error"] is not None:
+            err_sim = params_sim[lab]["error"][ind_sim]
+        else:
+            err_sim = None
+
+        if not sim_errorbars:
+            err_sim = None
+
+        ax[ii].errorbar(
+            params_sim["z"][ind_sim],
+            params_sim[lab]["value"][ind_sim],
+            err_sim,
+            fmt="o",
+            alpha=0.95,
+            label=r"Simulation",
+            color="C1",
+            lw=2,
+        )
+
+        fig_data["Sim " + lab + " x"] = params_sim["z"][ind_sim]
+        fig_data["Sim " + lab + " y"] = params_sim[lab]["value"][ind_sim]
+        fig_data["Sim " + lab + " y error"] = err_sim
+
+    ax[0].legend(fontsize=ftsize)
+
+    for ii in range(len(params_labels)):
+        ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
+        ax[ii].set_ylabel(params_labels_latex[ii], fontsize=ftsize)
+        ax[ii].yaxis.set_major_formatter(mticker.FormatStrFormatter("% .1f"))
+
+    ax[ii].set_xlabel(r"$z$", fontsize=ftsize)
+
+    ax[-1].set_xticks([2.5, 3.0, 3.5, 4.0])
+    ax[-1].set_xticklabels(["2.5", "3.0", "3.5", "4.0"])
+    plt.xlim(2.45, 4.05)
+
+    plt.tight_layout()
+
+    plt.savefig(f"figs/bias_beta_accel2{out_suffix}.png")
+    plt.savefig(f"figs/bias_beta_accel2{out_suffix}.pdf")
+    np.save(f"figs/bias_beta_accel2{out_suffix}.npy", fig_data)
+
+
+@house_style
+def plot_p3d_small_z(
+    dict_mapping: Mapping[str, Any],
+    z0: int | None = 3,
+    ftsize: int | None = 24,
+    sys_shift: Mapping[str, Any] | None = None,
+    z_table: float = 3.0,
+) -> Any:
+    """
+    Plot fitted nonlinear Arinyo parameters as functions of redshift.
+
+    Parameters
+    ----------
+    dict_mapping : mapping
+        P1D-to-P3D mapping containing ``zs`` and ``forest_out`` samples.
+    z0 : float, default=3
+        Pivot redshift for cubic fits.
+    ftsize : int, default=24
+        Base font size in points.
+    sys_shift : mapping, optional
+        Relative systematic error of the model, ``|model/sim - 1|``, with
+        redshifts ``z`` and one array per simulation label (``q1``, ``q2``,
+        ``a_v``, ``b_v``, ``k_v``, ``k_p``). A linear fit to it is added in
+        quadrature to the half-width of the 16-84 per cent band and shown as a
+        lighter band; see ``plot_bias_beta_zev``.
+    z_table : float, default=2.33
+        Redshift at which the cubic fit is evaluated; the value is printed as
+        the last column of the table of fit coefficients.
+
+    Notes
+    -----
+    Writes PNG, PDF, and NumPy figure-data products under ``figs``.
+    """
+    from scipy.optimize import curve_fit
+
+    def fit_func(z: Any, a: Any, b: Any, c: Any, d: Any) -> Any:
+        """
+        Evaluate a cubic polynomial in pivoted redshift.
+
+        Parameters
+        ----------
+        z : array_like
+            Redshifts.
+        a, b, c, d : float
+            Constant through cubic coefficients.
+
+        Returns
+        -------
+        ndarray
+            Model values at ``z``.
+        """
+        x = (1 + z) / (1 + z0)
+        return a + b * x + c * x**2 + d * x**3
+
+    data_fig = {}
+
+    params = ["q1", "q2", "av", "bv", "kvav", "kp"]
+    params_latex = [
+        r"$q_1$",
+        r"$q_2$",
+        r"$a_\mathrm{v}$",
+        r"$b_\mathrm{v}$",
+        r"$k_\mathrm{v}\,[\mathrm{Mpc}^{-1}]$",
+        r"$k_\mathrm{p}\,[\mathrm{Mpc}^{-1}]$",
+    ]
+
+    fig, ax = plt.subplots(len(params) // 2, 2, sharex=True, figsize=(10, 10))
+    ax = ax.flatten()
+
+    # labels of the parameters in sys_shift
+    sys_labels = {
+        "q1": "q1",
+        "q2": "q2",
+        "av": "a_v",
+        "bv": "b_v",
+        "kvav": "k_v",
+        "kp": "k_p",
+    }
+
+    data = {}
+
+    for ii, par in enumerate(params):
+        if par != "kvav":
+            val_par = dict_mapping["forest_out"][par]
+        else:
+            val_par = dict_mapping["forest_out"]["kvav"] ** (
+                1 / dict_mapping["forest_out"]["av"]
+            )
+        percen = np.nanpercentile(val_par, [16, 84], axis=0)
+        ax[ii].fill_between(dict_mapping["zs"], percen[0], percen[1], alpha=0.3)
+
+        # zenodo
+        data_fig[params_latex[ii] + " x"] = dict_mapping["zs"]
+        data_fig[params_latex[ii] + " y low"] = percen[0]
+        data_fig[params_latex[ii] + " y high"] = percen[1]
+
+        # statistical band plus relative systematic in quadrature
+        if (sys_shift is not None) and (sys_labels[par] in sys_shift):
+            ylow, yhigh = _plot_sys_band(
+                ax[ii], dict_mapping["zs"], percen, sys_shift, sys_labels[par]
+            )
+
+            # zenodo
+            data_fig[params_latex[ii] + " sys y low"] = ylow
+            data_fig[params_latex[ii] + " sys y high"] = yhigh
+
+        mean = np.nanmean(val_par, axis=0)
+        fit_val = curve_fit(fit_func, dict_mapping["zs"], mean)[0]
+        # cubic coefficients, then the fitted value at z_table
+        data[params_latex[ii]] = np.append(fit_val, fit_func(z_table, *fit_val))
+        zplot = np.linspace(np.min(dict_mapping["zs"]), np.max(dict_mapping["zs"]), 100)
+        ax[ii].plot(
+            zplot,
+            fit_func(zplot, *fit_val),
+            color="C0",
+            ls="--",
+        )
+
+        # zenodo
+        data_fig[params_latex[ii] + " fit x"] = zplot
+        data_fig[params_latex[ii] + " fit y"] = fit_func(zplot, *fit_val)
+
+        ax[ii].set_ylabel(params_latex[ii], fontsize=ftsize)
+        ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
+
+    for key, vals in data.items():
+        vals = np.round(vals, 2)
+        row = " & ".join(f"{v:.2f}" for v in vals)
+        print(f"{key} & {row} \\\\")
+
+    ax[-1].set_xticks([2, 3, 4])
+    ax[-1].set_xticklabels(["2", "3", "4"])
+    # ax[0].set_xlim(1.9, 4.3)
+
+    ax[-2].set_xlabel(r"$z$", fontsize=ftsize)
+    ax[-1].set_xlabel(r"$z$", fontsize=ftsize)
+    plt.tight_layout()
+    plt.savefig("figs/Arinyo_with_z.pdf")
+    plt.savefig("figs/Arinyo_with_z.png")
+    np.save("figs/Arinyo_with_z.npy", data_fig)
+
+
+@house_style
+def plot_p3d_validation(
+    knew3d: ArrayLike,
+    munew3d: ArrayLike,
+    data_pip: ArrayLike,
+    data_sim: ArrayLike,
+    ftsize: int | None = 24,
+) -> None:
+    """
+    Compare mapped P3D predictions with Accel2 validation measurements.
+
+    Parameters
+    ----------
+    knew3d, munew3d : array_like of shape (n_k, n_mu)
+        Model wavenumber grid in ``Mpc^-1`` and cosine-angle grid.
+    data_pip : mapping
+        Mapped P1D-chain product with ``zs`` and ``forest_out`` P3D/linear
+        power arrays.
+    data_sim : mapping
+        Accel2 validation data with P3D and angular-coordinate arrays.
+    ftsize : int, default=24
+        Base font size in points.
+
+    Notes
+    -----
+    Writes PNG, PDF, and NumPy figure-data products under ``figs``.
+    """
+    from matplotlib.patches import Patch
+
+    data_fig = {}
+
+    p3d = data_pip["forest_out"]["p3d"]
+    plin = data_pip["forest_out"]["plin"]
+    zz = data_pip["zs"]
+
+    p3d_accel2 = data_sim["p3d_Mpc"]
+    diff_mu = data_sim["mu3d"][0, 1] - data_sim["mu3d"][0, 0]
+
+    # each redshift: big panel with its residual panel attached below
+    fig = plt.figure(figsize=(8, 13))
+    outer = fig.add_gridspec(3, 1, hspace=0.12)
+    ax, ax_res = [], []
+    for ii in range(3):
+        inner = outer[ii].subgridspec(2, 1, height_ratios=[3, 1.2], hspace=0)
+        ax.append(fig.add_subplot(inner[0], sharex=ax[0] if ii else None))
+        ax_res.append(fig.add_subplot(inner[1], sharex=ax[0]))
+        ax[ii].tick_params(labelbottom=False)
+        if ii < 2:
+            ax_res[ii].tick_params(labelbottom=False)
+
+    _ = np.argwhere(knew3d[:, 0] < 4)[:, 0]
+
+    for ii in range(2, zz.shape[0] - 1):
+        print(zz[ii])
+        for jj in range(4):
+            if (ii == 2) and (jj == 0):
+                label = "Model"
+            else:
+                label = None
+
+            # average of many mu bins, same range as accel2 data
+            if jj != 3:
+                ind = np.argwhere(
+                    (munew3d[0] >= diff_mu * jj) & (munew3d[0] < diff_mu * (jj + 1))
+                )[:, 0]
+            else:
+                ind = np.argwhere(munew3d[0] >= diff_mu * jj)[:, 0]
+
+            rat = p3d[:, ii, :, ind] / plin[np.newaxis, :, ii, :]
+            no_nan = np.isfinite(rat[0, :, 0])
+
+            yytop = np.percentile(rat[:, no_nan, :], [84], axis=(0, 1))[0]
+            yybot = np.percentile(rat[:, no_nan, :], [16], axis=(0, 1))[0]
+            ax[ii - 2].fill_between(
+                knew3d[_, 0],
+                yytop[_],
+                yybot[_],
+                alpha=0.3,
+                color="C" + str(jj),
+                label=label,
+            )
+
+            # zenodo
+            data_fig["Model z=" + str(zz[ii]) + " mu" + str(jj) + " x"] = knew3d[_, 0]
+            data_fig["Model z=" + str(zz[ii]) + " mu" + str(jj) + " y low"] = yybot[_]
+            data_fig["Model z=" + str(zz[ii]) + " mu" + str(jj) + " y high"] = yytop[_]
+
+            if (ii == 2) and (jj == 0):
+                label = "Simulation"
+            else:
+                label = None
+
+            ind2 = np.argmin(np.abs(zz[ii] - data_sim["z"]))
+            # print("z sim", data_sim["z"][ind2], "z model", zz[ii])
+            yy = (p3d_accel2[ind2, :, jj] / np.median(plin[:, ii, :], axis=0))[_]
+            ax[ii - 2].plot(knew3d[_, 0], yy, "C" + str(jj) + "-", label=label)
+
+            data_fig["Simulation z=" + str(zz[ii]) + " mu" + str(jj) + " x"] = knew3d[
+                _, 0
+            ]
+            data_fig["Simulation z=" + str(zz[ii]) + " mu" + str(jj) + " y"] = yy
+
+            # residuals, Pmodel/Psim - 1
+            res = p3d[:, ii, :, ind] / p3d_accel2[ind2, :, jj] - 1
+            restop = np.percentile(res[:, no_nan, :], [84], axis=(0, 1))[0]
+            resbot = np.percentile(res[:, no_nan, :], [16], axis=(0, 1))[0]
+            # ratio of medians for all wedges, bands only for the outer ones
+            resmed = (
+                np.median(p3d[:, ii, :, ind][:, no_nan, :], axis=(0, 1))
+                / p3d_accel2[ind2, :, jj]
+                - 1
+            )
+            ax_res[ii - 2].plot(knew3d[_, 0], resmed[_], "C" + str(jj) + "-")
+            if jj in (0, 3):
+                ax_res[ii - 2].fill_between(
+                    knew3d[_, 0],
+                    restop[_],
+                    resbot[_],
+                    alpha=0.3,
+                    color="C" + str(jj),
+                )
+
+            data_fig["Residual z=" + str(zz[ii]) + " mu" + str(jj) + " x"] = knew3d[
+                _, 0
+            ]
+            data_fig["Residual z=" + str(zz[ii]) + " mu" + str(jj) + " y median"] = (
+                resmed[_]
+            )
+            data_fig["Residual z=" + str(zz[ii]) + " mu" + str(jj) + " y low"] = resbot[
+                _
+            ]
+            data_fig["Residual z=" + str(zz[ii]) + " mu" + str(jj) + " y high"] = (
+                restop[_]
+            )
+
+    ax[0].legend(fontsize=ftsize)
+
+    colors = ["tab:blue", "tab:orange", "tab:green", "tab:red"]
+    labels = [
+        r"$0.00<\mu<0.25$",
+        r"$0.25<\mu<0.50$",
+        r"$0.50<\mu<0.75$",
+        r"$0.75<\mu<1.00$",
+    ]
+    handles = [Patch(facecolor=c, label=l) for c, l in zip(colors, labels)]
+
+    for ii in range(0, 2):
+        ax[ii + 1].legend(
+            handles=handles[ii * 2 : (ii + 1) * 2],
+            loc="upper right",
+            fontsize=ftsize - 4,
+            ncol=1,
+        )
+
+    for ii in range(3):
+        ax[ii].set_ylabel(r"$P/P_\mathrm{lin}$", fontsize=ftsize - 6)
+        ax_res[ii].axhline(0, color="k", ls=":", lw=1)
+        for yy10 in (-0.1, 0.1):
+            ax_res[ii].axhline(yy10, color="k", ls="--", lw=1)
+        ax_res[ii].set_ylabel(
+            r"$P_\mathrm{model}/P_\mathrm{sim}-1$", fontsize=ftsize - 6
+        )
+        ax_res[ii].tick_params(axis="both", which="major", labelsize=ftsize - 6)
+        ax_res[ii].set_ylim(-0.25, 0.25)
+        ax_res[ii].set_yticks([-0.2, 0, 0.2])
+
+    labs = [r"$z=2.6$", r"$z=3.0$", r"$z=3.6$"]
+    ylabpos = [0.2, 0.35, 0.6]
+    for ii in range(3):
+        ax[ii].text(0.04, ylabpos[ii], labs[ii], fontsize=ftsize)
+
+    for ii in range(3):
+        ax[ii].tick_params(axis="both", which="major", labelsize=ftsize - 6)
+
+    ax_res[-1].set_xlabel(r"$k\, [1/\mathrm{Mpc}]$", fontsize=ftsize - 6)
+
+    ax[0].set_xscale("log")
+    fig.subplots_adjust(left=0.16, right=0.97, top=0.99, bottom=0.06)
+    fig.align_ylabels()
+    plt.savefig("figs/forestflow_p3d_accel2.png")
+    plt.savefig("figs/forestflow_p3d_accel2.pdf")
+    np.save("figs/forestflow_p3d_accel2.npy", data_fig)

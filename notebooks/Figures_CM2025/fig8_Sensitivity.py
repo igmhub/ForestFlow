@@ -33,7 +33,7 @@ from lace.archive import gadget_archive, nyx_archive
 from lace.emulator.emulator_manager import set_emulator
 from lace.emulator.nn_emulator import NNEmulator
 from lace.emulator.gp_emulator import GPEmulator
-from lace.utils import poly_p1d
+from lace.emulator import poly_p1d
 import lace
 
 from cup1d.p1ds.data_Chabanier2019 import P1D_Chabanier2019

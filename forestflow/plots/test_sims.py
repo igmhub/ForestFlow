@@ -10,8 +10,11 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import matplotlib.patches as mpatches
 
+from forestflow.plots.style import house_style
 
 
+
+@house_style
 def plot_p3d_snap(
     folder_out: Any,
     k_Mpc: Any,
@@ -164,6 +167,7 @@ def plot_p3d_snap(
         plt.savefig(folder_out + "p3d_snap" + ext)
 
 
+@house_style
 def plot_p1d_snap(
     folder_out: Any,
     k_p1d_Mpc: ArrayLike,
@@ -269,6 +273,7 @@ def plot_p1d_snap(
         plt.savefig(folder_out + "p1d_snap" + ext)
 
 
+@house_style
 def plot_p3d_test_sims(
     sim_labels: Any,
     k_Mpc: ArrayLike,
@@ -406,6 +411,7 @@ def plot_p3d_test_sims(
         plt.savefig(savename, bbox_inches="tight")
 
 
+@house_style
 def plot_p1d_test_sims(
     sim_labels: Any,
     k_p1d_Mpc: ArrayLike,

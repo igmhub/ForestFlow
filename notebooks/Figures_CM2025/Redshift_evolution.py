@@ -27,7 +27,6 @@ from matplotlib import gridspec
 import numpy as np
 
 from forestflow.archive.gadget_archive import GadgetArchive3D
-from forestflow.plots_v0 import plot_test_p3d
 from forestflow.emulator.p3d_cinn import P3DEmulator
 from forestflow.model.arinyo import ArinyoModel
 from forestflow import model_p3d_arinyo

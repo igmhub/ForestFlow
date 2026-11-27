@@ -15,7 +15,7 @@ Data flow
        node [shape=box, style="rounded,filled", fillcolor="#eef4fb"];
        Archive [label="GadgetArchive3D\nsimulation P3D/P1D"];
        Inputs [label="cosmology + IGM\ninput mapping"];
-       Emulator [label="P3DEmulator\ncINN"];
+       Emulator [label="ArinyoGPEmulator (GP)\nor P3DEmulator (cINN)"];
        Coefficients [label="Arinyo coefficient\nmapping"];
        Model [label="ArinyoModel +\nlinear theory"];
        Spectra [label="P3D_Mpc / P1D_Mpc"];
@@ -54,14 +54,17 @@ Archive files retain historical keys such as ``k_Mpc`` and
 
 .. code-block:: python
 
-   from forestflow.emulator.p3d_cinn import P3DEmulator
+   from forestflow.emulator import load_emulator
 
-   emulator = P3DEmulator(key="forest_mpg")
+   emulator = load_emulator("forest_mpg_gp")      # Gaussian process
+   # emulator = load_emulator("forest_mpg_cinn")  # cINN, needs the [cinn] extra
    print(emulator.input_labels)
    print(emulator.output_labels)
 
-``input_labels`` is the authoritative normalized input order. Prefer a
-mapping over a positional array.
+Both emulators map the same six inputs to the eight Arinyo coefficients. The GP
+is deterministic and does not need torch; the cINN averages latent
+realizations. ``input_labels`` is the authoritative normalized input order.
+Prefer a mapping over a positional array.
 
 3. Predict Arinyo coefficients
 ------------------------------
@@ -84,30 +87,32 @@ Arinyo model:
        "gamma": 1.21,
        "kF_Mpc": 14.2,
    }
-   arinyo = emulator.evaluate(emulator_input, seed=0)
+   arinyo = emulator.evaluate(emulator_input)
 
 The result is keyed by ``emulator.output_labels``. Inputs outside the
 training domain are extrapolations; inspect the archive training sample before
 interpreting them.
 
 For several redshifts or parameter points, pass a list of dictionaries. The
-network then evaluates them in one batch instead of making one Python call per
+emulator then evaluates them in one batch instead of making one Python call per
 redshift:
 
 .. code-block:: python
 
    inputs_by_redshift = [input_at_z2, input_at_z3, input_at_z4]
-   arinyo_by_redshift = emulator.evaluate(inputs_by_redshift, seed=0)
+   arinyo_by_redshift = emulator.evaluate(inputs_by_redshift)
 
-Each returned value has one entry per input dictionary. Repeated calls with the
-same batch size, ``Nrealizations``, and seed reuse the deterministic latent
-sample tensor.
+Each returned value has one entry per input dictionary. For the cINN, the
+latent draws are set by ``seed`` (default 0); repeated calls with the same
+batch size, ``Nrealizations`` and seed reuse the deterministic latent sample
+tensor.
 
-Long minimization or sampling runs can also compile the neural network once:
+Long minimization or sampling runs with the cINN can also compile the neural
+network once (``compile_model`` is ignored by the GP):
 
 .. code-block:: python
 
-   emulator = P3DEmulator(key="forest_mpg", compile_model=True)
+   emulator = load_emulator("forest_mpg_cinn", compile_model=True)
    emulator.evaluate(inputs_by_redshift)  # compiles this input shape
    arinyo_by_redshift = emulator.evaluate(inputs_by_redshift)  # reuses it
 
@@ -141,10 +146,10 @@ The outputs match their input grid shapes. For velocity coordinates use
 5. Interpret uncertainty
 ------------------------
 
-``P3DEmulator.evaluate`` averages cINN latent realizations. Increasing
+``P3DEmulator.evaluate`` (cINN) averages latent realizations. Increasing
 ``Nrealizations`` reduces Monte Carlo noise in that mean; their scatter is
 not automatically a calibrated prediction error, and ``evaluate`` does not
-return a covariance.
+return a covariance. The GP prediction is the posterior mean.
 
 For emulator uncertainty, use leave-one-simulation-out residuals from
 ``forestflow.emulator.covariance``. Their covariance describes prediction residuals
@@ -159,7 +164,9 @@ unit contracts, and use :doc:`api` for individual functions.
 Training a new emulator
 -----------------------
 
-With ``train=True`` and ``use_val_set=True``, every improvement in
+The GP is trained in ``notebooks/arinyo_gp/01_train.py``
+(:func:`forestflow.emulator.train_arinyo_gp`). For the cINN
+(``scripts/training_emulators``), with ``train=True`` and ``use_val_set=True``, every improvement in
 validation negative log likelihood snapshots the model state. After training,
 ForestFlow restores and saves the minimum-validation-loss state instead of the
 final epoch. Metadata records the zero-based ``best_epoch`` and

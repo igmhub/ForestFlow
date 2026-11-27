@@ -9,9 +9,17 @@ with its runtime dependencies:
    python -m pip install -e .
 
 The package relies on LaCE for cosmology and simulation archive support; it is
-declared as a runtime dependency. Torch and FrEIA remain mandatory because the
-supported cINN emulator uses them. Paper-analysis helpers, the cross-power
-routines, and MPI scripts are optional:
+declared as a runtime dependency. The minimal installation runs the
+Gaussian-process emulator (``forest_mpg_gp``). The cINN emulator
+(``forest_mpg_cinn``) needs torch and FrEIA:
+
+.. code-block:: console
+
+   python -m pip install -e ".[cinn]"
+
+The priors analysis (``forestflow.priors``: ``.[priors]``, plus ``vega`` for
+the BAO fits), the cross-power routines (``.[px]``) and the MPI scripts
+(``.[mpi]``) are optional too; ``.[extended]`` installs all of them:
 
 .. code-block:: console
 

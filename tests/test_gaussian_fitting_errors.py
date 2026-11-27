@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from forestflow.model_fits import ArinyoFitter, gaussian_p3d_relative_error
+from forestflow.fitting import ArinyoFitter, gaussian_p3d_relative_error
 
 
 def test_conjugate_count_conventions_and_inverse_square_root_scaling():

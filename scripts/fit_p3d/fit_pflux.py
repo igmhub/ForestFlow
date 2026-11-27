@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 
 from forestflow.archive.gadget_archive import GadgetArchive3D
-from forestflow.model_fits import ArinyoFitter
+from forestflow.fitting import ArinyoFitter
 
 
 def _simulations_for_label(archive, sim_label):

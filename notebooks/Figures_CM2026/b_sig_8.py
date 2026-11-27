@@ -48,7 +48,7 @@ rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
 
-from forestflow.priors.paper import load, set_samples, plots, importance
+from forestflow.priors import importance, loaders, plots, processing
 
 # %% [markdown]
 # beta = biaseta * f(z) / biasdelta
@@ -70,16 +70,16 @@ from forestflow.priors.paper import load, set_samples, plots, importance
 # ### Read chains from the DESI DR2 Lya BAO analysis
 
 # %%
-BAO = load.load_BAO_data()
-P1D = load.load_p1d_data(emu_type="legacy")
+BAO = loaders.load_BAO_data()
+P1D = loaders.load_p1d_data(emu_type="legacy")
 
 # model systematic of bias_delta and beta, relative errors:
 #   "accel2_offset": common offset from the accel2_priors notebook (floor sigma_mu/3)
 #   "fixed": constant 1.0% for bias_delta and 3.1% for bias_eta, independent;
-#            beta = bias_eta f / bias_delta gets the propagated 3.26% (load.SYS_FIXED)
+#            beta = bias_eta f / bias_delta gets the propagated 3.26% (loaders.SYS_FIXED)
 # SYS_OPTION = "accel2_offset"
 SYS_OPTION = "fixed"
-sys_shift = load.load_sys_shift(SYS_OPTION)
+sys_shift = loaders.load_sys_shift(SYS_OPTION)
 
 # %%
 print("P1D", "dr1_hsnr", "dr2_hsnr")
@@ -103,10 +103,10 @@ for key in ["bias_delta_sig_8_z", "bias_eta_f_sig_8_z"]:
 # comparison of holography with our MCMC fits of Accel2 (accel2_priors notebook):
 # common fractional offset with a floor of sigma_mu/3, constant in z, or the
 # fixed values, depending on SYS_OPTION above
-P1D_sys, rel_sys = set_samples.add_p1d_sys(P1D, sys_shift)
+P1D_sys, rel_sys = processing.add_p1d_sys(P1D, sys_shift)
 print(rel_sys)
 
-samples = set_samples.set_getdist_samples(BAO, P1D, P1D_sys=P1D_sys)
+samples = processing.set_getdist_samples(BAO, P1D, P1D_sys=P1D_sys)
 samples.keys()
 
 # %% [markdown]

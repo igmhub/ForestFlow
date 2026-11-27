@@ -9,7 +9,10 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import matplotlib.patches as mpatches
 
+from forestflow.plots.style import house_style
 
+
+@house_style
 def plot_arinyo_z(
     z_central: Any,
     Arinyo_central: Any,
@@ -171,6 +174,7 @@ def plot_arinyo_z(
         plt.savefig(folder_fig + "arinyo_z.pdf")
 
 
+@house_style
 def plot_forestflow_z(
     z_central: Any,
     Arinyo_central: Any,

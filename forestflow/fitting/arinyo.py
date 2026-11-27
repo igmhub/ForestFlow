@@ -1,0 +1,1289 @@
+"""
+Implementation backend for :mod:`forestflow.fitting`.
+
+Users should import :class:`ArinyoFitter` from ``forestflow.fitting``.  This
+module remains at its historical location to avoid breaking local workflows.
+"""
+
+from collections.abc import Mapping, Sequence
+from pathlib import Path
+import warnings
+from typing import Any
+from numpy.typing import ArrayLike, NDArray
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.optimize import minimize
+from forestflow.model.arinyo import ArinyoModel
+from forestflow.statistics.p3d import P3D_Mpc_k_mu_hybrid_averaged, announce_binning
+from forestflow.statistics.rebin_p3d import (
+    get_P3D_k_mu_modes,
+    get_P3D_k_mu_modes_from_edges,
+)
+from .data import FitData
+from .errors import _get_err_p1d, _get_err_p3d
+from lace.cosmo import cosmology
+from forestflow.archive.gadget_archive import MPG_SIM_REDSHIFTS
+
+
+class ArinyoFitter:
+    """
+    Fit the Arinyo model jointly to three- and one-dimensional spectra.
+
+    MP-Gadget snapshots use finite-volume hybrid mode averages for P3D.
+    Arbitrary measurements can instead be supplied at bin centres through
+    :meth:`prepare_simulation_external`. Preparing data stores :class:`FitData` on
+    :attr:`data`; :meth:`fit` then exposes :attr:`result` and :attr:`best_params`.
+    """
+
+    # Keep the linear-theory grid exactly aligned with the MP-Gadget archive.
+    # Importing this module-level declaration does not construct or load an
+    # archive.
+    DEFAULT_ZLIST = MPG_SIM_REDSHIFTS
+
+    PARAM_NAMES = (
+        "bias",
+        "bias_eta",
+        "q1",
+        "q2",
+        "kvav",
+        "av",
+        "bv",
+        "kp",
+    )
+
+    def __init__(
+        self,
+        zlist: Any | None = None,
+        kmin_3d: float | None = 0.01,
+        kmax_3d: float | None = 4.5,
+        kmin_1d: float | None = 0.01,
+        kmax_1d: float | None = 7.0,
+        n_k_bins: int | None = 20,
+        n_mu_bins: int | None = 16,
+        boxsize: float | None = 67.5,
+        bounds: Any | None = None,
+    ) -> None:
+        """
+        Initialize scale cuts, native MP-Gadget geometry, and bounds.
+
+        Parameters
+        ----------
+        zlist : array_like of float, optional
+            Redshifts at which to construct linear theory for archive fits.
+            Defaults to the MP-Gadget archive redshift grid.
+        kmin_3d : float, optional
+            Inclusive lower P3D wavenumber cut in ``Mpc^-1``.
+        kmax_3d : float, optional
+            Exclusive upper P3D wavenumber cut in ``Mpc^-1``.
+        kmin_1d : float, optional
+            Inclusive lower P1D wavenumber cut in ``Mpc^-1``.
+        kmax_1d : float, optional
+            Exclusive upper P1D wavenumber cut in ``Mpc^-1``.
+        n_k_bins : int, optional
+            Number of native logarithmic P3D radial bins.
+        n_mu_bins : int, optional
+            Number of native P3D cosine-angle bins between zero and one.
+        boxsize : float, optional
+            MP-Gadget box side length in Mpc, used to reconstruct discrete
+            Fourier modes.
+        bounds : sequence of tuple of float, optional
+            Lower and upper bounds in :attr:`PARAM_NAMES` order. Built-in
+            bounds are used when omitted.
+        """
+        self.zlist = (
+            self.DEFAULT_ZLIST.copy()
+            if zlist is None
+            else np.asarray(zlist, dtype=float)
+        )
+
+        self.kmin_3d = kmin_3d
+        self.kmax_3d = kmax_3d
+
+        self.kmin_1d = kmin_1d
+        self.kmax_1d = kmax_1d
+
+        self.n_k_bins = n_k_bins
+        self.n_mu_bins = n_mu_bins
+        self.boxsize = boxsize
+
+        if bounds is None:
+            bounds = [
+                (-1.0, -0.01),  # bias
+                (-0.5, -0.01),  # bias_eta
+                (0.0, 5.0),  # q1
+                (-2.0, 2.0),  # q2
+                (0.2, 15.5),  # kvav
+                (0.0, 2.0),  # av
+                (1.0, 5.0),  # bv
+                (4.0, 50.0),  # kp
+            ]
+
+        self.bounds = bounds
+        # One hypercube simulation contributes many redshift/rescaling
+        # snapshots with the same cosmology. Reuse its costly LaCE/CAMB-backed
+        # objects across those snapshots.
+        self._model_cache: dict[tuple[Any, ...], tuple[Any, ArinyoModel]] = {}
+
+        self._prepare_mpg_bin_geometry()
+
+    def _prepare_mpg_bin_geometry(self, kmax_iMpc: float = 20.0) -> None:
+        """
+        Define native MP-Gadget P3D bins selected by configured cuts.
+
+        Parameters
+        ----------
+        kmax_iMpc : float, default=20.0
+            Largest native archive radial wavenumber in ``Mpc^-1``. Bin edges
+            retain this parent geometry when the fit selects a lower subset.
+
+        Raises
+        ------
+        ValueError
+            If the configured P3D cuts select no native radial bins.
+        """
+
+        lnk_max = np.log(kmax_iMpc)
+        lnk_min = np.log(2.0 * np.pi / self.boxsize)
+
+        lnk_bin_max = lnk_max + (lnk_max - lnk_min) / (self.n_k_bins - 1)
+
+        lnk_bin_edges = np.linspace(
+            lnk_min,
+            lnk_bin_max,
+            self.n_k_bins + 1,
+        )
+
+        self.k_bin_edges = np.exp(lnk_bin_edges)
+        self.mu_bin_edges = np.linspace(
+            0.0,
+            1.0,
+            self.n_mu_bins + 1,
+        )
+
+        # Simulation spectra are selected by their radial-bin centres in
+        # ``_prepare_p3d``. Select the model bins by the same convention;
+        # selecting edges includes one extra bin whenever a cut lies between
+        # two edges.
+        k_bin_centres = np.sqrt(self.k_bin_edges[:-1] * self.k_bin_edges[1:])
+        ind = np.flatnonzero(
+            (k_bin_centres >= self.kmin_3d) & (k_bin_centres < self.kmax_3d)
+        )
+        if len(ind) == 0:
+            raise ValueError("P3D scale cuts do not select any model radial bins")
+        self._model_k_indices = ind
+        self.k_bin_edges_fit = self.k_bin_edges[ind[0] : ind[-1] + 2]
+
+        self._p3d_shape = (
+            len(self.k_bin_edges_fit) - 1,
+            len(self.mu_bin_edges) - 1,
+        )
+
+    def _initial_parameters_from_simulation(
+        self, sim: Mapping[str, Any], power_model: Any
+    ) -> dict[str, Any]:
+        """
+        Return the starting Arinyo parameters for a fit.
+
+        Parameters
+        ----------
+        sim : mapping
+            Archive snapshot. Its corrected ``arinyo_fixp3d`` fit, when
+            attached, is used; otherwise the model defaults are used.
+        power_model : ArinyoModel
+            Model supplying the default parameters.
+
+        Returns
+        -------
+        dict
+            Independent copy of the initialization parameters.
+        """
+        if "arinyo_fixp3d" in sim:
+            return dict(sim["arinyo_fixp3d"])
+        return dict(power_model.default_params)
+
+    def prepare_simulation(
+        self,
+        sim: Mapping[str, Any],
+        *,
+        is_mpg: bool = True,
+    ) -> None:
+        """
+        Prepare one archive simulation snapshot for fitting.
+
+        The snapshot's ``arinyo_fixp3d`` values initialize the fit when
+        present; otherwise the model's default parameters are used.
+
+        Parameters
+        ----------
+        sim : mapping
+            Archive snapshot containing cosmology, spectra, and identity
+            metadata.
+        is_mpg : bool, default=True
+            Treat the input as an MP-Gadget measurement and evaluate P3D with
+            finite-volume hybrid averaging. Set this explicitly to ``False``
+            for a non-MP-Gadget measurement; the fit then evaluates P3D at
+            supplied bin centres and emits a warning because this can bias
+            small-scale results.
+        """
+
+        linear, power_model = self._build_model(sim)
+
+        k3d, mu3d, p3d, std_p3d = self._prepare_p3d(sim)
+        k1d, p1d, std_p1d = self._prepare_p1d(sim)
+        ini_params = self._initial_parameters_from_simulation(sim, power_model)
+
+        self._direct_p3d = not is_mpg
+        self._p3d_averaging = "hybrid" if is_mpg else "centres"
+        self._k_mu_mode_counts = None
+        self._max_discrete_modes = 256
+        if is_mpg:
+            self._prepare_mpg_hybrid_geometry()
+        else:
+            self._warn_non_mpg_centre_evaluation()
+        self.data = FitData(
+            z=sim["z"],
+            linear=linear,
+            power_model=power_model,
+            k1d=k1d,
+            p1d=p1d,
+            std_p1d=std_p1d,
+            k3d=k3d,
+            mu3d=mu3d,
+            p3d=p3d,
+            std_p3d=std_p3d,
+            ini_params=ini_params,
+        )
+
+        return
+
+    def prepare_simulation_external(
+        self,
+        *,
+        z: float,
+        cosmo_params: Mapping[str, Any] | cosmology.Cosmology,
+        k3d_Mpc: ArrayLike,
+        mu3d: ArrayLike,
+        p3d_Mpc: ArrayLike,
+        std_p3d: ArrayLike,
+        k1d_Mpc: ArrayLike,
+        p1d_Mpc: ArrayLike,
+        std_p1d: ArrayLike,
+        ini_params: Mapping[str, Any] | None = None,
+        k3d_edges: ArrayLike | None = None,
+        mu_edges: ArrayLike | None = None,
+        boxsize_Mpc: float | None = None,
+        k_mu_geometry: tuple[dict, ArrayLike] | None = None,
+        max_discrete_modes: int = 256,
+    ) -> None:
+        """
+        Prepare arbitrary P3D and P1D measurements for a direct Arinyo fit.
+
+        Unlike :meth:`prepare_simulation`, this method does not assume an
+        archive schema or rebin P3D. The supplied P3D coordinates and relative
+        uncertainties are used directly, making it suitable for an external
+        simulation or measurement such as Astrid. Wavenumbers are in Mpc^-1;
+        P3D and P1D are in Mpc^3 and Mpc, respectively.
+
+        By default the model P3D is evaluated at the supplied bin centres.
+        When the bin edges and the box geometry of the measurement are known,
+        pass ``k3d_edges``, ``mu_edges`` and either ``boxsize_Mpc`` or a
+        precomputed ``k_mu_geometry``: P3D is then hybrid mode-averaged as for
+        MP-Gadget, with exact lattice modes in cells with at most
+        ``max_discrete_modes`` modes and continuous bin averages above.
+
+        Parameters
+        ----------
+        z : float
+            Measurement redshift.
+        cosmo_params : mapping or lace.cosmo.cosmology.Cosmology
+            Parameters accepted by :class:`lace.cosmo.cosmology.Cosmology`,
+            or an existing instance. Passing an instance reuses its CAMB
+            results, e.g. when fitting several redshifts of one simulation.
+        k3d_Mpc, mu3d, p3d_Mpc, std_p3d : array_like
+            Matching P3D coordinates, values, and positive fractional errors.
+            Empty cells may be NaN in ``p3d_Mpc`` and ``std_p3d``; the
+            objective skips them, as for MP-Gadget.
+        k1d_Mpc, p1d_Mpc, std_p1d : array_like
+            Matching P1D coordinates, values, and positive fractional errors.
+        ini_params : mapping, optional
+            Initial Arinyo parameters; model defaults are used if omitted.
+        k3d_edges : array_like, optional
+            Radial bin edges of the supplied P3D rows, length ``n_k + 1``.
+        mu_edges : array_like, optional
+            Direction-cosine bin edges of the P3D columns, length ``n_mu + 1``.
+        boxsize_Mpc : float, optional
+            Box side length in Mpc, used to build the lattice modes.
+        k_mu_geometry : tuple, optional
+            Output of
+            :func:`forestflow.statistics.rebin_p3d.get_P3D_k_mu_modes_from_edges`
+            for ``k3d_edges`` and ``mu_edges``, to avoid recomputing it.
+        max_discrete_modes : int, default=256
+            Largest cell mode count evaluated on exact lattice modes.
+
+        Raises
+        ------
+        ValueError
+            If corresponding arrays differ in shape, an error is non-positive,
+            or the hybrid geometry is incomplete or inconsistent.
+        """
+        k3d_Mpc = np.asarray(k3d_Mpc, dtype=float)
+        mu3d = np.asarray(mu3d, dtype=float)
+        p3d_Mpc = np.asarray(p3d_Mpc, dtype=float)
+        std_p3d = np.asarray(std_p3d, dtype=float)
+        k1d_Mpc = np.asarray(k1d_Mpc, dtype=float)
+        p1d_Mpc = np.asarray(p1d_Mpc, dtype=float)
+        std_p1d = np.asarray(std_p1d, dtype=float)
+        if not (k3d_Mpc.shape == mu3d.shape == p3d_Mpc.shape == std_p3d.shape):
+            raise ValueError(
+                "P3D coordinates, values, and uncertainties must share a shape"
+            )
+        if not (k1d_Mpc.shape == p1d_Mpc.shape == std_p1d.shape):
+            raise ValueError(
+                "P1D coordinates, values, and uncertainties must share a shape"
+            )
+        if np.any(std_p3d <= 0) or np.any(std_p1d <= 0):
+            raise ValueError("relative uncertainties must be positive")
+
+        hybrid_args = (k3d_edges, mu_edges)
+        use_hybrid = any(arg is not None for arg in hybrid_args) or (
+            boxsize_Mpc is not None or k_mu_geometry is not None
+        )
+        if use_hybrid:
+            if k3d_edges is None or mu_edges is None or (
+                boxsize_Mpc is None and k_mu_geometry is None
+            ):
+                raise ValueError(
+                    "hybrid averaging needs k3d_edges, mu_edges, and "
+                    "boxsize_Mpc or k_mu_geometry"
+                )
+            k3d_edges = np.asarray(k3d_edges, dtype=float)
+            mu_edges = np.asarray(mu_edges, dtype=float)
+            if p3d_Mpc.shape != (len(k3d_edges) - 1, len(mu_edges) - 1):
+                raise ValueError("P3D shape must be (len(k3d_edges)-1, len(mu_edges)-1)")
+            if k_mu_geometry is None:
+                k_mu_geometry = get_P3D_k_mu_modes_from_edges(
+                    k3d_edges,
+                    mu_edges,
+                    Lbox_Mpc=boxsize_Mpc,
+                    max_discrete_modes=max_discrete_modes,
+                )
+            k_mu_modes, mode_counts = k_mu_geometry
+            mode_counts = np.asarray(mode_counts)
+            if mode_counts.shape != p3d_Mpc.shape:
+                raise ValueError("k_mu_geometry does not match the P3D shape")
+            # empty cells are NaN in the model and skipped by the objective,
+            # as for MP-Gadget; a measured cell must contain lattice modes
+            if np.any((mode_counts == 0) & np.isfinite(p3d_Mpc)):
+                raise ValueError("measured P3D cells without lattice modes")
+
+        if isinstance(cosmo_params, cosmology.Cosmology):
+            cosmo = cosmo_params
+        else:
+            cosmo = cosmology.Cosmology(cosmo_params)
+        power_model = ArinyoModel(cosmo)
+        linear = power_model.linear.get_linear_theory(z)
+        defaults = power_model.default_params if ini_params is None else ini_params
+        self._direct_p3d = True
+        if use_hybrid:
+            self._p3d_averaging = "hybrid"
+            self._mpg_k_mu_modes = k_mu_modes
+            self._k_mu_mode_counts = mode_counts
+            self._max_discrete_modes = max_discrete_modes
+            self.k_bin_edges_fit = k3d_edges
+            self.mu_bin_edges = mu_edges
+        else:
+            self._p3d_averaging = "centres"
+            self._k_mu_mode_counts = None
+            self._warn_non_mpg_centre_evaluation()
+        self.data = FitData(
+            z=float(z),
+            linear=linear,
+            power_model=power_model,
+            ini_params=dict(defaults),
+            k1d=k1d_Mpc,
+            p1d=p1d_Mpc,
+            std_p1d=std_p1d,
+            k3d=k3d_Mpc,
+            mu3d=mu3d,
+            p3d=p3d_Mpc,
+            std_p3d=std_p3d,
+        )
+
+    @staticmethod
+    def _warn_non_mpg_centre_evaluation() -> None:
+        """
+        Warn when finite-volume MP-Gadget geometry is unavailable.
+        """
+        warnings.warn(
+            "NON-MP-GADGET P3D FIT: evaluating the model at supplied bin "
+            "centres instead of finite-volume mode averages. This is an "
+            "approximation and can introduce appreciable small-scale errors; "
+            "provide MP-Gadget geometry or use is_mpg=True when applicable.",
+            UserWarning,
+            stacklevel=3,
+        )
+
+    def _prepare_mpg_hybrid_geometry(self) -> None:
+        """
+        Construct and cache only the MP-Gadget modes needed by this fit.
+
+        The discrete lattice grows cubically with its maximum wavenumber.  It
+        is therefore essential to stop at the final fitted bin edge rather
+        than construct the archive's complete 20 ``Mpc^-1`` lattice.
+
+        Raises
+        ------
+        ValueError
+            If selected native radial bins are empty or non-contiguous.
+        """
+        # Use the exact native rows selected from the simulation data, not
+        # approximate analytic bin centres.  This remains valid when a user
+        # changes either P3D scale cut.
+        data_indices = np.asarray(self._selected_data_k_indices, dtype=int)
+        if data_indices.size == 0 or np.any(np.diff(data_indices) != 1):
+            raise ValueError(
+                "MP-Gadget P3D scale cuts must select a contiguous set of "
+                "native radial bins."
+            )
+        self._model_k_indices = data_indices
+        self.k_bin_edges_fit = self.k_bin_edges[data_indices[0] : data_indices[-1] + 2]
+
+        cache_key = (
+            float(self.boxsize),
+            int(self.n_k_bins),
+            int(self.n_mu_bins),
+            tuple(data_indices),
+        )
+        if not hasattr(self, "_mpg_hybrid_geometry_cache"):
+            self._mpg_hybrid_geometry_cache = {}
+        if cache_key in self._mpg_hybrid_geometry_cache:
+            self._mpg_k_mu_modes = self._mpg_hybrid_geometry_cache[cache_key]
+            return
+
+        # Preserve the native 20-iMpc parent bin definition, but generate
+        # lattice vectors only through the highest bin participating in the
+        # current fit (typically approximately 4.9 Mpc^-1 for kmax_3d=4.5).
+        all_modes = get_P3D_k_mu_modes(
+            self.k_bin_edges_fit[-1],
+            Lbox_Mpc=self.boxsize,
+            k_grid_max_iMpc=20.0,
+            n_k_bins=self.n_k_bins,
+            n_mu_bins=self.n_mu_bins,
+        )
+        selected = {}
+        for new_index, old_index in enumerate(self._model_k_indices):
+            for mu_index in range(self.n_mu_bins):
+                old_key = f"{old_index}_{mu_index}"
+                if old_key + "_k" in all_modes:
+                    new_key = f"{new_index}_{mu_index}"
+                    selected[new_key + "_k"] = all_modes[old_key + "_k"]
+                    selected[new_key + "_mu"] = all_modes[old_key + "_mu"]
+        self._mpg_hybrid_geometry_cache[cache_key] = selected
+        self._mpg_k_mu_modes = selected
+
+    def _build_model(self, sim: Any) -> tuple[Any, ...]:
+        """
+        Build or retrieve the cosmology-dependent Arinyo model.
+
+        Parameters
+        ----------
+        sim : mapping
+            Archive snapshot containing ``cosmo_params`` and, when available,
+            a simulation label used as part of the model-cache key.
+
+        Returns
+        -------
+        linear : object
+            Linear-theory object evaluated on :attr:`zlist`.
+        power_model : ArinyoModel
+            Model constructed for the snapshot cosmology.
+        """
+
+        cosmo_params = sim["cosmo_params"]
+        cache_key = (
+            sim.get("sim_label"),
+            tuple(sorted((str(name), repr(value)) for name, value in cosmo_params.items())),
+        )
+        cached = self._model_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        cosmo = cosmology.Cosmology(cosmo_params)
+        power_model = ArinyoModel(cosmo)
+        linear = power_model.linear.get_linear_theory(self.zlist)
+        cached = (linear, power_model)
+        self._model_cache[cache_key] = cached
+        return cached
+
+    def _prepare_p3d(self, sim: Any) -> tuple[Any, ...]:
+        """
+        Extract selected P3D rows and assign empirical fractional errors.
+
+        Parameters
+        ----------
+        sim : mapping
+            Archive snapshot containing ``k3d_Mpc``, ``mu3d``, and
+            ``p3d_Mpc`` arrays on the native MP-Gadget radial-bin grid.
+
+        Returns
+        -------
+        k3d, mu3d, p3d, std_p3d : ndarray
+            Scale-selected coordinates, P3D, and empirical fractional errors.
+        """
+
+        mask = (sim["k3d_Mpc"][:, 0] >= self.kmin_3d) & (
+            sim["k3d_Mpc"][:, 0] < self.kmax_3d
+        )
+        # For MP-Gadget the rows retain native radial-bin order.  Keep these
+        # indices so the hybrid model uses exactly the same bin selection as
+        # the measurement, whose mode-weighted centres differ slightly from
+        # ideal logarithmic centres.
+        self._selected_data_k_indices = np.flatnonzero(mask)
+
+        k3d = sim["k3d_Mpc"][mask]
+        mu3d = sim["mu3d"][mask]
+        p3d = sim["p3d_Mpc"][mask]
+
+        std_p3d = (
+            _get_err_p3d(
+                k3d,
+                xmin=self.kmin_3d,
+                xmax=self.kmax_3d,
+            )
+            * 0.01
+        )
+
+        return k3d, mu3d, p3d, std_p3d
+
+    def _prepare_p1d(self, sim: Any) -> tuple[Any, ...]:
+        """
+        Extract selected P1D values and assign empirical fractional errors.
+
+        Parameters
+        ----------
+        sim : mapping
+            Archive snapshot containing ``k_Mpc`` and ``p1d_Mpc`` arrays.
+
+        Returns
+        -------
+        k1d, p1d, std_p1d : ndarray
+            Scale-selected coordinates, P1D, and empirical fractional errors.
+        """
+
+        mask = (sim["k_Mpc"] >= self.kmin_1d) & (sim["k_Mpc"] < self.kmax_1d)
+
+        k1d = sim["k_Mpc"][mask]
+        p1d = sim["p1d_Mpc"][mask]
+
+        std_p1d = (
+            _get_err_p1d(
+                k1d,
+                xmin=self.kmin_1d,
+                xmax=self.kmax_1d,
+            )
+            * 0.01
+        )
+
+        return k1d, p1d, std_p1d
+
+    def params_to_dict(self, params: Mapping[str, Any]) -> Any:
+        """
+        Map a parameter vector to names in :attr:`PARAM_NAMES` order.
+
+        Parameters
+        ----------
+        params : array_like
+            Ordered Arinyo parameter vector. Extra entries are ignored by
+            ``zip`` and too few entries produce a correspondingly incomplete
+            mapping.
+
+        Returns
+        -------
+        dict
+            Parameter names paired with vector entries.
+        """
+
+        params = np.asarray(params)
+
+        return {name: value for name, value in zip(self.PARAM_NAMES, params)}
+
+    def params_from_dict(self, params: Mapping[str, Any]) -> Any:
+        """
+        Return an Arinyo parameter vector in :attr:`PARAM_NAMES` order.
+
+        Parameters
+        ----------
+        params : mapping
+            Arinyo parameter values keyed by every name in :attr:`PARAM_NAMES`.
+
+        Returns
+        -------
+        ndarray
+            Floating-point parameter vector.
+
+        Raises
+        ------
+        KeyError
+            If a required Arinyo parameter is absent.
+        """
+
+        return np.array(
+            [params[name] for name in self.PARAM_NAMES],
+            dtype=float,
+        )
+
+    def predict(self, params: ArrayLike) -> tuple[Any, ...]:
+        """
+        Evaluate the Arinyo model on the currently prepared measurement grid.
+
+        Parameters
+        ----------
+        params : array-like
+            Arinyo vector in :attr:`PARAM_NAMES` order.
+
+        Returns
+        -------
+        p3d : ndarray
+            Model P3D. This is hybrid mode-averaged for MP-Gadget data and
+            for direct measurements prepared with their bin geometry, and
+            point-evaluated otherwise.
+        p1d : ndarray
+            Point-evaluated model P1D.
+
+        Raises
+        ------
+        ValueError
+            If hybrid geometry cannot reproduce the selected P3D shape.
+        """
+
+        ari_par = self.params_to_dict(params)
+
+        if self._p3d_averaging == "hybrid":
+            p3d = P3D_Mpc_k_mu_hybrid_averaged(
+                self.data.linear,
+                self.data.z,
+                self.data.power_model.P3D_Mpc_k_mu,
+                ari_par,
+                k_mu_modes=self._mpg_k_mu_modes,
+                k_iMpc_edges=self.k_bin_edges_fit,
+                mu_edges=self.mu_bin_edges,
+                max_discrete_modes=getattr(self, "_max_discrete_modes", 256),
+                mode_counts=getattr(self, "_k_mu_mode_counts", None),
+            )
+            if p3d.shape != self.data.p3d.shape:
+                raise ValueError(
+                    "Hybrid P3D geometry does not match the selected "
+                    "measurement grid; for an MP-Gadget archive call "
+                    "prepare_simulation(..., is_mpg=False) only for a "
+                    "non-MP-Gadget dataset."
+                )
+        else:
+            announce_binning("centres")
+            p3d = self.data.power_model.P3D_Mpc_k_mu(
+                self.data.linear,
+                self.data.z,
+                self.data.k3d,
+                self.data.mu3d,
+                ari_par,
+            )
+
+        # Evaluate P1D
+        p1d = self.data.power_model.P1D_Mpc(
+            self.data.linear,
+            self.data.z,
+            self.data.k1d,
+            ari_par,
+        )
+
+        return p3d, p1d
+
+    def save_results(
+        self,
+        filename: str | Path,
+        *,
+        snapshots: Sequence[Mapping[str, Any]],
+        initial_chi2: ArrayLike,
+        chi2: ArrayLike,
+        success: ArrayLike,
+        message: ArrayLike,
+        arinyo: Mapping[str, ArrayLike],
+        simulation_label: str,
+        postproc: str,
+    ) -> Path:
+        """
+        Save a portable collection of Arinyo fits and archive identities.
+
+        This is shared by notebooks and batch scripts.  ``snapshots`` defines
+        the archive identity columns; all result arrays must have one entry
+        per snapshot.  Parameter names always remain ordinary API names.
+
+        Parameters
+        ----------
+        filename : path-like
+            Output filename passed to :func:`numpy.save`.
+        snapshots : sequence of mapping
+            Snapshot metadata containing redshift and optional archive index
+            fields.
+        initial_chi2, chi2, success, message : array_like
+            One result value per snapshot.
+        arinyo : mapping of array_like
+            One array per name in :attr:`PARAM_NAMES`, each with one entry per
+            snapshot.
+        simulation_label : str
+            Simulation identity stored in the payload.
+        postproc : str
+            Post-processing label stored in the payload.
+
+        Returns
+        -------
+        pathlib.Path
+            Path written by :func:`numpy.save`.
+
+        Raises
+        ------
+        ValueError
+            If a result or parameter array does not have one entry per
+            snapshot.
+        KeyError
+            If ``arinyo`` omits a required parameter.
+        """
+        snapshots = list(snapshots)
+        n_snapshots = len(snapshots)
+        arrays = {
+            "initial_chi2": np.asarray(initial_chi2),
+            "chi2": np.asarray(chi2),
+            "success": np.asarray(success),
+            "message": np.asarray(message, dtype=object),
+        }
+        for name, values in arrays.items():
+            if values.shape != (n_snapshots,):
+                raise ValueError(f"{name} must have one value per snapshot")
+        arinyo_output = {}
+        for name in self.PARAM_NAMES:
+            if name not in arinyo:
+                raise KeyError(f"arinyo is missing parameter {name!r}")
+            values = np.asarray(arinyo[name], dtype=float)
+            if values.shape != (n_snapshots,):
+                raise ValueError(f"arinyo[{name!r}] must have one value per snapshot")
+            arinyo_output[name] = values
+
+        output = Path(filename)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "schema_version": 2,
+            "simulation_label": simulation_label,
+            "postproc": postproc,
+            "p3d_averaging": getattr(self, "_p3d_averaging", "hybrid"),
+            "parameter_names": self.PARAM_NAMES,
+            "z": np.asarray([item["z"] for item in snapshots]),
+            "ind_snap": np.asarray([item.get("ind_snap") for item in snapshots]),
+            "ind_phase": np.asarray([item.get("ind_phase") for item in snapshots]),
+            "ind_axis": np.asarray([item.get("ind_axis") for item in snapshots]),
+            "ind_rescaling": np.asarray(
+                [item.get("ind_rescaling") for item in snapshots]
+            ),
+            **arrays,
+            "Arinyo": arinyo_output,
+        }
+        np.save(output, payload)
+        return output
+
+    def _warn_if_final_parameters_near_bounds(self, fraction: float = 0.01) -> None:
+        """
+        Print warnings for fitted parameters close to finite bounds.
+
+        Parameters
+        ----------
+        fraction : float, default=0.01
+            Relative width of either bound edge treated as near-bound.
+        """
+        for name, value, (lower, upper) in zip(
+            self.PARAM_NAMES, self.best_params, self.bounds
+        ):
+            span = upper - lower
+            if span <= 0:
+                continue
+            distance_lower = value - lower
+            distance_upper = upper - value
+            if distance_lower <= fraction * span:
+                print(
+                    f"WARNING: final {name}={value:.6g} is within "
+                    f"{fraction:.1%} of its lower bound ({lower:.6g})."
+                )
+            elif distance_upper <= fraction * span:
+                print(
+                    f"WARNING: final {name}={value:.6g} is within "
+                    f"{fraction:.1%} of its upper bound ({upper:.6g})."
+                )
+
+    def chi2(self, params: Mapping[str, Any]) -> Any:
+        """
+        Equal-weight P3D/P1D fitting objective.
+
+        Despite its historical name, this is not a statistical chi-squared:
+        it is the sum of the mean squared uncertainty-normalized fractional
+        residuals of P3D and P1D, intentionally giving each spectrum equal
+        aggregate weight.
+
+        Parameters
+        ----------
+        params : array_like
+            Arinyo vector in :attr:`PARAM_NAMES` order.
+
+        Returns
+        -------
+        float
+            Sum of the P3D and P1D mean squared normalized fractional
+            residuals. Non-finite trial evaluations return ``1e100``.
+        """
+
+        # Invalid trial points can overflow the nonlinear model. They are not
+        # valid minima, so return an infinite objective instead of propagating
+        # NaNs into the optimizer's numerical derivatives.
+        with np.errstate(over="ignore", invalid="ignore", divide="ignore"):
+            p3d, p1d = self.predict(params)
+            chi2_3d = np.nanmean(((p3d / self.data.p3d - 1.0) / self.data.std_p3d) ** 2)
+            chi2_1d = np.nanmean(((p1d / self.data.p1d - 1.0) / self.data.std_p1d) ** 2)
+        chi2 = chi2_3d + chi2_1d
+        return float(chi2) if np.isfinite(chi2) else 1e100
+
+    def residuals(self, params: Mapping[str, Any]) -> tuple[Any, ...]:
+        """
+        Return model-to-measurement fractional residuals.
+
+        Parameters
+        ----------
+        params : array_like
+            Arinyo vector in :attr:`PARAM_NAMES` order.
+
+        Returns
+        -------
+        residuals_3d : ndarray
+            ``P3D_model / P3D_data - 1`` on the prepared P3D grid.
+        residuals_1d : ndarray
+            ``P1D_model / P1D_data - 1`` on the prepared P1D grid.
+        """
+
+        p3d, p1d = self.predict(params)
+
+        return (
+            p3d / self.data.p3d - 1,
+            p1d / self.data.p1d - 1,
+        )
+
+    def fit(
+        self,
+        x0: ArrayLike | None = None,
+        bounds: Sequence[Any] | None = None,
+        method: str = "L-BFGS-B",
+        maxiter: int = 500,
+        ftol: Any = 1e-2,
+        xatol: Any = 1e-5,
+        **kwargs: Mapping[str, Any],
+    ) -> Any:
+        """
+        Fit the Arinyo model to the current simulation.
+
+        Parameters
+        ----------
+        x0 : array-like, optional
+            Initial vector. If omitted, uses prepared initialization parameters.
+        bounds : sequence, optional
+            Bounds forwarded to :func:`scipy.optimize.minimize`; omitted
+            bounds leave the optimizer unconstrained.
+        method : str
+            Optimization method.
+        maxiter : int
+            Maximum optimizer iterations (or evaluations for Nelder-Mead).
+
+        Returns
+        -------
+        scipy.optimize.OptimizeResult
+            SciPy result, also stored on :attr:`result`.
+
+        Other Parameters
+        ----------------
+        ftol : float, default=1e-2
+            Function convergence tolerance; forwarded according to ``method``.
+        xatol : float, default=1e-5
+            Nelder-Mead absolute parameter convergence tolerance.
+        **kwargs
+            Additional SciPy optimizer options. They are merged with
+            ``maxiter`` and method-specific tolerances.
+        """
+
+        if x0 is None:
+            x0 = self.params_from_dict(self.data.ini_params.copy())
+
+        options = {"maxiter": maxiter, **kwargs}
+        if method == "Nelder-Mead":
+            options.update(maxfev=maxiter, fatol=ftol, xatol=xatol)
+        elif method == "L-BFGS-B":
+            options["ftol"] = ftol
+
+        result = minimize(
+            self.chi2,
+            x0,
+            method=method,
+            bounds=bounds,
+            options=options,
+        )
+
+        self.result = result
+        self.best_params = result.x.copy()
+        self.best_chi2 = result.fun
+
+        return result
+
+    def fit_iterative(
+        self,
+        niter: int | None = 20,
+        ftol: float | None = 1e-2,
+    ) -> Any:
+        """
+        Alternate L-BFGS-B and Nelder-Mead until improvement is small.
+
+        Parameters
+        ----------
+        niter : int, optional
+            Maximum number of alternating optimization calls.
+        ftol : float, optional
+            Stop when consecutive objective values improve by less than this.
+
+        Returns
+        -------
+        scipy.optimize.OptimizeResult
+            Final result, also retained on :attr:`result`.
+        """
+
+        x = self.params_from_dict(self.data.ini_params.copy())
+        best = np.inf
+
+        for i in range(niter):
+
+            if i == 0:
+                method = "L-BFGS-B"
+                maxiter = 500
+            else:
+                method = "Nelder-Mead"
+                maxiter = 1000
+
+            result = self.fit(
+                x0=x,
+                bounds=self.bounds,
+                method=method,
+                maxiter=maxiter,
+                ftol=ftol,
+            )
+
+            improvement = best - result.fun
+
+            print(f"Iter {i:2d}   " f"chi2={result.fun:.4f}   " f"Δ={improvement:.4f}")
+
+            if improvement < ftol:
+                break
+
+            best = result.fun
+            x = result.x.copy()
+
+        self._warn_if_final_parameters_near_bounds()
+        return self.result
+
+    def fit_nelder_mead(
+        self,
+        x0: ArrayLike | None = None,
+        chi2_tol: float = 0.1,
+        neval: int = 1000,
+        max_restarts: int = 50,
+        verbose: bool = True,
+    ) -> Any:
+        """
+        Fit with repeated bounded Nelder-Mead searches in unit-cube coordinates.
+
+        Follows the cup1d minimizer: parameters are mapped to ``[0, 1]`` with
+        :attr:`bounds`, so the default initial simplex (a 5% step in each
+        coordinate) has the same relative size for every parameter. Each search
+        stops when the objective changes by less than ``chi2_tol`` across the
+        simplex (and the simplex is smaller than ``1e-6``). Searches restart
+        from the best point until one converges, or until two consecutive
+        restarts each improve the objective by at most ``chi2_tol``.
+
+        Parameters
+        ----------
+        x0 : array-like, optional
+            Initial vector. If omitted, uses prepared initialization parameters.
+        chi2_tol : float, default=0.1
+            Absolute objective tolerance, for :meth:`chi2`.
+        neval : int, default=1000
+            Maximum function evaluations and iterations per search.
+        max_restarts : int, default=50
+            Maximum number of searches.
+        verbose : bool, default=True
+            Print the objective after each search.
+
+        Returns
+        -------
+        scipy.optimize.OptimizeResult
+            Result of the last search, with ``x`` and ``fun`` replaced by the
+            best point and objective; also stored on :attr:`result`.
+
+        Raises
+        ------
+        ValueError
+            If the fitter has no finite bounds.
+        """
+        if self.bounds is None:
+            raise ValueError("fit_nelder_mead requires finite bounds")
+        bounds = np.asarray(self.bounds, dtype=float)
+        if not np.all(np.isfinite(bounds)) or np.any(bounds[:, 1] <= bounds[:, 0]):
+            raise ValueError("fit_nelder_mead requires finite, increasing bounds")
+        low, width = bounds[:, 0], bounds[:, 1] - bounds[:, 0]
+
+        def to_cube(x: ArrayLike) -> NDArray[Any]:
+            return (np.asarray(x, dtype=float) - low) / width
+
+        def from_cube(u: ArrayLike) -> NDArray[Any]:
+            return low + np.asarray(u, dtype=float) * width
+
+        if x0 is None:
+            x0 = self.params_from_dict(self.data.ini_params.copy())
+        best_cube = np.clip(to_cube(x0), 0.0, 1.0)
+        best_chi2 = self.chi2(from_cube(best_cube))
+        if verbose:
+            print(f"Start   chi2={best_chi2:.4f}")
+
+        rep = 0
+        for ii in range(max_restarts):
+            result = minimize(
+                lambda u: self.chi2(from_cube(u)),
+                best_cube,
+                method="Nelder-Mead",
+                bounds=((0.0, 1.0),) * len(best_cube),
+                options={
+                    "fatol": chi2_tol,
+                    "xatol": 1e-6,
+                    "maxiter": neval,
+                    "maxfev": neval,
+                },
+            )
+            improvement = best_chi2 - result.fun
+            if improvement > 0:
+                best_chi2 = result.fun
+                best_cube = result.x.copy()
+            if verbose:
+                print(f"Search {ii:2d}   chi2={best_chi2:.4f}   Δ={improvement:.4f}")
+
+            if result.success:
+                break
+            rep = 0 if improvement > chi2_tol else rep + 1
+            if rep >= 2:
+                break
+
+        result.x = from_cube(best_cube)
+        result.fun = best_chi2
+        self.result = result
+        self.best_params = result.x.copy()
+        self.best_chi2 = best_chi2
+
+        self._warn_if_final_parameters_near_bounds()
+        return result
+
+    def plot_fit(
+        self,
+        params: Any | None = None,
+        normalized: bool | None = True,
+        figsize: Sequence[Any] | None = (8, 8),
+    ) -> tuple[Any, ...]:
+        """
+        Compare P3D/P1D measurements with a specified Arinyo model.
+
+        Parameters
+        ----------
+        params : object, optional
+            Arinyo vector to plot. Defaults to :attr:`best_params`.
+        normalized : bool, optional
+            Plot dimensionless P3D and P1D forms when true; otherwise plot
+            the dimensional spectra.
+        figsize : tuple, optional
+            Matplotlib figure size in inches.
+
+        Returns
+        -------
+        fig : matplotlib.figure.Figure
+            Newly created comparison figure.
+        ax : ndarray of matplotlib.axes.Axes
+            Two axes: P3D followed by P1D.
+        """
+
+        if params is None:
+            params = self.best_params
+
+        p3d_model, p1d_model = self.predict(params)
+
+        fig, ax = plt.subplots(
+            2,
+            1,
+            figsize=figsize,
+            constrained_layout=True,
+        )
+
+        # ---------- P3D ----------
+        color = 0
+        for imu in range(0, self.data.p3d.shape[1], 2):
+
+            x = self.data.k3d[:, imu]
+
+            if normalized:
+                factor = x**3 / (2 * np.pi**2)
+            else:
+                factor = 1.0
+
+            # The values at each point are the bin averages used in the
+            # likelihood; connecting them only aids visual interpretation.
+            ax[0].plot(
+                x,
+                factor * self.data.p3d[:, imu],
+                color=f"C{color}",
+                label="Simulation bin averages" if color == 0 else None,
+            )
+
+            ax[0].plot(
+                x,
+                factor * p3d_model[:, imu],
+                "--",
+                color=f"C{color}",
+                label="Hybrid model bin averages" if color == 0 else None,
+            )
+
+            color += 1
+
+        # ---------- P1D ----------
+        if normalized:
+            factor = self.data.k1d / np.pi
+        else:
+            factor = 1.0
+
+        ax[1].plot(
+            self.data.k1d,
+            factor * self.data.p1d,
+            lw=2,
+            label="Simulation",
+        )
+
+        ax[1].plot(
+            self.data.k1d,
+            factor * p1d_model,
+            "--",
+            lw=2,
+            label="Model",
+        )
+
+        ax[0].set_ylabel(
+            r"$\Delta^2_{\rm F}(k,\mu)$" if normalized else r"$P_{\rm F}(k,\mu)$"
+        )
+        ax[1].set_ylabel(r"$\Delta^2_{\rm 1D}$" if normalized else r"$P_{\rm 1D}$")
+
+        ax[1].set_xlabel(r"$k\ [{\rm Mpc}^{-1}]$")
+
+        ax[0].legend()
+        ax[1].legend()
+
+        return fig, ax
+
+    def plot_residuals(
+        self,
+        params: Any | None = None,
+        figsize: Sequence[Any] | None = (8, 8),
+    ) -> tuple[Any, ...]:
+        """
+        Plot P3D/P1D fractional residuals and their assigned error bands.
+
+        Parameters
+        ----------
+        params : object, optional
+            Arinyo vector to plot. Defaults to :attr:`best_params`.
+        figsize : tuple, optional
+            Matplotlib figure size in inches.
+
+        Returns
+        -------
+        fig : matplotlib.figure.Figure
+            Newly created residual figure.
+        ax : ndarray of matplotlib.axes.Axes
+            Two axes: P3D followed by P1D.
+        """
+
+        if params is None:
+            params = self.best_params
+
+        res3d, res1d = self.residuals(params)
+
+        fig, ax = plt.subplots(
+            2,
+            1,
+            figsize=figsize,
+            constrained_layout=True,
+        )
+
+        # ---------- P3D ----------
+        for imu in range(self.data.p3d.shape[1]):
+
+            # These residuals use the same hybrid bin averages as chi2;
+            # connecting them only aids visual interpretation.
+            ax[0].plot(
+                self.data.k3d[:, imu],
+                res3d[:, imu],
+                color=f"C{imu}",
+            )
+
+        ax[0].fill_between(
+            self.data.k3d[:, 0],
+            -0.05,
+            0.05,
+            color="k",
+            alpha=0.15,
+        )
+
+        ax[0].fill_between(
+            self.data.k3d[:, 0],
+            -self.data.std_p3d[:, 0],
+            self.data.std_p3d[:, 0],
+            color="k",
+            alpha=0.3,
+        )
+
+        # ---------- P1D ----------
+        ax[1].plot(
+            self.data.k1d,
+            res1d,
+            lw=2,
+        )
+
+        ax[1].fill_between(
+            self.data.k1d,
+            -0.01,
+            0.01,
+            color="k",
+            alpha=0.15,
+        )
+
+        ax[1].fill_between(
+            self.data.k1d,
+            -self.data.std_p1d,
+            self.data.std_p1d,
+            color="k",
+            alpha=0.3,
+        )
+
+        ax[0].set_xscale("log")
+        ax[1].set_xscale("log")
+
+        ax[0].set_ylabel(r"$P_{3D}^{\rm model}/P_{3D}^{\rm sim}-1$")
+        ax[1].set_ylabel(r"$P_{1D}^{\rm model}/P_{1D}^{\rm sim}-1$")
+
+        ax[1].set_xlabel(r"$k\ [{\rm Mpc}^{-1}]$")
+        ax[1].set_ylim(-0.05, 0.05)
+        ax[0].set_ylim(-0.15, 0.15)
+
+        return fig, ax

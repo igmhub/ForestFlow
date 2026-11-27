@@ -44,7 +44,7 @@ import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 
-from forestflow.model_fits import ArinyoFitter, gaussian_p3d_relative_error
+from forestflow.fitting import ArinyoFitter, gaussian_p3d_relative_error
 
 # %% [markdown]
 # ## Load one Astrid HDF5 snapshot

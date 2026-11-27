@@ -34,7 +34,7 @@ import numpy as np
 
 from forestflow.archive.gadget_archive import GadgetArchive3D
 from forestflow.emulator.p3d_cinn import P3DEmulator
-from forestflow.model_fits import ArinyoFitter
+from forestflow.fitting import ArinyoFitter
 from forestflow.statistics.rebin_p3d import rebin_P3D_Mpc_mode_weighted
 
 # %% [markdown]

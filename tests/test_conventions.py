@@ -3,7 +3,6 @@ import pytest
 
 from forestflow.conventions import (
     ARINYO_PARAMETER_NAMES,
-    canonicalize_unit_keys,
     validate_wavenumber,
 )
 from forestflow.statistics.p1d import P1D_Mpc, P1D_kms
@@ -13,15 +12,6 @@ def test_arinyo_parameter_order_is_canonical():
     assert ARINYO_PARAMETER_NAMES == (
         "bias", "bias_eta", "q1", "q2", "kvav", "av", "bv", "kp"
     )
-
-
-def test_legacy_keys_are_canonicalized_without_overwriting_new_values():
-    with pytest.warns(FutureWarning, match="deprecated"):
-        values = canonicalize_unit_keys(
-            {"k_Mpc": 1, "k_iMpc": 2, "p1d_Mpc": 3}
-        )
-    assert values["k_iMpc"] == 2
-    assert values["P1D_Mpc"] == 3
 
 
 def test_wavenumber_contract():

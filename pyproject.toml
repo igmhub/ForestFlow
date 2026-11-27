@@ -21,14 +21,14 @@ keywords = [
     "Lyman-alpha", "Cosmology", "Power Spectrum", "Emulator",
 ]
 requires-python = ">= 3.12"
+# The Gaussian-process emulator (forest_mpg_gp) runs with these alone; the
+# cINN emulator (forest_mpg_cinn) needs the ``cinn`` extra (torch, FrEIA).
 dependencies = [
     "numpy",
     "scipy",
     "matplotlib",
-    "torch",
     "threadpoolctl",
     "scikit-learn",
-    "freia",
     "lace",
 ]
 classifiers = [
@@ -49,11 +49,16 @@ docs = [
 ]
 test = [
     "pytest>=8",
+    "torch",
+    "freia",
 ]
+cinn = ["torch", "freia"]
 px = ["hankl"]
-paper = ["astropy", "corner", "getdist"]
+# forestflow.priors analysis (vega, for the BAO fits, is installed separately)
+priors = ["astropy", "getdist"]
 mpi = ["mpi4py"]
-extended = ["hankl", "astropy", "corner", "getdist", "mpi4py"]
+# corner is used by the notebooks/Figures_CM2025 reproductions
+extended = ["torch", "freia", "hankl", "astropy", "getdist", "mpi4py", "corner"]
 
 
 [tool.setuptools.packages.find]

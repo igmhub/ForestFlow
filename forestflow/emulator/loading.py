@@ -16,7 +16,6 @@ passed as keyword arguments, only when needed.
 from __future__ import annotations
 
 import os
-import warnings
 from typing import Any
 
 import forestflow
@@ -67,13 +66,6 @@ def load_emulator(emulator_label: str | None = DEFAULT_EMULATOR_KEY, **kwargs: A
         Emulator with ``evaluate``, ``input_labels``, ``output_labels``,
         ``uses_sampling`` and the training-domain metadata properties.
     """
-    if emulator_label == "forest_mpg_fix":
-        warnings.warn(
-            "Emulator label 'forest_mpg_fix' was renamed 'forest_mpg_cinn'.",
-            FutureWarning,
-            stacklevel=2,
-        )
-        emulator_label = DEFAULT_EMULATOR_KEY
     if emulator_label in GP_EMULATOR_LABELS:
         kwargs.pop("compile_model", None)
         return ArinyoGPEmulator.load(gp_emulator_path(emulator_label), **kwargs)

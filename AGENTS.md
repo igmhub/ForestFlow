@@ -2,19 +2,20 @@
 
 ## Purpose and active layout
 
-ForestFlow emulates Arinyo flux-power parameters with a conditional invertible neural network and predicts P3D/P1D. LaCE owns cosmology and base archives; cup1d consumes the P1D adapter.
+ForestFlow emulates Arinyo flux-power parameters with a Gaussian process (`forest_mpg_gp`, no torch needed) or a conditional invertible neural network (`forest_mpg_cinn`, `[cinn]` extra) and predicts P3D/P1D. LaCE owns cosmology and base archives; cup1d consumes the P1D adapter.
 
-- Emulator/inference: `forestflow/emulator/p3d_cinn.py`, `network.py`, `training.py`, `bundle.py`; downstream P1D adapter: `forestflow/emulator/p1d.py`.
-- Physical model and LaCE adapter: `forestflow/model/`; projections/binning/covariances: `forestflow/statistics/`; archive extensions: `forestflow/archive/`; model fitting: `forestflow/model_fits/`.
+- Emulator/inference: `forestflow/emulator/loading.py` (`load_emulator`), `arinyo_gp.py`, `p3d_cinn.py`, `network.py`, `training.py`, `bundle.py`; downstream P1D adapter: `forestflow/emulator/p1d.py`.
+- Physical model and LaCE adapter: `forestflow/model/`; projections/binning/covariances: `forestflow/statistics/`; archive extensions: `forestflow/archive/`; model fitting: `forestflow/fitting/`.
 - Scientific contracts: `forestflow/conventions.py`; supported examples: `notebooks/Tutorials/`; publication reproductions: `notebooks/Figures/`.
-- `forestflow/old_code/` is deprecated. `notebooks/developers/` includes exploratory/legacy work; paper-specific `priors/paper/` and plotting modules are not automatically production inference paths.
+- `notebooks/developers/` includes exploratory/legacy work. The priors analysis (`forestflow/priors/`: `processing`, `loaders`, `importance`, `plots`; used by `notebooks/Figures_CM2026`) and plotting modules are not production inference paths. ForestFlow must never import cup1d or lya_interface (they depend on ForestFlow); cup1d-chain decoding lives in `cup1d.postprocessing.forestflow_priors`.
+- Data paths: package data through `forestflow.paths.get_data_path()`, external analysis data through `forestflow.paths.get_lya_data_path()` (`LYA_DATA_PATH`); never hard-code user paths. Plotting functions call `forestflow.plots.style.apply_house_style()` (via `@house_style`); never set rcParams at import.
 
 ## Working rules
 
 - Inspect `git status`, the current branch, and applicable nested instructions before editing. The maintained branch is `main`; do not switch branches or discard user changes automatically.
 - Read the relevant implementation, tests, and `docs/workflow*` before changing a public interface. Follow active imports rather than assuming every notebook defines supported behavior.
 - Make focused changes. Preserve scientific defaults, parameter ordering, serialization, and scalar/batch behavior unless the task explicitly changes them. Document intentional numerical changes and their validation.
-- Do not edit `old_code/`, notebook `old/`, `wip/`, or developer experiments by default. Historical/paper modules are not necessarily deprecated: check callers first. Never copy an obsolete API back into the active package without checking it.
+- Do not edit notebook `old/`, `wip/`, or developer experiments by default. Historical/paper modules are not necessarily deprecated: check callers first. Never copy an obsolete API back into the active package without checking it.
 - Do not regenerate simulation archives, model weights, covariance products, chains, or publication outputs as part of a routine code change. Use configured external assets and report missing prerequisites. Never replace a scientific regression reference solely to make a test pass.
 - Use Python >=3.12 and editable installs. Install sibling IGMHub repositories explicitly from compatible revisions, rather than relying on the PyPI name `lace`. Record the three commit SHAs for cross-package validation.
 - Distinguish fast unit checks from model/data-dependent regression tests. A skipped or unavailable regression is not a pass. Prefer a small test of the failing scientific invariant over a test that merely reproduces the implementation.
@@ -53,4 +54,4 @@ pytest -q -m "not pretrained_model"
 pytest -q -m pretrained_model  # requires the pretrained scientific model assets
 ```
 
-The Makefile provides `test-unit` and `test-regression` equivalents. Use `tests/test_scientific_units.py` for units, projections and binning; also select fitting, compiled inference, checkpoint and manifest tests as appropriate. Run pretrained regression for numerical/model changes when its prerequisites are available. Validate the cup1d adapter for interface changes. For documentation changes install `.[docs]` and run `make docs`.
+The Makefile provides `test-unit` and `test-regression` equivalents. Use `tests/test_scientific_units.py` for units, projections and binning; also select fitting (`forestflow/fitting/`), compiled inference, checkpoint and manifest tests as appropriate. Run pretrained regression for numerical/model changes when its prerequisites are available. Validate the cup1d adapter for interface changes. For documentation changes install `.[docs]` and run `make docs`.

@@ -22,7 +22,7 @@
 # `ArinyoFitter.prepare_simulation_external`.
 #
 # The data are read with the same cup1d loader used for the ACCEL2 P3D
-# validation figure (`set_samples.load_k_mu_accel2`). It reads the native
+# validation figure (`forestflow.priors.processing.accel2_k_mu_grid`). It reads the native
 # measurements from the simulation (`p3d_from_sim`, all k and the four mu bins,
 # and `p1d_from_sim`, averaged over the three directions), not the rebinned
 # P3D of `p3d_rebinned`. It converts to Mpc$^{-1}$, Mpc$^3$ and Mpc with
@@ -52,11 +52,11 @@ rcParams["font.family"] = "STIXGeneral"
 
 from lace.cosmo import cosmology
 from lace.cosmo.labeled_cosmologies import get_cosmo_params_dict_from_label
-from cup1d.p1ds.simulations.data_accel2 import load_data
+from cup1d.p1ds.synthetic.data_accel2 import load_data
 
-from forestflow.model_fits import ArinyoFitter, gaussian_p3d_relative_error
+from forestflow.fitting import ArinyoFitter, gaussian_p3d_relative_error
 from forestflow.statistics.rebin_p3d import get_P3D_k_mu_modes_from_edges
-from forestflow.priors.paper.plots import ACCEL2_ARINYO_FITS
+from forestflow.priors.plots import ACCEL2_ARINYO_FITS
 
 # %% [markdown]
 # ## Load one ACCEL2 snapshot
@@ -696,11 +696,11 @@ rcParams["font.family"] = "STIXGeneral"
 
 from lace.cosmo import cosmology
 from lace.cosmo.labeled_cosmologies import get_cosmo_params_dict_from_label
-from cup1d.p1ds.simulations.data_accel2 import load_data
+from cup1d.p1ds.synthetic.data_accel2 import load_data
 
-from forestflow.model_fits import ArinyoFitter, gaussian_p3d_relative_error
+from forestflow.fitting import ArinyoFitter, gaussian_p3d_relative_error
 from forestflow.statistics.rebin_p3d import get_P3D_k_mu_modes_from_edges
-from forestflow.priors.paper.plots import ACCEL2_ARINYO_FITS
+from forestflow.priors.plots import ACCEL2_ARINYO_FITS
 
 # ---- settings (copies of those at the top of the notebook)
 ACCEL2_FOLDER = "/home/jchaves/Proyectos/projects/lya/data/accel2/frontier_grid/"

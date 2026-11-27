@@ -6,7 +6,8 @@ from typing import Any
 
 import os
 import numpy as np
-import forestflow
+
+from forestflow.paths import get_data_path
 
 
 def get_arinyo_priors(z: int | float, tag: str | None="DESI_DR1_P1D", return_all: bool | None=False) -> Any:
@@ -39,7 +40,7 @@ def get_arinyo_priors(z: int | float, tag: str | None="DESI_DR1_P1D", return_all
     else:
         raise ValueError("tag not recognized, only implemented for DESI_DR1_P1D")
 
-    folder = os.path.join(os.path.dirname(forestflow.__path__[0]), "data", "priors")
+    folder = get_data_path() / "priors"
     data_priors = np.load(os.path.join(folder, fname), allow_pickle=True).item()
 
     if (z > np.max(data_priors["zs"])) | (z < np.min(data_priors["zs"])):
@@ -111,7 +112,7 @@ def get_IGM_priors(z: int | float, tag: str | None="DESI_DR1_P1D", return_all: b
     else:
         raise ValueError("tag not recognized, only implemented for DESI_DR1_P1D")
 
-    folder = os.path.join(os.path.dirname(forestflow.__path__[0]), "data", "priors")
+    folder = get_data_path() / "priors"
     data_priors = np.load(os.path.join(folder, fname), allow_pickle=True).item()
 
     if (z > np.max(data_priors["zs"])) | (z < np.min(data_priors["zs"])):

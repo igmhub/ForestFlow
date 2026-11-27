@@ -29,16 +29,18 @@ from matplotlib import rcParams
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
-from forestflow.priors.paper.load import load_map_igm_p3d
-from forestflow.priors.paper.set_samples import load_k_mu_accel2
-from forestflow.priors.paper.plots import plot_p3d_validation, plot_bias_beta_zev_val
+from cup1d.p1ds.synthetic.data_accel2 import load_data as load_accel2_data
+from forestflow.paths import get_lya_data_path
+from forestflow.priors.loaders import load_map_igm_p3d
+from forestflow.priors.processing import accel2_k_mu_grid
+from forestflow.priors.plots import plot_p3d_validation, plot_bias_beta_zev_val
 
 # %% [markdown]
 # #### Provenance of the ACCEL2 P1D chain (checked Nov 2026)
 #
 # `load_map_igm_p3d(lab_sample="accel2")` maps the cup1d chain in
-# `P1D_CHAINS["accel2"]` (`forestflow/priors/paper/set_samples.py`):
-# `/home/jchaves/Proyectos/projects/lya/data/accel2/chains/chain_1/` (written 2026-02-17).
+# `P1D_CHAINS["accel2"]` (`cup1d/postprocessing/forestflow_priors.py`):
+# `<LYA_DATA_PATH>/accel2/chains/chain_1/` (written 2026-02-17).
 #
 # **How the chain was run.** `cup1d/scripts/validation/val_sampler.py accel2`
 # (`name_variation = "sim_accel2"`, output under
@@ -52,13 +54,13 @@ from forestflow.priors.paper.plots import plot_p3d_validation, plot_bias_beta_ze
 #   the lower prior bound of the metal and HCD amplitudes to -10.5;
 # * minimizer, then MCMC (`mcmc_conf="explore"`).
 #
-# `val_sampler.py` calls `args.set_baseline`, which now only exists in
-# `cup1d/old_code/old_input.py`, so the script must be updated
-# to the YAML configuration (`Args.from_yaml`) before re-running it. The folders
+# `val_sampler.py` called `args.set_baseline`, which only exists in
+# `cup1d/old_code/old_input.py`; the script was removed from cup1d (it is in
+# the git history) and a re-run needs a YAML configuration (`Args.from_yaml`). The folders
 # `DESIY1_QMLE3/sim_accel2/CH24_mpgcen_gpr/chain_*` in this directory are empty.
 #
 # **How the mock is built** (`cup1d/p1ds/factory.py` -> `Accel2_P1D` in
-# `cup1d/p1ds/simulations/data_accel2.py`):
+# `cup1d/p1ds/synthetic/data_accel2.py`):
 # 1. ACCEL2 P1D read from the text files `frontier_grid/p1d_from_sim/l160_r25`
 #    (`load_data`, average of the 3 axes, k < 10/Mpc); same data as `ACCEL2_6144_160`
 #    in the Nyx file. Snapshots z = 2.0, 2.6, 3.0, 3.6, 4.0, 5.0.
@@ -76,8 +78,9 @@ from forestflow.priors.paper.plots import plot_p3d_validation, plot_bias_beta_ze
 # 5. Fiducial contaminants and systematics from the theory object are applied to the mock.
 
 # %%
-knew3d, munew3d, data_accel2 = load_k_mu_accel2()
-data = load_map_igm_p3d(lab_sample="accel2", emu_type = "legacy")
+data_accel2 = load_accel2_data(str(get_lya_data_path() / "accel2" / "frontier_grid"))
+knew3d, munew3d = accel2_k_mu_grid(data_accel2)
+data = load_map_igm_p3d(lab_sample="accel2", emu_type="legacy", accel2_data=data_accel2)
 
 # %%
 data.keys()
@@ -113,7 +116,7 @@ plt.legend()
 plot_p3d_validation(knew3d, munew3d, data, data_accel2)
 
 # %%
-from forestflow.priors.paper.plots import load_accel2_mcmc_fits
+from forestflow.priors.plots import load_accel2_mcmc_fits
 
 # simulation values to compare with:
 #   "mcmc": our MCMC fits of ACCEL2 (notebooks/arinyo_fits/Arinyo_fit_accel2), median and 16-84% errors
@@ -179,7 +182,7 @@ for lab_sample in ["desi", "accel2"]:
 # mapped from the Accel2 P1D) and the Arinyo parameters fitted directly to the
 # Accel2 P3D, as in plot_bias_beta_zev_val. Relative difference of the median,
 # |model/sim - 1|, at the simulation redshifts covered by the model
-from forestflow.priors.paper.plots import ACCEL2_ARINYO_FITS
+from forestflow.priors.plots import ACCEL2_ARINYO_FITS
 
 # simulation label: model label
 sys_pars = {
@@ -466,7 +469,7 @@ print(f"Saved {sys_excess_file}")
 # band.
 
 # %%
-from forestflow.priors.paper.plots import load_accel2_mcmc_fits
+from forestflow.priors.plots import load_accel2_mcmc_fits
 
 SYS_PARS = ["bias_delta", "beta"]
 Z_SYS = [2.6, 3.0]  # redshifts used for the systematic error
