@@ -101,12 +101,64 @@ class ArinyoModel:
         """
         Evaluate the Arinyo nonlinear flux-power kernel.
         """
+        return self.kernel_terms(linP_Mpc, fz, k_iMpc, mu, ari_pp)[0]
+
+    def kernel_terms(self, linP_Mpc, fz, k_iMpc, mu, ari_pp):
+        """Return the Arinyo P3D and the factors it is built from.
+
+        Parameters
+        ----------
+        linP_Mpc : array_like
+            Linear matter power in Mpc^3 on the ``(k, mu)`` grid.
+        fz : array_like
+            Logarithmic growth rate, broadcastable to ``k_iMpc``.
+        k_iMpc, mu : array_like
+            Comoving wavenumber in 1/Mpc and absolute line-of-sight cosine.
+        ari_pp : mapping
+            Arinyo coefficients (``bias``, ``bias_eta`` and those of
+            :meth:`nonlinear_correction`).
+
+        Returns
+        -------
+        p3d : numpy.ndarray
+            ``linP * kaiser**2 * D_NL`` in Mpc^3.
+        kaiser : numpy.ndarray
+            Lya Kaiser factor ``bias + bias_eta * f * mu**2``.
+        d_nl : numpy.ndarray
+            :meth:`nonlinear_correction`.
+
+        Notes
+        -----
+        Consumers that need the factors themselves (e.g. cross terms of the Lya
+        field with metals, which use ``sqrt(D_NL)`` and ``kaiser``) take them
+        from here instead of re-writing the kernel.
+        """
         bias = broadcast_leading_dimensions(ari_pp["bias"], k_iMpc)
         bias_eta = broadcast_leading_dimensions(ari_pp["bias_eta"], k_iMpc)
-        lowk_bias = bias + bias_eta * fz * mu**2
-        return linP_Mpc * lowk_bias**2 * self.nonlinear_correction(
-            linP_Mpc, k_iMpc, mu, ari_pp
-        )
+        kaiser = bias + bias_eta * fz * mu**2
+        d_nl = self.nonlinear_correction(linP_Mpc, k_iMpc, mu, ari_pp)
+        return linP_Mpc * kaiser**2 * d_nl, kaiser, d_nl
+
+    @staticmethod
+    def pressure_leg(k_iMpc, kp):
+        """Pressure smoothing of one field, ``exp(-(k / kp)**2 / 2)``.
+
+        The square root of the pressure term of :meth:`nonlinear_correction`
+        (``exp(-(k/kp)**2)``), for a tracer (e.g. a metal) that shares the
+        gas pressure scale but not the rest of the nonlinear correction.
+
+        Parameters
+        ----------
+        k_iMpc : array_like
+            Comoving wavenumber in 1/Mpc.
+        kp : array_like
+            Arinyo pressure scale in 1/Mpc.
+
+        Returns
+        -------
+        numpy.ndarray
+        """
+        return np.exp(-0.5 * (np.asarray(k_iMpc) / kp) ** 2)
 
     @staticmethod
     def nonlinear_correction(linP_Mpc, k_iMpc, mu, ari_pp):

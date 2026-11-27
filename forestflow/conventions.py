@@ -8,6 +8,8 @@ from typing import Any
 from warnings import warn
 
 import numpy as np
+from lace.conventions import LEGACY_UNIT_KEYS, validate_wavenumber
+from lace.conventions import canonicalize_unit_keys as _lace_canonicalize_unit_keys
 
 ARINYO_PARAMETER_NAMES = (
     "bias",
@@ -20,19 +22,22 @@ ARINYO_PARAMETER_NAMES = (
     "kp",
 )
 
-LEGACY_UNIT_KEYS = {
-    "k_Mpc": "k_iMpc",
-    "k_kms": "k_ikms",
-    "p1d_Mpc": "P1D_Mpc",
-    "p3d_Mpc": "P3D_Mpc",
-    "Pk_kms": "P1D_kms",
-    "dkms_dMpc": "dkms_diMpc",
-}
+__all__ = [
+    "ARINYO_PARAMETER_NAMES",
+    "LEGACY_UNIT_KEYS",
+    "canonicalize_unit_keys",
+    "validate_finite_array",
+    "validate_mu",
+    "validate_wavenumber",
+]
 
 
 def canonicalize_unit_keys(values: dict[str, Any]) -> dict[str, Any]:
     """
     Temporarily add canonical names for legacy serialized mapping keys.
+
+    Deprecated wrapper around :func:`lace.conventions.canonicalize_unit_keys`
+    that additionally emits a ``FutureWarning``.
 
     Parameters
     ----------
@@ -49,7 +54,7 @@ def canonicalize_unit_keys(values: dict[str, Any]) -> dict[str, Any]:
     -----
     FutureWarning
         New public mappings must use canonical unit-qualified names directly.
-    directly. This helper will be removed in the next major release.
+        This helper will be removed in the next major release.
     """
     warn(
         "canonicalize_unit_keys is deprecated; provide canonical "
@@ -57,38 +62,7 @@ def canonicalize_unit_keys(values: dict[str, Any]) -> dict[str, Any]:
         FutureWarning,
         stacklevel=2,
     )
-    result = dict(values)
-    for old, new in LEGACY_UNIT_KEYS.items():
-        if new not in result and old in result:
-            result[new] = result[old]
-    return result
-
-
-def validate_wavenumber(values: Any, *, name: str) -> np.ndarray:
-    """
-    Validate a finite, positive one-dimensional wavenumber array.
-
-    Parameters
-    ----------
-    values : array_like
-        Candidate wavenumbers.
-    name : str
-        Field name included in validation errors.
-
-    Returns
-    -------
-    ndarray
-        Floating-point one-dimensional wavenumbers.
-
-    Raises
-    ------
-    ValueError
-        If the array is not one-dimensional, finite, and strictly positive.
-    """
-    array = np.asarray(values, dtype=float)
-    if array.ndim != 1 or not np.all(np.isfinite(array)) or np.any(array <= 0):
-        raise ValueError(f"{name} must be a finite, positive 1D array")
-    return array
+    return _lace_canonicalize_unit_keys(values)
 
 
 def validate_finite_array(

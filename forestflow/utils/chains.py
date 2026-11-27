@@ -8,9 +8,14 @@ from typing import Any
 from numpy.typing import ArrayLike, NDArray
 import numpy as np
 
+from lace.utils.chains import purge_chains as _lace_purge_chains
+
 def purge_chains(ln_prop_chains: ArrayLike, nsplit: int | None=5, abs_diff: int | None=5, minval: Any=-1000) -> Any:
     """
     Flag walkers with stable and sufficiently high log-probability chunks.
+
+    Thin wrapper around :func:`lace.utils.chains.purge_chains` that keeps the
+    ForestFlow defaults (fixed ``minval``) and boolean-mask return format.
 
     Parameters
     ----------
@@ -29,30 +34,9 @@ def purge_chains(ln_prop_chains: ArrayLike, nsplit: int | None=5, abs_diff: int 
     ndarray of bool
         Per-walker convergence flags.
     """
-    # split each walker in nsplit chunks
-    split_arr = np.array_split(ln_prop_chains, nsplit, axis=0)
-    # compute median of each chunck
-    split_med = []
-    for ii in range(nsplit):
-        split_med.append(split_arr[ii].mean(axis=0))
-    # (nwalkers, nchucks)
-    split_res = np.array(split_med).T
-    # compute median of chunks for each walker ()
-    split_res_med = split_res.mean(axis=1)
-
-    # step-dependence convergence
-    # check that average logprob does not vary much with step
-    # compute difference between chunks and median of each chain
-    keep1 = (np.abs(split_res - split_res_med[:, np.newaxis]) < abs_diff).all(axis=1)
-    # total-dependence convergence
-    # check that average logprob is close to minimum logprob of all chains
-    # check that all chunks are above a target minimum value
-    keep2 = (split_res > minval).all(axis=1)
-
-    # combine both criteria
-    keep = keep1 & keep2
-
-    return keep
+    return _lace_purge_chains(
+        ln_prop_chains, nsplit=nsplit, abs_diff=abs_diff, minval=minval
+    )
 
 def init_chains(
     parameters: Any,
